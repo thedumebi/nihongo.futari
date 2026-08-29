@@ -98,11 +98,21 @@ get a certificate until it does.
 
 nihongo shares dmb's Postgres instance but needs its own database.
 
+The superuser is **not** `postgres`. dmb's Postgres was created with
+`POSTGRES_USER: ${PG_USERNAME}` from dmb's own config, so `-U postgres` fails
+with `role "postgres" does not exist`. The container knows its own username —
+let it tell you, rather than hardcoding one:
+
 ```bash
 # On the server
-docker exec -it dmb-postgres psql -U postgres -c "CREATE DATABASE nihongo;"
-docker exec -it dmb-postgres psql -U postgres -lqt | cut -d\| -f1 | grep nihongo
+docker exec -it dmb-postgres sh -c 'psql -U "$POSTGRES_USER" -c "CREATE DATABASE nihongo;"'
+
+# Confirm it exists
+docker exec -it dmb-postgres sh -c 'psql -U "$POSTGRES_USER" -lqt' | cut -d\| -f1 | grep nihongo
 ```
+
+The same applies to every other `psql` in this guide, including the restore in
+Step 7 and the backup in Step 9.
 
 ---
 
@@ -143,8 +153,14 @@ git commit -m "Add encrypted production config"
 git push
 ```
 
-> The encrypted file is committed on purpose; `.env.keys` never is. Losing
-> `.env.keys` means re-entering every secret.
+> The encrypted file is committed on purpose; `.env.keys` never is.
+>
+> **Back the key up somewhere outside the repo** — a password manager entry is
+> ideal. It is gitignored, so it is invisible to `git status` and is deleted by
+> anything that sweeps ignored files (`git clean -fdX`, a "remove all .env
+> files" tidy-up). Nothing warns you: the encrypted values stay perfectly
+> readable as ciphertext and only fail when something tries to decrypt them.
+> Losing it means regenerating every secret in the file.
 
 ---
 
