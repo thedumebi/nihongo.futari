@@ -12,7 +12,7 @@ import {
 } from '@nihongo/shared/db/schema'
 import SendMail from '@nihongo/shared/emails'
 import env from '@nihongo/shared/env'
-import { isQuietHour, studyDateFor } from '@nihongo/shared/lib'
+import { studyDateFor } from '@nihongo/shared/lib'
 import { and, desc, eq, gte, sql } from 'drizzle-orm'
 import { DateTime } from 'luxon'
 
@@ -41,8 +41,7 @@ interface Candidate {
   timezone: string
   dayBoundaryHour: number
   reminderHour: number
-  quietStartHour: number
-  quietEndHour: number
+  reminderMinute: number
   emailEnabled: boolean
   pushEnabled: boolean
   dueCount: number
@@ -58,8 +57,7 @@ async function findCandidates(): Promise<Candidate[]> {
       timezone: users.timezone,
       dayBoundaryHour: userSettings.dayBoundaryHour,
       reminderHour: userSettings.reminderHour,
-      quietStartHour: userSettings.quietStartHour,
-      quietEndHour: userSettings.quietEndHour,
+      reminderMinute: userSettings.reminderMinute,
       emailEnabled: userSettings.reminderEmailEnabled,
       pushEnabled: userSettings.reminderPushEnabled,
       dueCount: sql<number>`(
@@ -82,8 +80,7 @@ async function findCandidates(): Promise<Candidate[]> {
     name: r.name,
     dayBoundaryHour: r.dayBoundaryHour ?? 4,
     reminderHour: r.reminderHour ?? 19,
-    quietStartHour: r.quietStartHour ?? 22,
-    quietEndHour: r.quietEndHour ?? 7
+    reminderMinute: r.reminderMinute ?? 0
   }))
 }
 
@@ -98,12 +95,30 @@ function isDue(candidate: Candidate, now: Date): boolean {
   const local = DateTime.fromJSDate(now, { zone: candidate.timezone })
   if (!local.isValid)
     return false
-  // Quiet hours win over the preferred hour. Someone who set a 23:00 reminder
-  // and a 22:00-07:00 quiet window has contradicted themselves, and honouring
-  // the quiet window is the reading that does not wake them up.
-  if (isQuietHour(local.hour, { startHour: candidate.quietStartHour, endHour: candidate.quietEndHour }))
+
+  // The chosen hour wins. Quiet hours are NOT consulted here, deliberately.
+  //
+  // They used to be, and the result was a reminder that could never fire: the
+  // window defaults to 22:00-07:00, no screen in the app exposes it, and it is
+  // not in the preferences the settings page saves — so nobody had chosen it
+  // and nobody could change it. Anyone picking a late evening reminder, which
+  // is the obvious time to study, was silenced by a rule they never set and
+  // could not see.
+  //
+  // It is also not the phone's Do Not Disturb; the server knows nothing about
+  // that. The device already holds a notification quietly when the reader has
+  // asked it to, which is the layer that actually knows whether they are
+  // asleep. Overriding an explicit choice here only duplicated that badly.
+  //
+  // The columns are gone entirely (migration 0009); the weekly summary does not
+  // consult them either, for the same reason.
+  if (local.hour !== candidate.reminderHour)
     return false
-  return local.hour === candidate.reminderHour
+
+  // Match the QUARTER, not the exact minute. The cron fires every fifteen
+  // minutes and drifts by seconds; an exact comparison would miss silently,
+  // which is the failure mode this whole area keeps producing.
+  return Math.floor(local.minute / 15) * 15 === candidate.reminderMinute
 }
 
 export async function runReminders(now = new Date()): Promise<ReminderRunResult> {
@@ -216,9 +231,7 @@ export async function runWeeklySummaries(now = new Date()): Promise<ReminderRunR
       email: users.email,
       name: users.name,
       timezone: users.timezone,
-      enabled: userSettings.weeklySummaryEnabled,
-      quietStartHour: userSettings.quietStartHour,
-      quietEndHour: userSettings.quietEndHour
+      enabled: userSettings.weeklySummaryEnabled
     })
     .from(users)
     .leftJoin(userSettings, eq(userSettings.userId, users.id))
@@ -233,7 +246,12 @@ export async function runWeeklySummaries(now = new Date()): Promise<ReminderRunR
     const local = DateTime.fromJSDate(now, { zone: c.timezone ?? 'UTC' })
     // Sunday evening in THEIR week, not the server's.
     const isSendTime = local.isValid && local.weekday === 7 && local.hour === 18
-    if (!isSendTime || isQuietHour(local.hour, { startHour: c.quietStartHour ?? 22, endHour: c.quietEndHour ?? 7 })) {
+    // No quiet-hours gate here either, for the same reason as the daily
+    // reminder: nothing in the app sets that window, so every account carries
+    // a 22:00-07:00 default nobody chose and nobody can change. Leaving it on
+    // the weekly summary would have kept exactly the bug that was just removed
+    // from the reminder — silence, from a rule the reader never saw.
+    if (!isSendTime) {
       skipped++
       continue
     }

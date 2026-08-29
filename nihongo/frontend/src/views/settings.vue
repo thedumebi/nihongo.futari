@@ -121,7 +121,9 @@ const pushReason = ref(support.supported ? '' : support.reason)
 
 const HOURS = Array.from({ length: 24 }, (_, h) => ({
   value: h,
-  label: `${String(h).padStart(2, '0')}:00`
+  // No ":00" — a minute picker sits beside this one, and "23:00" next to ":15"
+  // reads as two different times rather than one.
+  label: String(h).padStart(2, '0')
 }))
 
 /**
@@ -135,6 +137,25 @@ const reminderHourValue = computed({
   set: (v: string) => {
     if (prefs.value)
       prefs.value.reminderHour = Number(v)
+  }
+})
+
+/**
+ * Minutes past the hour, in quarters.
+ *
+ * Quarters rather than free minutes because the cron fires every fifteen
+ * minutes: offering 11:07 would promise a precision the scheduler cannot keep,
+ * and the reminder would arrive at some point in the following quarter anyway.
+ */
+const MINUTE_OPTIONS = [0, 15, 30, 45].map(m => ({
+  value: String(m),
+  label: `:${String(m).padStart(2, '0')}`
+}))
+const reminderMinuteValue = computed({
+  get: () => String(prefs.value?.reminderMinute ?? 0),
+  set: (v: string) => {
+    if (prefs.value)
+      prefs.value.reminderMinute = Number(v) as 0 | 15 | 30 | 45
   }
 })
 
@@ -303,7 +324,13 @@ async function turnOnPush() {
               v-model="reminderHourValue"
               :options="HOUR_OPTIONS"
               header="Hour"
-              width-class="w-32"
+              width-class="w-24"
+            />
+            <Dropdown
+              v-model="reminderMinuteValue"
+              :options="MINUTE_OPTIONS"
+              header="Minute"
+              width-class="w-24"
             />
           </label>
 

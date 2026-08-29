@@ -5,6 +5,7 @@ import {
   notificationPrefsSchema,
   pushSubscribeSchema,
   reminderRunResultSchema,
+  timezoneSchema,
   vapidKeyResponseSchema
 } from '@nihongo/shared/types'
 
@@ -62,6 +63,26 @@ export const updatePreferences = createSecuredRoute({
   }
 })
 export type UpdatePreferencesRoute = typeof updatePreferences
+
+/**
+ * The reader's timezone, sent by the browser on every session load.
+ *
+ * Its own endpoint rather than a field on the preferences PUT: the client knows
+ * this without asking anyone, and making it read the whole preferences object
+ * back just to change one field would be a round trip and a race for no reason.
+ */
+export const setTimezone = createSecuredRoute({
+  tags,
+  path: NOTIFICATION_ROUTES.TIMEZONE,
+  method: 'patch',
+  summary: 'Set the reader timezone',
+  middleware: [authMiddleware],
+  request: { body: jsonContentRequired(timezoneSchema, 'IANA timezone') },
+  responses: {
+    [HttpStatusCodes.OK]: jsonContent(timezoneSchema, 'Saved')
+  }
+})
+export type SetTimezoneRoute = typeof setTimezone
 
 /**
  * Fired by host cron, not by a user.

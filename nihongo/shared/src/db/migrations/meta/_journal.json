@@ -57,6 +57,20 @@
       "when": 1788121124478,
       "tag": "0007_dialogue_image",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1788207524478,
+      "tag": "0008_reminder_minute",
+      "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1788293924478,
+      "tag": "0009_drop_quiet_hours",
+      "breakpoints": true
     }
   ]
 }

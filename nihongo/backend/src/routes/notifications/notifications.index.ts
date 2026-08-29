@@ -11,6 +11,7 @@ router.openapi(routes.vapidKey, handlers.vapidKey)
 router.openapi(routes.subscribe, handlers.subscribe)
 router.openapi(routes.preferences, handlers.preferences)
 router.openapi(routes.updatePreferences, handlers.updatePreferences)
+router.openapi(routes.setTimezone, handlers.setTimezone)
 router.openapi(routes.runReminders, handlers.runReminders)
 
 export default router

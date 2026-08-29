@@ -4,12 +4,13 @@ import env from '@nihongo/shared/env'
 import type { AppRouteHandler } from '@/lib/types.js'
 
 import { publicKey } from '@/lib/push.js'
-import { getPrefs, subscribe as saveSubscription, setPrefs } from '@/services/notifications.service.js'
+import { getPrefs, subscribe as saveSubscription, setTimezone as saveTimezone, setPrefs } from '@/services/notifications.service.js'
 import { runReminders as run, runWeeklySummaries } from '@/services/reminders.service.js'
 
 import type {
   PreferencesRoute,
   RunRemindersRoute,
+  SetTimezoneRoute,
   SubscribeRoute,
   UpdatePreferencesRoute,
   VapidKeyRoute
@@ -54,4 +55,11 @@ export const runReminders: AppRouteHandler<RunRemindersRoute> = async (c) => {
     pushed: daily.pushed + weekly.pushed,
     skipped: daily.skipped + weekly.skipped
   }, HttpStatusCodes.OK)
+}
+
+export const setTimezone: AppRouteHandler<SetTimezoneRoute> = async (c) => {
+  const user = c.get('user')!
+  const { timezone } = c.req.valid('json')
+  await saveTimezone(user.id, timezone)
+  return c.json({ timezone }, HttpStatusCodes.OK)
 }

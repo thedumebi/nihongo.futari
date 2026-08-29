@@ -35,10 +35,35 @@ export const notificationPrefsSchema = z.object({
   reminderPushEnabled: z.boolean(),
   /** Local hour to send. Compared against the user's own timezone. */
   reminderHour: z.number().int().min(0).max(23),
-  weeklySummaryEnabled: z.boolean()
+  /**
+   * Minutes past the hour: 0, 15, 30 or 45.
+   *
+   * Constrained to quarters because the cron runs every fifteen minutes, and
+   * offering a free minute field would promise a precision the scheduler
+   * cannot keep.
+   */
+  reminderMinute: z.union([z.literal(0), z.literal(15), z.literal(30), z.literal(45)]).default(0),
+  weeklySummaryEnabled: z.boolean(),
+  /**
+   * The reader's IANA timezone, e.g. `Asia/Tokyo`.
+   *
+   * Optional on the way in and detected by the browser rather than asked for.
+   * It lives on `users`, not here, but it travels with the preference it
+   * governs: a reminder hour is meaningless without the zone it is measured in,
+   * and nothing else was ever setting it — so every account sat on the `UTC`
+   * default and reminders fired at the wrong time of day, or never.
+   */
+  timezone: z.string().optional()
 }).openapi('NotificationPrefs')
 
 export type NotificationPrefs = z.infer<typeof notificationPrefsSchema>
+
+export const timezoneSchema = z.object({
+  /** IANA zone, e.g. `Asia/Tokyo`. Detected by the browser, never typed. */
+  timezone: z.string().min(1).max(64)
+}).openapi('Timezone')
+
+export type TimezoneInput = z.infer<typeof timezoneSchema>
 
 export const reminderRunResultSchema = z.object({
   considered: z.number().int(),

@@ -9,7 +9,6 @@
  */
 export type { AggregateOptions } from './aggregate.js'
 export { aggregateReviews } from './aggregate.js'
-export * from './quiet-hours.js'
 export type { StreakOptions } from './streak.js'
 export { computeStreak } from './streak.js'
 export { daysBetween, nextDate, studyDateFor, studyDayRange } from './study-day.js'

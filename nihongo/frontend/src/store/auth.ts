@@ -1,6 +1,7 @@
 import { defineStore } from 'pinia'
 import { computed, ref } from 'vue'
 
+import { syncTimezone } from '@/api/notifications'
 import { authClient } from '@/lib/auth-client'
 
 interface SessionUser {
@@ -9,6 +10,7 @@ interface SessionUser {
   name: string
   image?: string | null
   role?: string
+  timezone?: string | null
 }
 
 export const useAuthStore = defineStore('auth', () => {
@@ -41,6 +43,12 @@ export const useAuthStore = defineStore('auth', () => {
       // coalesce so `isAuthenticated` doesn't read undefined as "signed in".
       user.value = (data?.user as SessionUser | undefined) ?? null
       ready.value = true
+
+      // A reminder hour is meaningless without the zone it is measured in, and
+      // nothing else in the app ever set it. Fire and forget — nothing on
+      // screen waits for it.
+      if (user.value)
+        void syncTimezone()
     })()
 
     try {

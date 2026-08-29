@@ -37,10 +37,15 @@ export const userSettings = pgTable('user_settings', {
   reminderEmailEnabled: boolean('reminder_email_enabled').notNull().default(true),
   reminderPushEnabled: boolean('reminder_push_enabled').notNull().default(false),
   reminderHour: integer('reminder_hour').notNull().default(19),
+  /**
+   * Minutes past the hour, in quarters: 0, 15, 30 or 45.
+   *
+   * The cron fires every fifteen minutes, so a quarter is the finest grain the
+   * scheduler can actually honour — offering minutes would promise a precision
+   * that does not exist.
+   */
+  reminderMinute: integer('reminder_minute').notNull().default(0),
   weeklySummaryEnabled: boolean('weekly_summary_enabled').notNull().default(true),
-  /** Local hours in which reminders are held back. Equal values disable it. */
-  quietStartHour: integer('quiet_start_hour').notNull().default(22),
-  quietEndHour: integer('quiet_end_hour').notNull().default(7),
   /** Per-user FSRS weights, optimised nightly once there's enough history. */
   fsrsParams: jsonb('fsrs_params').$type<{
     w?: number[]
