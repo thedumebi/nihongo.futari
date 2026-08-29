@@ -1,0 +1,95 @@
+# nihongo.futari.live — production stack.
+#
+# nihongo runs on the SAME Hetzner host as dmb and REUSES dmb's Postgres, Redis and
+# Caddy. This compose therefore only builds nihongo's own backend + frontend; the
+# shared services live in dmb's stack and are reached over the external
+# `futari` docker network.
+#
+# One-time host setup (see DEPLOY.md "Shared infrastructure"):
+#   docker network create futari                         # shared bridge
+#   docker exec dmb-postgres createdb -U thedumebi nihongo    # nihongo's own database
+# and redeploy dmb once so its postgres/redis/caddy join `futari` and its
+# Caddyfile routes nihongo.futari.live -> nihongo-frontend.
+#
+# Deploy (from repo root — decrypts .env.production for Compose substitution):
+#   dotenvx run -f nihongo/backend/.env.production -- \
+#     docker compose -f docker-compose.prod.yml up -d --build
+
+services:
+  backend:
+    build:
+      context: .
+      dockerfile: nihongo/backend/Dockerfile
+    container_name: nihongo-backend
+    restart: unless-stopped
+    # On start: apply migrations, run idempotent (tracked) seeds, then boot.
+    # Postgres/Redis are dmb's long-lived containers, already up on `futari`.
+    command:
+      - sh
+      - -c
+      - >-
+        DB_MIGRATING=true node dist/db/migrate.js &&
+        DB_SEEDING=true node dist/db/seed.js &&
+        node dist/index.js
+    # No public `ports:` — reached only over the internal network (nihongo-frontend
+    # nginx proxies /api -> nihongo-backend:3008).
+    environment:
+      # env.ts loads .env.production when NODE_ENV=production, then dotenvx
+      # decrypts it in-process using the key injected via env_file below.
+      NODE_ENV: production
+    env_file:
+      # The decryption key ONLY (DOTENV_PRIVATE_KEY_PRODUCTION). Lives only on
+      # the server, gitignored. Every other secret stays encrypted at rest.
+      - ./nihongo/backend/.env.keys
+    volumes:
+      # The encrypted env, mounted read-only at the path the app reads from
+      # (its WORKDIR /app/nihongo/backend). The app self-decrypts it at startup.
+      - ./nihongo/backend/.env.production:/app/nihongo/backend/.env.production:ro
+      # The GeoLite2 country database, shared with dmb's stack on this host so we
+      # don't bake a second ~9 MB copy. Identical mount to dmb's.
+      #
+      # Mount the PARENT, not geodata itself: geolite2-redist downloads into
+      # `mkdtemp(<dir>-tmp-)`, a SIBLING of the target, then renames across.
+      # Bind-mounting geodata directly leaves that sibling on the container
+      # overlay, so every update fails with `EXDEV: cross-device link not
+      # permitted`.
+      #
+      # Read-WRITE, and both stacks run their updater. geolite2-redist makes
+      # self-updating mandatory (a licence requirement) and offers no way to
+      # disable it, so a read-only mount just trades EXDEV for a permission error
+      # every cycle. Both fetch the same file from the same mirror and land it
+      # with an atomic rename, so the overlap is harmless.
+      #
+      # If the file is missing entirely, lookups return null and views still
+      # record with country = null — nothing fails.
+      - /opt/futari:/opt/futari
+    networks:
+      # Shared network with dmb's stack — this is how the backend reaches
+      # dmb-postgres:5432 and dmb-redis:6379 (see PG_HOST/REDIS_HOST in
+      # .env.production).
+      - futari
+
+  frontend:
+    build:
+      context: .
+      dockerfile: nihongo/frontend/Dockerfile
+      args:
+        # Baked into the SPA at build time. Absolute URL (frontend validates
+        # with z.url()): the public site origin + /api, same-origin, proxied by
+        # nginx to nihongo-backend. Comes from .env.production via dotenvx run.
+        VITE_API_URL: ${VITE_API_URL:-https://nihongo.futari.live/api}
+        VITE_APP_TITLE: ${VITE_APP_TITLE:-Nihongo}
+    container_name: nihongo-frontend
+    restart: unless-stopped
+    # No public `ports:` — dmb's Caddy is the only host-bound edge. It reaches
+    # this container as `nihongo-frontend:8080` over the shared `futari` network.
+    depends_on:
+      - backend
+    networks:
+      - futari
+
+networks:
+  # Pre-created once on the host (`docker network create futari`) and shared
+  # with dmb's compose project, which attaches its postgres/redis/caddy to it.
+  futari:
+    external: true

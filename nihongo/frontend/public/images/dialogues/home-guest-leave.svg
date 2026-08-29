@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 160 120" width="160" height="120" role="img" aria-label="A coat taken from a hook by the door">
+  <!-- Leaving a friend's house: I should be going. -->
+  <g fill="none" stroke="#2F4858" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="0" y="0" width="160" height="120" fill="#FBFAF7" stroke="none"/>
+    <rect x="18" y="14" width="56" height="86" fill="#DCE6EC"/>
+    <line x1="74" y1="14" x2="74" y2="100"/>
+    <circle cx="66" cy="58" r="3" fill="#2F4858"/>
+    <line x1="96" y1="20" x2="140" y2="20"/>
+    <line x1="106" y1="20" x2="106" y2="30"/><line x1="130" y1="20" x2="130" y2="30"/>
+    <path d="M118 30 L96 42 L96 96 L140 96 L140 42 Z" fill="#A9C6DC"/>
+    <circle cx="118" cy="60" r="5" fill="#D8A7A0"/>
+    <line x1="10" y1="100" x2="150" y2="100"/>
+  </g>
+</svg>

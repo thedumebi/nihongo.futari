@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" width="120" height="120" role="img" aria-label="A restaurant">
+  <!-- レストラン restaurant. A shopfront with an awning and a table visible
+       through the window — Western-style, which is what the loanword means. -->
+  <g fill="none" stroke="#2F4858" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="0" y="0" width="120" height="120" fill="#FBFAF7" stroke="none"/>
+    <line x1="16" y1="100" x2="104" y2="100" stroke="#CFD6D9"/>
+    <rect x="20" y="30" width="80" height="70" fill="#F2EBDD"/>
+    <path d="M16 52 L104 52 L98 34 L22 34 Z" fill="#B7C5AE"/>
+    <g fill="#FBFAF7" stroke="none">
+      <path d="M22 34 L34 34 L28 52 L16 52 Z"/>
+      <path d="M46 34 L58 34 L52 52 L40 52 Z"/>
+      <path d="M70 34 L82 34 L76 52 L64 52 Z"/>
+    </g>
+    <rect x="28" y="60" width="38" height="30" rx="2" fill="#A9C6DC"/>
+    <path d="M36 82 L58 82 M42 82 L42 74 M52 82 L52 74" stroke="#FBFAF7" stroke-width="2.4"/>
+    <rect x="74" y="60" width="20" height="40" rx="2" fill="#E3D8C6"/>
+    <circle cx="78" cy="80" r="2.4" fill="#D8A7A0" stroke="none"/>
+  </g>
+</svg>

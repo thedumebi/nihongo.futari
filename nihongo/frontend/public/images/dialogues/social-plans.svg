@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 160 120" width="160" height="120" role="img" aria-label="Two message bubbles and a calendar square">
+  <!-- Making plans: messages about the weekend. -->
+  <g fill="none" stroke="#2F4858" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="0" y="0" width="160" height="120" fill="#FBFAF7" stroke="none"/>
+    <path d="M16 24 L74 24 C78 24 80 27 80 31 L80 51 C80 55 78 58 74 58 L40 58 L28 68 L31 58 L16 58 C12 58 10 55 10 51 L10 31 C10 27 12 24 16 24 Z" fill="#C7DAE8"/>
+    <path d="M146 46 L92 46 C88 46 86 49 86 53 L86 71 C86 75 88 78 92 78 L122 78 L134 88 L131 78 L146 78 C150 78 152 75 152 71 L152 53 C152 49 150 46 146 46 Z" fill="#D8A7A0"/>
+    <rect x="54" y="88" width="52" height="28" rx="3" fill="#F2EBDD"/>
+    <rect x="54" y="88" width="52" height="8" fill="#A9C6DC"/>
+    <g stroke="#B3BEC4" stroke-width="1.4"><line x1="71" y1="96" x2="71" y2="116"/><line x1="88" y1="96" x2="88" y2="116"/></g>
+  </g>
+</svg>

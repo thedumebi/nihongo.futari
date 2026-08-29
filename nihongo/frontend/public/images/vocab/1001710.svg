@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" width="120" height="120" role="img" aria-label="Japanese sweets">
+  <!-- お菓子 sweets. Wagashi on a small dish: a round daifuku and a
+       leaf-shaped one, not Western candy. -->
+  <g fill="none" stroke="#2F4858" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="0" y="0" width="120" height="120" fill="#FBFAF7" stroke="none"/>
+    <line x1="16" y1="100" x2="104" y2="100" stroke="#CFD6D9"/>
+    <path d="M22 78 Q60 92 98 78" fill="#DCE6EC" stroke="#2F4858"/>
+    <ellipse cx="20" cy="78" rx="3" ry="3" fill="#DCE6EC" stroke="none"/>
+    <circle cx="44" cy="66" r="15" fill="#F2EBDD"/>
+    <path d="M36 62 Q44 56 52 62" stroke="#D8A7A0" stroke-width="2.2"/>
+    <path d="M66 78 Q66 56 84 52 Q90 68 78 78 Z" fill="#B7C5AE"/>
+    <path d="M72 74 Q78 64 84 56" stroke="#8FA394" stroke-width="1.8"/>
+  </g>
+</svg>

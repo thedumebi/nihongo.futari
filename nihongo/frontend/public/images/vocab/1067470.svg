@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" width="120" height="120" role="img" aria-label="A skirt">
+  <!-- スカート skirt. Waistband and pleats, flaring to the hem. -->
+  <g fill="none" stroke="#2F4858" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="0" y="0" width="120" height="120" fill="#FBFAF7" stroke="none"/>
+    <rect x="40" y="28" width="40" height="10" rx="2" fill="#7FA5C0"/>
+    <path d="M40 38 L28 92 Q60 100 92 92 L80 38 Z" fill="#A9C6DC"/>
+    <g stroke="#7FA5C0" stroke-width="1.8">
+      <path d="M50 38 L44 94"/>
+      <path d="M60 38 L60 96"/>
+      <path d="M70 38 L76 94"/>
+    </g>
+  </g>
+</svg>

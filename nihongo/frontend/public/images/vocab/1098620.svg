@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" width="120" height="120" role="img" aria-label="A block of butter">
+  <!-- バター butter. A block with one pat cut from it, on a dish. -->
+  <g fill="none" stroke="#2F4858" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="0" y="0" width="120" height="120" fill="#FBFAF7" stroke="none"/>
+    <line x1="16" y1="100" x2="104" y2="100" stroke="#CFD6D9"/>
+    <path d="M28 84 L28 62 L40 52 L92 52 L92 74 L80 84 Z" fill="#E3D8C6"/>
+    <path d="M28 62 L80 62 L80 84" stroke="#B3BEC4" stroke-width="2"/>
+    <path d="M80 62 L92 52" stroke="#B3BEC4" stroke-width="2"/>
+    <path d="M40 44 L40 36 L60 36 L60 44 Z" fill="#F2EBDD"/>
+    <path d="M20 84 Q60 94 100 84" fill="#DCE6EC" stroke="#2F4858"/>
+  </g>
+</svg>

@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 160 120" width="160" height="120" role="img" aria-label="A kettle and a window at dawn">
+  <!-- Waking up: into the kitchen, the host mother already up. -->
+  <g fill="none" stroke="#2F4858" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="0" y="0" width="160" height="120" fill="#FBFAF7" stroke="none"/>
+    <rect x="88" y="16" width="56" height="46" fill="#DCE6EC"/>
+    <line x1="116" y1="16" x2="116" y2="62"/><line x1="88" y1="39" x2="144" y2="39"/>
+    <rect x="88" y="16" width="56" height="46"/>
+    <circle cx="116" cy="30" r="8" fill="#D8A7A0"/>
+    <path d="M22 62 L22 94 L74 94 L74 62 Z" fill="#C7DAE8"/>
+    <path d="M74 70 C90 70 90 84 74 84" fill="none"/>
+    <path d="M34 62 L34 52 L54 52 L54 62" fill="#A9C6DC"/>
+    <path d="M40 44 C36 38 44 34 40 28" stroke="#7FA5C0" stroke-width="1.8"/>
+    <line x1="10" y1="98" x2="150" y2="98"/>
+  </g>
+</svg>

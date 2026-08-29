@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 160 120" width="160" height="120" role="img" aria-label="A taxi seen from behind with a destination sign">
+  <!-- Taking a taxi: giving the driver somewhere to go. -->
+  <g fill="none" stroke="#2F4858" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="0" y="0" width="160" height="120" fill="#FBFAF7" stroke="none"/>
+    <path d="M34 88 L34 56 L48 38 L112 38 L126 56 L126 88 Z" fill="#A9C6DC"/>
+    <rect x="52" y="46" width="56" height="18" fill="#DCE6EC"/>
+    <rect x="70" y="24" width="24" height="12" rx="3" fill="#D8A7A0"/>
+    <g stroke="#FBFAF7" stroke-width="3"><line x1="46" y1="76" x2="62" y2="76"/><line x1="98" y1="76" x2="114" y2="76"/></g>
+    <circle cx="54" cy="94" r="7"/><circle cx="106" cy="94" r="7"/>
+    <line x1="14" y1="102" x2="146" y2="102"/>
+  </g>
+</svg>

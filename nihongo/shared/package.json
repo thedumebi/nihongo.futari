@@ -1,0 +1,100 @@
+{
+  "name": "@nihongo/shared",
+  "type": "module",
+  "version": "0.1.0",
+  "private": true,
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "require": "./dist/index.js"
+    },
+    "./db": {
+      "import": "./dist/db/index.js",
+      "require": "./dist/db/index.js"
+    },
+    "./db/schema": {
+      "import": "./dist/db/schema/index.js",
+      "require": "./dist/db/schema/index.js"
+    },
+    "./types": {
+      "import": "./dist/types/index.js",
+      "require": "./dist/types/index.js"
+    },
+    "./env": {
+      "import": "./dist/env.js",
+      "require": "./dist/env.js"
+    },
+    "./emails": {
+      "import": "./dist/services/emails/index.js",
+      "require": "./dist/services/emails/index.js"
+    },
+    "./constants": {
+      "import": "./dist/constants/index.js",
+      "require": "./dist/constants/index.js"
+    },
+    "./middlewares": {
+      "import": "./dist/middlewares/index.js",
+      "require": "./dist/middlewares/index.js"
+    },
+    "./openapi": {
+      "import": "./dist/openapi/index.js",
+      "require": "./dist/openapi/index.js"
+    },
+    "./lib": {
+      "import": "./dist/lib/index.js",
+      "require": "./dist/lib/index.js"
+    },
+    "./utils": {
+      "import": "./dist/utils/index.js",
+      "require": "./dist/utils/index.js"
+    }
+  },
+  "scripts": {
+    "dev": "tsc -p tsconfig.build.json && tsc-alias -p tsconfig.build.json && pnpm copy:views && (concurrently \"tsc -p tsconfig.build.json --watch --preserveWatchOutput\" \"tsc-alias -p tsconfig.build.json -w\")",
+    "build": "tsc -p tsconfig.build.json && tsc-alias -p tsconfig.build.json && pnpm copy:views",
+    "copy:views": "cpx \"src/views/**/*\" dist/views",
+    "lint": "eslint .",
+    "lint:fix": "npm run lint -- --cache --fix",
+    "test": "NODE_ENV=test vitest run",
+    "drizzle:generate": "NODE_OPTIONS='--import tsx' dotenvx run -f ../backend/.env -- drizzle-kit generate --config=../backend/drizzle.config.ts",
+    "create:db": "SCRIPT_SOURCE=shared dotenvx run --log-level=warn -f ../backend/.env -- tsx src/db/scripts/create-db.ts",
+    "drop:db": "SCRIPT_SOURCE=shared dotenvx run --log-level=warn -f ../backend/.env -- tsx src/db/scripts/remove-db.ts",
+    "typecheck": "tsc -p tsconfig.build.json --noEmit"
+  },
+  "dependencies": {
+    "@dotenvx/dotenvx": "^1.48.2",
+    "@getbrevo/brevo": "^3.0.1",
+    "@hono/zod-openapi": "^1.1.0",
+    "drizzle-orm": "^0.45.2",
+    "drizzle-zod": "^0.5.1",
+    "ejs": "^3.1.10",
+    "hono": "^4.12.18",
+    "hono-pino": "^0.10.1",
+    "ioredis": "^5.6.1",
+    "luxon": "^3.7.2",
+    "nodemailer": "^7.0.13",
+    "pg": "^8.16.3",
+    "pino": "^9.7.0",
+    "pino-pretty": "^13.0.0",
+    "ts-fsrs": "^5.4.1",
+    "uuid": "^11.1.0",
+    "zod": "^4.0.5"
+  },
+  "devDependencies": {
+    "@repo/eslint-config": "workspace:*",
+    "@repo/typescript-config": "workspace:*",
+    "@types/ejs": "^3.1.5",
+    "@types/luxon": "^3.7.1",
+    "@types/node": "^22.0.0",
+    "@types/nodemailer": "^6.4.17",
+    "@types/pg": "^8.15.4",
+    "concurrently": "^9.2.0",
+    "cpx": "^1.5.0",
+    "drizzle-kit": "^0.31.10",
+    "eslint": "9.31.0",
+    "tsc-alias": "^1.8.16",
+    "tsx": "^4.7.1",
+    "typescript": "^5.8.3",
+    "vitest": "^3.2.4"
+  }
+}

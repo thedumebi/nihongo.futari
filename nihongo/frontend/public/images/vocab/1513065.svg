@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" width="120" height="120" role="img" aria-label="A bento box">
+  <!-- お弁当 bento. An open lacquer box with compartments: rice with a single
+       umeboshi, and a divider — the layout that makes it a bento. -->
+  <g fill="none" stroke="#2F4858" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="0" y="0" width="120" height="120" fill="#FBFAF7" stroke="none"/>
+    <line x1="16" y1="100" x2="104" y2="100" stroke="#CFD6D9"/>
+    <rect x="18" y="42" width="84" height="46" rx="6" fill="#E3D8C6"/>
+    <rect x="24" y="48" width="72" height="34" rx="3" fill="#FBFAF7"/>
+    <rect x="24" y="48" width="34" height="34" rx="3" fill="#F2EBDD"/>
+    <circle cx="41" cy="65" r="5" fill="#D8A7A0"/>
+    <line x1="58" y1="48" x2="58" y2="82" stroke="#B7C5AE" stroke-width="2.4"/>
+    <rect x="62" y="53" width="14" height="10" rx="2" fill="#B7C5AE"/>
+    <rect x="80" y="53" width="12" height="10" rx="2" fill="#A9C6DC"/>
+    <rect x="62" y="68" width="30" height="10" rx="2" fill="#DCE6EC"/>
+  </g>
+</svg>

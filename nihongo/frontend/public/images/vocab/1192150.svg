@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" width="120" height="120" role="img" aria-label="A family">
+  <!-- 家族 family. Three figures of different heights, shoulder to shoulder —
+       people as simple geometric forms, no faces. -->
+  <g fill="none" stroke="#2F4858" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="0" y="0" width="120" height="120" fill="#FBFAF7" stroke="none"/>
+    <line x1="16" y1="100" x2="104" y2="100" stroke="#CFD6D9"/>
+    <circle cx="34" cy="46" r="11" fill="#F2EBDD"/>
+    <path d="M18 100 Q18 62 34 62 Q50 62 50 100 Z" fill="#A9C6DC"/>
+    <circle cx="66" cy="42" r="12" fill="#F2EBDD"/>
+    <path d="M48 100 Q48 58 66 58 Q84 58 84 100 Z" fill="#B7C5AE"/>
+    <circle cx="94" cy="62" r="8" fill="#F2EBDD"/>
+    <path d="M82 100 Q82 76 94 76 Q106 76 106 100 Z" fill="#D8A7A0"/>
+  </g>
+</svg>

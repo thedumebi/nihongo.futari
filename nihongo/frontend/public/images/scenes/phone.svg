@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 160 120" width="160" height="120" role="img" aria-label="A phone with speech marks">
+  <!-- On the phone. A handset held up, two speech shapes rising. Empty
+       bubbles on purpose — no lettering anywhere in the set. -->
+  <g fill="none" stroke="#2F4858" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="0" y="0" width="160" height="120" fill="#FBFAF7" stroke="none"/>
+
+    <!-- soft ground tone -->
+    <ellipse cx="80" cy="102" rx="56" ry="10" fill="#DCE6EC" stroke="none"/>
+
+    <!-- the phone -->
+    <rect x="54" y="24" width="42" height="74" rx="8" fill="#C7DAE8"/>
+    <rect x="60" y="34" width="30" height="50" fill="#FBFAF7"/>
+    <line x1="70" y1="92" x2="80" y2="92"/>
+
+    <!-- speech shapes rising from it -->
+    <path d="M100 30 L134 30 C138 30 140 33 140 36 L140 48 C140 51 138 54 134 54 L114 54 L106 62 L108 54 C102 54 100 51 100 48 Z" fill="#A9C6DC"/>
+    <path d="M18 54 L44 54 C48 54 50 57 50 60 L50 70 C50 73 48 76 44 76 L30 76 L22 84 L24 76 C20 76 18 73 18 70 Z" fill="#D8A7A0"/>
+  </g>
+</svg>

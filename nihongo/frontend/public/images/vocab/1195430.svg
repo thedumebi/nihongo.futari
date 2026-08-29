@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" width="120" height="120" role="img" aria-label="Luggage">
+  <!-- 荷物 luggage. A wheeled case with its handle up and a smaller bag
+       stacked on it. -->
+  <g fill="none" stroke="#2F4858" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="0" y="0" width="120" height="120" fill="#FBFAF7" stroke="none"/>
+    <line x1="16" y1="100" x2="104" y2="100" stroke="#CFD6D9"/>
+    <path d="M46 34 L46 24 L74 24 L74 34" stroke="#B3BEC4" stroke-width="3"/>
+    <rect x="34" y="40" width="52" height="52" rx="6" fill="#A9C6DC"/>
+    <line x1="60" y1="40" x2="60" y2="92" stroke="#7FA5C0" stroke-width="2.4"/>
+    <rect x="42" y="58" width="36" height="8" rx="3" fill="#F2EBDD" stroke="none"/>
+    <circle cx="44" cy="96" r="5" fill="#B3BEC4"/>
+    <circle cx="76" cy="96" r="5" fill="#B3BEC4"/>
+    <rect x="82" y="62" width="26" height="22" rx="4" fill="#E3D8C6"/>
+    <path d="M88 62 Q95 54 102 62" stroke-width="2.2"/>
+  </g>
+</svg>

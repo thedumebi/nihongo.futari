@@ -1,0 +1,55 @@
+<%- include("partials/header") -%>
+
+<h1 style="margin: 0 0 16px; color: #2f4858; font-size: 22px;">
+  <% if (reviews === 0) { %>A quiet week<% } else { %>Your week<% } %>
+</h1>
+
+<% if (reviews === 0) { %>
+  <p style="margin: 0 0 24px;">
+    Hi <%= name %>, no reviews this week. Nothing is lost, and the queue is waiting
+    whenever you want it.
+  </p>
+<% } else { %>
+  <p style="margin: 0 0 20px;">
+    Hi <%= name %>, here is what the week looked like.
+  </p>
+  <table role="presentation" style="width: 100%; border-collapse: collapse; margin: 0 0 24px;">
+    <tr>
+      <td style="padding: 8px 0; color: #6b7c86;">Reviews</td>
+      <td style="padding: 8px 0; text-align: right; font-weight: 600;"><%= reviews %></td>
+    </tr>
+    <tr>
+      <td style="padding: 8px 0; color: #6b7c86;">Time spent</td>
+      <td style="padding: 8px 0; text-align: right; font-weight: 600;"><%= minutes %> min</td>
+    </tr>
+    <tr>
+      <td style="padding: 8px 0; color: #6b7c86;">New items learned</td>
+      <td style="padding: 8px 0; text-align: right; font-weight: 600;"><%= newItems %></td>
+    </tr>
+    <tr>
+      <td style="padding: 8px 0; color: #6b7c86;">Accuracy</td>
+      <td style="padding: 8px 0; text-align: right; font-weight: 600;"><%= accuracy %>%</td>
+    </tr>
+    <% if (streak > 1) { %>
+    <tr>
+      <td style="padding: 8px 0; color: #6b7c86;">Streak</td>
+      <td style="padding: 8px 0; text-align: right; font-weight: 600;"><%= streak %> days</td>
+    </tr>
+    <% } %>
+    <% if (bestDay) { %>
+    <tr>
+      <td style="padding: 8px 0; color: #6b7c86;">Best day</td>
+      <td style="padding: 8px 0; text-align: right; font-weight: 600;"><%= bestDay %></td>
+    </tr>
+    <% } %>
+  </table>
+<% } %>
+
+<a href="<%= url %>" style="display: inline-block; background: #2f4858; color: #ffffff; text-decoration: none; padding: 12px 24px; border-radius: 8px; font-weight: 600;">
+  Open go
+</a>
+<p style="margin: 24px 0 0; color: #888888; font-size: 13px;">
+  You can turn the weekly summary off in your settings.
+</p>
+
+<%- include("partials/footer") -%>

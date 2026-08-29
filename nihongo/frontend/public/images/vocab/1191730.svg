@@ -1,0 +1,35 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" width="120" height="120" role="img" aria-label="A Japanese house">
+  <!-- 家 house. Japanese, not a generic Western default: low-pitched tiled roof
+       with a slight upturn at the eaves, deep overhang, shoji grid, engawa. -->
+  <g fill="none" stroke="#2F4858" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="0" y="0" width="120" height="120" fill="#FBFAF7" stroke="none"/>
+    <!-- ground -->
+    <line x1="14" y1="97" x2="106" y2="97" stroke="#CFD6D9"/>
+    <!-- body -->
+    <rect x="28" y="58" width="64" height="39" fill="#F2EBDD"/>
+    <!-- deep-overhang roof with upturned eaves -->
+    <path d="M18 58 Q22 55 26 54 L60 33 L94 54 Q98 55 102 58 Z" fill="#A9C6DC"/>
+    <path d="M18 58 Q13 60 16 62 L26 62" fill="#A9C6DC"/>
+    <path d="M102 58 Q107 60 104 62 L94 62" fill="#A9C6DC"/>
+    <!-- ridge -->
+    <line x1="46" y1="43" x2="74" y2="43" stroke="#2F4858"/>
+    <!-- tile courses, flat lines only -->
+    <path d="M30 51 L60 39 L90 51" stroke="#7FA5C0" stroke-width="1.6"/>
+    <!-- shoji: sliding doors with a grid -->
+    <rect x="40" y="66" width="40" height="31" fill="#DCE6EC"/>
+    <line x1="60" y1="66" x2="60" y2="97"/>
+    <g stroke="#7FA5C0" stroke-width="1.4">
+      <line x1="40" y1="76" x2="80" y2="76"/>
+      <line x1="40" y1="87" x2="80" y2="87"/>
+      <line x1="50" y1="66" x2="50" y2="97"/>
+      <line x1="70" y1="66" x2="70" y2="97"/>
+    </g>
+    <!-- engawa step -->
+    <path d="M36 97 L36 92 L84 92 L84 97" fill="#E3D8C6"/>
+    <!-- a low clipped shrub, the kind that sits by a Japanese doorway. Drawn as
+         a stem with two leaves it read as a small stick figure. -->
+    <path d="M96 97 Q95 84 102 83 Q109 84 108 97 Z" fill="#B7C5AE" stroke="#8FA394" stroke-width="2"/>
+    <circle cx="99" cy="88" r="2.1" fill="#D8A7A0" stroke="none"/>
+    <circle cx="105" cy="91" r="1.8" fill="#D8A7A0" stroke="none"/>
+  </g>
+</svg>

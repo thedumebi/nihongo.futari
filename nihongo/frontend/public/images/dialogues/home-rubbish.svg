@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 160 120" width="160" height="120" role="img" aria-label="Two sorted rubbish bags">
+  <!-- Taking out the rubbish: which sort is it tomorrow. -->
+  <g fill="none" stroke="#2F4858" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="0" y="0" width="160" height="120" fill="#FBFAF7" stroke="none"/>
+    <path d="M26 96 C26 66 40 56 48 56 C56 56 70 66 70 96 Z" fill="#B7C5AE"/>
+    <path d="M40 56 C40 46 56 46 56 56" fill="none"/>
+    <path d="M90 96 C90 66 104 56 112 56 C120 56 134 66 134 96 Z" fill="#C7DAE8"/>
+    <path d="M104 56 C104 46 120 46 120 56" fill="none"/>
+    <circle cx="80" cy="40" r="7" fill="#D8A7A0"/>
+    <line x1="14" y1="100" x2="146" y2="100"/>
+  </g>
+</svg>

@@ -1,0 +1,18 @@
+{
+  "extends": "@repo/typescript-config/base.json",
+  "compilerOptions": {
+    "incremental": true,
+    "tsBuildInfoFile": "./dist/.tsbuildinfo",
+    "rootDir": "src",
+    "paths": {
+      "@/*": ["./src/*"]
+    },
+    "outDir": "dist",
+    "removeComments": true,
+    "sourceMap": false,
+    "verbatimModuleSyntax": true,
+    "preserveWatchOutput": true
+  },
+  "include": ["src"],
+  "exclude": ["node_modules", "dist"]
+}

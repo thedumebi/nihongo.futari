@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 160 120" width="160" height="120" role="img" aria-label="A door with a parcel on the step">
+  <!-- Someone at the door: a neighbour with a parcel. -->
+  <g fill="none" stroke="#2F4858" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="0" y="0" width="160" height="120" fill="#FBFAF7" stroke="none"/>
+    <rect x="20" y="12" width="66" height="88" fill="#DCE6EC"/>
+    <line x1="86" y1="12" x2="86" y2="100"/>
+    <rect x="34" y="26" width="38" height="26" fill="#C7DAE8"/>
+    <circle cx="78" cy="60" r="3" fill="#2F4858"/>
+    <rect x="96" y="64" width="46" height="36" rx="3" fill="#E3D8C6"/>
+    <line x1="119" y1="64" x2="119" y2="100" stroke="#8FA394" stroke-width="2.5"/>
+    <line x1="96" y1="82" x2="142" y2="82" stroke="#8FA394" stroke-width="2.5"/>
+    <circle cx="119" cy="54" r="5" fill="#D8A7A0"/>
+    <line x1="10" y1="100" x2="150" y2="100"/>
+  </g>
+</svg>

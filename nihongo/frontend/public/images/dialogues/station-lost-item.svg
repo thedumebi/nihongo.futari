@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 160 120" width="160" height="120" role="img" aria-label="A bag left on a train seat">
+  <!-- Lost property: the bag still on the seat after everyone has gone. -->
+  <g fill="none" stroke="#2F4858" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="0" y="0" width="160" height="120" fill="#FBFAF7" stroke="none"/>
+    <rect x="14" y="60" width="132" height="14" rx="4" fill="#A9C6DC"/>
+    <path d="M14 60 L14 34 L146 34 L146 60" fill="#C7DAE8"/>
+    <line x1="14" y1="74" x2="14" y2="98"/><line x1="146" y1="74" x2="146" y2="98"/>
+    <rect x="62" y="30" width="38" height="30" rx="4" fill="#E3D8C6"/>
+    <path d="M72 30 C72 20 90 20 90 30" fill="none"/>
+    <circle cx="81" cy="46" r="5" fill="#D8A7A0"/>
+  </g>
+</svg>

@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 160 120" width="160" height="120" role="img" aria-label="A sent message with a cross">
+  <!-- Apologising for a mistake: the file that went out, marked wrong. -->
+  <g fill="none" stroke="#2F4858" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="0" y="0" width="160" height="120" fill="#FBFAF7" stroke="none"/>
+    <rect x="34" y="24" width="92" height="60" rx="4" fill="#DCE6EC"/>
+    <path d="M34 28 L80 58 L126 28" fill="none"/>
+    <path d="M46 92 L46 62 L74 62 L86 74 L86 92 Z" fill="#F2EBDD"/>
+    <path d="M74 62 L74 74 L86 74" fill="none"/>
+    <circle cx="112" cy="86" r="17" fill="#FBFAF7" stroke="#D8A7A0" stroke-width="3.5"/>
+    <g stroke="#D8A7A0" stroke-width="3.5"><line x1="105" y1="79" x2="119" y2="93"/><line x1="119" y1="79" x2="105" y2="93"/></g>
+  </g>
+</svg>

@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 160 120" width="160" height="120" role="img" aria-label="A bath stool and a question of order">
+  <!-- Asking to use the bath: may I go first. -->
+  <g fill="none" stroke="#2F4858" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="0" y="0" width="160" height="120" fill="#FBFAF7" stroke="none"/>
+    <rect x="34" y="62" width="52" height="8" fill="#E3D8C6"/>
+    <line x1="42" y1="70" x2="42" y2="92"/><line x1="78" y1="70" x2="78" y2="92"/>
+    <path d="M96 78 L100 92 L124 92 L128 78 Z" fill="#D8A7A0"/>
+    <path d="M56 40 A14 14 0 1 1 70 54 L70 60" stroke="#7FA5C0" stroke-width="3.5" fill="none"/>
+    <circle cx="70" cy="68" r="2.5" fill="#7FA5C0" stroke="none"/>
+    <line x1="16" y1="92" x2="144" y2="92"/>
+  </g>
+</svg>

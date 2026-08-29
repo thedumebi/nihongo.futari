@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" width="120" height="120" role="img" aria-label="A pen">
+  <!-- ペン pen. Barrel, grip, nib and a clip — the clip is what separates a
+       pen from a stick at this level of abstraction. -->
+  <g fill="none" stroke="#2F4858" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="0" y="0" width="120" height="120" fill="#FBFAF7" stroke="none"/>
+    <path d="M24 94 L34 70 L94 26 L102 36 L44 82 Z" fill="#A9C6DC"/>
+    <path d="M34 70 L44 82 L24 94 Z" fill="#DCE6EC"/>
+    <path d="M27 90 L31 85 L35 88 Z" fill="#2F4858" stroke="none"/>
+    <path d="M84 34 L92 45" stroke="#7FA5C0" stroke-width="2.4"/>
+    <path d="M94 26 L102 36 L108 32 L100 22 Z" fill="#2F4858"/>
+    <path d="M88 30 L96 24" stroke="#FBFAF7" stroke-width="2.4"/>
+  </g>
+</svg>

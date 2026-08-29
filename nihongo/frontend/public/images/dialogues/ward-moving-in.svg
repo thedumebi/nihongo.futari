@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 160 120" width="160" height="120" role="img" aria-label="A form and a residence card">
+  <!-- Registering an address: the moving-in notification and the card you hand over. -->
+  <g fill="none" stroke="#2F4858" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="0" y="0" width="160" height="120" fill="#FBFAF7" stroke="none"/>
+    <rect x="26" y="18" width="72" height="86" rx="3" fill="#F2EBDD"/>
+    <g stroke="#B3BEC4" stroke-width="1.6">
+      <line x1="36" y1="34" x2="88" y2="34"/><line x1="36" y1="46" x2="88" y2="46"/>
+      <line x1="36" y1="58" x2="72" y2="58"/><line x1="36" y1="70" x2="88" y2="70"/>
+    </g>
+    <rect x="36" y="80" width="30" height="14" fill="#DCE6EC"/>
+    <rect x="94" y="60" width="46" height="30" rx="4" fill="#A9C6DC"/>
+    <circle cx="106" cy="72" r="6" fill="#F2EBDD"/>
+    <g stroke="#FBFAF7" stroke-width="2"><line x1="118" y1="68" x2="132" y2="68"/><line x1="118" y1="78" x2="132" y2="78"/></g>
+    <circle cx="84" cy="87" r="4" fill="#D8A7A0"/>
+  </g>
+</svg>

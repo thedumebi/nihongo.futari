@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" width="120" height="120" role="img" aria-label="Music">
+  <!-- 音楽 music. Notes and a stave. Musical notation is not lettering, so
+       it is allowed where text is not. -->
+  <g fill="none" stroke="#2F4858" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="0" y="0" width="120" height="120" fill="#FBFAF7" stroke="none"/>
+    <g stroke="#CFD6D9" stroke-width="1.8">
+      <line x1="14" y1="34" x2="106" y2="34"/>
+      <line x1="14" y1="44" x2="106" y2="44"/>
+      <line x1="14" y1="54" x2="106" y2="54"/>
+      <line x1="14" y1="64" x2="106" y2="64"/>
+      <line x1="14" y1="74" x2="106" y2="74"/>
+    </g>
+    <ellipse cx="38" cy="74" rx="10" ry="7.5" transform="rotate(-20 38 74)" fill="#A9C6DC"/>
+    <path d="M47 71 L47 30" stroke-width="3"/>
+    <ellipse cx="76" cy="64" rx="10" ry="7.5" transform="rotate(-20 76 64)" fill="#D8A7A0"/>
+    <path d="M85 61 L85 20" stroke-width="3"/>
+    <path d="M47 30 L85 20" stroke-width="5" stroke="#2F4858"/>
+  </g>
+</svg>

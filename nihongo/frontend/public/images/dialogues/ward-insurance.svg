@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 160 120" width="160" height="120" role="img" aria-label="An insurance card and a shield">
+  <!-- Health insurance: the card, and the cover it stands for. -->
+  <g fill="none" stroke="#2F4858" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="0" y="0" width="160" height="120" fill="#FBFAF7" stroke="none"/>
+    <path d="M80 16 L124 30 L124 62 C124 84 104 98 80 106 C56 98 36 84 36 62 L36 30 Z" fill="#C7DAE8"/>
+    <path d="M80 46 L80 78 M64 62 L96 62" stroke="#FBFAF7" stroke-width="6"/>
+    <rect x="46" y="88" width="44" height="26" rx="4" fill="#F2EBDD"/>
+    <g stroke="#B3BEC4" stroke-width="1.6"><line x1="54" y1="98" x2="82" y2="98"/><line x1="54" y1="106" x2="72" y2="106"/></g>
+    <circle cx="112" cy="98" r="6" fill="#D8A7A0"/>
+  </g>
+</svg>

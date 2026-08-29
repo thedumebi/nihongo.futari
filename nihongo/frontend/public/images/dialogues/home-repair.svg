@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 160 120" width="160" height="120" role="img" aria-label="An air conditioner that has stopped">
+  <!-- Reporting something broken: it has not come on. -->
+  <g fill="none" stroke="#2F4858" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="0" y="0" width="160" height="120" fill="#FBFAF7" stroke="none"/>
+    <rect x="24" y="30" width="112" height="34" rx="6" fill="#DCE6EC"/>
+    <line x1="24" y1="54" x2="136" y2="54" stroke="#B3BEC4" stroke-width="2"/>
+    <g stroke="#B3BEC4" stroke-width="2">
+      <line x1="40" y1="40" x2="120" y2="40"/>
+    </g>
+    <circle cx="80" cy="88" r="18" fill="#FBFAF7" stroke="#D8A7A0" stroke-width="3.5"/>
+    <g stroke="#D8A7A0" stroke-width="3.5"><line x1="72" y1="80" x2="88" y2="96"/><line x1="88" y1="80" x2="72" y2="96"/></g>
+  </g>
+</svg>

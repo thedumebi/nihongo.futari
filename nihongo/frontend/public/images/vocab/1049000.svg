@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" width="120" height="120" role="img" aria-label="A coat">
+  <!-- コート coat. Distinguished from シャツ by SHAPE, not detail: wide notched
+       lapels, a belt at the waist, and a hem that runs off the bottom of the
+       frame. Two garments that differ only in trim are two of the same card. -->
+  <g fill="none" stroke="#2F4858" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="0" y="0" width="120" height="120" fill="#FBFAF7" stroke="none"/>
+    <path d="M42 18 L22 30 L20 58 L32 60 L32 112 L88 112 L88 60 L100 58 L98 30 L78 18 Z" fill="#8FA394"/>
+    <path d="M42 18 L60 40 L78 18 L74 16 L60 32 L46 16 Z" fill="#B7C5AE"/>
+    <path d="M42 18 L60 40 L52 56 L40 24 Z" fill="#B7C5AE"/>
+    <path d="M78 18 L60 40 L68 56 L80 24 Z" fill="#B7C5AE"/>
+    <line x1="60" y1="40" x2="60" y2="112" stroke="#8FA394" stroke-width="2.4"/>
+    <rect x="32" y="66" width="56" height="8" fill="#2F4858" stroke="none"/>
+    <rect x="54" y="64" width="12" height="12" rx="2" fill="#E3D8C6"/>
+    <rect x="36" y="86" width="14" height="4" rx="2" fill="#8FA394" stroke="#2F4858" stroke-width="1.6"/>
+    <rect x="70" y="86" width="14" height="4" rx="2" fill="#8FA394" stroke="#2F4858" stroke-width="1.6"/>
+  </g>
+</svg>

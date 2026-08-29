@@ -1,0 +1,64 @@
+# Dependencies
+node_modules
+.pnp
+.pnp.js
+
+# Local env files
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# dotenvx private keys — the ONLY deploy secret; lives on the server, never
+# commit it. The encrypted .env.production IS committed (values are ciphertext).
+.env.keys
+
+# Testing
+coverage
+
+# Turbo
+.turbo
+
+# Build Outputs
+build
+dist
+
+# Debug
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Misc
+.DS_Store
+*.pem
+
+.eslintcache
+
+tsconfig.tsbuildinfo
+*.crt
+
+# Claude
+.claude/data/
+
+# Article drafts (local-only working folder)
+/articles/
+
+ci_deploy_key
+ci_deploy_key.pub
+
+# GeoLite2 databases (downloaded on demand / shared from the host, never committed)
+geodata
+*.mmdb
+
+# Downloaded open datasets (fetched on demand, never committed)
+.data/
+
+# Generated pronunciation audio. ~8 MB for N5 alone and it grows with every
+# level, so it stays out of git history. Regenerate with:
+#   pnpm -C nihongo/backend audio:kana && pnpm -C nihongo/backend audio:words
+# Production serves it from R2.
+nihongo/frontend/public/audio/
+
+# Vite's local dep-optimisation cache. Regenerated on every dev start.
+.vite/

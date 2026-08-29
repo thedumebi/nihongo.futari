@@ -1,0 +1,53 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 160 120" width="160" height="120" role="img" aria-label="A small restaurant interior">
+  <!-- At a restaurant. A small Japanese eatery: noren over the doorway, counter
+       seating, a bowl and chopsticks. Two small figures, neither dominant —
+       per the direction, people are integrated, not the subject. -->
+  <g fill="none" stroke="#2F4858" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="0" y="0" width="160" height="120" fill="#FBFAF7" stroke="none"/>
+
+    <!-- back wall and noren curtain across the top -->
+    <rect x="10" y="14" width="140" height="60" fill="#F2EBDD"/>
+    <path d="M10 14 L150 14 L150 30 L10 30 Z" fill="#A9C6DC"/>
+    <g stroke="#7FA5C0" stroke-width="1.6">
+      <line x1="45" y1="14" x2="45" y2="30"/>
+      <line x1="80" y1="14" x2="80" y2="30"/>
+      <line x1="115" y1="14" x2="115" y2="30"/>
+    </g>
+
+    <!-- shelf of bottles behind the counter, kept as simple blocks -->
+    <line x1="22" y1="52" x2="66" y2="52" stroke="#B3BEC4" stroke-width="1.8"/>
+    <g stroke="#8FA394" stroke-width="1.8" fill="#B7C5AE">
+      <rect x="26" y="42" width="6" height="10"/>
+      <rect x="36" y="44" width="6" height="8"/>
+      <rect x="46" y="41" width="6" height="11"/>
+    </g>
+
+    <!-- a hanging lantern: the dusty-rose accent -->
+    <line x1="120" y1="14" x2="120" y2="34" stroke="#B3BEC4" stroke-width="1.6"/>
+    <ellipse cx="120" cy="41" rx="9" ry="7" fill="#D8A7A0" stroke="#2F4858"/>
+    <line x1="111" y1="41" x2="129" y2="41" stroke="#2F4858" stroke-width="1.4"/>
+
+    <!-- counter -->
+    <rect x="10" y="74" width="140" height="9" fill="#E3D8C6"/>
+    <rect x="10" y="83" width="140" height="24" fill="#DCE6EC"/>
+    <line x1="10" y1="107" x2="150" y2="107" stroke="#CFD6D9"/>
+
+    <!-- a bowl with steam, and chopsticks on a rest -->
+    <path d="M56 74 Q56 66 66 66 Q76 66 76 74 Z" fill="#FBFAF7"/>
+    <ellipse cx="66" cy="66" rx="10" ry="2.6" fill="#C7DAE8"/>
+    <g stroke="#B3BEC4" stroke-width="1.6">
+      <path d="M62 61 Q64 57 62 53"/>
+      <path d="M70 61 Q72 57 70 53"/>
+    </g>
+    <line x1="86" y1="72" x2="102" y2="70" stroke="#8FA394" stroke-width="1.8"/>
+    <line x1="86" y1="75" x2="102" y2="73" stroke="#8FA394" stroke-width="1.8"/>
+
+    <!-- customer, seated, small -->
+    <circle cx="34" cy="62" r="7" fill="#E3D8C6"/>
+    <path d="M25 74 Q25 66 34 66 Q43 66 43 74 Z" fill="#A9C6DC"/>
+
+    <!-- staff behind the counter, also small; neither is a hero character -->
+    <circle cx="130" cy="60" r="7" fill="#E3D8C6"/>
+    <path d="M121 74 Q121 65 130 65 Q139 65 139 74 Z" fill="#B7C5AE"/>
+  </g>
+</svg>

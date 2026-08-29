@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" width="120" height="120" role="img" aria-label="A guitar">
+  <!-- ギター guitar. The body has to dominate: a waisted figure-of-eight wide
+       enough to read as a soundbox, with a short neck. Drawn small, a slim
+       body plus a long neck just reads as a spoon. -->
+  <g fill="none" stroke="#2F4858" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="0" y="0" width="120" height="120" fill="#FBFAF7" stroke="none"/>
+    <path d="M60 46 Q40 46 36 60 Q32 72 42 78 Q30 86 34 98 Q40 110 60 110 Q80 110 86 98 Q90 86 78 78 Q88 72 84 60 Q80 46 60 46 Z" fill="#E3D8C6"/>
+    <circle cx="60" cy="74" r="12" fill="#FBFAF7"/>
+    <circle cx="60" cy="74" r="12" fill="none" stroke="#B3BEC4" stroke-width="1.8"/>
+    <rect x="53" y="14" width="14" height="34" fill="#B3BEC4"/>
+    <path d="M50 6 L70 6 Q73 6 73 10 L73 18 Q73 22 70 22 L50 22 Q47 22 47 18 L47 10 Q47 6 50 6 Z" fill="#2F4858"/>
+    <g stroke="#FBFAF7" stroke-width="1.6">
+      <line x1="55" y1="28" x2="65" y2="28"/>
+      <line x1="55" y1="36" x2="65" y2="36"/>
+      <line x1="55" y1="44" x2="65" y2="44"/>
+    </g>
+    <g stroke="#8FA394" stroke-width="1.4">
+      <line x1="57" y1="48" x2="57" y2="92"/>
+      <line x1="63" y1="48" x2="63" y2="92"/>
+    </g>
+    <rect x="50" y="92" width="20" height="6" rx="2" fill="#D8A7A0" stroke="none"/>
+  </g>
+</svg>

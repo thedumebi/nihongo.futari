@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" width="120" height="120" role="img" aria-label="A knife">
+  <!-- ナイフ knife. Blade and riveted handle, tip up-left. -->
+  <g fill="none" stroke="#2F4858" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="0" y="0" width="120" height="120" fill="#FBFAF7" stroke="none"/>
+    <path d="M18 34 L70 56 L64 70 L20 40 Z" fill="#DCE6EC"/>
+    <path d="M22 38 L66 58" stroke="#B3BEC4" stroke-width="1.8"/>
+    <path d="M64 70 L70 56 L102 70 Q106 78 98 82 Z" fill="#E3D8C6"/>
+    <circle cx="82" cy="70" r="2.4" fill="#B3BEC4" stroke="none"/>
+    <circle cx="93" cy="75" r="2.4" fill="#B3BEC4" stroke="none"/>
+  </g>
+</svg>

@@ -1,0 +1,27 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 160 120" width="160" height="120" role="img" aria-label="Two people at a café table">
+  <!-- Friends and plans. Two small figures across a café table, cups between
+       them. Neither is the hero; the table is the centre. -->
+  <g fill="none" stroke="#2F4858" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="0" y="0" width="160" height="120" fill="#FBFAF7" stroke="none"/>
+
+    <!-- window behind -->
+    <rect x="20" y="10" width="120" height="42" fill="#DCE6EC"/>
+    <line x1="80" y1="10" x2="80" y2="52" stroke="#B3BEC4" stroke-width="1.4"/>
+    <rect x="20" y="10" width="120" height="42"/>
+
+    <!-- the two figures -->
+    <circle cx="40" cy="54" r="9" fill="#F2EBDD"/>
+    <path d="M26 82 C26 66 54 66 54 82 Z" fill="#A9C6DC"/>
+    <circle cx="120" cy="54" r="9" fill="#F2EBDD"/>
+    <path d="M106 82 C106 66 134 66 134 82 Z" fill="#B7C5AE"/>
+
+    <!-- table -->
+    <ellipse cx="80" cy="86" rx="42" ry="9" fill="#E3D8C6"/>
+    <line x1="80" y1="92" x2="80" y2="108"/>
+    <line x1="64" y1="108" x2="96" y2="108"/>
+
+    <!-- two cups, one blush -->
+    <rect x="58" y="76" width="12" height="10" rx="2" fill="#D8A7A0"/>
+    <rect x="92" y="76" width="12" height="10" rx="2" fill="#C7DAE8"/>
+  </g>
+</svg>

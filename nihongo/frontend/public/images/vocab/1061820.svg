@@ -1,0 +1,29 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" width="120" height="120" role="img" aria-label="A shower">
+  <!-- シャワー shower. The head is drawn face-on as a wide fan with a spray of
+       droplets beneath it. Seen edge-on with its supply arm, as first drawn,
+       the whole thing read as a chair. -->
+  <g fill="none" stroke="#2F4858" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="0" y="0" width="120" height="120" fill="#FBFAF7" stroke="none"/>
+    <line x1="60" y1="8" x2="60" y2="22" stroke-width="4"/>
+    <path d="M30 44 Q30 24 60 24 Q90 24 90 44 Z" fill="#B3BEC4"/>
+    <g fill="#DCE6EC" stroke="none">
+      <circle cx="40" cy="40" r="2.6"/>
+      <circle cx="50" cy="38" r="2.6"/>
+      <circle cx="60" cy="37" r="2.6"/>
+      <circle cx="70" cy="38" r="2.6"/>
+      <circle cx="80" cy="40" r="2.6"/>
+    </g>
+    <g stroke="#7FA5C0" stroke-width="3">
+      <line x1="36" y1="54" x2="30" y2="76"/>
+      <line x1="48" y1="54" x2="45" y2="84"/>
+      <line x1="60" y1="54" x2="60" y2="90"/>
+      <line x1="72" y1="54" x2="75" y2="84"/>
+      <line x1="84" y1="54" x2="90" y2="76"/>
+    </g>
+    <g fill="#A9C6DC" stroke="none">
+      <circle cx="38" cy="90" r="3"/>
+      <circle cx="60" cy="100" r="3"/>
+      <circle cx="82" cy="90" r="3"/>
+    </g>
+  </g>
+</svg>

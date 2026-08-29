@@ -1,0 +1,36 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 160 120" width="160" height="120" role="img" aria-label="A kitchen counter with a pot and rice">
+  <!-- Cooking and meals. A pot on the hob with steam, a rice cooker, a board
+       with a knife. Quiet, no figures. -->
+  <g fill="none" stroke="#2F4858" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="0" y="0" width="160" height="120" fill="#FBFAF7" stroke="none"/>
+
+    <!-- wall tile band -->
+    <rect x="0" y="0" width="160" height="52" fill="#DCE6EC" stroke="none"/>
+    <g stroke="#B3BEC4" stroke-width="1.2">
+      <line x1="0" y1="26" x2="160" y2="26"/>
+      <line x1="40" y1="0" x2="40" y2="52"/>
+      <line x1="80" y1="0" x2="80" y2="52"/>
+      <line x1="120" y1="0" x2="120" y2="52"/>
+    </g>
+
+    <!-- counter -->
+    <line x1="0" y1="76" x2="160" y2="76"/>
+    <rect x="0" y="76" width="160" height="10" fill="#E3D8C6" stroke="none"/>
+
+    <!-- pot with steam -->
+    <path d="M28 76 L28 58 L62 58 L62 76 Z" fill="#A9C6DC"/>
+    <line x1="24" y1="58" x2="66" y2="58"/>
+    <line x1="45" y1="52" x2="45" y2="58"/>
+    <path d="M38 44 C34 39 42 36 38 30" stroke="#7FA5C0" stroke-width="1.8"/>
+    <path d="M52 44 C48 39 56 36 52 30" stroke="#7FA5C0" stroke-width="1.8"/>
+
+    <!-- rice cooker -->
+    <rect x="80" y="54" width="34" height="22" rx="4" fill="#F2EBDD"/>
+    <line x1="80" y1="62" x2="114" y2="62"/>
+    <circle cx="108" cy="70" r="2.5" fill="#D8A7A0" stroke="none"/>
+
+    <!-- board and knife -->
+    <rect x="122" y="68" width="32" height="8" rx="2" fill="#B7C5AE"/>
+    <path d="M126 62 L146 62 L150 66 L126 66 Z" fill="#CFD6D9"/>
+  </g>
+</svg>

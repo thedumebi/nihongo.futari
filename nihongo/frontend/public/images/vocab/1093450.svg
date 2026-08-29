@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" width="120" height="120" role="img" aria-label="A notebook">
+  <!-- ノート notebook. Closed, with a spiral binding and a label panel left
+       blank — no lettering is allowed inside the artwork. -->
+  <g fill="none" stroke="#2F4858" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="0" y="0" width="120" height="120" fill="#FBFAF7" stroke="none"/>
+    <line x1="16" y1="100" x2="104" y2="100" stroke="#CFD6D9"/>
+    <rect x="28" y="22" width="66" height="76" rx="4" fill="#A9C6DC"/>
+    <rect x="34" y="26" width="58" height="68" rx="2" fill="#FBFAF7"/>
+    <rect x="44" y="36" width="38" height="20" rx="2" fill="#F2EBDD" stroke="#B3BEC4" stroke-width="1.8"/>
+    <g stroke="#CFD6D9" stroke-width="1.8">
+      <line x1="44" y1="68" x2="82" y2="68"/>
+      <line x1="44" y1="76" x2="82" y2="76"/>
+      <line x1="44" y1="84" x2="82" y2="84"/>
+    </g>
+    <g stroke="#B3BEC4" stroke-width="2.2">
+      <line x1="24" y1="32" x2="34" y2="30"/>
+      <line x1="24" y1="46" x2="34" y2="44"/>
+      <line x1="24" y1="60" x2="34" y2="58"/>
+      <line x1="24" y1="74" x2="34" y2="72"/>
+      <line x1="24" y1="88" x2="34" y2="86"/>
+    </g>
+  </g>
+</svg>

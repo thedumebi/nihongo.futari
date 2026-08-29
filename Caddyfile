@@ -1,0 +1,22 @@
+# NOT USED — nihongo has no Caddy of its own.
+#
+# nihongo is deployed on the same Hetzner host as dmb and abm, and only ONE
+# Caddy can bind the host's :80 / :443. That single edge lives in dmb's stack.
+# nihongo is served by adding this block to dmb.futari's Caddyfile, alongside
+# the existing abm.futari.live block:
+#
+#   nihongo.futari.live {
+#       encode zstd gzip
+#       reverse_proxy nihongo-frontend:8080 {
+#           # Caddy is the internet-facing edge, so the TCP peer IS the real
+#           # client. Overwrite X-Forwarded-For with it, discarding anything the
+#           # client sent. Same reasoning as the dmb and abm blocks.
+#           header_up X-Forwarded-For {http.request.remote.host}
+#       }
+#   }
+#
+# REQUIRES an A record for nihongo.futari.live pointing at this server, and
+# dmb's caddy (plus its postgres/redis) attached to the shared external
+# `futari` docker network. See DEPLOY.md → "Shared infrastructure".
+#
+# This file is intentionally inert so no second Caddy is ever started here.

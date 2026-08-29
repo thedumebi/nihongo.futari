@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 160 120" width="160" height="120" role="img" aria-label="A washing machine with a coin slot">
+  <!-- At the coin laundry: how does it work. -->
+  <g fill="none" stroke="#2F4858" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="0" y="0" width="160" height="120" fill="#FBFAF7" stroke="none"/>
+    <rect x="34" y="16" width="92" height="92" rx="6" fill="#DCE6EC"/>
+    <circle cx="80" cy="70" r="26" fill="#FBFAF7"/>
+    <circle cx="80" cy="70" r="18" fill="#C7DAE8"/>
+    <path d="M64 70 C72 62 88 78 96 70" stroke="#7FA5C0" stroke-width="2" fill="none"/>
+    <rect x="46" y="28" width="34" height="10" rx="3" fill="#F2EBDD"/>
+    <rect x="98" y="28" width="16" height="6" rx="2" fill="#D8A7A0"/>
+    <circle cx="106" cy="44" r="5" fill="#E3D8C6"/>
+  </g>
+</svg>

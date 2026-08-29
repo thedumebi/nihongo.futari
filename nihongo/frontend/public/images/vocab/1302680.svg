@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" width="120" height="120" role="img" aria-label="A mountain">
+  <!-- 山 mountain. The silhouette is deliberately Fuji-like: a wide, gently
+       concave cone, which is the mountain the word evokes in Japan. -->
+  <g fill="none" stroke="#2F4858" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="0" y="0" width="120" height="120" fill="#FBFAF7" stroke="none"/>
+    <!-- far ridge -->
+    <path d="M8 88 Q30 68 46 78 Q58 86 66 88 Z" fill="#DCE6EC" stroke="#B3BEC4" stroke-width="1.8"/>
+    <!-- main cone -->
+    <path d="M16 90 Q40 44 52 34 Q60 28 68 34 Q80 44 104 90 Z" fill="#A9C6DC"/>
+    <!-- snow cap, flat shape, no gradient -->
+    <path d="M46 41 Q52 34 60 31 Q68 34 74 41 Q68 45 64 42 Q60 46 56 42 Q52 45 46 41 Z" fill="#FBFAF7"/>
+    <!-- ground line -->
+    <line x1="10" y1="90" x2="110" y2="90" stroke="#CFD6D9"/>
+    <!-- two small sage pines, no crowding -->
+    <path d="M28 90 L28 82 M24 86 L28 80 L32 86 M25 90 L28 85 L31 90" stroke="#8FA394" stroke-width="2"/>
+    <path d="M94 90 L94 84 M91 88 L94 82 L97 88" stroke="#8FA394" stroke-width="2"/>
+  </g>
+</svg>

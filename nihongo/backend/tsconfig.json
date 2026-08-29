@@ -1,0 +1,25 @@
+{
+  "extends": "@repo/typescript-config/base.json",
+  "compilerOptions": {
+    "incremental": true,
+    "jsx": "react-jsx",
+    "jsxImportSource": "hono/jsx",
+    "lib": ["ES2022"],
+    "moduleDetection": "auto",
+    "rootDir": "src",
+    "paths": {
+      "@/*": ["./src/*"]
+    },
+    "types": ["node"],
+    "declaration": false,
+    "declarationMap": false,
+    "outDir": "dist",
+    "preserveWatchOutput": true,
+    "removeComments": true,
+    "sourceMap": false,
+    "verbatimModuleSyntax": true,
+    "skipLibCheck": true
+  },
+  "include": ["src"],
+  "exclude": ["node_modules", "dist", "../shared", "../shared/*"]
+}

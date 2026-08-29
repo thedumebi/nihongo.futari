@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" width="120" height="120" role="img" aria-label="A flower">
+  <!-- 花 flower. Five petals round a centre, one stem, two leaves. -->
+  <g fill="none" stroke="#2F4858" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="0" y="0" width="120" height="120" fill="#FBFAF7" stroke="none"/>
+    <line x1="16" y1="100" x2="104" y2="100" stroke="#CFD6D9"/>
+    <line x1="60" y1="62" x2="60" y2="100" stroke="#8FA394" stroke-width="3"/>
+    <path d="M60 78 Q44 74 40 84 Q54 88 60 80" fill="#B7C5AE" stroke="none"/>
+    <path d="M60 88 Q76 84 80 94 Q66 98 60 90" fill="#B7C5AE" stroke="none"/>
+    <g fill="#D8A7A0">
+      <ellipse cx="60" cy="30" rx="9" ry="13"/>
+      <ellipse cx="78" cy="43" rx="9" ry="13" transform="rotate(72 78 43)"/>
+      <ellipse cx="71" cy="63" rx="9" ry="13" transform="rotate(144 71 63)"/>
+      <ellipse cx="49" cy="63" rx="9" ry="13" transform="rotate(216 49 63)"/>
+      <ellipse cx="42" cy="43" rx="9" ry="13" transform="rotate(288 42 43)"/>
+    </g>
+    <circle cx="60" cy="46" r="8" fill="#E3D8C6"/>
+  </g>
+</svg>

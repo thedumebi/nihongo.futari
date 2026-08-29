@@ -1,0 +1,31 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 160 120" width="160" height="120" role="img" aria-label="A suitcase and a distant torii gate">
+  <!-- Travelling. A suitcase in the foreground, a torii and a hill behind, a
+       train line across the middle. Somewhere to go, not a specific place. -->
+  <g fill="none" stroke="#2F4858" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="0" y="0" width="160" height="120" fill="#FBFAF7" stroke="none"/>
+
+    <!-- sky band and hill -->
+    <rect x="0" y="0" width="160" height="58" fill="#DCE6EC" stroke="none"/>
+    <path d="M0 58 C24 34 46 34 68 58 Z" fill="#B7C5AE" stroke="none"/>
+    <path d="M0 58 C24 34 46 34 68 58" stroke="#8FA394"/>
+
+    <!-- torii on the right -->
+    <g stroke="#D8A7A0" stroke-width="3">
+      <line x1="104" y1="26" x2="146" y2="26"/>
+      <line x1="108" y1="34" x2="142" y2="34"/>
+      <line x1="114" y1="26" x2="114" y2="58"/>
+      <line x1="136" y1="26" x2="136" y2="58"/>
+    </g>
+
+    <!-- ground and a rail line -->
+    <line x1="0" y1="58" x2="160" y2="58"/>
+    <line x1="0" y1="72" x2="160" y2="72" stroke="#B3BEC4" stroke-width="1.6"/>
+
+    <!-- suitcase -->
+    <rect x="46" y="76" width="54" height="34" rx="4" fill="#A9C6DC"/>
+    <line x1="46" y1="90" x2="100" y2="90" stroke="#7FA5C0" stroke-width="1.8"/>
+    <path d="M62 76 L62 68 L84 68 L84 76" fill="none"/>
+    <circle cx="56" cy="110" r="3" fill="#2F4858"/>
+    <circle cx="90" cy="110" r="3" fill="#2F4858"/>
+  </g>
+</svg>

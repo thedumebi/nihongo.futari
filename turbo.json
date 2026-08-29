@@ -1,0 +1,40 @@
+{
+  "$schema": "https://turborepo.com/schema.json",
+  "globalDependencies": [],
+  "ui": "tui",
+  "tasks": {
+    "build": {
+      "dependsOn": ["^build"],
+      "inputs": ["src/**", "package.json", "tsconfig*.json", "!**/*.test.ts", "!**/*.spec.ts", "!**/tests/**"],
+      "outputs": ["dist/**"],
+      "cache": true
+    },
+    "start": {
+      "dependsOn": ["^start"]
+    },
+    "lint": {
+      "dependsOn": ["^lint"]
+    },
+    "lint:fix": {
+      "dependsOn": ["^lint:fix"]
+    },
+    "dev": {
+      "cache": false,
+      "persistent": true
+    },
+    "drizzle:generate": {
+      "cache": false,
+      "dependsOn": ["^drizzle:generate", "@nihongo/shared#build"]
+    },
+    "db:seed": {
+      "cache": false
+    },
+    "db:migrate": {
+      "cache": false
+    },
+    "test": {},
+    "typecheck": {
+      "dependsOn": ["^typecheck"]
+    }
+  }
+}

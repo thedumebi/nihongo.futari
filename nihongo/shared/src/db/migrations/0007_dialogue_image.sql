@@ -1,0 +1,11 @@
+-- An illustration per conversation.
+--
+-- 0005 gave each curriculum unit a scene, and the conversations borrowed their
+-- unit's. With a hundred conversations across eighteen units that meant the
+-- same drawing repeated up to fourteen times down a single list, which is
+-- worse than no picture: it takes the space of information and carries none.
+--
+-- Keyed by the dialogue's own code, matching the audio convention
+-- (/audio/dialogues/<id>.m4a, /images/dialogues/<code>.svg). Nullable, because
+-- import-images only attaches drawings that exist.
+ALTER TABLE "dialogues" ADD COLUMN IF NOT EXISTS "image_url" text;
