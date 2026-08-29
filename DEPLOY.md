@@ -273,7 +273,8 @@ XML) and are meant to run on your Mac against a local database, then be
 restored — **not** run on the server.
 
 ```bash
-# On your Mac, against the local DB you have already imported into
+# On your Mac, against the local DB you have already imported into.
+# `postgres` IS correct here — this is your local instance, not dmb's.
 pg_dump -h localhost -U postgres -d nihongo -Fc -f nihongo.dump
 
 # Ship it up
@@ -281,9 +282,11 @@ scp nihongo.dump deploy@YOUR_SERVER_IP:/tmp/nihongo.dump
 ```
 
 ```bash
-# On the server
+# On the server. Note the user differs from the dump above: your Mac's local
+# Postgres is `postgres`, dmb's container is not — same trap as Step 3.
 docker cp /tmp/nihongo.dump dmb-postgres:/tmp/nihongo.dump
-docker exec -i dmb-postgres pg_restore -U postgres -d nihongo --clean --if-exists /tmp/nihongo.dump
+docker exec -i dmb-postgres sh -c \
+  'pg_restore -U "$POSTGRES_USER" -d nihongo --clean --if-exists /tmp/nihongo.dump'
 docker exec -i dmb-postgres rm /tmp/nihongo.dump
 ```
 
