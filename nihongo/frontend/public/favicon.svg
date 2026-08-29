@@ -1,10 +1,19 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="go">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="語">
+  <!--
+    The real character, not an abstraction of it. The previous mark was
+    hand-drawn rectangles that only ever formed 吾 — the right half — so the
+    logo was literally half the kanji.
+
+    Set as text rather than traced paths so it stays correct at any size and
+    matches the 語 the app renders in its own nav. The stack ends in
+    `serif`, which every platform resolves to something with CJK coverage.
+  -->
   <rect width="64" height="64" rx="14" fill="#2f4858"/>
-  <g fill="#fbfaf7">
-    <rect x="27" y="11" width="10" height="4.5" rx="1"/>
-    <rect x="16" y="21" width="32" height="4.5" rx="1"/>
-    <rect x="21" y="30" width="22" height="4.5" rx="1"/>
-    <rect x="21" y="38" width="22" height="4.5" rx="1"/>
-  </g>
-  <rect x="21" y="46" width="22" height="12" rx="1.5" fill="none" stroke="#fbfaf7" stroke-width="4.5"/>
+  <text
+    x="32" y="33"
+    text-anchor="middle" dominant-baseline="central"
+    font-size="44"
+    font-family="'Hiragino Mincho ProN','Yu Mincho','Noto Serif JP','Songti SC',serif"
+    fill="#fbfaf7"
+  >語</text>
 </svg>

@@ -92,6 +92,17 @@ function unlock() {
   if (unlocked)
     return
   const audio = el()
+
+  // Never stomp on playback that is already going. If a clip is mid-flight the
+  // element is demonstrably allowed to play, so there is nothing to unlock —
+  // and pointing it at the silent file would cut the clip off. That is what was
+  // happening: because `unlocked` never latched, EVERY tap re-ran the unlock
+  // and killed whatever the conversation was playing.
+  if (!audio.paused) {
+    unlocked = true
+    return
+  }
+
   audio.src = SILENCE
   audio.play()
     .then(() => {
@@ -99,8 +110,16 @@ function unlock() {
       audio.pause()
       audio.currentTime = 0
     })
-    // Refused. Leave the listeners armed so the next gesture tries again.
     .catch((err: unknown) => {
+      // AbortError is not a refusal. It means WE replaced `src` before the
+      // silent clip finished — the tap that armed the unlock also started real
+      // playback. The element still began playing inside a gesture, so it is
+      // blessed, and treating this as failure is what left it locked forever.
+      if (err instanceof DOMException && err.name === 'AbortError') {
+        unlocked = true
+        return
+      }
+      // A genuine refusal. Re-arm so the next gesture tries again.
       record('unlock', err)
       arm()
     })

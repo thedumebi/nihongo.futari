@@ -250,24 +250,33 @@ watch(() => props.turns, () => {
 
     <!-- The choice. -->
     <div v-if="isLearnerTurn && !chosen" class="mt-6 flex flex-col gap-2">
-      <button
+      <!--
+        A DIV, not a button — and that is load-bearing rather than a style
+        choice. This row contains two other interactive things: the speaker,
+        and every tappable word inside TokenLine. A <button> may not contain
+        another button; the markup is invalid and WebKit responds by not
+        dispatching the inner clicks at all, so on Safari the speaker and the
+        words simply did nothing.
+      -->
+      <div
         v-for="reply in current!.replies"
         :key="reply.id"
-        type="button"
-        class="flex items-center gap-3 rounded-lg border border-[var(--color-border)] px-4 py-3 text-left transition hover:border-[var(--color-text)]"
+        class="flex cursor-pointer items-center gap-3 rounded-lg border border-[var(--color-border)] px-4 py-3 text-left transition hover:border-[var(--color-text)]"
+        role="button"
+        tabindex="0"
         @click="choose(reply)"
+        @keydown.enter.prevent="choose(reply)"
+        @keydown.space.prevent="choose(reply)"
       >
-        <!-- Hearing an option must not count as picking it, so the speaker
-             stops the click from reaching the button around it. -->
-        <span
+        <!-- Hearing an option must not count as picking it. -->
+        <button
+          type="button"
           class="shrink-0 text-[var(--color-muted)] transition hover:text-[var(--color-text)]"
-          role="button"
-          tabindex="-1"
           aria-label="Hear this reply"
           @click.stop="play(reply.audio)"
         >
           <Volume2 class="h-4 w-4" />
-        </span>
+        </button>
         <span class="min-w-0 flex-1">
           <TokenLine
             :tokens="reply.tokens"
@@ -278,7 +287,7 @@ watch(() => props.turns, () => {
             @pick="pick(`r${reply.id}`, reply.tokens, $event)"
           />
         </span>
-      </button>
+      </div>
     </div>
 
     <!-- The verdict. This is the part the feature exists for: not "wrong", but
