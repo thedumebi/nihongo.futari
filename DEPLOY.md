@@ -303,23 +303,49 @@ The database is empty of corpus data. Imports are heavy (JMdict is 63 MB of
 XML) and are meant to run on your Mac against a local database, then be
 restored — **not** run on the server.
 
+A dump carries the OWNER of every object as a literal role name. Your Mac's
+Postgres owns them as `postgres`, and that role does not exist on the server,
+so a plain restore emits `role "postgres" does not exist` once per table and
+exits 1. `--no-owner` and `--no-privileges` drop that metadata; everything ends
+up owned by whoever connects, which is the role the app uses anyway.
+
 ```bash
 # On your Mac, against the local DB you have already imported into.
 # `postgres` IS correct here — this is your local instance, not dmb's.
-pg_dump -h localhost -U postgres -d nihongo -Fc -f nihongo.dump
+pg_dump -h localhost -U postgres -d nihongo \
+  --no-owner --no-privileges -Fc -f nihongo.dump
 
 # Ship it up
 scp nihongo.dump deploy@YOUR_SERVER_IP:/tmp/nihongo.dump
 ```
 
 ```bash
-# On the server. Note the user differs from the dump above: your Mac's local
+# On the server. The user differs from the dump above: your Mac's local
 # Postgres is `postgres`, dmb's container is not — same trap as Step 3.
+# The flags are repeated here so an older dump restores cleanly too.
 docker cp /tmp/nihongo.dump dmb-postgres:/tmp/nihongo.dump
 docker exec -i dmb-postgres sh -c \
-  'pg_restore -U "$POSTGRES_USER" -d nihongo --clean --if-exists /tmp/nihongo.dump'
+  'pg_restore -U "$POSTGRES_USER" -d nihongo --clean --if-exists \
+     --no-owner --no-privileges /tmp/nihongo.dump'
 docker exec -i dmb-postgres rm /tmp/nihongo.dump
 ```
+
+`--clean --if-exists` drops each object before recreating it, so re-running the
+restore is safe and is the way to redo a botched one.
+
+Check it landed rather than trusting the exit code:
+
+```bash
+docker exec -i dmb-postgres sh -c \
+  'psql -U "$POSTGRES_USER" -d nihongo -c "select
+     (select count(*) from words)     as words,
+     (select count(*) from dialogues) as dialogues,
+     (select count(*) from kanji)     as kanji;"'
+```
+
+Roughly 8,240 words and 100 dialogues. If a restore reported ownership errors
+but these counts are right, the data is fine — only the `ALTER … OWNER`
+statements failed, and those are exactly what the flags above remove.
 
 Audio and illustrations live in `nihongo/frontend/public/{audio,images}` on
 your Mac and are **not** in the image — `.dockerignore` excludes both and R2
