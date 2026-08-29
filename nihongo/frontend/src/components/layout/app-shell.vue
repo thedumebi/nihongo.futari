@@ -51,7 +51,7 @@ const links = computed(() => {
     // the drilling screen you reach from it.
     { label: 'Course', to: ROUTES.COURSE },
     { label: 'Study', to: ROUTES.STUDY },
-    { label: 'Talk', to: ROUTES.CONVERSATIONS },
+    { label: 'Conversations', to: ROUTES.CONVERSATIONS },
     { label: 'Progress', to: ROUTES.PROGRESS },
     { label: 'Grammar', to: ROUTES.GRAMMAR },
     { label: 'Writing', to: ROUTES.WRITING },
@@ -90,7 +90,7 @@ async function signOut() {
         <div class="flex items-center gap-6">
           <!-- 語 is read "go" and means "language"; the name comes from it. -->
           <router-link
-            :to="auth.isAuthenticated ? ROUTES.STUDY : ROUTES.HOME"
+            :to="auth.isAuthenticated ? ROUTES.PROGRESS : ROUTES.HOME"
             class="flex items-baseline gap-1.5 font-semibold"
           >
             <span class="text-[var(--color-accent)]" style="font-family: var(--font-jp)">{{ SITE_MARK }}</span>

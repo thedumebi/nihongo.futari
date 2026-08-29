@@ -8,7 +8,7 @@ import { computed, onBeforeUnmount, ref, watch } from 'vue'
 
 import TokenLine from '@/components/ja/token-line.vue'
 import Button from '@/components/ui/button.vue'
-import { playAudio, playAudioQueue, stopAudio } from '@/composables/use-audio'
+import { playAudio, playAudioQueue, prefetchAudio, stopAudio } from '@/composables/use-audio'
 
 /**
  * A scripted conversation, one turn at a time.
@@ -170,6 +170,14 @@ watch(() => props.turns, () => {
   // Autoplay before any interaction is blocked in most browsers; the catch in
   // speak() swallows that, and the per-line buttons are the way back in.
   void speak(spoken)
+
+  // Pull the WHOLE conversation into the cache, replies included. Playback only
+  // downloads what it plays, so offline a reply you had never tapped gave a
+  // network error while the lines you had heard were fine.
+  void prefetchAudio([
+    ...props.turns.map(t => t.audio),
+    ...props.turns.flatMap(t => t.replies.map(r => r.audio))
+  ])
 }, { immediate: true })
 </script>
 

@@ -13,6 +13,7 @@ import AppShell from '@/components/layout/app-shell.vue'
 import Dropdown from '@/components/ui/dropdown.vue'
 import Tooltip from '@/components/ui/tooltip.vue'
 import { useFurigana } from '@/composables/use-furigana'
+import { useLevel } from '@/composables/use-level'
 import { ROUTES } from '@/constants'
 import { useLanguageStore } from '@/store/language'
 
@@ -21,7 +22,8 @@ const { mode, knownKanji, loadKnownKanji, loadSettings } = useFurigana()
 
 const points = ref<GrammarListResponse['points']>([])
 const loading = ref(true)
-const level = ref('')
+// Shared: picking N5 in Study should filter Grammar to N5 too.
+const { level } = useLevel()
 const levelIcon = Layers
 
 /** JLPT order, easiest first. Anything unrecognised sorts last. */

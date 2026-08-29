@@ -28,7 +28,7 @@ const notice = ref('')
 
 function afterSignIn() {
   const redirect = route.query.redirect
-  router.push(typeof redirect === 'string' ? redirect : ROUTES.STUDY)
+  router.push(typeof redirect === 'string' ? redirect : ROUTES.PROGRESS)
 }
 
 async function sendCode() {

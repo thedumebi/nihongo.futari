@@ -31,6 +31,7 @@ import Tooltip from '@/components/ui/tooltip.vue'
 import WritingCanvas from '@/components/writing/writing-canvas.vue'
 import { playAudio } from '@/composables/use-audio'
 import { useFurigana } from '@/composables/use-furigana'
+import { useLevel } from '@/composables/use-level'
 import { cacheBundle, enqueueAnswer, readBundle, requestPersistence } from '@/offline/db'
 import { flush, onSyncChange, startSync } from '@/offline/sync'
 import { useLanguageStore } from '@/store/language'
@@ -89,7 +90,8 @@ const deckId = useLocalStorage('go-deck', 'all')
  * which stays the default — the filter is there for people who want it, not a
  * gate on the corpus.
  */
-const levelCode = useLocalStorage('go-level', '')
+// Shared with Grammar, Progress and anywhere else that filters by level.
+const { level: levelCode } = useLevel()
 
 // `?level=N5` from the course page wins over the remembered choice, so
 // following "Continue" lands where the course said it would.

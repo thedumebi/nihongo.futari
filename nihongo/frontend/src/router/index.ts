@@ -173,7 +173,7 @@ router.beforeEach(async (to) => {
   // either a stale bookmark or the browser restoring a tab, and showing a
   // sign-in box to someone already signed in reads as being logged out.
   if (auth.isAuthenticated && (to.name === 'login' || to.name === 'signup'))
-    return { name: 'study' }
+    return { name: 'progress' }
 
   if (!to.meta.requiresAuth && !to.meta.isAdmin)
     return true

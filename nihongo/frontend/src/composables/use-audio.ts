@@ -243,3 +243,38 @@ export function stopAudio(): void {
   token += 1
   element?.pause()
 }
+
+/**
+ * Pull clips into the cache before they are needed.
+ *
+ * `CacheFirst` only ever caches what has actually been fetched, so offline a
+ * conversation played back only the lines you had already heard: the
+ * whole-conversation button works because it plays every turn, but a reply you
+ * never tapped was never downloaded, and tapping it offline gave a network
+ * error.
+ *
+ * A plain `fetch` is enough — the service worker's route intercepts it and
+ * stores the response, so the media element finds it in the cache later. Runs
+ * in the background and reports nothing: this is an optimisation, and a phone
+ * on a bad connection should not be told about it.
+ */
+export async function prefetchAudio(sources: Array<string | null | undefined>): Promise<void> {
+  const urls = [...new Set(sources.filter((s): s is string => Boolean(s)))]
+  if (urls.length === 0 || typeof fetch === 'undefined')
+    return
+
+  // A few at a time. A conversation is a couple of dozen clips and firing them
+  // all at once on a phone competes with whatever is actually playing.
+  const BATCH = 4
+  for (let i = 0; i < urls.length; i += BATCH) {
+    await Promise.all(urls.slice(i, i + BATCH).map(async (url) => {
+      try {
+        // `cors` so the response is readable and the range-slicing cache can
+        // store it; opaque responses are useless to it.
+        await fetch(url, { mode: 'cors', credentials: 'omit' })
+      } catch {
+        // Offline, or the clip does not exist. Neither is worth reporting.
+      }
+    }))
+  }
+}

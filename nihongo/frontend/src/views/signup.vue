@@ -100,7 +100,7 @@ async function verifyCode() {
       await authClient.updateUser({ name: name.value.trim() }).catch(() => {})
 
     await auth.syncSession(true)
-    router.push(ROUTES.STUDY)
+    router.push(ROUTES.PROGRESS)
   } catch {
     errorMsg.value = 'That code was not accepted.'
   } finally {

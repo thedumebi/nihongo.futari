@@ -9,6 +9,7 @@ import { getReadiness, getSummary } from '@/api/progress'
 import AppShell from '@/components/layout/app-shell.vue'
 import Dropdown from '@/components/ui/dropdown.vue'
 import Tooltip from '@/components/ui/tooltip.vue'
+import { useLevel } from '@/composables/use-level'
 import { ROUTES } from '@/constants'
 
 const summary = ref<ProgressSummary | null>(null)
@@ -68,7 +69,13 @@ const stats = computed(() => {
 })
 
 const LEVELS = ['N5', 'N4', 'N3', 'N2', 'N1']
-const level = ref('N5')
+// Shared, but this page reports on exactly ONE level, so an empty shared
+// value (meaning "all") falls back to N5 rather than sending no filter.
+const { level: sharedLevel } = useLevel()
+const level = computed({
+  get: () => sharedLevel.value || 'N5',
+  set: (v: string) => { sharedLevel.value = v }
+})
 const readiness = ref<Readiness | null>(null)
 
 async function loadReadiness() {
