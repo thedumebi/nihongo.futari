@@ -18,6 +18,26 @@
  * switch mutes — which is one reason this stays on a plain audio element.
  */
 
+/**
+ * The last few playback failures, readable from a device.
+ *
+ * Production strips every `console` call (vite.config.ts `esbuild.drop`), so a
+ * phone reports nothing at all — which is how a wrong MIME type on the unlock
+ * clip went unnoticed through several rounds of guessing. Attaching them to
+ * `window` costs nothing and means Safari's Web Inspector, attached over USB,
+ * can answer "why is it silent" in one line: `__audioErrors`.
+ */
+const errors: string[] = []
+
+function record(what: string, err: unknown): void {
+  const name = err instanceof Error ? `${err.name}: ${err.message}` : String(err)
+  errors.push(`${what} — ${name}`)
+  if (errors.length > 10)
+    errors.shift()
+  if (typeof window !== 'undefined')
+    (window as unknown as Record<string, unknown>).__audioErrors = errors
+}
+
 let element: HTMLAudioElement | null = null
 let unlocked = false
 
@@ -32,18 +52,30 @@ function el(): HTMLAudioElement {
   if (!element) {
     element = new Audio()
     element.preload = 'auto'
+    // Required for offline audio. The service worker caches these clips and
+    // slices them to answer Range requests, which it can only do if the
+    // response is READABLE — and a cross-origin media response is opaque
+    // unless the element opts into CORS. The bucket allows the `Range` header
+    // and exposes `Content-Range` to make this work.
+    element.crossOrigin = 'anonymous'
   }
   return element
 }
 
 /**
- * A real file, not a `data:` URI.
+ * A real file, and an `.m4a` rather than a `.wav`.
  *
- * Mobile Safari's support for data URIs as a media source has always been
- * patchy, and a silent failure here is invisible: the element simply stays
- * locked and every later play is refused.
+ * Two traps, both of which fail invisibly by leaving the element locked:
+ *
+ * A `data:` URI is unreliable as a media source in mobile Safari.
+ *
+ * And nginx's default `mime.types` has no `.wav` entry, so it served the file
+ * as `application/octet-stream` — which Safari will not play as audio. Every
+ * unlock attempt was refused for that reason alone. `.m4a` is the format every
+ * other clip in the app already uses, so it is the one path known to work end
+ * to end.
  */
-const SILENCE = '/silence.wav'
+const SILENCE = '/silence.m4a'
 
 /**
  * Teach the element it is allowed to make noise.
@@ -68,7 +100,10 @@ function unlock() {
       audio.currentTime = 0
     })
     // Refused. Leave the listeners armed so the next gesture tries again.
-    .catch(() => arm())
+    .catch((err: unknown) => {
+      record('unlock', err)
+      arm()
+    })
 }
 
 /**
@@ -111,10 +146,7 @@ export function playAudio(src: string | null | undefined): void {
   // A missing clip must never break the page around it — but swallowing the
   // reason outright is how a Safari-only failure went unnoticed for so long,
   // so development gets told.
-  audio.play().catch((err: unknown) => {
-    if (import.meta.env.DEV)
-      console.warn('[audio] play refused:', err)
-  })
+  audio.play().catch((err: unknown) => record(`play ${src}`, err))
 }
 
 /**
@@ -143,8 +175,7 @@ export async function playAudioQueue(sources: Array<string | null | undefined>):
       // remaining clip would be refused too. Bail rather than spinning through
       // the whole conversation in a tight loop pretending to play it.
       if (err instanceof DOMException && err.name === 'NotAllowedError') {
-        if (import.meta.env.DEV)
-          console.warn('[audio] queue refused — element not unlocked:', err)
+        record('queue refused — element not unlocked', err)
         return
       }
       // Anything else is this one clip's problem: step over it.

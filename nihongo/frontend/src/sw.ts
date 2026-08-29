@@ -2,6 +2,7 @@ import { CacheableResponsePlugin } from 'workbox-cacheable-response'
 import { ExpirationPlugin } from 'workbox-expiration'
 /// <reference lib="webworker" />
 import { cleanupOutdatedCaches, precacheAndRoute } from 'workbox-precaching'
+import { RangeRequestsPlugin } from 'workbox-range-requests'
 import { registerRoute } from 'workbox-routing'
 import { CacheFirst, NetworkFirst } from 'workbox-strategies'
 
@@ -21,35 +22,51 @@ declare const self: ServiceWorkerGlobalScope
 precacheAndRoute(self.__WB_MANIFEST)
 cleanupOutdatedCaches()
 
-// Drop the audio cache this worker used to keep. Anyone who visited before is
-// carrying up to 12,000 clips that nothing will ever read again, and on a
-// phone that is most of the app's storage budget.
+// Drop the audio cache built by the worker that had no range support. Those
+// entries are opaque and unsliceable, so they would break playback exactly as
+// before; the cache refills with readable ones.
 self.addEventListener('activate', (event) => {
   event.waitUntil(caches.delete('go-audio'))
 })
 
-// Audio is deliberately NOT cached by this service worker.
+// Audio, cached for offline — but only with a plugin that can answer a Range
+// request.
 //
-// It used to be, with CacheFirst — and that broke playback in Safari on both
-// macOS and iOS while working fine in Chrome. Safari asks for media with a
-// `Range` header and expects a 206 with `Content-Range`. A plain CacheFirst
-// answers from the cache with the whole file and a 200, which Safari rejects.
-// It fails silently: no console error, and the network panel shows the request
-// succeeding, because as far as the page is concerned it did.
+// Safari asks for media with a `Range` header and expects a 206 with
+// `Content-Range`. A plain CacheFirst answers from the Cache API with the whole
+// file and a 200, which Safari rejects — silently, with the network panel
+// showing success. That is what broke playback in Safari on macOS and iOS while
+// Chrome was fine. `RangeRequestsPlugin` slices the cached body and builds the
+// 206 the browser asked for.
 //
-// Workbox's answer is `workbox-range-requests`, but it can only slice a
-// response it can read, so it needs `crossOrigin="anonymous"` on the element
-// and a bucket that answers the resulting CORS preflight. The bucket currently
-// returns 403 to `OPTIONS`, so wiring the plugin without also widening the R2
-// CORS policy would swap one silent failure for another.
+// Slicing needs a body the worker can READ, so these responses must not be
+// opaque: the element sets `crossOrigin="anonymous"` (see composables/use-audio)
+// and the bucket's CORS policy allows the `Range` request header and exposes
+// `Content-Range`. All three have to hold together — drop any one and playback
+// fails quietly again.
 //
-// So: audio goes straight to the bucket. Those objects are served
-// `immutable` with a one-year max-age, so the browser's own HTTP cache still
-// spares the network on every replay. What is lost is audio while OFFLINE —
-// see BACKLOG. Text, grading and scheduling are unaffected and still work
-// offline, which is the part that matters most on a train.
-//
-// See: https://developer.chrome.com/docs/workbox/serving-cached-audio-and-video
+// See https://developer.chrome.com/docs/workbox/serving-cached-audio-and-video
+registerRoute(
+  ({ url }) => url.pathname.startsWith('/audio/'),
+  new CacheFirst({
+    cacheName: 'go-audio',
+    plugins: [
+      new RangeRequestsPlugin(),
+      // 200 only. Status 0 would let an OPAQUE response into the cache, and an
+      // opaque body cannot be sliced — which is the previous bug wearing a
+      // different hat. With CORS in place these are readable, so an opaque
+      // response now means something is wrong and should not be stored.
+      new CacheableResponsePlugin({ statuses: [200] }),
+      new ExpirationPlugin({
+        // Above the full corpus: 10,208 kana, word and sentence clips plus 927
+        // conversation lines and replies.
+        maxEntries: 12000,
+        maxAgeSeconds: 90 * 24 * 60 * 60,
+        purgeOnQuotaError: true
+      })
+    ]
+  })
+)
 
 // Illustrations, on the same terms as the audio and for the same reason.
 //
