@@ -13,9 +13,9 @@
  * has been unlocked stays unlocked, so the conversation can play a line when it
  * arrives rather than only when something is tapped.
  *
- * What this cannot fix: the iPhone's physical silent switch. HTML audio obeys
- * it, so a muted phone plays nothing and reports no error. Only the Web Audio
- * API can override that, which is a much bigger hammer than this needs.
+ * The iPhone's silent switch is NOT a factor here, contrary to the obvious
+ * guess: HTML media elements play through it. It is the Web Audio API that the
+ * switch mutes — which is one reason this stays on a plain audio element.
  */
 
 let element: HTMLAudioElement | null = null
@@ -37,35 +37,64 @@ function el(): HTMLAudioElement {
 }
 
 /**
+ * A real file, not a `data:` URI.
+ *
+ * Mobile Safari's support for data URIs as a media source has always been
+ * patchy, and a silent failure here is invisible: the element simply stays
+ * locked and every later play is refused.
+ */
+const SILENCE = '/silence.wav'
+
+/**
  * Teach the element it is allowed to make noise.
  *
- * Playing an all-but-empty clip inside a real gesture is enough; iOS then
- * treats the element as user-approved for the rest of the page's life. The
- * silent WAV below is 44 bytes and is never heard.
+ * Playing an inaudible clip inside a real gesture is enough; the browser then
+ * treats the element as user-approved for the rest of the page's life.
+ *
+ * `unlocked` is set only when the play actually RESOLVES. Latching it up front
+ * looks harmless and is not: if the attempt is refused, the flag says the job
+ * is done, the listeners have already been removed, and the element stays
+ * locked for the whole session with nothing to retry it.
  */
-const SILENCE = 'data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABAAZGF0YQAAAAA='
-
 function unlock() {
   if (unlocked)
     return
-  unlocked = true
   const audio = el()
   audio.src = SILENCE
-  // Failure is fine and expected on browsers that need no unlocking at all.
-  audio.play().then(() => audio.pause()).catch(() => {})
+  audio.play()
+    .then(() => {
+      unlocked = true
+      audio.pause()
+      audio.currentTime = 0
+    })
+    // Refused. Leave the listeners armed so the next gesture tries again.
+    .catch(() => arm())
 }
 
 /**
- * Arm the unlock on the first interaction anywhere in the app.
+ * Events that actually confer user activation.
  *
- * `once` so it costs nothing afterwards, and three event types because a tap
- * on iOS may surface as any of them depending on what was touched.
+ * This is the part that was wrong, and it broke iOS specifically. The spec
+ * excludes `touchstart` and a `pointerdown` whose pointerType is touch —
+ * deliberately, so that a swipe cannot bless anything. It includes `touchend`
+ * and `pointerup`. On a Mac the old list worked, because a trackpad's
+ * `pointerdown` IS a mouse event and does confer activation; on a phone the
+ * same code could never unlock anything.
+ *
+ * See https://developer.mozilla.org/en-US/docs/Web/Security/User_activation
  */
-export function armAudioUnlock(): void {
+const ACTIVATION_EVENTS = ['pointerup', 'touchend', 'click', 'keydown'] as const
+
+function arm() {
   if (typeof window === 'undefined')
     return
-  for (const type of ['pointerdown', 'touchstart', 'keydown'] as const)
+  for (const type of ACTIVATION_EVENTS)
     window.addEventListener(type, unlock, { once: true, passive: true })
+}
+
+/** Arm the unlock on the first real interaction anywhere in the app. */
+export function armAudioUnlock(): void {
+  arm()
 }
 
 /** Play one clip, replacing whatever was playing. */
@@ -109,7 +138,16 @@ export async function playAudioQueue(sources: Array<string | null | undefined>):
     audio.src = src
     try {
       await audio.play()
-    } catch {
+    } catch (err: unknown) {
+      // A refusal means the element is not allowed to play at all, so every
+      // remaining clip would be refused too. Bail rather than spinning through
+      // the whole conversation in a tight loop pretending to play it.
+      if (err instanceof DOMException && err.name === 'NotAllowedError') {
+        if (import.meta.env.DEV)
+          console.warn('[audio] queue refused — element not unlocked:', err)
+        return
+      }
+      // Anything else is this one clip's problem: step over it.
       continue
     }
     if (run !== token)
@@ -127,11 +165,14 @@ export async function playAudioQueue(sources: Array<string | null | undefined>):
         clearTimeout(stall)
         audio.removeEventListener('ended', done)
         audio.removeEventListener('error', done)
-        audio.removeEventListener('timeupdate', arm)
+        audio.removeEventListener('timeupdate', resetStall)
         resolve()
       }
 
-      function arm() {
+      // Named apart from the unlock's `arm` on purpose: two functions called
+      // `arm` in one file, one shadowing the other inside this closure, is a
+      // trap for whoever edits it next.
+      function resetStall() {
         clearTimeout(stall)
         stall = setTimeout(done, 15_000)
       }
@@ -141,8 +182,8 @@ export async function playAudioQueue(sources: Array<string | null | undefined>):
       // some later clip's events.
       audio.addEventListener('ended', done)
       audio.addEventListener('error', done)
-      audio.addEventListener('timeupdate', arm)
-      arm()
+      audio.addEventListener('timeupdate', resetStall)
+      resetStall()
     })
   }
 }
