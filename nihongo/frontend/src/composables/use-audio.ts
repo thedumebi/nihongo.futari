@@ -79,8 +79,13 @@ export function playAudio(src: string | null | undefined): void {
   const audio = el()
   audio.pause()
   audio.src = src
-  // A missing clip must never break the page around it.
-  audio.play().catch(() => {})
+  // A missing clip must never break the page around it — but swallowing the
+  // reason outright is how a Safari-only failure went unnoticed for so long,
+  // so development gets told.
+  audio.play().catch((err: unknown) => {
+    if (import.meta.env.DEV)
+      console.warn('[audio] play refused:', err)
+  })
 }
 
 /**
@@ -111,11 +116,33 @@ export async function playAudioQueue(sources: Array<string | null | undefined>):
       return
 
     await new Promise<void>((resolve) => {
-      const done = () => resolve()
-      audio.addEventListener('ended', done, { once: true })
-      audio.addEventListener('error', done, { once: true })
-      // Nothing should be able to wedge on a clip that fires neither event.
-      setTimeout(resolve, 20_000)
+      // A STALL watchdog, not a time limit. A flat timeout would cut off any
+      // clip longer than it — silently, mid-word — and "long" is a property of
+      // the content, not something this should have an opinion about. Instead
+      // the timer is re-armed on every `timeupdate`, so it only fires when a
+      // clip has genuinely stopped making progress.
+      let stall: ReturnType<typeof setTimeout>
+
+      const done = () => {
+        clearTimeout(stall)
+        audio.removeEventListener('ended', done)
+        audio.removeEventListener('error', done)
+        audio.removeEventListener('timeupdate', arm)
+        resolve()
+      }
+
+      function arm() {
+        clearTimeout(stall)
+        stall = setTimeout(done, 15_000)
+      }
+
+      // Removed explicitly rather than relying on `once`: this element is
+      // shared, so a listener left behind by a superseded clip would fire on
+      // some later clip's events.
+      audio.addEventListener('ended', done)
+      audio.addEventListener('error', done)
+      audio.addEventListener('timeupdate', arm)
+      arm()
     })
   }
 }

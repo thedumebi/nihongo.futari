@@ -158,11 +158,25 @@ const router = createRouter({
 })
 
 router.beforeEach(async (to) => {
+  const auth = useAuthStore()
+
+  // Ask on EVERY route, public ones included. This used to return early for
+  // anything without `requiresAuth`, which meant the landing page never found
+  // out whether you were signed in: its call to action read "Sign in" and sent
+  // an already-authenticated reader to the login form. The session cookie was
+  // there the whole time — nothing had asked about it.
+  //
+  // Cheap after the first call: the store caches the answer for the page load.
+  await auth.syncSession()
+
+  // Nobody signed in needs the login or sign-up form. Landing on one is
+  // either a stale bookmark or the browser restoring a tab, and showing a
+  // sign-in box to someone already signed in reads as being logged out.
+  if (auth.isAuthenticated && (to.name === 'login' || to.name === 'signup'))
+    return { name: 'study' }
+
   if (!to.meta.requiresAuth && !to.meta.isAdmin)
     return true
-
-  const auth = useAuthStore()
-  await auth.syncSession()
 
   if (!auth.isAuthenticated)
     return { name: 'login', query: { redirect: to.fullPath } }

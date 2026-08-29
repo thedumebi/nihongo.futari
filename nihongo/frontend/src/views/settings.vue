@@ -50,7 +50,7 @@ async function saveName() {
       toast.error(error.message || 'Could not save your name.')
       return
     }
-    await auth.syncSession()
+    await auth.syncSession(true)
     toast.success('Name saved')
   } finally {
     savingName.value = false

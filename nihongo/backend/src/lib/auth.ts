@@ -103,7 +103,22 @@ export const auth = betterAuth({
       activeLanguageId: { type: 'string', required: false, input: false }
     }
   },
-  session: { modelName: 'sessions' },
+  session: {
+    modelName: 'sessions',
+    /**
+     * Thirty days, refreshed daily.
+     *
+     * Stated rather than left to the library default so the lifetime is a
+     * decision in the repo instead of whatever the dependency happens to ship.
+     * This is a study app people open in short bursts; being signed out
+     * between sessions is the fastest way to stop someone keeping a streak.
+     *
+     * `updateAge` slides the expiry when a session is used, so a daily user is
+     * never signed out, while an abandoned session still ages out in a month.
+     */
+    expiresIn: 60 * 60 * 24 * 30,
+    updateAge: 60 * 60 * 24
+  },
   account: { modelName: 'accounts' },
   verification: { modelName: 'verifications' },
   secret: env.BETTER_AUTH_SECRET,

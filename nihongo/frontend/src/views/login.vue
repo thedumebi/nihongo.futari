@@ -59,7 +59,7 @@ async function verifyCode() {
       errorMsg.value = error.message || 'That code was not accepted.'
       return
     }
-    await auth.syncSession()
+    await auth.syncSession(true)
     afterSignIn()
   } catch {
     errorMsg.value = 'That code was not accepted.'
@@ -77,7 +77,7 @@ async function signInWithPassword() {
       errorMsg.value = error.message || 'Sign in failed.'
       return
     }
-    await auth.syncSession()
+    await auth.syncSession(true)
     afterSignIn()
   } catch {
     errorMsg.value = 'Sign in failed.'
