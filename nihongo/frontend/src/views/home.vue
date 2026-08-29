@@ -28,13 +28,6 @@ const auth = useAuthStore()
       >
         {{ auth.isAuthenticated ? 'Continue studying' : 'Sign in' }}
       </RouterLink>
-      <RouterLink
-        v-if="!auth.isAuthenticated"
-        :to="ROUTES.SIGNUP"
-        class="rounded-lg border border-[var(--color-border)] px-5 py-2.5"
-      >
-        Sign up
-      </RouterLink>
     </div>
   </main>
 </template>

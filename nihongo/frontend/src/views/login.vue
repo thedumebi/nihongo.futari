@@ -178,12 +178,12 @@ function useAnotherEmail() {
         </div>
       </div>
 
-      <p class="mt-6 text-center text-sm text-[var(--color-muted)]">
-        No account yet?
-        <router-link :to="ROUTES.SIGNUP" class="underline underline-offset-4">
-          Sign up
-        </router-link>
-      </p>
+      <!--
+        No link to /signup. Accounts are created by invitation only, and the
+        only legitimate route to that page is the emailed invite link, which
+        carries the code. Advertising it sent people to a form that would
+        refuse them.
+      -->
     </div>
   </AppShell>
 </template>
