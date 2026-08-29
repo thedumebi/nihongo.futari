@@ -2,13 +2,15 @@
 import type {
   DialogueTurn,
   FuriganaSegment,
+  GlossedToken,
   HandwritingGrade,
   ReferenceStroke,
   StageProgress,
   Stroke,
   StudyDeck,
   StudyQueueItem,
-  StudyQueueResponse
+  StudyQueueResponse,
+  WordGloss
 } from '@nihongo/shared/types'
 
 import { describeScript, gradeAnswer, gradeHandwriting, ratingFromGrade, samplePath, scriptOf, uuidv7 } from '@nihongo/shared/lib'
@@ -23,6 +25,8 @@ import type { SyncState } from '@/offline/sync'
 
 import { getDecks, getQueue } from '@/api/study'
 import FuriganaText from '@/components/ja/furigana-text.vue'
+import TokenLine from '@/components/ja/token-line.vue'
+import WordMeaning from '@/components/ja/word-meaning.vue'
 import AppShell from '@/components/layout/app-shell.vue'
 import DialogueCard from '@/components/study/dialogue-card.vue'
 import Button from '@/components/ui/button.vue'
@@ -370,6 +374,28 @@ function removeTile(position: number) {
   placed.value.splice(position, 1)
   answer.value = placed.value.map(i => orderTiles.value[i]).join('')
 }
+/**
+ * The cloze context, cut into tappable words.
+ *
+ * Only the sentence AROUND the blank. The word under test is deliberately not
+ * glossable: on a reading or meaning card its meaning is the answer, so a tap
+ * would hand the card over. The sentence it sits in is there to be understood.
+ */
+const clozeBeforeTokens = computed(() => (current.value?.prompt?.beforeTokens ?? []) as GlossedToken[])
+const clozeAfterTokens = computed(() => (current.value?.prompt?.afterTokens ?? []) as GlossedToken[])
+
+/** Which context word is open: which half, which token, and its meaning. */
+const pickedWord = ref<{ half: 'before' | 'after', index: number, word: WordGloss } | null>(null)
+
+function pickWord(half: 'before' | 'after', tokens: GlossedToken[], index: number | null) {
+  const word = index === null ? null : tokens[index]?.w
+  pickedWord.value = word && index !== null ? { half, index, word } : null
+}
+
+function selectedIn(half: 'before' | 'after'): number | null {
+  return pickedWord.value?.half === half ? pickedWord.value.index : null
+}
+
 const clozeBefore = computed(() => (current.value?.prompt?.beforeFurigana ?? []) as FuriganaSegment[])
 const clozeAfter = computed(() => (current.value?.prompt?.afterFurigana ?? []) as FuriganaSegment[])
 const clozeTranslation = computed(() => {
@@ -717,6 +743,10 @@ function resetCard() {
   placed.value = []
   showGuide.value = false
   canvas.value?.clear()
+  // A meaning left open would hang over the next card, describing a word that
+  // is no longer on screen — the same class of bug as the verdict that used to
+  // survive a deck change.
+  pickedWord.value = null
   shownAt.value = Date.now()
 }
 
@@ -1005,7 +1035,24 @@ watch(() => lang.code, async () => {
             class="mt-8 text-center text-3xl leading-relaxed"
             style="font-family: var(--font-jp)"
           >
+            <!--
+              TokenLine, not FuriganaText: it renders the ruby AND makes each
+              word tappable for its meaning. Two components cannot own the same
+              run of text, so this one does both. It falls back to the plain
+              line when the backend supplied no tokens.
+            -->
+            <TokenLine
+              v-if="clozeBeforeTokens.length"
+              :tokens="clozeBeforeTokens"
+              :text="String(current.prompt?.before ?? '')"
+              reading=""
+              :mode="furiganaMode"
+              :known-kanji="knownKanji"
+              :selected="selectedIn('before')"
+              @pick="pickWord('before', clozeBeforeTokens, $event)"
+            />
             <FuriganaText
+              v-else
               :text="String(current.prompt?.before ?? '')"
               :segments="clozeBefore"
               :mode="furiganaMode"
@@ -1015,7 +1062,18 @@ watch(() => lang.code, async () => {
               class="mx-1 inline-block min-w-[3ch] border-b-2 px-2 align-bottom"
               :class="revealed ? 'border-[var(--color-success)] text-[var(--color-success)]' : 'border-[var(--color-muted)]'"
             >{{ revealed ? current.answer.primary : '' }}</span>
+            <TokenLine
+              v-if="clozeAfterTokens.length"
+              :tokens="clozeAfterTokens"
+              :text="String(current.prompt?.after ?? '')"
+              reading=""
+              :mode="furiganaMode"
+              :known-kanji="knownKanji"
+              :selected="selectedIn('after')"
+              @pick="pickWord('after', clozeAfterTokens, $event)"
+            />
             <FuriganaText
+              v-else
               :text="String(current.prompt?.after ?? '')"
               :segments="clozeAfter"
               :mode="furiganaMode"
@@ -1070,6 +1128,13 @@ watch(() => lang.code, async () => {
               {{ character }}
             </template>
           </p>
+
+          <WordMeaning
+            v-if="pickedWord"
+            class="mt-4"
+            :word="pickedWord.word"
+            @close="pickedWord = null"
+          />
 
           <p v-if="subLabel && revealed" class="mt-3 text-center text-lg text-[var(--color-muted)]" style="font-family: var(--font-jp)">
             {{ subLabel }}

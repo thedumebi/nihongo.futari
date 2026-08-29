@@ -131,6 +131,21 @@ async function main() {
         .map(t => ({ ...t, charStart: t.charStart - row.charEnd, charEnd: t.charEnd - row.charEnd }))
     )
 
+    // How the BLANK itself is read, taken from the same ruby.
+    //
+    // The dictionary form's reading is not enough when the sentence spells the
+    // word differently. A sentence writing 1つ has the dictionary entry 一つ
+    // behind it, so `ひとつ` was only accepted if the linked word happened to
+    // carry it — and a reader typing `hitotsu`, the correct reading of what is
+    // on screen, was told they were wrong. Whatever is actually written in the
+    // blank, the way it is READ is a right answer.
+    const blankReading = sentenceFurigana(
+      blanked,
+      allTokens
+        .filter(t => t.charStart >= row.charStart && t.charEnd <= row.charEnd)
+        .map(t => ({ ...t, charStart: t.charStart - row.charStart, charEnd: t.charEnd - row.charStart }))
+    ).map(seg => seg.r ?? seg.t).join('')
+
     const [inserted] = await db.insert(studyItemFacets).values({
       studyItemId: row.studyItemId,
       facet: 'production',
@@ -179,7 +194,7 @@ async function main() {
       // accepted alongside the inflected one, so the same latitude applies.
       answer: {
         primary: row.surface,
-        accepted: [...new Set([row.surface, row.wordForm, row.wordReading].filter(Boolean))]
+        accepted: [...new Set([row.surface, row.wordForm, row.wordReading, blankReading].filter(Boolean))]
       },
       assets: { sentenceId: row.sentenceId }
     }).onConflictDoNothing().returning({ id: exercisePrompts.id })

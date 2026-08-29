@@ -427,3 +427,29 @@ function splitOnPunctuation(line: string): string[] {
     parts.push(current)
   return parts
 }
+
+/**
+ * Romanise ONE token, correcting the three particles that are read differently
+ * from how they are written.
+ *
+ * は is read わ, を is read お and へ is read え when they act as particles. A
+ * whole-line converter cannot apply that safely — は inside はな is not a
+ * particle, and correcting it would give "wana" for "hana" — which is why
+ * `kanaLineToRomaji` deliberately leaves them alone.
+ *
+ * At TOKEN granularity the ambiguity disappears: a token that is exactly one of
+ * these kana, standing alone, is the particle. Anything longer goes through the
+ * ordinary converter untouched.
+ *
+ * Without this, study cards rendered 卵を as `tamago wo` and 私は as `watashi
+ * ha` — teaching a spelling nobody says.
+ */
+const PARTICLE_ROMAJI: Record<string, string> = { は: 'wa', を: 'o', へ: 'e' }
+
+export function kanaTokenToRomaji(kana: string): string {
+  // Leading whitespace is a word boundary the corpus put there; the converter
+  // drops it, so it is lifted out and restored.
+  const lead = /^\s+/.exec(kana)?.[0] ?? ''
+  const body = kana.slice(lead.length)
+  return lead + (PARTICLE_ROMAJI[body] ?? kanaLineToRomaji(body))
+}

@@ -451,3 +451,41 @@ export function withDialogueTokens(prompt: Record<string, unknown>, g: Glossary)
 
   return { ...prompt, turns }
 }
+
+/** A furigana segment as the prompt jsonb carries it. */
+interface Segment { t: string, r?: string }
+
+/** The kana a run of furigana segments spells out. */
+function readingOf(segments: unknown): string | undefined {
+  if (!Array.isArray(segments))
+    return undefined
+  return segments
+    .map(seg => (typeof seg === 'object' && seg !== null
+      ? ((seg as Segment).r ?? (seg as Segment).t ?? '')
+      : ''))
+    .join('')
+}
+
+/**
+ * Attach tappable words to a study prompt.
+ *
+ * Only to the CONTEXT around a cloze blank. The word under test is deliberately
+ * left alone: on a reading or meaning card the answer is exactly what a gloss
+ * would reveal, so making it tappable would hand the card away. The sentence it
+ * sits in is the opposite — it is there to be understood, and looking up a word
+ * you do not know is the whole point.
+ *
+ * Readings come from the furigana the importer already computed, so no second
+ * alignment pass is needed and the two can never disagree.
+ */
+export function withPromptTokens(prompt: Record<string, unknown>, g: Glossary): Record<string, unknown> {
+  if (prompt.kind !== 'cloze')
+    return prompt
+
+  const out = { ...prompt }
+  if (typeof prompt.before === 'string' && prompt.before)
+    out.beforeTokens = glossLine(prompt.before, g, readingOf(prompt.beforeFurigana))
+  if (typeof prompt.after === 'string' && prompt.after)
+    out.afterTokens = glossLine(prompt.after, g, readingOf(prompt.afterFurigana))
+  return out
+}

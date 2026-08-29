@@ -2,8 +2,10 @@
 import type { FuriganaMode } from '@nihongo/shared/constants'
 import type { GlossedToken } from '@nihongo/shared/types'
 
-import { kanaLineToRomaji } from '@nihongo/shared/lib'
+import { kanaLineToRomaji, kanaTokenToRomaji } from '@nihongo/shared/lib'
 import { computed } from 'vue'
+
+import FuriganaText from '@/components/ja/furigana-text.vue'
 
 /**
  * One line of Japanese, cut into words you can tap.
@@ -24,6 +26,14 @@ const props = defineProps<{
   mode: FuriganaMode
   /** Which token is open, so it can be shown as pressed. */
   selected?: number | null
+  /**
+   * Kanji the reader already knows, for `unknown-only` furigana.
+   *
+   * Present so this can REPLACE FuriganaText rather than sit beside it. A
+   * conversation line and a cloze sentence both need ruby AND tappable words;
+   * two components cannot own the same run of text, so this one does both.
+   */
+  knownKanji?: Set<string>
 }>()
 
 const emit = defineEmits<{
@@ -40,7 +50,19 @@ const romaji = computed(() => props.mode === 'romaji')
  * back to romanising the whole line keeps romaji mode readable — it just is
  * not tappable for that one line.
  */
-const perToken = computed(() => props.tokens.length > 0 && props.tokens.some(t => t.r))
+const perToken = computed(() => {
+  if (props.tokens.length === 0)
+    return false
+  // Romaji is the one mode that NEEDS a per-token reading; without one the
+  // line can only be romanised whole. Every other mode renders the surface, so
+  // tokens are usable — and tappable — with or without readings.
+  return romaji.value ? props.tokens.some(t => t.r) : true
+})
+
+/** Whether to draw ruby: a real furigana mode, and something to align against. */
+function ruby(token: GlossedToken): boolean {
+  return !romaji.value && props.mode !== 'off' && Boolean(token.r)
+}
 
 const wholeLine = computed(() => romaji.value ? kanaLineToRomaji(props.reading) : props.text)
 
@@ -56,12 +78,11 @@ const wholeLine = computed(() => romaji.value ? kanaLineToRomaji(props.reading) 
 function label(token: GlossedToken): string {
   if (!romaji.value)
     return token.t
-  const kana = token.r ?? token.t
-  // The romaji converter drops leading whitespace, so the boundary is lifted
-  // out, the kana converted, and the space put back. Losing it here is what
-  // ran a whole line together as `sumimasen,menyuuokudasai.`
-  const lead = /^\s+/.exec(kana)?.[0] ?? ''
-  return lead + kanaLineToRomaji(kana.slice(lead.length))
+  // Per TOKEN, so the three particles read as they are spoken — を as `o`, は
+  // as `wa`, へ as `e`. A whole-line converter cannot do that safely, which is
+  // why cards used to show `tamago wo` and `watashi ha`. It also preserves the
+  // leading space that marks a word boundary.
+  return kanaTokenToRomaji(token.r ?? token.t)
 }
 
 function pick(index: number, token: GlossedToken) {
@@ -84,5 +105,20 @@ function pick(index: number, token: GlossedToken) {
     :class="selected === i ? 'bg-[var(--color-card)] decoration-[var(--color-text)]' : ''"
     :aria-label="`What does ${token.t} mean?`"
     @click.stop="pick(i, token)"
-  >{{ label(token) }}</button><span v-else class="whitespace-pre-wrap">{{ label(token) }}</span></template></span>
+  ><FuriganaText
+    v-if="ruby(token)"
+    :text="token.t"
+    :reading="token.r"
+    :mode="mode"
+    :known-kanji="knownKanji"
+  /><template v-else>{{ label(token) }}</template></button><span
+    v-else
+    class="whitespace-pre-wrap"
+  ><FuriganaText
+    v-if="ruby(token)"
+    :text="token.t"
+    :reading="token.r"
+    :mode="mode"
+    :known-kanji="knownKanji"
+  /><template v-else>{{ label(token) }}</template></span></template></span>
 </template>

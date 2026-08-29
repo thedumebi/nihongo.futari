@@ -12,7 +12,15 @@ const JAPANESE = /[\u3040-\u30FF\u3400-\u4DBF\u4E00-\u9FFF]/
 
 /** Strip whitespace and case; keep the characters themselves untouched. */
 function basicNormalise(value: string): string {
-  return value.trim().toLowerCase().replace(/\s+/g, '')
+  // NFKC folds full-width forms onto their ASCII equivalents. The corpus writes
+  // numbers full-width — 1つ is U+FF11 followed by つ — while any ordinary
+  // keyboard produces U+0031. The two are indistinguishable on screen, so
+  // without this a reader typed the answer exactly as shown and was told "Not
+  // quite — it's 1つ", with the two 1つ looking identical.
+  //
+  // It also folds half-width katakana onto full-width, which is the same class
+  // of invisible mismatch coming the other way.
+  return value.normalize('NFKC').trim().toLowerCase().replace(/\s+/g, '')
 }
 
 /**

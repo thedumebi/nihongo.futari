@@ -2,11 +2,11 @@
 import type { FuriganaMode } from '@nihongo/shared/constants'
 import type { DialogueTurn, GlossedToken, WordGloss } from '@nihongo/shared/types'
 
-import { kanaLineToRomaji } from '@nihongo/shared/lib'
-import { Volume2, X } from 'lucide-vue-next'
+import { Volume2 } from 'lucide-vue-next'
 import { computed, onBeforeUnmount, ref, watch } from 'vue'
 
 import TokenLine from '@/components/ja/token-line.vue'
+import WordMeaning from '@/components/ja/word-meaning.vue'
 import Button from '@/components/ui/button.vue'
 import { playAudio, playAudioQueue, prefetchAudio, stopAudio } from '@/composables/use-audio'
 
@@ -336,35 +336,11 @@ watch(() => props.turns, () => {
       here too showed "2 of 3 right." twice, one line under the other.
     -->
 
-    <!--
-      The word you tapped. A strip under the exchange rather than a floating
-      popover: it needs no positioning maths, it cannot land off the edge of a
-      phone, and the line you were reading stays where it was.
-    -->
-    <div
+    <WordMeaning
       v-if="picked"
-      class="mt-4 flex items-start gap-3 rounded-lg border border-[var(--color-border)] bg-[var(--color-card)] p-4"
-    >
-      <div class="min-w-0 flex-1">
-        <p class="flex flex-wrap items-baseline gap-x-2">
-          <span class="text-lg" style="font-family: var(--font-jp)">{{ picked.word.form }}</span>
-          <span class="text-sm text-[var(--color-muted)]">{{ kanaLineToRomaji(picked.word.reading) }}</span>
-          <span v-if="picked.word.pos" class="text-xs uppercase tracking-wide text-[var(--color-muted)]">
-            {{ picked.word.pos }}
-          </span>
-        </p>
-        <p class="mt-1 text-sm leading-relaxed">
-          {{ picked.word.meanings.join('; ') }}
-        </p>
-      </div>
-      <button
-        type="button"
-        class="shrink-0 text-[var(--color-muted)] transition hover:text-[var(--color-text)]"
-        aria-label="Close"
-        @click="picked = null"
-      >
-        <X class="h-4 w-4" />
-      </button>
-    </div>
+      class="mt-4"
+      :word="picked.word"
+      @close="picked = null"
+    />
   </div>
 </template>

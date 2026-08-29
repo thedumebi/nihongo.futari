@@ -52,7 +52,7 @@ import { and, asc, eq, inArray, isNull, lte, sql } from 'drizzle-orm'
 
 import { assetUrl, withAssetUrls, withDialogueAudio } from '@/lib/assets.js'
 
-import { glossary, withDialogueTokens } from './glossary.service.js'
+import { glossary, withDialogueTokens, withPromptTokens } from './glossary.service.js'
 import { recomputeProgress } from './progress.service.js'
 
 /**
@@ -683,7 +683,7 @@ export async function getQueue(userId: string, query: StudyQueueQuery): Promise<
       templateCode: r.templateCode as StudyQueueItem['templateCode'],
       inputMode: r.inputMode,
       graderCode: r.graderCode,
-      prompt: withDialogueTokens(withDialogueAudio(r.prompt), gloss),
+      prompt: withPromptTokens(withDialogueTokens(withDialogueAudio(r.prompt), gloss), gloss),
       answer: r.answer,
       distractors: r.distractors,
       assets: withAssetUrls(r.assets)
@@ -701,7 +701,7 @@ export async function getQueue(userId: string, query: StudyQueueQuery): Promise<
       templateCode: r.templateCode as StudyQueueItem['templateCode'],
       inputMode: r.inputMode,
       graderCode: r.graderCode,
-      prompt: withDialogueTokens(withDialogueAudio(r.prompt), gloss),
+      prompt: withPromptTokens(withDialogueTokens(withDialogueAudio(r.prompt), gloss), gloss),
       answer: r.answer,
       distractors: r.distractors,
       assets: withAssetUrls(r.assets)
