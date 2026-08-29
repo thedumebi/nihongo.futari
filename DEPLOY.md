@@ -98,21 +98,32 @@ get a certificate until it does.
 
 nihongo shares dmb's Postgres instance but needs its own database.
 
-The superuser is **not** `postgres`. dmb's Postgres was created with
-`POSTGRES_USER: ${PG_USERNAME}` from dmb's own config, so `-U postgres` fails
-with `role "postgres" does not exist`. The container knows its own username —
-let it tell you, rather than hardcoding one:
+Two things bite here, and they produce different errors.
+
+**The superuser is not `postgres`.** dmb's Postgres was created with
+`POSTGRES_USER: ${PG_USERNAME}` from dmb's own config, so `-U postgres` gives
+`role "postgres" does not exist`. Ask the container for its own username rather
+than hardcoding one.
+
+**`psql` needs a database to connect to.** With no `-d` it opens one named
+after the connecting user, so `psql -U thedumebi` gives
+`database "thedumebi" does not exist`. `createdb` does not have this problem —
+it uses the `postgres` maintenance database by default, which is why the
+command below uses it.
 
 ```bash
 # On the server
-docker exec -it dmb-postgres sh -c 'psql -U "$POSTGRES_USER" -c "CREATE DATABASE nihongo;"'
+docker exec dmb-postgres sh -c 'createdb -U "$POSTGRES_USER" nihongo'
 
-# Confirm it exists
-docker exec -it dmb-postgres sh -c 'psql -U "$POSTGRES_USER" -lqt' | cut -d\| -f1 | grep nihongo
+# Confirm it exists (-d is required for the same reason)
+docker exec dmb-postgres sh -c 'psql -U "$POSTGRES_USER" -d postgres -lqt' | cut -d\| -f1 | grep nihongo
 ```
 
-The same applies to every other `psql` in this guide, including the restore in
-Step 7 and the backup in Step 9.
+**The rule for the rest of this guide:** every command against `dmb-postgres`
+passes both `-U "$POSTGRES_USER"` and an explicit `-d`. Neither defaults to
+anything useful. The `pg_restore` in Step 7 and the `pg_dump` in
+`scripts/backup-db.sh` already name their database; the `pg_dump` in Step 7
+runs on your Mac, where `postgres` genuinely is the user.
 
 ---
 
@@ -166,11 +177,31 @@ git push
 
 ## Step 5 — Put the code and the key on the server
 
+The checkout is named `nihongo`, not `nihongo.futari` — `git clone` takes the
+directory as its last argument, otherwise it uses the repository name.
+
 ```bash
 # On the server, as the deploy user
 cd ~
-git clone git@github.com:thedumebi/nihongo.futari.git
-cd nihongo.futari
+git clone git@github.com:thedumebi/nihongo.futari.git nihongo
+cd nihongo
+```
+
+Already cloned it as `nihongo.futari`? Rename it — nothing inside the checkout
+refers to its own directory name, so this is safe:
+
+```bash
+# On the server
+cd ~ && mv nihongo.futari nihongo
+```
+
+If you had already deployed from the old path, the containers hold no path
+state, but Compose derives its project name from the directory. Bring the old
+stack down BEFORE renaming, or it is orphaned under the old name:
+
+```bash
+cd ~/nihongo.futari && docker compose -f docker-compose.prod.yml down
+cd ~ && mv nihongo.futari nihongo
 ```
 
 Copy the decryption key across from your Mac — this is the one secret the
@@ -178,7 +209,7 @@ server holds:
 
 ```bash
 # On your Mac
-scp nihongo/backend/.env.keys deploy@YOUR_SERVER_IP:~/nihongo.futari/nihongo/backend/.env.keys
+scp nihongo/backend/.env.keys deploy@YOUR_SERVER_IP:~/nihongo/nihongo/backend/.env.keys
 ```
 
 ```bash
@@ -447,14 +478,14 @@ cannot double-send.
 
 ```bash
 # On the server, check whether the backup script already covers it
-grep -c nihongo ~/nihongo.futari/scripts/backup-db.sh
+grep -c nihongo ~/nihongo/scripts/backup-db.sh
 ```
 
 The script is already written for this database. Add its cron line if it is not
 there:
 
 ```cron
-30 3 * * * cd /home/deploy/nihongo.futari && /usr/local/bin/dotenvx run -f nihongo/backend/.env.production -- ./scripts/backup-db.sh >> /home/deploy/nihongo-backup.log 2>&1
+30 3 * * * cd /home/deploy/nihongo && /usr/local/bin/dotenvx run -f nihongo/backend/.env.production -- ./scripts/backup-db.sh >> /home/deploy/nihongo-backup.log 2>&1
 ```
 
 ---
@@ -469,7 +500,7 @@ Actions):
 | `DEPLOY_HOST` | server IP |
 | `DEPLOY_USER` | `deploy` |
 | `DEPLOY_SSH_KEY` | the **private** key whose public half is in the server's `authorized_keys` |
-| `DEPLOY_PATH` | `/home/deploy/nihongo.futari` |
+| `DEPLOY_PATH` | `/home/deploy/nihongo` |
 | `DEPLOY_PORT` | only if SSH is not on 22 |
 
 After that, every push to `master` runs lint, typecheck and tests, then
@@ -546,7 +577,7 @@ and seeds itself on start.
 
 ```bash
 # On the server
-cd ~/nihongo.futari
+cd ~/nihongo
 git log --oneline -5
 git checkout <previous-sha>
 dotenvx run -f nihongo/backend/.env.production -- \
