@@ -16,3 +16,18 @@ To add more starter content later, drop another `NNN-name.sql` file here.
 > The admin account is **not** seeded. Create it after the first deploy: register
 > through the site (or the auth API), then promote that user to `role = 'admin'`
 > in the database.
+
+## After the first deploy, this is the only way in
+
+The server runs Docker and nothing else — no Node, no pnpm — and the app has
+real users, so the dump-and-restore in DEPLOY.md step 7 would take their
+accounts and review history with it.
+
+Every content correction from here is a numbered seed. The backend runs them on
+start, `seed_history` records which have run, and a deploy is the whole
+procedure.
+
+Write them to be **derived and idempotent**: `036-cloze-answer-readings.sql`
+recomputes readings from `sentence_tokens` rather than carrying 1,659 literals,
+and its `WHERE` clause excludes rows that already hold the value, so a second
+run reports `UPDATE 0`.
