@@ -197,7 +197,16 @@ async function main() {
         accepted: [...new Set([row.surface, row.wordForm, row.wordReading, blankReading].filter(Boolean))]
       },
       assets: { sentenceId: row.sentenceId }
-    }).onConflictDoNothing().returning({ id: exercisePrompts.id })
+    }).onConflictDoUpdate({
+      target: [exercisePrompts.facetId, exercisePrompts.templateId, exercisePrompts.version],
+      set: {
+        answer: {
+          primary: row.surface,
+          accepted: [...new Set([row.surface, row.wordForm, row.wordReading, blankReading].filter(Boolean))]
+        },
+        updatedAt: new Date()
+      }
+    }).returning({ id: exercisePrompts.id })
 
     if (prompt) {
       prompts++

@@ -333,6 +333,16 @@ docker exec -i dmb-postgres rm /tmp/nihongo.dump
 `--clean --if-exists` drops each object before recreating it, so re-running the
 restore is safe and is the way to redo a botched one.
 
+> **Once the app has real users, this step is destructive.** `--clean` drops
+> every table, accounts and review history included, and replaces them with
+> whatever your Mac holds. It is a first-import tool.
+>
+> To ship a CONTENT change afterwards — corrected answers, new conversations —
+> generate a targeted SQL patch instead and apply just that. There is an
+> example in `nihongo/backend/src/db/patches/`, along with the `docker exec`
+> commands to run it. The server has no Node, pnpm or npm: everything there
+> happens through `docker exec`.
+
 Check it landed rather than trusting the exit code:
 
 ```bash
