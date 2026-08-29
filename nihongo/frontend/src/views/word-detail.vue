@@ -8,6 +8,7 @@ import { getWord } from '@/api/words'
 import FuriganaText from '@/components/ja/furigana-text.vue'
 import PitchAccent from '@/components/ja/pitch-accent.vue'
 import AppShell from '@/components/layout/app-shell.vue'
+import { playAudio } from '@/composables/use-audio'
 import { useFurigana } from '@/composables/use-furigana'
 import { ROUTES } from '@/constants'
 
@@ -25,8 +26,6 @@ const { mode: furiganaMode, knownKanji, loadKnownKanji, loadSettings } = useFuri
 const word = ref<WordDetail | null>(null)
 const loading = ref(true)
 const errorMsg = ref('')
-let player: HTMLAudioElement | undefined
-
 async function load() {
   loading.value = true
   errorMsg.value = ''
@@ -41,10 +40,8 @@ async function load() {
 }
 
 function play(src: string) {
-  player?.pause()
-  player = new Audio(src)
   // A missing clip is normal — audio is generated per corpus run, not per word.
-  void player.play().catch(() => {})
+  playAudio(src)
 }
 
 onMounted(() => {

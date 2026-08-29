@@ -8,6 +8,7 @@ import { computed, onBeforeUnmount, ref, watch } from 'vue'
 
 import TokenLine from '@/components/ja/token-line.vue'
 import Button from '@/components/ui/button.vue'
+import { playAudio, playAudioQueue, stopAudio } from '@/composables/use-audio'
 
 /**
  * A scripted conversation, one turn at a time.
@@ -93,18 +94,9 @@ const isLearnerTurn = computed(() => current.value?.speaker === 'learner')
  *
  * One element, reused: two clips overlapping sound like neither.
  */
-let player: HTMLAudioElement | undefined
+const play = playAudio
 
-function play(src: string | null | undefined) {
-  if (!src)
-    return
-  player?.pause()
-  player = new Audio(src)
-  // A missing clip must not break the conversation — the script is the lesson.
-  player.play().catch(() => {})
-}
-
-onBeforeUnmount(() => player?.pause())
+onBeforeUnmount(stopAudio)
 
 /**
  * The whole exchange, start to finish, in the voices it is meant to be heard in.
@@ -158,32 +150,12 @@ function advance() {
  * stalling the queue.
  */
 async function speak(sources: string[]) {
-  for (const src of sources) {
-    if (!src)
-      continue
-    player?.pause()
-    const el = new Audio(src)
-    player = el
-    try {
-      await el.play()
-    } catch {
-      continue
-    }
-    await new Promise<void>((resolve) => {
-      el.addEventListener('ended', () => resolve(), { once: true })
-      el.addEventListener('error', () => resolve(), { once: true })
-      // Nothing in the app should be able to wedge on a clip that never fires
-      // either event — a stalled element would leave the reader waiting.
-      setTimeout(resolve, 20_000)
-    })
-    if (player !== el)
-      return
-  }
+  await playAudioQueue(sources)
 }
 
 // A new dialogue means starting over rather than resuming someone else's.
 watch(() => props.turns, () => {
-  player?.pause()
+  stopAudio()
   position.value = 0
   chosen.value = null
   picked.value = null

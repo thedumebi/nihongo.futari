@@ -29,6 +29,7 @@ import Button from '@/components/ui/button.vue'
 import Dropdown from '@/components/ui/dropdown.vue'
 import Tooltip from '@/components/ui/tooltip.vue'
 import WritingCanvas from '@/components/writing/writing-canvas.vue'
+import { playAudio } from '@/composables/use-audio'
 import { useFurigana } from '@/composables/use-furigana'
 import { cacheBundle, enqueueAnswer, readBundle, requestPersistence } from '@/offline/db'
 import { flush, onSyncChange, startSync } from '@/offline/sync'
@@ -519,15 +520,9 @@ const minutes = computed(() => {
   return mins < 1 ? 'under a minute' : `${mins} ${mins === 1 ? 'minute' : 'minutes'}`
 })
 
-let player: HTMLAudioElement | undefined
-
 function play() {
-  if (!audioSrc.value)
-    return
-  player?.pause()
-  player = new Audio(audioSrc.value)
   // A missing clip should not break the session — the drill is the text.
-  player.play().catch(() => {})
+  playAudio(audioSrc.value)
 }
 
 async function load() {
