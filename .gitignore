@@ -54,11 +54,22 @@ geodata
 # Downloaded open datasets (fetched on demand, never committed)
 .data/
 
-# Generated pronunciation audio. ~8 MB for N5 alone and it grows with every
-# level, so it stays out of git history. Regenerate with:
-#   pnpm -C nihongo/backend audio:kana && pnpm -C nihongo/backend audio:words
-# Production serves it from R2.
+# Media staging areas, NOT stores.
+#
+# R2 is the single source of truth for audio and images: the app reads both
+# from the bucket in every environment, and `.dockerignore` keeps them out of
+# the frontend image. These directories are only ever scratch space where a
+# generator writes something on its way to being uploaded, and clearing them is
+# always safe.
+#
+#   pnpm -C nihongo/backend verify:assets   # confirm the bucket has everything
+#   rm -rf nihongo/frontend/public/{audio,images}
+#
+# Audio goes straight to the bucket now and never lands here at all (~103 MB,
+# 11k clips). New illustrations are drawn here and cleared after upload:
+#   pnpm -C nihongo/backend upload:assets images
 nihongo/frontend/public/audio/
+nihongo/frontend/public/images/
 
 # Vite's local dep-optimisation cache. Regenerated on every dev start.
 .vite/

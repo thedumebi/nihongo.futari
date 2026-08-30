@@ -75,8 +75,15 @@ registerRoute(
 // from the image, so precaching cannot reach them and a runtime cache is what
 // keeps the scene art on a deck showing offline.
 //
-// Cheaper than the audio in every way — 63 files, 252 KB — so the cap is small
-// and the age generous.
+// Cheaper than the audio in every way — around 1 KB per drawing — so the cap is
+// generous and the age long.
+//
+// The cap was 500 when there were 63 scene and conversation drawings. Per-word
+// vocabulary art then took it past that on its own, and an entries cap below
+// the size of the set does not bound anything useful: it evicts the drawing you
+// are about to see to make room for the one you just saw. Sized here for the
+// whole illustrated vocabulary with room to grow, which even at several
+// thousand files is a few megabytes.
 registerRoute(
   ({ url }) => url.pathname.startsWith('/images/'),
   new CacheFirst({
@@ -84,7 +91,7 @@ registerRoute(
     plugins: [
       new CacheableResponsePlugin({ statuses: [0, 200] }),
       new ExpirationPlugin({
-        maxEntries: 500,
+        maxEntries: 12000,
         maxAgeSeconds: 180 * 24 * 60 * 60,
         purgeOnQuotaError: true
       })

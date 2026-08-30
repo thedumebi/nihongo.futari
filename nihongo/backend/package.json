@@ -41,6 +41,9 @@
     "import:images": "tsx src/pipeline/import-images.ts",
     "find:rendaku": "tsx src/pipeline/find-rendaku.ts",
     "build:curriculum": "tsx src/pipeline/build-curriculum.ts",
+    "seed:listening": "tsx src/pipeline/make-listening-seed.ts",
+    "seed:images": "tsx src/pipeline/make-image-seed.ts",
+    "verify:assets": "tsx src/pipeline/verify-assets.ts",
     "upload:assets": "tsx src/pipeline/upload-assets.ts",
     "import:dialogues": "tsx src/pipeline/import-dialogues.ts"
   },

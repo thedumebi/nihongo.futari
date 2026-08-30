@@ -9,9 +9,32 @@ paths:
 
 # Audio and illustrations
 
-Both are produced on a laptop by a CLI, committed nowhere except the SVG
-source, and served from a Cloudflare R2 bucket. Neither tree is in the deployed
-image — `.dockerignore` excludes `public/audio` and `public/images` — so
+Both are produced on a laptop by a CLI and served from a Cloudflare R2 bucket.
+
+**The bucket is the only copy.** `public/audio` and `public/images` are staging
+areas, not stores: git ignores both, `.dockerignore` keeps both out of the
+deployed image, and either can be deleted at any time. Audio never lands there
+at all any more — `generate-audio.ts` synthesises to a temp file and uploads
+straight to R2. Illustrations are drawn there and cleared once uploaded.
+
+Because of that, **"does this asset already exist" is a question for the bucket,
+not the filesystem.** Every generator and importer asks `listKeys()` from
+`pipeline/lib/bucket.ts`. Asking disk would report all eleven thousand
+already-generated clips as missing the moment the staging tree was cleared, and
+a re-run would regenerate and re-upload the lot. One listing per run, not a HEAD
+per file: at this many objects that is the difference between seconds and most
+of an hour.
+
+Before deleting a staging tree, prove the bucket has it:
+
+```bash
+pnpm -C nihongo/backend verify:assets          # or: verify:assets images
+rm -rf nihongo/frontend/public/{audio,images}
+```
+
+It compares every local file against the bucket by key and size and exits
+non-zero if anything is missing. Objects the bucket has and disk does not are
+the expected steady state, not a problem. Since
 **`R2_PUBLIC_BASE_URL` is required and the backend refuses to boot in
 production without it**. Development reads from the same bucket, deliberately:
 an environment that serves media from disk cannot reproduce a broken bucket, a
@@ -24,11 +47,11 @@ macOS `say` plus `afconvert`. This is a local step; there is no audio service.
 ```bash
 pnpm -C nihongo/backend audio:all         # kana, words, sentences, dialogues
 pnpm -C nihongo/backend audio:dialogues   # or one kind at a time
-pnpm -C nihongo/backend upload:assets audio
 ```
 
-Idempotent — an existing clip is skipped, so re-running after adding content
-only makes what is new. Roughly 11,100 clips and 90 MB at full coverage.
+No upload step: clips go straight to the bucket. Idempotent — a clip the bucket
+already holds is skipped, so re-running after adding content only makes what is
+new. Roughly 11,100 clips and 103 MB at full coverage.
 
 Filenames are derived from database ids, never from text:
 
@@ -46,9 +69,8 @@ what makes an exchange followable.
 
 **Every clip has a 20 second timeout.** `say` has been seen to hang for ever on
 one input; a words run once sat for eight hours having produced nothing. A
-stuck clip must cost one timeout, not the run. If a clip fails, find it by
-diffing what the database references against what is on disk, and regenerate
-that one by hand.
+stuck clip must cost one timeout, not the run. A failed clip is simply absent
+from the bucket, so the next run picks it up on its own.
 
 ## Illustrations
 
@@ -79,6 +101,17 @@ separate files read as one family.
   room, no crowded scenes. Figures stay small and none dominates.
 - **Culturally specific.** A Japanese house for 家, not a suburban Western one.
   A generator or an author with no instruction defaults to the wrong thing.
+- **Skip a word rather than fake it.** Some words have no honest picture at
+  thumbnail size: grammatical abstractions (`風` as "-style"), taxonomic ranks
+  (`目` as an order), bare numbers, senses that exist only as a suffix. A card
+  with no image is fine; one showing the wrong thing teaches the wrong thing.
+  Around 4% of a noun set falls out this way, and the rate climbs sharply above
+  N4 as the vocabulary gets more abstract.
+- **The palette has no yellow and no brown**, so a word whose entire meaning is
+  one of those colours — `黄色`, `茶色` — cannot be drawn within these rules at
+  all. That is a genuine conflict between "palette only" and "draw the thing",
+  not an oversight to work around: leave them undrawn unless the palette gains
+  a colour, and never reach outside it to fill the gap.
 
 ### Sizes and filenames
 
@@ -114,15 +147,32 @@ serves as a fallback for a conversation that has not been drawn.
 
 ### After drawing
 
+Upload FIRST. Existence is a question for the bucket now, so an importer run
+before the upload sees nothing and attaches nothing.
+
 ```bash
-pnpm -C nihongo/backend import:images        # attaches ONLY what exists on disk
-pnpm -C nihongo/backend upload:assets images
+pnpm -C nihongo/backend upload:assets images   # 1. the bucket is the store
+pnpm -C nihongo/backend verify:assets images   # 2. prove it landed
+pnpm -C nihongo/backend import:images          # 3. local database only
+pnpm -C nihongo/backend seed:images            # 4. how it reaches production
+rm -rf nihongo/frontend/public/images          # 5. staging area, clear it
 ```
 
 `import:images` never points a row at a file that is not there — a card with no
 image beats a card with a broken one. `dialogues.image_url` and
 `curriculum_units.image_url` are set by it; vocabulary art rides in
 `exercise_prompts.assets` alongside the audio.
+
+**Production never runs a pipeline script**, so step 3 is a local convenience
+and step 4 is what actually ships. `seed:images` reads the bucket and writes the
+next numbered seed containing every drawing that exists.
+
+Always a NEW file, never an edit to the last one: `seed_history` records seeds
+by filename with no content hash, so a seed that has already run in production
+will never run again however much it is changed. Each new seed carries the
+complete list rather than only the new ids — re-attaching a drawing a card
+already has is a no-op, so a superset is safe and cannot leave a gap if a batch
+is missed.
 
 ### Check the work before claiming it is done
 

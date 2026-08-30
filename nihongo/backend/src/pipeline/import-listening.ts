@@ -10,8 +10,8 @@ import {
   wordSenses
 } from '@nihongo/shared/db/schema'
 import { and, eq } from 'drizzle-orm'
-import { access } from 'node:fs/promises'
-import path from 'node:path'
+
+import { listKeys } from './lib/bucket.js'
 
 /**
  * Listening exercises: hear a word, then either choose its meaning or type it.
@@ -28,7 +28,6 @@ import path from 'node:path'
  */
 
 const CHOICES = 4
-const PUBLIC_AUDIO = path.resolve(process.cwd(), '../frontend/public/audio')
 
 /** Deterministic shuffle, so re-running produces the same distractors. */
 function shuffle<T>(items: T[], seed: number): T[] {
@@ -42,16 +41,12 @@ function shuffle<T>(items: T[], seed: number): T[] {
   return out
 }
 
-async function exists(file: string): Promise<boolean> {
-  try {
-    await access(file)
-    return true
-  } catch {
-    return false
-  }
-}
-
 async function main() {
+  // Which clips exist is a question for the BUCKET, not the filesystem: the
+  // local tree is a staging area that gets cleared after upload, so asking disk
+  // would report every generated clip as missing.
+  const clips = await listKeys('audio/words/')
+
   const [language] = await db.select({ id: languages.id }).from(languages).where(eq(languages.code, 'ja')).limit(1)
   if (!language)
     throw new Error('Japanese language row missing')
@@ -98,7 +93,7 @@ async function main() {
       continue
     // No audio means no listening exercise. Scheduling one anyway would give a
     // card that cannot be answered.
-    if (!await exists(path.join(PUBLIC_AUDIO, 'words', `${row.entSeq}.m4a`))) {
+    if (!clips.has(`audio/words/${row.entSeq}.m4a`)) {
       noAudio++
       continue
     }

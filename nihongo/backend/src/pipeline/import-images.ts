@@ -2,8 +2,8 @@
 import db, { connection } from '@nihongo/shared/db'
 import { curriculumUnits, dialogues, languages, words } from '@nihongo/shared/db/schema'
 import { and, eq, sql } from 'drizzle-orm'
-import { access } from 'node:fs/promises'
-import path from 'node:path'
+
+import { listKeys } from './lib/bucket.js'
 
 /**
  * Attach hand-drawn illustrations to the content that should show them.
@@ -12,25 +12,23 @@ import path from 'node:path'
  * one. Files keyed by JMdict ent_seq, matching the audio convention
  * (/audio/words/<entSeq>.m4a, /images/vocab/<entSeq>.svg).
  *
- * Only attaches what EXISTS. A missing drawing must leave the card unchanged
- * rather than pointing at a 404 — an image slot that sometimes breaks is worse
- * than a card with no image.
+ * Only attaches what EXISTS, and existence is a question for the BUCKET rather
+ * than the filesystem. The local tree is a staging area that gets cleared once
+ * its contents are uploaded, so asking disk would report every already-drawn
+ * illustration as missing and quietly strip the art off every card.
+ *
+ * A missing drawing must leave the card unchanged rather than pointing at a
+ * 404 — an image slot that sometimes breaks is worse than a card with none.
  *
  *   pnpm -C nihongo/backend import:images
  */
 
-const PUBLIC = path.resolve(process.cwd(), '../frontend/public')
-
-async function exists(file: string): Promise<boolean> {
-  try {
-    await access(file)
-    return true
-  } catch {
-    return false
-  }
-}
-
 async function main() {
+  // One listing for the whole run. Asking the bucket per file would be a round
+  // trip each for several thousand words.
+  const stored = await listKeys('images/')
+  console.log(`${stored.size} illustrations in the bucket`)
+
   const [language] = await db.select({ id: languages.id }).from(languages).where(eq(languages.code, 'ja')).limit(1)
   if (!language)
     throw new Error('Japanese language row missing')
@@ -47,8 +45,7 @@ async function main() {
   for (const row of wordRows) {
     if (row.entSeq === null)
       continue
-    const file = path.join(PUBLIC, 'images', 'vocab', `${row.entSeq}.svg`)
-    if (!await exists(file)) {
+    if (!stored.has(`images/vocab/${row.entSeq}.svg`)) {
       missing++
       continue
     }
@@ -76,8 +73,7 @@ async function main() {
 
   let scenes = 0
   for (const unit of units) {
-    const file = path.join(PUBLIC, 'images', 'scenes', `${unit.code}.svg`)
-    if (!await exists(file))
+    if (!stored.has(`images/scenes/${unit.code}.svg`))
       continue
     await db.execute(sql`
       update curriculum_units
@@ -100,8 +96,7 @@ async function main() {
   let undrawn = 0
 
   for (const row of dialogueRows) {
-    const file = path.join(PUBLIC, 'images', 'dialogues', `${row.code}.svg`)
-    if (!await exists(file)) {
+    if (!stored.has(`images/dialogues/${row.code}.svg`)) {
       undrawn++
       continue
     }

@@ -11,8 +11,8 @@ import {
   studyItems
 } from '@nihongo/shared/db/schema'
 import { and, asc, eq } from 'drizzle-orm'
-import { access } from 'node:fs/promises'
-import path from 'node:path'
+
+import { listKeys } from './lib/bucket.js'
 
 /**
  * Word-order exercises: rebuild a sentence from its shuffled words.
@@ -30,7 +30,6 @@ import path from 'node:path'
 /** Too few tokens and there is nothing to arrange; too many and it is a puzzle. */
 const MIN_TOKENS = 4
 const MAX_TOKENS = 8
-const PUBLIC_AUDIO = path.resolve(process.cwd(), '../frontend/public/audio')
 
 /** Deterministic shuffle, so re-running does not reshuffle every prompt. */
 function shuffle<T>(items: T[], seed: string): T[] {
@@ -44,16 +43,12 @@ function shuffle<T>(items: T[], seed: string): T[] {
   return out
 }
 
-async function exists(file: string): Promise<boolean> {
-  try {
-    await access(file)
-    return true
-  } catch {
-    return false
-  }
-}
-
 async function main() {
+  // Which clips exist is a question for the BUCKET, not the filesystem: the
+  // local tree is a staging area that gets cleared after upload, so asking disk
+  // would report every generated clip as missing.
+  const clips = await listKeys('audio/sentences/')
+
   const [language] = await db.select({ id: languages.id }).from(languages).where(eq(languages.code, 'ja')).limit(1)
   if (!language)
     throw new Error('Japanese language row missing')
@@ -186,7 +181,7 @@ async function main() {
     if (insertedFacet)
       facets++
 
-    const audio = await exists(path.join(PUBLIC_AUDIO, 'sentences', `${sentence.id}.m4a`))
+    const audio = clips.has(`audio/sentences/${sentence.id}.m4a`)
       ? `/audio/sentences/${sentence.id}.m4a`
       : null
 

@@ -3,10 +3,12 @@ import db, { connection } from '@nihongo/shared/db'
 import { dialogueReplies, dialogues, dialogueTurns, kana, sentences, words } from '@nihongo/shared/db/schema'
 import { asc, eq } from 'drizzle-orm'
 import { execFile } from 'node:child_process'
-import { access, mkdir, unlink } from 'node:fs/promises'
+import { readFile, unlink } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import path, { basename } from 'node:path'
 import { promisify } from 'node:util'
+
+import { CONTENT_TYPES, listKeys, putAsset } from './lib/bucket.js'
 
 const run = promisify(execFile)
 
@@ -28,7 +30,15 @@ const run = promisify(execFile)
  *   pnpm -C nihongo/backend audio:dialogues
  *   pnpm -C nihongo/backend audio:all
  *
- * Skips anything already present, so it is cheap to re-run after adding content.
+ * Clips go straight to the bucket. They used to be written into
+ * `frontend/public/audio`, which grew to 103 MB and eleven thousand files — a
+ * tree nothing served from, since the app reads media from R2. Nothing is left
+ * on disk but the temporary AIFF each clip is converted from.
+ *
+ * Skips anything the BUCKET already holds, so it is cheap to re-run after
+ * adding content, and clearing the old local tree does not cause every clip to
+ * be regenerated. That is the whole reason existence is asked of R2 rather than
+ * the filesystem.
  */
 
 const VOICE = 'Kyoko'
@@ -51,39 +61,38 @@ const VOICE_LEARNER = 'Reed (Japanese (Japan))'
  * timeout, not the whole run.
  */
 const CLIP_TIMEOUT_MS = 20_000
-const PUBLIC_AUDIO = path.resolve(process.cwd(), '../frontend/public/audio')
 
-async function exists(file: string): Promise<boolean> {
+/**
+ * Synthesise one clip and put it in the bucket.
+ *
+ * Both intermediates live in the system temp directory and are removed however
+ * this exits. Nothing is written to the repo — a clip that is generated but not
+ * uploaded would be invisible to the next run's bucket listing and silently
+ * regenerated forever.
+ */
+async function synthesise(text: string, key: string, voice = VOICE): Promise<boolean> {
+  const stem = path.join(tmpdir(), basename(key))
+  const aiff = `${stem}.aiff`
+  const m4a = `${stem}.m4a`
   try {
-    await access(file)
-    return true
-  } catch {
-    return false
-  }
-}
-
-async function synthesise(text: string, outFile: string, voice = VOICE): Promise<boolean> {
-  // The intermediate AIFF goes to the system temp directory, NOT next to the
-  // output. It used to live in public/audio, which the frontend build copies
-  // wholesale into dist — so any build running while this does died with
-  // ENOENT on a temp file that had already been converted and deleted.
-  const tmp = path.join(tmpdir(), `${basename(outFile)}.aiff`)
-  try {
-    await run('say', ['-v', voice, '-o', tmp, text], { timeout: CLIP_TIMEOUT_MS })
-    await run('afconvert', ['-f', 'm4af', '-d', 'aac', '-b', '32000', tmp, outFile], { timeout: CLIP_TIMEOUT_MS })
+    await run('say', ['-v', voice, '-o', aiff, text], { timeout: CLIP_TIMEOUT_MS })
+    await run('afconvert', ['-f', 'm4af', '-d', 'aac', '-b', '32000', aiff, m4a], { timeout: CLIP_TIMEOUT_MS })
+    await putAsset(key, await readFile(m4a), CONTENT_TYPES.audio!)
     return true
   } catch {
     return false
   } finally {
-    await unlink(tmp).catch(() => {})
+    await unlink(aiff).catch(() => {})
+    await unlink(m4a).catch(() => {})
   }
 }
 
 type AudioKind = 'kana' | 'words' | 'sentences' | 'dialogues'
 
 async function generate(kind: AudioKind) {
-  const dir = path.join(PUBLIC_AUDIO, kind)
-  await mkdir(dir, { recursive: true })
+  // One listing for the run rather than a HEAD per clip: at eleven thousand
+  // files the difference is seconds against most of an hour.
+  const stored = await listKeys(`audio/${kind}/`)
 
   let targets: Array<{ name: string, text: string, voice?: string }>
   if (kind === 'kana') {
@@ -145,17 +154,19 @@ async function generate(kind: AudioKind) {
   let failed = 0
 
   for (const t of targets) {
-    const outFile = path.join(dir, `${t.name}.m4a`)
-    if (await exists(outFile)) {
+    const key = `audio/${kind}/${t.name}.m4a`
+    if (stored.has(key)) {
       skipped++
       continue
     }
-    if (await synthesise(t.text, outFile, t.voice ?? VOICE))
+    if (await synthesise(t.text, key, t.voice ?? VOICE))
       made++
     else failed++
+    if ((made + failed) % 250 === 0 && made + failed > 0)
+      console.log(`  ${kind}: ${made} uploaded, ${failed} failed…`)
   }
 
-  console.log(`${kind}: ${made} generated, ${skipped} already present, ${failed} failed`)
+  console.log(`${kind}: ${made} generated and uploaded, ${skipped} already in the bucket, ${failed} failed`)
   if (failed > 0) {
     console.log('  (failures usually mean the Kyoko voice is missing — install it in')
     console.log('   System Settings → Accessibility → Spoken Content → System Voice)')
