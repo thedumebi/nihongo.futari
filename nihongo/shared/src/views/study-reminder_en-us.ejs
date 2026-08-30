@@ -4,11 +4,22 @@
   <% if (streak > 1) { %><%= streak %>-day streak<% } else { %>Time to study<% } %>
 </h1>
 <p style="margin: 0 0 24px;">
-  Hi <%= name %>, <%= dueCount %> <%= dueCount === 1 ? 'card is' : 'cards are' %> ready for review.
-  <% if (streak > 1) { %>A few minutes keeps the streak going.<% } %>
+  <%
+    /* Nothing due is not nothing to do. The reminder used to be suppressed
+       entirely in that case, so the day you cleared your reviews was the day
+       the app went quiet — exactly backwards. Study serves new material, so
+       there is always something here. */
+  %>
+  <% if (dueCount > 0) { %>
+    Hi <%= name %>, <%= dueCount %> <%= dueCount === 1 ? 'card is' : 'cards are' %> ready for review.
+    <% if (streak > 1) { %>A few minutes keeps the streak going.<% } %>
+  <% } else { %>
+    Hi <%= name %>, your reviews are all clear &mdash; a good moment to pick up something new.
+    <% if (streak > 1) { %>A few minutes keeps the streak going.<% } %>
+  <% } %>
 </p>
 <a href="<%= url %>" style="display: inline-block; background: #2f4858; color: #ffffff; text-decoration: none; padding: 12px 24px; border-radius: 8px; font-weight: 600;">
-  Start reviewing
+  <%= dueCount > 0 ? 'Start reviewing' : 'Learn something new' %>
 </a>
 <p style="margin: 24px 0 0; color: #888888; font-size: 13px;">
   You can turn these off in your settings at any time.

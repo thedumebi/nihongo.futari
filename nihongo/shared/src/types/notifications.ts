@@ -65,11 +65,25 @@ export const timezoneSchema = z.object({
 
 export type TimezoneInput = z.infer<typeof timezoneSchema>
 
+/**
+ * What one reminder run did, and why it did not do more.
+ *
+ * `skipped` alone was useless for diagnosis: a run that sent nothing reported
+ * `skipped: 2` whether the hour was wrong, the queue was empty, or the mail had
+ * already gone out that day. Every silent evening looked the same in the log.
+ * The reasons are broken out so a quiet run explains itself.
+ */
 export const reminderRunResultSchema = z.object({
   considered: z.number().int(),
   emailed: z.number().int(),
   pushed: z.number().int(),
-  skipped: z.number().int()
+  skipped: z.number().int(),
+  /** Right person, wrong time — their reminder is not this quarter hour. */
+  skippedNotDue: z.number().int(),
+  /** Already reminded today; a second cron run must not send twice. */
+  skippedAlreadySent: z.number().int(),
+  /** Reminders attempted but rejected by the mail or push provider. */
+  failed: z.number().int()
 }).openapi('ReminderRunResult')
 
 export type ReminderRunResult = z.infer<typeof reminderRunResultSchema>

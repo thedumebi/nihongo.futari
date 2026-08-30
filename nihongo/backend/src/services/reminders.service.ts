@@ -33,6 +33,7 @@ import { pushConfigured, sendPush } from '@/lib/push.js'
  */
 
 const REMINDER_KIND = 'daily-reminder'
+const SUMMARY_KIND = 'weekly-summary'
 
 interface Candidate {
   userId: string
@@ -125,11 +126,20 @@ export async function runReminders(now = new Date()): Promise<ReminderRunResult>
   const candidates = await findCandidates()
   let emailed = 0
   let pushed = 0
-  let skipped = 0
+  let skippedNotDue = 0
+  let skippedAlreadySent = 0
+  let failed = 0
 
   for (const c of candidates) {
-    if (!isDue(c, now) || c.dueCount === 0) {
-      skipped++
+    // Only the CLOCK decides whether to send.
+    //
+    // This used to also require `dueCount > 0`, which meant the reminder went
+    // quiet on exactly the days it was most useful: clear your reviews and the
+    // app stopped asking you to come back, so a finished day looked identical
+    // to an abandoned one. Study serves material you have never seen, so there
+    // is always something to open — the message adapts instead.
+    if (!isDue(c, now)) {
+      skippedNotDue++
       continue
     }
 
@@ -145,7 +155,7 @@ export async function runReminders(now = new Date()): Promise<ReminderRunResult>
       .returning({ id: notificationLog.id })
 
     if (!claimed) {
-      skipped++
+      skippedAlreadySent++
       continue
     }
 
@@ -181,7 +191,11 @@ export async function runReminders(now = new Date()): Promise<ReminderRunResult>
       for (const sub of subs) {
         const outcome = await sendPush(sub, {
           title: c.streak > 1 ? `${c.streak}-day streak` : 'Time to study',
-          body: `${c.dueCount} ${c.dueCount === 1 ? 'card is' : 'cards are'} waiting.`,
+          // A cleared queue still gets a nudge, so this cannot assume there is
+          // anything due — "0 cards are waiting" is worse than staying silent.
+          body: c.dueCount > 0
+            ? `${c.dueCount} ${c.dueCount === 1 ? 'card is' : 'cards are'} waiting.`
+            : 'Reviews all clear — time to learn something new.',
           url: '/study'
         })
         if (outcome.ok) {
@@ -203,6 +217,7 @@ export async function runReminders(now = new Date()): Promise<ReminderRunResult>
     }
 
     if (error) {
+      failed++
       await db
         .update(notificationLog)
         .set({ status: 'failed', error })
@@ -210,7 +225,16 @@ export async function runReminders(now = new Date()): Promise<ReminderRunResult>
     }
   }
 
-  return { considered: candidates.length, emailed, pushed, skipped }
+  return {
+    considered: candidates.length,
+    emailed,
+    pushed,
+    // Kept as the total so existing readers of the log still make sense.
+    skipped: skippedNotDue + skippedAlreadySent,
+    skippedNotDue,
+    skippedAlreadySent,
+    failed
+  }
 }
 
 /**
@@ -239,7 +263,9 @@ export async function runWeeklySummaries(now = new Date()): Promise<ReminderRunR
 
   let considered = 0
   let emailed = 0
-  let skipped = 0
+  let skippedNotDue = 0
+  let skippedAlreadySent = 0
+  let failed = 0
 
   for (const c of candidates) {
     considered++
@@ -252,7 +278,27 @@ export async function runWeeklySummaries(now = new Date()): Promise<ReminderRunR
     // the weekly summary would have kept exactly the bug that was just removed
     // from the reminder — silence, from a rule the reader never saw.
     if (!isSendTime) {
-      skipped++
+      skippedNotDue++
+      continue
+    }
+
+    // Claim the week BEFORE sending.
+    //
+    // The comment above this function has always said idempotency came from
+    // "the same dedupe key scheme the daily reminder uses". It did not: there
+    // was no claim here at all. The send window is a whole hour and the cron
+    // ticks every fifteen minutes, so every Sunday sent the summary FOUR times.
+    // Keyed on the local ISO week, so a reader who crosses a timezone still
+    // gets one.
+    const dedupeKey = `${c.userId}:${SUMMARY_KIND}:${local.weekYear}-W${local.weekNumber}`
+    const [claimed] = await db
+      .insert(notificationLog)
+      .values({ userId: c.userId, channel: 'email', kind: SUMMARY_KIND, dedupeKey })
+      .onConflictDoNothing({ target: notificationLog.dedupeKey })
+      .returning({ id: notificationLog.id })
+
+    if (!claimed) {
+      skippedAlreadySent++
       continue
     }
 
@@ -298,9 +344,20 @@ export async function runWeeklySummaries(now = new Date()): Promise<ReminderRunR
       })
       emailed++
     } catch {
-      skipped++
+      // A send that was attempted and rejected is a FAILURE, not a skip. Filing
+      // it under `skipped` is how a broken mail provider read in the log as a
+      // quiet week.
+      failed++
     }
   }
 
-  return { considered, emailed, pushed: 0, skipped }
+  return {
+    considered,
+    emailed,
+    pushed: 0,
+    skipped: skippedNotDue + skippedAlreadySent,
+    skippedNotDue,
+    skippedAlreadySent,
+    failed
+  }
 }

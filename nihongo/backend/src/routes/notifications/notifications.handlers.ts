@@ -53,7 +53,14 @@ export const runReminders: AppRouteHandler<RunRemindersRoute> = async (c) => {
     considered: daily.considered + weekly.considered,
     emailed: daily.emailed + weekly.emailed,
     pushed: daily.pushed + weekly.pushed,
-    skipped: daily.skipped + weekly.skipped
+    skipped: daily.skipped + weekly.skipped,
+    // Broken out so a run that sent nothing says WHY in the cron log. The
+    // single `skipped` total could not distinguish "not their hour" from
+    // "already sent today" from "the provider rejected it", which is what made
+    // a silent evening impossible to diagnose from the log alone.
+    skippedNotDue: daily.skippedNotDue + weekly.skippedNotDue,
+    skippedAlreadySent: daily.skippedAlreadySent + weekly.skippedAlreadySent,
+    failed: daily.failed + weekly.failed
   }, HttpStatusCodes.OK)
 }
 
