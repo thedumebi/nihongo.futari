@@ -2,6 +2,7 @@
 import { readdir, writeFile } from 'node:fs/promises'
 import path from 'node:path'
 
+import { IMAGE_ALIASES } from './data/image-aliases.js'
 import { listKeys } from './lib/bucket.js'
 
 /**
@@ -22,6 +23,14 @@ import { listKeys } from './lib/bucket.js'
  * complete current list rather than only what is new is therefore deliberate —
  * re-attaching a drawing a card already has is a no-op, so a superset is safe
  * and cannot leave a gap if a batch is ever missed.
+ *
+ * Two mappings are emitted. The first attaches each word to its OWN drawing.
+ * The second attaches a word to ANOTHER word's drawing, for pairs that mean the
+ * same thing — 書物 can honestly use 本's book, and drawing a second book would
+ * add a file without adding information. Those pairs are curated in
+ * `data/image-aliases.ts` rather than derived, because the obvious derivation
+ * (identical English gloss) is wrong often enough to matter: it pairs 書斎, a
+ * study ROOM, with 勉強, studying.
  *
  *   pnpm -C nihongo/backend seed:images
  */
@@ -48,6 +57,15 @@ async function main() {
   const rows: string[] = []
   for (let i = 0; i < entSeqs.length; i += 12)
     rows.push(`    ${entSeqs.slice(i, i + 12).join(', ')}`)
+
+  // Only aliases whose TARGET was actually drawn. A curated pair pointing at a
+  // picture that does not exist would give the borrower a 404 rather than the
+  // owner's drawing, which is worse than leaving it blank.
+  const drawn = new Set(entSeqs)
+  const aliases = Object.entries(IMAGE_ALIASES)
+    .map(([from, to]) => [Number(from), to] as const)
+    .filter(([, to]) => drawn.has(to))
+    .sort((a, b) => a[0] - b[0])
 
   const sql = `-- Vocabulary illustrations: attach the hand-drawn SVG to every word that has one.
 --
@@ -79,8 +97,36 @@ ${rows.join(',\n')}
   AND coalesce(p.assets ->> 'image', '') <> '/images/vocab/' || w.ent_seq || '.svg';
 `
 
-  await writeFile(path.join(SEEDS, name), sql)
-  console.log(`Wrote ${name} — ${entSeqs.length} illustrations`)
+  const aliasSql = aliases.length === 0
+    ? ''
+    : `
+-- ---------------------------------------------------------------------------
+-- Words that borrow another word's drawing.
+--
+-- ${aliases.length} pairs that mean the same thing, so one picture teaches both and a
+-- second drawing would add a file without adding information.
+--
+-- Curated in \`pipeline/data/image-aliases.ts\`, never derived. Matching words by
+-- shared English gloss looks obvious and is wrong often enough to be dangerous:
+-- it pairs 書斎 (a study ROOM) with 勉強 (studying), 岸 (a riverbank) with 銀行,
+-- and 博士 (a PhD) with 医師 (a physician).
+--
+-- Same merge and same re-run guard as above.
+UPDATE exercise_prompts p
+SET assets = p.assets || jsonb_build_object('image', '/images/vocab/' || a.target || '.svg'),
+    updated_at = now()
+FROM study_item_facets f
+JOIN study_items si ON si.id = f.study_item_id
+JOIN words w ON w.id = si.word_id
+JOIN (VALUES
+${aliases.map(([from, to]) => `    (${from}, ${to})`).join(',\n')}
+) AS a(source, target) ON a.source = w.ent_seq
+WHERE p.facet_id = f.id
+  AND coalesce(p.assets ->> 'image', '') <> '/images/vocab/' || a.target || '.svg';
+`
+
+  await writeFile(path.join(SEEDS, name), sql + aliasSql)
+  console.log(`Wrote ${name} — ${entSeqs.length} illustrations, ${aliases.length} aliases`)
 }
 
 main().catch((err) => {
