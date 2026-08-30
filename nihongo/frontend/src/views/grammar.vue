@@ -23,7 +23,7 @@ const { mode, knownKanji, loadKnownKanji, loadSettings } = useFurigana()
 const points = ref<GrammarListResponse['points']>([])
 const loading = ref(true)
 // Shared: picking N5 in Study should filter Grammar to N5 too.
-const { level } = useLevel()
+const { level, loadLevel } = useLevel()
 const levelIcon = Layers
 
 /** JLPT order, easiest first. Anything unrecognised sorts last. */
@@ -112,6 +112,8 @@ const visible = computed(() => points.value
 const withWhy = computed(() => visible.value.filter(p => p.hasEtymology).length)
 
 onMounted(async () => {
+  // Cached value renders now; the stored one replaces it when it lands.
+  void loadLevel()
   void loadKnownKanji(lang.code)
   void loadSettings()
   try {

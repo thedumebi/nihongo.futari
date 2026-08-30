@@ -71,6 +71,13 @@
       "when": 1788293924478,
       "tag": "0009_drop_quiet_hours",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1788293925478,
+      "tag": "0010_study_level",
+      "breakpoints": true
     }
   ]
 }

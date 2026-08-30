@@ -71,7 +71,7 @@ const stats = computed(() => {
 const LEVELS = ['N5', 'N4', 'N3', 'N2', 'N1']
 // Shared, but this page reports on exactly ONE level, so an empty shared
 // value (meaning "all") falls back to N5 rather than sending no filter.
-const { level: sharedLevel } = useLevel()
+const { level: sharedLevel, loadLevel } = useLevel()
 const level = computed({
   get: () => sharedLevel.value || 'N5',
   set: (v: string) => { sharedLevel.value = v }
@@ -89,6 +89,8 @@ async function loadReadiness() {
 watch(level, loadReadiness)
 
 onMounted(async () => {
+  // Cached value renders now; the stored one replaces it when it lands.
+  void loadLevel()
   void loadReadiness()
   try {
     summary.value = await getSummary()

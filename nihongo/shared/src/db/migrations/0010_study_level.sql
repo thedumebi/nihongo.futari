@@ -1,0 +1,15 @@
+-- Remember the level the reader chose.
+--
+-- It lived only in `localStorage`, which lost it in two different ways that
+-- look identical from the outside — the app forgot.
+--
+-- A home-screen web app on iOS keeps its OWN storage container, separate from
+-- the browser's, so a level picked in Safari was invisible to the installed
+-- app and vice versa. And iOS evicts script-writable storage after a stretch
+-- of disuse, so even inside one container the choice quietly expired. That is
+-- why it worked "sometimes".
+--
+-- A level code such as 'N5'. The empty string means every level, which is what
+-- the Study and Grammar pickers already meant by "All", so the default matches
+-- the behaviour every existing row has today.
+ALTER TABLE "user_settings" ADD COLUMN IF NOT EXISTS "study_level" text DEFAULT '' NOT NULL;

@@ -33,7 +33,23 @@ export type LevelReadinessSnapshot = typeof levelReadinessSnapshots.$inferSelect
  * exactly one home for this value, and one vocabulary for it (FURIGANA_MODES).
  */
 export const studySettingsSchema = z.object({
-  furiganaMode: z.enum(FURIGANA_MODES)
+  furiganaMode: z.enum(FURIGANA_MODES),
+  /** A level code such as 'N5'; the empty string means every level. */
+  studyLevel: z.string()
 }).openapi('StudySettings')
 
 export type StudySettings = z.infer<typeof studySettingsSchema>
+
+/**
+ * The body of a settings PATCH.
+ *
+ * Partial because a PATCH sends only what changed: the furigana picker writes
+ * `furiganaMode` alone and the level picker writes `studyLevel` alone. Demanding
+ * the whole object would make adding any second setting break the first — which
+ * is exactly what happened when this became more than one field.
+ */
+export const studySettingsPatchSchema = studySettingsSchema
+  .partial()
+  .openapi('StudySettingsPatch')
+
+export type StudySettingsPatch = z.infer<typeof studySettingsPatchSchema>

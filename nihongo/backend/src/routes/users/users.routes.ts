@@ -1,6 +1,6 @@
 import { HttpStatusCodes, USER_ROUTES } from '@nihongo/shared/constants'
 import { createSecuredRoute, jsonContent, jsonContentRequired } from '@nihongo/shared/openapi'
-import { studySettingsSchema } from '@nihongo/shared/types'
+import { studySettingsPatchSchema, studySettingsSchema } from '@nihongo/shared/types'
 
 import authMiddleware from '@/middlewares/auth.js'
 
@@ -24,7 +24,7 @@ export const updateSettings = createSecuredRoute({
   method: 'patch',
   summary: 'Update study preferences',
   middleware: [authMiddleware],
-  request: { body: jsonContentRequired(studySettingsSchema, 'Settings') },
+  request: { body: jsonContentRequired(studySettingsPatchSchema, 'Settings') },
   responses: {
     [HttpStatusCodes.OK]: jsonContent(studySettingsSchema, 'Updated settings')
   }

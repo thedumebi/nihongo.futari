@@ -25,6 +25,18 @@ export const userSettings = pgTable('user_settings', {
   sessionLength: integer('session_length').notNull().default(20),
   /** See FURIGANA_MODES in constants — the single vocabulary for this value. */
   furiganaMode: text('furigana_mode').notNull().default('unknown-only'),
+  /**
+   * The JLPT level the reader is working at, as a level CODE ('N5'), with the
+   * empty string meaning every level.
+   *
+   * Server-side because `localStorage` alone could not hold it. A home-screen
+   * web app on iOS keeps its own storage container, separate from the browser's,
+   * so a level picked in Safari was invisible to the installed app; and iOS
+   * evicts script-writable storage after a stretch of disuse, so even within one
+   * container the choice quietly expired. Both look identical to the reader:
+   * the app forgot.
+   */
+  studyLevel: text('study_level').notNull().default(''),
   romajiEnabled: boolean('romaji_enabled').notNull().default(false),
   autoplayAudio: boolean('autoplay_audio').notNull().default(true),
   audioSpeed: numeric('audio_speed', { precision: 3, scale: 2 }).notNull().default('1.00'),
