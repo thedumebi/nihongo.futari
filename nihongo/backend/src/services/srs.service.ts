@@ -378,18 +378,43 @@ const STAGE_PASS = 0.8
  */
 export async function stageCeilings(userId: string, languageId: string): Promise<Map<string, number>> {
   const result = await db.execute(sql`
-    with stages as (
+    -- Progress is measured per ITEM, not per facet, and that distinction is
+    -- load-bearing rather than stylistic.
+    --
+    -- Counting facets made the denominator grow whenever a new KIND of drill
+    -- was added to existing content. Introducing a listening card for every
+    -- word took stage 4 of N5 from 135 facets to 178 — so a reader sitting at
+    -- exactly the 80% pass mark (108/135) silently became 108/178, or 61%.
+    -- Because the ceiling is the FIRST failing stage, that does not merely stop
+    -- progress: it drags the ceiling BACKWARDS and re-locks material that had
+    -- already been unlocked, for content the reader had not got wrong.
+    --
+    -- An item counts as met once any of its facets reaches review state. The
+    -- gate exists to pace movement through the curriculum, not to demand every
+    -- drill type on a word before the next word is allowed to appear.
+    with items as (
       select
+        si.id,
         si.level_id,
         ceil(si.sort_index::float / ${STAGE_SIZE}) as stage,
-        count(*) as total,
-        count(*) filter (where sc.state >= 2) as learned
+        -- bool_or ignores nulls and returns null when every row is null, which
+        -- is precisely the never-studied case, so it needs a floor.
+        coalesce(bool_or(sc.state >= 2), false) as learned
       from study_items si
       join study_item_facets f on f.study_item_id = si.id and f.enabled
       left join srs_cards sc on sc.facet_id = f.id and sc.user_id = ${userId}
       where si.published and si.active
         and si.level_id is not null
         and si.language_id = ${languageId}
+      group by si.id, si.level_id, stage
+    ),
+    stages as (
+      select
+        level_id,
+        stage,
+        count(*) as total,
+        count(*) filter (where learned) as learned
+      from items
       group by 1, 2
     )
     select level_id, min(stage) as first_open
