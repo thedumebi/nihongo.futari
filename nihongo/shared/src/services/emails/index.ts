@@ -1,6 +1,7 @@
 import type SMTPTransport from 'nodemailer/lib/smtp-transport/index.js'
 
 import type {
+  InviteEmailType,
   ResetPasswordEmailType,
   SignInOtpType,
   StudyReminderType,
@@ -11,6 +12,7 @@ import type {
 
 import { sendMail } from '@/helpers/emails.js'
 
+import InviteMessage from './messages/invite.js'
 import ResetPasswordMessage from './messages/reset-password.js'
 import SignInOtpMessage from './messages/signin-otp.js'
 import StudyReminderMessage from './messages/study-reminder.js'
@@ -21,6 +23,7 @@ import WeeklySummaryMessage from './messages/weekly-summary.js'
 export { renderTemplate } from '@/helpers/emails.js'
 
 export type {
+  InviteEmailType,
   ResetPasswordEmailType,
   SignInOtpType,
   StudyReminderType,
@@ -47,6 +50,11 @@ export default class SendMail {
 
   static async sendVerifyEmail(data: VerifyEmailType, language?: string): Promise<SMTPTransport.SentMessageInfo> {
     const inst = new VerifyEmailMessage(data, { email: data.email, name: data.name }, language)
+    return sendMail(await inst.buildMessage())
+  }
+
+  static async sendInvite(data: InviteEmailType, language?: string): Promise<SMTPTransport.SentMessageInfo> {
+    const inst = new InviteMessage(data, { email: data.email, name: data.name }, language)
     return sendMail(await inst.buildMessage())
   }
 

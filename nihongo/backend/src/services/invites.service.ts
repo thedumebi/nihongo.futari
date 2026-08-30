@@ -2,6 +2,7 @@ import type { CreateInviteInput, Invite, InviteResponse } from '@nihongo/shared/
 
 import db from '@nihongo/shared/db'
 import { inviteRedemptions, inviteReservations, invites } from '@nihongo/shared/db/schema'
+import SendMail from '@nihongo/shared/emails'
 import env from '@nihongo/shared/env'
 import { and, desc, eq, gt, isNull, sql } from 'drizzle-orm'
 import { randomBytes } from 'node:crypto'
@@ -71,6 +72,50 @@ export async function createInvite(adminUserId: string, input: CreateInviteInput
     .returning()
 
   return toResponse(row!)
+}
+
+/**
+ * Email an invitation to the person it was addressed to.
+ *
+ * Separate from `createInvite` and never able to fail it. The code is valid the
+ * moment the row exists, so a mail outage must not roll back an invitation or
+ * return an error for one that was genuinely created — the admin can still copy
+ * the link. What it must not do is stay silent: the caller gets told whether
+ * delivery happened so the UI can say so.
+ *
+ * Returns undefined when there is nobody to send to, which is the ordinary case
+ * for a shareable code.
+ */
+export async function sendInviteEmail(
+  invite: InviteResponse,
+  invitedBy: string
+): Promise<{ emailSent: boolean, emailError?: string } | undefined> {
+  if (!invite.email)
+    return undefined
+
+  try {
+    await SendMail.sendInvite({
+      email: invite.email,
+      // There is no name for someone who does not have an account yet.
+      name: invite.email,
+      code: invite.code,
+      url: invite.url,
+      invitedBy,
+      expiresAt: invite.expiresAt
+        ? new Date(invite.expiresAt).toLocaleDateString('en-GB', {
+            day: 'numeric',
+            month: 'long',
+            year: 'numeric'
+          })
+        : 'no set date'
+    })
+    return { emailSent: true }
+  } catch (err) {
+    return {
+      emailSent: false,
+      emailError: err instanceof Error ? err.message : 'Email failed'
+    }
+  }
 }
 
 export async function listInvites(): Promise<InviteResponse[]> {

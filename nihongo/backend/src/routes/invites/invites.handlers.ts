@@ -3,7 +3,7 @@ import env from '@nihongo/shared/env'
 
 import type { AppRouteHandler } from '@/lib/types.js'
 
-import { createInvite, listInvites, reserveInvite, revokeInvite } from '@/services/invites.service.js'
+import { createInvite, listInvites, reserveInvite, revokeInvite, sendInviteEmail } from '@/services/invites.service.js'
 
 import type { CreateRoute, ListRoute, ReserveRoute, RevokeRoute, SignupModeRoute } from './invites.routes.js'
 
@@ -34,7 +34,17 @@ export const list: AppRouteHandler<ListRoute> = async (c) => {
 export const create: AppRouteHandler<CreateRoute> = async (c) => {
   const user = c.get('user')!
   const invite = await createInvite(user.id, c.req.valid('json'))
-  return c.json(invite, HttpStatusCodes.CREATED)
+
+  // An invite addressed to someone should REACH them. Until this existed,
+  // creating one only reserved a code and the admin had to copy the link by
+  // hand — so an invitation that was "sent" from the admin screen sent nothing.
+  //
+  // Delivery is reported, never thrown: the code is valid the moment the row
+  // exists, and failing the request would hide a real invite behind a mail
+  // problem. Returns undefined for a shareable code with no recipient.
+  const delivery = await sendInviteEmail(invite, user.name || user.email)
+
+  return c.json({ ...invite, ...delivery }, HttpStatusCodes.CREATED)
 }
 
 export const revoke: AppRouteHandler<RevokeRoute> = async (c) => {

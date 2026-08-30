@@ -35,6 +35,22 @@ export const verifyEmailSchema = emailRecipientSchema.extend({
 })
 export type VerifyEmailType = z.infer<typeof verifyEmailSchema>
 
+/**
+ * An invitation to create an account.
+ *
+ * `url` carries the code, so the recipient never has to copy one; `code` is
+ * sent as well because mail clients mangle links often enough that a code you
+ * can read and type is the difference between an invitation and a dead end.
+ */
+export const inviteEmailSchema = emailRecipientSchema.extend({
+  code: z.string(),
+  url: z.string(),
+  /** Who sent it, so the mail is not from a stranger. */
+  invitedBy: z.string(),
+  expiresAt: z.string()
+})
+export type InviteEmailType = z.infer<typeof inviteEmailSchema>
+
 export const studyReminderSchema = emailRecipientSchema.extend({
   dueCount: z.number().int(),
   streak: z.number().int(),

@@ -44,7 +44,19 @@ export const inviteResponseSchema = z.object({
   revokedAt: z.iso.datetime().nullable(),
   createdAt: z.iso.datetime(),
   /** Ready-to-send signup link. */
-  url: z.string()
+  url: z.string(),
+  /**
+   * Whether the invitation email actually went out.
+   *
+   * Absent when the question does not apply — a shareable code with no
+   * recipient, or an invite being listed rather than created. Present and false
+   * means it was attempted and failed, which the admin has to be told: an
+   * invite that silently sends nothing looks identical to one that worked, and
+   * that is exactly how someone ends up waiting for a mail that never existed.
+   */
+  emailSent: z.boolean().optional(),
+  /** Why delivery failed, when it did. */
+  emailError: z.string().optional()
 }).openapi('Invite')
 
 export type InviteResponse = z.infer<typeof inviteResponseSchema>
