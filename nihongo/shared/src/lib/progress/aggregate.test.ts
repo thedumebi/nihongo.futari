@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 
-import type { AggregateEvent, SrsRating } from '@/types/progress.js'
+import type { AggregateEvent } from '@/types/progress.js'
+import type { SrsRating } from '@/types/srs.js'
 
 import { aggregateReviews } from './aggregate.js'
 

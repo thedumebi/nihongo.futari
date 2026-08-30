@@ -83,9 +83,11 @@ pnpm 9 + Turbo 2 monorepo. Node 22.17.0.
   literal paths **before** `/:id`). All DB access lives in
   `backend/src/services/<domain>.service.ts` — never in a handler.
 - Paths come from `shared/src/constants/endpoints.ts`. Don't hard-code a URL.
-- **Migrations: `drizzle-kit generate` + reviewed SQL.** Not `push`. This DB
-  holds a large imported content corpus; `push` will eventually propose a
-  destructive alter and eat an import run.
+- **Migrations: `drizzle-kit generate` + reviewed SQL.** Never hand-written,
+  never `push`. Generate first, then edit the file it produced. Hand-writing the
+  `.sql` and registering it yourself skips the snapshot Drizzle needs and breaks
+  the NEXT generate, not yours — it happened three times running. Full rule and
+  the repair procedure: `.claude/rules/migrations.md`.
 
 ## Domain rules that are not negotiable
 
