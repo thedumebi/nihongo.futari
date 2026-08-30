@@ -51,6 +51,17 @@
    */
   --card-art-opacity: 0.09;
 
+  /*
+   * After the answer is on screen, the drawing stops being a watermark.
+   *
+   * Before the reveal it must stay behind the prompt, which is why it sits at
+   * 0.09. Afterwards there is nothing left to protect: the answer is already
+   * known, so the picture can be seen properly and do the job it was drawn for.
+   * Still a backdrop rather than an illustration, so the verdict and the rating
+   * buttons stay the most legible things on the card.
+   */
+  --card-art-opacity-revealed: 0.22;
+
   /* Inputs share the card surface with a hairline border. */
   --input-bg: #ffffff;
   --input-txt: #1b2a33;
@@ -61,6 +72,9 @@
 /* Dark: deep slate paper, cool off-white text. Same quiet intent. */
 [data-theme='dark'] {
   --card-art-opacity: 0.06;
+  /* Lower than light, for the same reason: the drawings carry an opaque ivory
+     ground and read as a bright panel against deep slate. */
+  --card-art-opacity-revealed: 0.15;
   --color-primary: #eef2f4;
   --color-hover: #8fb4c8;
   --color-accent: #8fb4c8;

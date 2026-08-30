@@ -202,6 +202,35 @@ const stage = computed(() =>
   progress.value.find(p => p.level === levelCode.value) ?? progress.value[0])
 
 /**
+ * The stage you just finished, while the congratulation is on screen.
+ *
+ * Advancing a stage was completely silent. The only sign was the counter in the
+ * header changing denominator — 48/50 becoming 0/50 — which reads as the app
+ * losing your progress rather than granting you the next set. It is the one
+ * genuine milestone in the whole loop and it went unremarked.
+ *
+ * Progress only refreshes when the queue reloads, so this fires at the end of a
+ * batch. That is the moment the app actually learns the stage moved; announcing
+ * it earlier would mean guessing.
+ */
+const stageUp = ref<{ level: string, from: number, to: number, stages: number } | null>(null)
+
+watch(stage, (next, previous) => {
+  // Same level only. Switching the level picker changes which row this is
+  // reading, and that is not an achievement.
+  if (!next || !previous || next.level !== previous.level)
+    return
+  if (next.stage > previous.stage) {
+    stageUp.value = {
+      level: next.level,
+      from: previous.stage,
+      to: next.stage,
+      stages: next.stages
+    }
+  }
+})
+
+/**
  * The "not yet" explanation, assembled here rather than in the template.
  *
  * Built as a string because the markup version put the comma on its own line
@@ -506,10 +535,31 @@ const answerIsEnglish = computed(() => {
  * "At a konbini" is quietly set in a convenience store.
  */
 const cardArt = computed(() => {
-  if (imageSrc.value && !isCloze.value && !isOrdering.value && !answerIsEnglish.value)
+  // Once the answer is on screen there is nothing left to give away, so every
+  // word that HAS a drawing shows it — including the cards that must withhold
+  // it while the question stands.
+  //
+  // Those exclusions are all about spoilers, not taste: on a meaning card the
+  // drawing IS the answer, and on a cloze or an ordering drill it hands over
+  // the sentence. Before the reveal that rules out roughly three cards in five;
+  // after it, none. Nine hundred drawings were otherwise sitting unused on the
+  // majority of the cards that reference them.
+  if (imageSrc.value && (revealed.value || (!isCloze.value && !isOrdering.value && !answerIsEnglish.value)))
     return imageSrc.value
   return focused.value ? '' : (activeDeck.value?.imageUrl ?? '')
 })
+
+/**
+ * How strongly the backdrop reads.
+ *
+ * Faint while the question stands so the prompt keeps the eye; stronger once
+ * answered, because at that point the picture is the reward rather than a
+ * distraction — and at 0.09 it was barely visible enough to count as shown.
+ */
+const cardArtOpacity = computed(() =>
+  revealed.value && imageSrc.value
+    ? 'var(--card-art-opacity-revealed)'
+    : 'var(--card-art-opacity)')
 
 /** Whether the illustration is open full screen. */
 const artOpen = ref(false)
@@ -972,7 +1022,12 @@ watch(() => lang.code, async () => {
                 :style="{ width: `${Math.round((stage.learned / Math.max(stage.total, 1)) * 100)}%` }"
               />
             </span>
-            <span>{{ stage.learned }}/{{ stage.total }}</span>
+            <!--
+              Labelled, because a bare "0/50" next to "stage 2/60" reads as a
+              second, contradictory stage count. It is neither: it is how much
+              of THIS stage has stuck, and it resets each time a stage opens.
+            -->
+            <span>{{ stage.learned }}/{{ stage.total }} learned</span>
           </span>
         </Tooltip>
         <span v-if="sessionSeen > 0" class="ml-auto text-sm text-[var(--color-muted)]">
@@ -1084,8 +1139,8 @@ watch(() => lang.code, async () => {
           :src="cardArt"
           alt=""
           aria-hidden="true"
-          class="pointer-events-none absolute inset-0 h-full w-full select-none object-contain p-6"
-          :style="{ opacity: 'var(--card-art-opacity)' }"
+          class="pointer-events-none absolute inset-0 h-full w-full select-none object-contain p-6 transition-opacity duration-500"
+          :style="{ opacity: cardArtOpacity }"
           loading="lazy"
         >
         <div class="relative">
@@ -1433,6 +1488,42 @@ watch(() => lang.code, async () => {
           </form>
         </div>
       </div>
+
+      <!--
+        Reaching a new stage. Dismissible and self-closing on click: this marks
+        a moment, it does not ask for a decision.
+      -->
+      <VueFinalModal
+        :model-value="stageUp !== null"
+        class="flex items-center justify-center"
+        content-class="flex items-center justify-center"
+        overlay-class="bg-black/60"
+        :click-to-close="true"
+        :esc-to-close="true"
+        @update:model-value="stageUp = null"
+      >
+        <div
+          v-if="stageUp"
+          class="mx-4 max-w-sm rounded-2xl border border-[var(--color-border)] bg-[var(--color-card)] p-8 text-center"
+        >
+          <p class="text-3xl">
+            🎉
+          </p>
+          <p class="mt-3 text-xl font-semibold">
+            Stage {{ stageUp.from }} complete
+          </p>
+          <p class="mt-3 text-sm leading-relaxed text-[var(--color-muted)]">
+            You have retained enough of {{ stageUp.level }} stage {{ stageUp.from }},
+            so stage {{ stageUp.to }} is open. New cards now come from there.
+          </p>
+          <p class="mt-4 text-sm text-[var(--color-muted)]">
+            {{ stageUp.level }} &middot; stage {{ stageUp.to }} of {{ stageUp.stages }}
+          </p>
+          <Button class="mt-6" variant="primary" @click="stageUp = null">
+            Keep going
+          </Button>
+        </div>
+      </VueFinalModal>
 
       <!--
         The illustration, full size. VueFinalModal locks scrolling on the page

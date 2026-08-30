@@ -443,18 +443,32 @@ export async function stageCeilings(userId: string, languageId: string): Promise
  */
 export async function stageProgress(userId: string, languageId: string): Promise<StageProgress[]> {
   const result = await db.execute(sql`
-    with stages as (
+    -- Counted per ITEM, exactly as \`stageCeilings\` counts. These two must
+    -- agree: this is the number on screen and that is the rule that actually
+    -- unlocks the next stage, so measuring them differently means the bar can
+    -- sit at 100% while the stage is still shut, or open a stage the bar says
+    -- is half done. Same query shape, deliberately.
+    with items as (
       select
+        si.id,
         si.level_id,
         ceil(si.sort_index::float / ${STAGE_SIZE}) as stage,
-        count(*) as total,
-        count(*) filter (where sc.state >= 2) as learned
+        coalesce(bool_or(sc.state >= 2), false) as learned
       from study_items si
       join study_item_facets f on f.study_item_id = si.id and f.enabled
       left join srs_cards sc on sc.facet_id = f.id and sc.user_id = ${userId}
       where si.published and si.active
         and si.level_id is not null
         and si.language_id = ${languageId}
+      group by si.id, si.level_id, stage
+    ),
+    stages as (
+      select
+        level_id,
+        stage,
+        count(*) as total,
+        count(*) filter (where learned) as learned
+      from items
       group by 1, 2
     ),
     current as (
