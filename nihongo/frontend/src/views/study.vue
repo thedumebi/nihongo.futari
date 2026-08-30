@@ -36,6 +36,7 @@ import WritingCanvas from '@/components/writing/writing-canvas.vue'
 import { playAudio } from '@/composables/use-audio'
 import { useFurigana } from '@/composables/use-furigana'
 import { useLevel } from '@/composables/use-level'
+import { ROUTES } from '@/constants'
 import { cacheBundle, enqueueAnswer, readBundle, requestPersistence } from '@/offline/db'
 import { flush, onSyncChange, startSync } from '@/offline/sync'
 import { useLanguageStore } from '@/store/language'
@@ -49,12 +50,32 @@ const route = useRoute()
  * the same mixed queue — two different numbers pointing at one undifferentiated
  * page, which tells the reader nothing about either.
  */
-const mode = ref<'due' | 'new' | 'mixed'>(
-  route.query.mode === 'due' || route.query.mode === 'new' ? route.query.mode : 'mixed'
-)
+const requestedMode = route.query.mode === 'due' || route.query.mode === 'new'
+  ? route.query.mode
+  : null
 
-/** A session that was entered for one purpose, not the open-ended deck picker. */
-const focused = computed(() => mode.value !== 'mixed')
+/**
+ * Study means NEW. Reviews live on Due now.
+ *
+ * This used to default to `mixed`, which served due cards alongside new ones —
+ * and because due cards are taken first and new ones only get what is left of
+ * the session limit, a reader with a normal backlog got a queue of nothing but
+ * material they had already seen. Studying stopped introducing anything.
+ *
+ * The two surfaces now mean two different things, which is the only way either
+ * number on the progress page is worth showing: Study brings you what you have
+ * never met, Due now brings back what the scheduler asked for.
+ */
+const mode = ref<'due' | 'new'>(requestedMode ?? 'new')
+
+/**
+ * A session entered for one purpose, not the open-ended deck picker.
+ *
+ * Keyed on the URL having NAMED a mode, not on the mode's value. Deriving it
+ * from the mode would mean the ordinary Study page — now `new` by default —
+ * counted as focused, and focused sessions hide the deck and level pickers.
+ */
+const focused = ref(requestedMode !== null)
 
 const focusLabel = computed(() =>
   mode.value === 'due' ? "Reviewing what's due" : 'Learning new cards')
@@ -73,7 +94,8 @@ const router = useRouter()
  * deck dropdown comes back.
  */
 function clearFocus() {
-  mode.value = 'mixed'
+  mode.value = 'new'
+  focused.value = false
   void router.replace({ query: {} })
   void load()
 }
@@ -95,7 +117,7 @@ const deckId = useLocalStorage('go-deck', 'all')
  * gate on the corpus.
  */
 // Shared with Grammar, Progress and anywhere else that filters by level.
-const { level: levelCode } = useLevel()
+const { level: levelCode, loadLevel } = useLevel()
 
 // `?level=N5` from the course page wins over the remembered choice, so
 // following "Continue" lands where the course said it would.
@@ -750,6 +772,45 @@ function resetCard() {
   shownAt.value = Date.now()
 }
 
+/** Whether there is an earlier card in this queue to go back to. */
+const canGoBack = computed(() => index.value > 0)
+
+/**
+ * Step back to the card before this one.
+ *
+ * Bounded by the queue in memory, not by history: `next()` reloads at the end
+ * of a queue and resets the index, so "back" cannot reach across that boundary
+ * and there is nothing to go back TO once it happens.
+ */
+function back() {
+  if (index.value === 0)
+    return
+  resetCard()
+  index.value -= 1
+  void focusInput()
+}
+
+/**
+ * Move on without answering.
+ *
+ * Deliberately NOT `next()`. That one banks a revealed-but-unrated correct
+ * answer as Good so that hitting Enter never loses a review — which is right
+ * for finishing a card and wrong for abandoning one. Skipping must record
+ * nothing at all: no rating, no review log, no change to the card's schedule.
+ *
+ * The card is not removed from the queue either, so it comes back around on a
+ * later session exactly as if it had never been shown.
+ */
+async function skip() {
+  resetCard()
+  index.value += 1
+  if (index.value >= items.value.length) {
+    await load()
+    return
+  }
+  await focusInput()
+}
+
 async function next() {
   // A revealed-but-unrated correct answer still counts as Good, so skipping
   // ahead never silently loses a review.
@@ -811,6 +872,8 @@ async function selectDeck(id: string) {
 }
 
 onMounted(async () => {
+  // Cached value renders now; the stored one replaces it when it lands.
+  void loadLevel()
   window.addEventListener('keydown', onKey)
   void requestPersistence()
   void loadKnownKanji(lang.code)
@@ -947,7 +1010,18 @@ watch(() => lang.code, async () => {
           </p>
         </template>
         <p v-else class="text-2xl font-semibold">
-          Nothing due right now.
+          {{ mode === 'new' ? 'Nothing new right now.' : 'Nothing due right now.' }}
+        </p>
+        <!--
+          Study only ever serves new material now, so running out of it is not
+          the same as having nothing to do — and the reader has no way to tell
+          unless the empty state says where the rest of the work went.
+        -->
+        <p v-if="mode === 'new' && !gate && counts.due > 0" class="mx-auto mt-3 max-w-md text-sm text-[var(--color-muted)]">
+          You have met everything available at this level for now.
+          <router-link :to="`${ROUTES.STUDY}?mode=due`" class="underline">
+            {{ counts.due }} {{ counts.due === 1 ? 'card is' : 'cards are' }} due for review.
+          </router-link>
         </p>
         <p v-if="counts.learning > 0 && !gate" class="mx-auto mt-3 max-w-md text-sm text-[var(--color-muted)]">
           {{ counts.learning }} {{ counts.learning === 1 ? 'card is' : 'cards are' }} still in learning
@@ -1274,7 +1348,7 @@ watch(() => lang.code, async () => {
 
             <div v-if="revealed && handwriting" class="text-center">
               <p class="font-semibold" :class="handwriting.passed ? 'text-[var(--color-success)]' : 'text-[var(--color-danger)]'">
-                {{ Math.round(handwriting.score) }}
+                {{ Math.round(handwriting.score) }}% accuracy
                 <span class="ml-1 text-sm font-normal text-[var(--color-muted)]">
                   {{ handwriting.strokeCountDrawn }} of {{ handwriting.strokeCountExpected }} strokes
                 </span>
@@ -1333,6 +1407,29 @@ watch(() => lang.code, async () => {
             >
               {{ revealed ? 'Next' : 'Check' }}
             </Button>
+
+            <!--
+              Move through the queue without answering. Quiet styling on
+              purpose: this is an escape hatch from a card you do not want right
+              now, not a third way to finish one.
+            -->
+            <div class="flex items-center justify-between pt-1">
+              <button
+                type="button"
+                class="rounded-lg px-2 py-1 text-sm text-[var(--color-muted)] transition enabled:hover:text-[var(--color-text)] disabled:opacity-40"
+                :disabled="!canGoBack"
+                @click="back"
+              >
+                &larr; Back
+              </button>
+              <button
+                type="button"
+                class="rounded-lg px-2 py-1 text-sm text-[var(--color-muted)] transition hover:text-[var(--color-text)]"
+                @click="skip"
+              >
+                Skip &rarr;
+              </button>
+            </div>
           </form>
         </div>
       </div>
