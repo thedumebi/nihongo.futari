@@ -26,7 +26,7 @@
       "purpose": "maskable"
     }
   ],
-  "start_url": "/progress",
+  "start_url": "/",
   "scope": "/",
   "display": "standalone",
   "theme_color": "#2f4858",
