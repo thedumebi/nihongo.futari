@@ -21,11 +21,22 @@ const props = withDefaults(defineProps<{
   reference: ReferenceStroke[]
   /** Faint reference glyph under the writing surface. */
   showGuide?: boolean
+  /**
+   * Numbered start points and direction arrows on the reference glyph.
+   *
+   * The ghost alone shows the SHAPE and nothing about how it is produced, which
+   * is most of what writing kana and kanji is. Stroke order is not decoration:
+   * it decides proportion, where the brush lifts, and whether the character is
+   * legible when written quickly — and it is the one thing a learner cannot
+   * recover by looking at the finished glyph.
+   */
+  showOrder?: boolean
   /** Number of reference strokes to reveal as a hint. */
   revealStrokes?: number
   disabled?: boolean
 }>(), {
   showGuide: true,
+  showOrder: true,
   revealStrokes: 0,
   disabled: false
 })
@@ -50,6 +61,63 @@ function toBoxSpace(event: PointerEvent): Point {
     x: ((event.clientX - rect.left) / rect.width) * BOX,
     y: ((event.clientY - rect.top) / rect.height) * BOX
   }
+}
+
+/**
+ * Where each stroke starts, in what order, and which way it travels.
+ *
+ * A numbered dot at the start of every stroke, and a short arrowhead along its
+ * opening direction — the convention every Japanese stroke-order chart uses, so
+ * it needs no explaining to anyone who has seen one.
+ *
+ * The direction is taken from a point a little way in rather than the very next
+ * sample, because consecutive samples on a curve are close enough that rounding
+ * makes the angle jitter. Ten percent along the stroke is far enough to be
+ * stable and near enough to still be the OPENING direction rather than the
+ * average of the whole stroke.
+ */
+function drawStrokeOrder(ctx: CanvasRenderingContext2D, colour: string) {
+  const R = 4.2
+
+  ctx.save()
+  ctx.lineWidth = 1.4
+  ctx.font = `${R * 1.5}px system-ui, sans-serif`
+  ctx.textAlign = 'center'
+  ctx.textBaseline = 'middle'
+
+  for (const [i, points] of referencePoints.value.entries()) {
+    const start = points[0]
+    if (!start)
+      continue
+
+    // The arrow first, so the numbered dot sits on top of its tail.
+    const ahead = points[Math.min(points.length - 1, Math.max(1, Math.floor(points.length * 0.1)))]
+    if (ahead && (ahead.x !== start.x || ahead.y !== start.y)) {
+      const angle = Math.atan2(ahead.y - start.y, ahead.x - start.x)
+      // Sits clear of the dot so the two do not merge into a blob.
+      const tipX = start.x + Math.cos(angle) * (R + 5)
+      const tipY = start.y + Math.sin(angle) * (R + 5)
+      const wing = 2.6
+      ctx.fillStyle = colour
+      ctx.beginPath()
+      ctx.moveTo(tipX, tipY)
+      ctx.lineTo(tipX - Math.cos(angle - 0.5) * wing * 2, tipY - Math.sin(angle - 0.5) * wing * 2)
+      ctx.lineTo(tipX - Math.cos(angle + 0.5) * wing * 2, tipY - Math.sin(angle + 0.5) * wing * 2)
+      ctx.closePath()
+      ctx.fill()
+    }
+
+    ctx.fillStyle = colour
+    ctx.beginPath()
+    ctx.arc(start.x, start.y, R, 0, Math.PI * 2)
+    ctx.fill()
+
+    // Numbered from 1: nobody counts strokes from zero.
+    ctx.fillStyle = '#ffffff'
+    ctx.fillText(String(i + 1), start.x, start.y + 0.4)
+  }
+
+  ctx.restore()
 }
 
 function drawPolyline(ctx: CanvasRenderingContext2D, points: Point[]) {
@@ -111,6 +179,8 @@ function draw() {
     ctx.strokeStyle = guide
     ctx.lineWidth = 5
     for (const stroke of referencePoints.value) drawPolyline(ctx, stroke)
+    if (props.showOrder)
+      drawStrokeOrder(ctx, hint)
   }
 
   // Revealed hint strokes sit above the ghost but below the user's ink.
@@ -198,7 +268,7 @@ watch(canvas, (el) => {
     draw()
   }
 }, { immediate: true })
-watch(() => [props.reference, props.showGuide, props.revealStrokes], () => draw(), { deep: true })
+watch(() => [props.reference, props.showGuide, props.showOrder, props.revealStrokes], () => draw(), { deep: true })
 onBeforeUnmount(() => observer.disconnect())
 
 defineExpose({ undo, clear })

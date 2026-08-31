@@ -503,7 +503,18 @@ const referenceStrokes = computed<ReferenceStroke[]>(() => {
 const canvas = ref<InstanceType<typeof WritingCanvas> | null>(null)
 const drawnStrokes = ref<Stroke[]>([])
 const handwriting = ref<HandwritingGrade | null>(null)
-const showGuide = ref(false)
+/**
+ * The stroke guide, on unless it is turned off.
+ *
+ * It defaulted to off, which made writing a memory test before it was a writing
+ * exercise — you had to already know the character to attempt it, and the one
+ * thing the guide teaches (the order and direction of the strokes) is exactly
+ * what cannot be recovered by staring at the finished glyph.
+ *
+ * Turning it off is still one tap for anyone who wants to test themselves, and
+ * that choice now persists rather than resetting on every card.
+ */
+const showGuide = useLocalStorage('go-writing-guide', true)
 
 const HANDWRITING_ISSUE_TEXT: Record<string, string> = {
   'too-few-strokes': 'Missing a stroke',
@@ -846,7 +857,6 @@ function resetCard() {
   handwriting.value = null
   drawnStrokes.value = []
   placed.value = []
-  showGuide.value = false
   canvas.value?.clear()
   // A meaning left open would hang over the next card, describing a word that
   // is no longer on screen — the same class of bug as the verdict that used to
