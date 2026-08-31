@@ -60,7 +60,12 @@ export const runReminders: AppRouteHandler<RunRemindersRoute> = async (c) => {
     // a silent evening impossible to diagnose from the log alone.
     skippedNotDue: daily.skippedNotDue + weekly.skippedNotDue,
     skippedAlreadySent: daily.skippedAlreadySent + weekly.skippedAlreadySent,
-    failed: daily.failed + weekly.failed
+    failed: daily.failed + weekly.failed,
+    // Push has its own outcomes because it used to have none: a run that
+    // pushed nothing looked identical to one that pushed successfully.
+    pushFailed: daily.pushFailed + weekly.pushFailed,
+    pushNoSubscription: daily.pushNoSubscription + weekly.pushNoSubscription,
+    pushNotConfigured: daily.pushNotConfigured + weekly.pushNotConfigured
   }, HttpStatusCodes.OK)
 }
 

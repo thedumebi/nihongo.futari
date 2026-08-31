@@ -129,6 +129,9 @@ export async function runReminders(now = new Date()): Promise<ReminderRunResult>
   let skippedNotDue = 0
   let skippedAlreadySent = 0
   let failed = 0
+  let pushFailed = 0
+  let pushNoSubscription = 0
+  let pushNotConfigured = 0
 
   for (const c of candidates) {
     // Only the CLOCK decides whether to send.
@@ -177,6 +180,9 @@ export async function runReminders(now = new Date()): Promise<ReminderRunResult>
       }
     }
 
+    if (c.pushEnabled && !pushConfigured())
+      pushNotConfigured++
+
     if (c.pushEnabled && pushConfigured()) {
       const subs = await db
         .select({
@@ -187,6 +193,9 @@ export async function runReminders(now = new Date()): Promise<ReminderRunResult>
         })
         .from(pushSubscriptions)
         .where(and(eq(pushSubscriptions.userId, c.userId), eq(pushSubscriptions.enabled, true)))
+
+      if (subs.length === 0)
+        pushNoSubscription++
 
       for (const sub of subs) {
         const outcome = await sendPush(sub, {
@@ -206,8 +215,10 @@ export async function runReminders(now = new Date()): Promise<ReminderRunResult>
             .where(eq(pushSubscriptions.id, sub.id))
         } else if (outcome.gone) {
           // The browser dropped it. Keeping it would retry forever.
+          pushFailed++
           await db.delete(pushSubscriptions).where(eq(pushSubscriptions.id, sub.id))
         } else {
+          pushFailed++
           await db
             .update(pushSubscriptions)
             .set({ failureCount: sql`${pushSubscriptions.failureCount} + 1` })
@@ -233,7 +244,10 @@ export async function runReminders(now = new Date()): Promise<ReminderRunResult>
     skipped: skippedNotDue + skippedAlreadySent,
     skippedNotDue,
     skippedAlreadySent,
-    failed
+    failed,
+    pushFailed,
+    pushNoSubscription,
+    pushNotConfigured
   }
 }
 
@@ -358,6 +372,9 @@ export async function runWeeklySummaries(now = new Date()): Promise<ReminderRunR
     skipped: skippedNotDue + skippedAlreadySent,
     skippedNotDue,
     skippedAlreadySent,
-    failed
+    failed,
+    pushFailed: 0,
+    pushNoSubscription: 0,
+    pushNotConfigured: 0
   }
 }

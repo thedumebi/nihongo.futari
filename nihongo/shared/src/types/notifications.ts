@@ -82,8 +82,21 @@ export const reminderRunResultSchema = z.object({
   skippedNotDue: z.number().int(),
   /** Already reminded today; a second cron run must not send twice. */
   skippedAlreadySent: z.number().int(),
-  /** Reminders attempted but rejected by the mail or push provider. */
-  failed: z.number().int()
+  /** Reminders attempted but rejected by the MAIL provider. */
+  failed: z.number().int(),
+  /**
+   * Push outcomes, counted separately because they were invisible.
+   *
+   * The push branch had four silent exits — the channel off, no VAPID keys, no
+   * subscriptions, or a rejected send — none of which touched a counter. A run
+   * that pushed nothing was indistinguishable from one that pushed
+   * successfully, which is precisely the question the log exists to answer.
+   */
+  pushFailed: z.number().int(),
+  /** Reminders wanting push where the user has no live subscription. */
+  pushNoSubscription: z.number().int(),
+  /** Reminders wanting push while the server has no VAPID keys configured. */
+  pushNotConfigured: z.number().int()
 }).openapi('ReminderRunResult')
 
 export type ReminderRunResult = z.infer<typeof reminderRunResultSchema>
