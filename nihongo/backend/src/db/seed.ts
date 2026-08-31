@@ -30,6 +30,33 @@ const __dirname = path.dirname(__filename)
 // the .sql files are shipped there alongside the compiled output.
 const seedsDir = path.resolve(__dirname, '../../src/db/seeds')
 
+/**
+ * Where CODE seeds live, which is not where the .sql files live.
+ *
+ * The image ships `src/db/seeds` verbatim so the runner can read the .sql
+ * files, and that copy contains the .ts sources too — which production cannot
+ * import, because it runs compiled JavaScript under plain Node. The first
+ * version of this looked only in `seedsDir`, found `042-dialogues.seed.ts`,
+ * and threw on TypeScript syntax, taking the whole seed run down with it.
+ *
+ * Resolved relative to THIS file instead, so it lands on whatever form is
+ * actually runnable: `src/db/seeds` (.seed.ts) under tsx in development, and
+ * `dist/db/seeds` (.seed.js, emitted by tsc) in the image.
+ */
+const codeSeedsDir = path.resolve(__dirname, 'seeds')
+
+/**
+ * The history name, with the extension dropped for code seeds.
+ *
+ * The same seed is `.seed.ts` in development and `.seed.js` in the image.
+ * Recording the filename as-is would make those two different rows, so a seed
+ * already applied locally would run again in production. The base name is the
+ * identity; the extension is an artefact of where it is being run.
+ */
+function historyName(file: string): string {
+  return file.replace(/\.seed\.(ts|js)$/, '.seed')
+}
+
 async function ensureSeedHistory() {
   await db.execute(sql`
     CREATE TABLE IF NOT EXISTS seed_history (
@@ -51,18 +78,28 @@ async function main() {
 
   let files: string[]
   try {
-    files = (await readdir(seedsDir))
-      .filter(f => f.endsWith('.sql') || f.endsWith('.seed.ts') || f.endsWith('.seed.js'))
-      // Numbered prefixes order the whole set, whatever the extension.
-      .sort()
+    const sql = (await readdir(seedsDir)).filter(f => f.endsWith('.sql'))
+    // Only ONE runnable form of each code seed is picked up: .js if it has been
+    // compiled, .ts otherwise. Taking both would run the same seed twice.
+    const code = (await readdir(codeSeedsDir).catch(() => []))
+      .filter(f => f.endsWith('.seed.js') || f.endsWith('.seed.ts'))
+    const byName = new Map<string, string>()
+    for (const f of code) {
+      const key = historyName(f)
+      if (!byName.has(key) || f.endsWith('.seed.js'))
+        byName.set(key, f)
+    }
+    // Numbered prefixes order the whole set, whatever the extension.
+    files = [...sql, ...byName.values()].sort()
   } catch {
     console.log(`No seeds directory at ${seedsDir} — nothing to do`)
     return
   }
 
   for (const file of files) {
-    if (applied.has(file)) {
-      console.log(`↷ seed "${file}" already applied — skipping`)
+    const name = historyName(file)
+    if (applied.has(name)) {
+      console.log(`↷ seed "${name}" already applied — skipping`)
       continue
     }
     console.log(`▶ applying seed "${file}"…`)
@@ -71,18 +108,18 @@ async function main() {
       const contents = await readFile(path.join(seedsDir, file), 'utf8')
       await db.transaction(async (tx) => {
         await tx.execute(sql.raw(contents))
-        await tx.execute(sql`INSERT INTO seed_history (name) VALUES (${file}) ON CONFLICT DO NOTHING`)
+        await tx.execute(sql`INSERT INTO seed_history (name) VALUES (${name}) ON CONFLICT DO NOTHING`)
       })
     } else {
       // Imported by URL so this works from src under tsx and from dist after a
       // build, without either path being hardcoded.
-      const mod = await import(pathToFileURL(path.join(seedsDir, file)).href) as { run?: () => Promise<void> }
+      const mod = await import(pathToFileURL(path.join(codeSeedsDir, file)).href) as { run?: () => Promise<void> }
       if (typeof mod.run !== 'function')
         throw new TypeError(`${file} must export run(): Promise<void>`)
       await mod.run()
       // Recorded only on success. A crash mid-way leaves no row, so the next
       // deploy retries — which is safe because these are idempotent.
-      await db.execute(sql`INSERT INTO seed_history (name) VALUES (${file}) ON CONFLICT DO NOTHING`)
+      await db.execute(sql`INSERT INTO seed_history (name) VALUES (${name}) ON CONFLICT DO NOTHING`)
     }
 
     console.log(`✅ seed "${file}" applied`)
