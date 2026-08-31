@@ -1,7 +1,10 @@
 import type { Dialogue } from './types.js'
 
+import { CHECKOUT } from './checkout.js'
 import { COOKING } from './cooking.js'
+import { COUNTERS } from './counters.js'
 import { DAILY } from './daily.js'
+import { DINING } from './dining.js'
 import { ERRANDS } from './errands.js'
 import { HEALTH } from './health.js'
 import { HOME } from './home.js'
@@ -30,5 +33,11 @@ export const DIALOGUES: Dialogue[] = [
   ...MORE,
   ...DAILY,
   ...ERRANDS,
-  ...LIFE
+  ...LIFE,
+  // Added last, so they land late in the sequence: these walk a whole
+  // transaction end to end rather than drilling one exchange, which only pays
+  // off once the pieces are individually familiar.
+  ...CHECKOUT,
+  ...DINING,
+  ...COUNTERS
 ]

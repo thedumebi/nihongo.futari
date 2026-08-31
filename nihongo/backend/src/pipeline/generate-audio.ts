@@ -8,6 +8,7 @@ import { tmpdir } from 'node:os'
 import path, { basename } from 'node:path'
 import { promisify } from 'node:util'
 
+import { audioKeyFor, VOICE_LEARNER as LEARNER_VOICE, VOICE_OTHER } from '../lib/audio-key.js'
 import { CONTENT_TYPES, listKeys, putAsset } from './lib/bucket.js'
 
 const run = promisify(execFile)
@@ -41,7 +42,7 @@ const run = promisify(execFile)
  * the filesystem.
  */
 
-const VOICE = 'Kyoko'
+const VOICE = VOICE_OTHER
 
 /**
  * The second speaker in a conversation.
@@ -51,7 +52,7 @@ const VOICE = 'Kyoko'
  * followable. Kyoko speaks the other party; this one speaks your own lines and
  * the replies you choose between.
  */
-const VOICE_LEARNER = 'Reed (Japanese (Japan))'
+const VOICE_LEARNER = LEARNER_VOICE
 
 /**
  * How long a single clip may take before it is abandoned.
@@ -154,7 +155,13 @@ async function generate(kind: AudioKind) {
   let failed = 0
 
   for (const t of targets) {
-    const key = `audio/${kind}/${t.name}.m4a`
+    // Dialogue clips are named for their TEXT, so an edited line asks for a
+    // different file instead of inheriting one recorded for the sentence that
+    // used to sit at this index. Everything else is keyed by a stable id whose
+    // content genuinely never changes.
+    const key = kind === 'dialogues'
+      ? `audio/dialogues/${audioKeyFor(t.text, t.voice ?? VOICE)}.m4a`
+      : `audio/${kind}/${t.name}.m4a`
     if (stored.has(key)) {
       skipped++
       continue

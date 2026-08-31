@@ -15,6 +15,7 @@ import {
 import { and, asc, eq, inArray } from 'drizzle-orm'
 
 import { assetUrl } from '../lib/assets.js'
+import { dialogueAudioPath, VOICE_LEARNER, VOICE_OTHER } from '../lib/audio-key.js'
 import { glossary, glossLine } from './glossary.service.js'
 
 /**
@@ -132,13 +133,17 @@ export async function getDialogue(languageCode: string, code: string): Promise<D
     text: t.text,
     reading: t.reading,
     translation: t.translation,
-    audio: assetUrl(`/audio/dialogues/${t.id}.m4a`),
+    // Keyed on the LINE, not its position — see lib/audio-key.ts. A turn that
+    // is edited asks for a different file instead of keeping a clip recorded
+    // for the sentence that used to sit at this index.
+    audio: assetUrl(dialogueAudioPath(t.text, t.speaker === 'learner' ? VOICE_LEARNER : VOICE_OTHER)),
     tokens: glossLine(t.text, g, t.reading),
     replies: replyRows
       .filter(r => r.turnId === t.id)
       .map(({ turnId: _drop, sortIndex: _order, ...rest }) => ({
         ...rest,
-        audio: assetUrl(`/audio/dialogues/${rest.id}.m4a`),
+        // Replies are always the learner's own lines, so always that voice.
+        audio: assetUrl(dialogueAudioPath(rest.text, VOICE_LEARNER)),
         tokens: glossLine(rest.text, g, rest.reading)
       }))
   }))

@@ -41,7 +41,16 @@ function assertWellFormed(d: Dialogue): void {
   }
 }
 
-async function main() {
+/**
+ * Import every conversation.
+ *
+ * Exported so a seed can call it. Production never runs a pipeline script, but
+ * this content cannot be expressed as hand-written SQL without duplicating the
+ * whole expansion — dialogues, turns, replies, study items, facets and prompts,
+ * with the reading and reply wiring that `import-dialogues` already does and
+ * tests. A seed that calls this reuses the tested path instead of restating it.
+ */
+export async function importDialogues() {
   const codes = new Set<string>()
   for (const d of DIALOGUES) {
     if (codes.has(d.code))
@@ -168,11 +177,16 @@ async function main() {
   console.log('\nRun build:curriculum to place them in the level.')
 }
 
-main()
-  .catch((err) => {
-    console.error('Failed:', err instanceof Error ? err.message : err)
-    process.exitCode = 1
-  })
-  .finally(async () => {
-    await connection.end()
-  })
+// Only when run directly as a CLI. Imported by a seed, this must not fire.
+if (import.meta.url === `file://${process.argv[1]}`) {
+  importDialogues()
+    .catch((err) => {
+      console.error('Failed:', err instanceof Error ? err.message : err)
+      process.exitCode = 1
+    })
+    // Closed only by the CLI. A seed shares the pool with the rest of the run
+    // and must not have it shut from under it.
+    .finally(async () => {
+      await connection.end()
+    })
+}
