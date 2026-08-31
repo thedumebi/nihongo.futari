@@ -49,9 +49,19 @@ const stats = computed(() => {
       label: 'Due now',
       value: s.due,
       tip: s.due > 0
-        ? 'Cards the scheduler says are ready to come back. Click to see exactly which ones.'
-        : 'Nothing is due right now. New cards are still available whenever you want them.',
+        ? 'Review cards whose interval has elapsed — the same number Study shows. Click to see exactly which ones.'
+        : 'Nothing is due for review right now. New cards are still available whenever you want them.',
       to: ROUTES.DUE
+    },
+    {
+      // Shown apart from "Due now" because it is a different kind of waiting.
+      // Merged into one number, this page said "57 due" where Study said "11
+      // due · 46 learning" — the same cards, counted once and split once, both
+      // called due.
+      label: 'In learning',
+      value: s.learning,
+      tip: 'Cards you have met but which have not graduated yet. They come back within minutes rather than days, so this number moves fast and is not a backlog.',
+      to: null
     },
     {
       label: 'Not yet seen',

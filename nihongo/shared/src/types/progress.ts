@@ -104,7 +104,10 @@ export const progressSummarySchema = z.object({
   started: z.number().int(),
   /** Cards graduated past the learning steps. The strict sense. */
   learned: z.number().int(),
+  /** Review cards whose interval has elapsed. Same meaning as Study's "due". */
   due: z.number().int(),
+  /** Cards still on the short learning steps. Counted apart from `due`. */
+  learning: z.number().int(),
   newAvailable: z.number().int()
 }).openapi('ProgressSummary')
 

@@ -164,9 +164,19 @@ onMounted(load)
                   </span>
                   <span class="block text-xs text-[var(--color-muted)]">{{ describe(stage) }}</span>
                 </span>
-                <span class="shrink-0 text-xs text-[var(--color-muted)]">
-                  {{ stage.learned }}/{{ stage.total }}
-                </span>
+                <!--
+                  Labelled, because a bare fraction next to "stage 2 of 60" reads
+                  as a second stage count. It is neither: it is how much of THIS
+                  stage has stuck, in the same unit the study header uses.
+                -->
+                <Tooltip
+                  :content="`${stage.learned} of ${stage.total} CARDS in this stage have graduated. Every item has several cards — recognising a kana and writing it are counted separately — so this number is larger than the ${describe(stage)} above it, and every one must graduate before the next stage opens.`"
+                  position="left"
+                >
+                  <span class="shrink-0 text-xs text-[var(--color-muted)]">
+                    {{ stage.learned }}/{{ stage.total }} cards
+                  </span>
+                </Tooltip>
                 <Tooltip
                   v-if="!stage.open"
                   content="Opens once the stages before it have mostly stuck."

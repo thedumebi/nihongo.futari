@@ -215,20 +215,36 @@ const stage = computed(() =>
  */
 const stageUp = ref<{ level: string, from: number, to: number, stages: number } | null>(null)
 
-watch(stage, (next, previous) => {
-  // Same level only. Switching the level picker changes which row this is
-  // reading, and that is not an achievement.
-  if (!next || !previous || next.level !== previous.level)
+/**
+ * The stage this reader was last SHOWN, per level.
+ *
+ * Persisted, because the first version compared against the previous value of a
+ * reactive ref and so could only ever notice a change that happened while the
+ * page was open. `progress` refreshes on queue reload, so catching it meant
+ * finishing a whole queue at the exact moment the stage tipped; cross a stage
+ * and close the app, and on return `previous` is undefined and the guard drops
+ * the event silently. That is the common case, and it is why the celebration
+ * never appeared.
+ *
+ * Comparing against what was last shown instead means the transition survives a
+ * reload, a background, and a week away.
+ */
+const seenStage = useLocalStorage<Record<string, number>>('go-seen-stage', {})
+
+watch(stage, (next) => {
+  if (!next)
     return
-  if (next.stage > previous.stage) {
-    stageUp.value = {
-      level: next.level,
-      from: previous.stage,
-      to: next.stage,
-      stages: next.stages
-    }
-  }
-})
+  const before = seenStage.value[next.level]
+  // Record first, so a failure to render cannot re-fire this every reload.
+  seenStage.value = { ...seenStage.value, [next.level]: next.stage }
+
+  // Nothing remembered yet: this is the first look at the level, not an
+  // advance. Celebrating here would congratulate a brand new account.
+  if (before === undefined || next.stage <= before)
+    return
+
+  stageUp.value = { level: next.level, from: before, to: next.stage, stages: next.stages }
+}, { immediate: true })
 
 /**
  * The "not yet" explanation, assembled here rather than in the template.
@@ -1000,18 +1016,29 @@ watch(() => lang.code, async () => {
             @update:model-value="selectLevel"
           />
 
-          <span class="text-sm text-[var(--color-muted)]">
-            {{ counts.due }} due
-            <template v-if="counts.learning > 0"> &middot; {{ counts.learning }} learning</template>
-            &middot; {{ counts.newAvailable }} new
-          </span>
+          <!--
+            All three now count the same way and over the same set: cards, and
+            only those the pickers to the left admit. `due` and `learning` used
+            to be language-wide while `new` respected the pickers, so the row
+            silently mixed scopes and the numbers could not be compared.
+          -->
+          <Tooltip
+            :content="`${counts.due} review card${counts.due === 1 ? '' : 's'} ready · ${counts.learning} still on the short learning steps · ${counts.newAvailable} never seen. Cards, not words — one word can have several. Counted within the filters shown.`"
+            position="bottom"
+          >
+            <span class="text-sm text-[var(--color-muted)]">
+              {{ counts.due }} due
+              <template v-if="counts.learning > 0"> &middot; {{ counts.learning }} learning</template>
+              &middot; {{ counts.newAvailable }} new
+            </span>
+          </Tooltip>
         </template>
 
         <!-- Where you are in the course. New cards come from this stage only;
              the next opens once this one is mostly retained. -->
         <Tooltip
           v-if="stage"
-          :content="`New cards are drawn from stage ${stage.stage} only. Stage ${stage.stage + 1} opens once most of this one has stuck.`"
+          :content="`New cards are drawn from stage ${stage.stage} only. Stage ${stage.stage + 1} opens once most of this one has stuck. The fraction counts CARDS in this stage that have graduated, and every one of the ${stage.total} must graduate before stage ${stage.stage + 1} opens.`"
           position="bottom"
         >
           <span class="flex items-center gap-2 text-sm text-[var(--color-muted)]">
@@ -1027,7 +1054,7 @@ watch(() => lang.code, async () => {
               second, contradictory stage count. It is neither: it is how much
               of THIS stage has stuck, and it resets each time a stage opens.
             -->
-            <span>{{ stage.learned }}/{{ stage.total }} learned</span>
+            <span>{{ stage.learned }}/{{ stage.total }} cards</span>
           </span>
         </Tooltip>
         <span v-if="sessionSeen > 0" class="ml-auto text-sm text-[var(--color-muted)]">

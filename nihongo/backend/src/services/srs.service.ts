@@ -363,8 +363,60 @@ export async function submitAnswer(userId: string, input: SubmitAnswerInput): Pr
  */
 const STAGE_SIZE = 50
 
-/** The share of a stage that must be retained before the next one opens. */
-const STAGE_PASS = 0.8
+/**
+ * The share of a stage that must be retained before the next one opens.
+ *
+ * 1 means every card. Not 80%: a stage sitting at 79/96 was being called done
+ * and the next one opened over the top of it, which is not what "complete"
+ * means to anyone reading the screen.
+ *
+ * The cost of 1 is that a single card which never graduates blocks the level
+ * indefinitely, where 0.8 left slack for exactly that. If progression ever
+ * stalls on one stubborn card, this is the number to look at first.
+ */
+const STAGE_PASS = 1
+
+/**
+ * Stage progress, defined ONCE.
+ *
+ * Three places report this — the gate that decides what may be introduced, the
+ * counter in the study header, and the course page — and they had drifted into
+ * three copies of nearly the same SQL. The last drift shipped: the gate counted
+ * items while the course counted cards, so the two pages disagreed about which
+ * stage you were on and the course drew a padlock on a stage the gate had
+ * already opened. Anything that reports a stage now reads this fragment, so
+ * there is one place to change and no way for them to disagree.
+ *
+ * A row per (level, stage, kind). Callers roll it up as they need: the gate and
+ * the header sum over kind, the course keeps the breakdown so it can say what a
+ * stage is made of.
+ *
+ * `total` and `learned` count CARDS — every facet of every item. An item is not
+ * finished because one way of drilling it stuck; recognising 日 does not mean
+ * you can write it.
+ */
+function stageRollup(userId: string, languageId: string) {
+  return sql`
+    select
+      si.level_id,
+      ceil(si.sort_index::float / ${STAGE_SIZE}) as stage,
+      si.kind,
+      count(*) as total,
+      count(*) filter (where sc.state >= 2) as learned,
+      -- Both units, because a stage needs both to describe itself honestly:
+      -- "50 kana" is what the stage IS, "14/96" is how far through its cards
+      -- you are. Printing the card count as the content count is what made a
+      -- 50-kana stage announce itself as "96 kana".
+      count(distinct si.id) as items
+    from study_items si
+    join study_item_facets f on f.study_item_id = si.id and f.enabled
+    left join srs_cards sc on sc.facet_id = f.id and sc.user_id = ${userId}
+    where si.published and si.active
+      and si.level_id is not null
+      and si.language_id = ${languageId}
+    group by 1, 2, 3
+  `
+}
 
 /**
  * The furthest point in each level this user may be introduced to.
@@ -378,44 +430,10 @@ const STAGE_PASS = 0.8
  */
 export async function stageCeilings(userId: string, languageId: string): Promise<Map<string, number>> {
   const result = await db.execute(sql`
-    -- Progress is measured per ITEM, not per facet, and that distinction is
-    -- load-bearing rather than stylistic.
-    --
-    -- Counting facets made the denominator grow whenever a new KIND of drill
-    -- was added to existing content. Introducing a listening card for every
-    -- word took stage 4 of N5 from 135 facets to 178 — so a reader sitting at
-    -- exactly the 80% pass mark (108/135) silently became 108/178, or 61%.
-    -- Because the ceiling is the FIRST failing stage, that does not merely stop
-    -- progress: it drags the ceiling BACKWARDS and re-locks material that had
-    -- already been unlocked, for content the reader had not got wrong.
-    --
-    -- An item counts as met once any of its facets reaches review state. The
-    -- gate exists to pace movement through the curriculum, not to demand every
-    -- drill type on a word before the next word is allowed to appear.
-    with items as (
-      select
-        si.id,
-        si.level_id,
-        ceil(si.sort_index::float / ${STAGE_SIZE}) as stage,
-        -- bool_or ignores nulls and returns null when every row is null, which
-        -- is precisely the never-studied case, so it needs a floor.
-        coalesce(bool_or(sc.state >= 2), false) as learned
-      from study_items si
-      join study_item_facets f on f.study_item_id = si.id and f.enabled
-      left join srs_cards sc on sc.facet_id = f.id and sc.user_id = ${userId}
-      where si.published and si.active
-        and si.level_id is not null
-        and si.language_id = ${languageId}
-      group by si.id, si.level_id, stage
-    ),
+    with rollup as (${stageRollup(userId, languageId)}),
     stages as (
-      select
-        level_id,
-        stage,
-        count(*) as total,
-        count(*) filter (where learned) as learned
-      from items
-      group by 1, 2
+      select level_id, stage, sum(total) as total, sum(learned) as learned
+      from rollup group by 1, 2
     )
     select level_id, min(stage) as first_open
     from stages
@@ -443,33 +461,10 @@ export async function stageCeilings(userId: string, languageId: string): Promise
  */
 export async function stageProgress(userId: string, languageId: string): Promise<StageProgress[]> {
   const result = await db.execute(sql`
-    -- Counted per ITEM, exactly as \`stageCeilings\` counts. These two must
-    -- agree: this is the number on screen and that is the rule that actually
-    -- unlocks the next stage, so measuring them differently means the bar can
-    -- sit at 100% while the stage is still shut, or open a stage the bar says
-    -- is half done. Same query shape, deliberately.
-    with items as (
-      select
-        si.id,
-        si.level_id,
-        ceil(si.sort_index::float / ${STAGE_SIZE}) as stage,
-        coalesce(bool_or(sc.state >= 2), false) as learned
-      from study_items si
-      join study_item_facets f on f.study_item_id = si.id and f.enabled
-      left join srs_cards sc on sc.facet_id = f.id and sc.user_id = ${userId}
-      where si.published and si.active
-        and si.level_id is not null
-        and si.language_id = ${languageId}
-      group by si.id, si.level_id, stage
-    ),
+    with rollup as (${stageRollup(userId, languageId)}),
     stages as (
-      select
-        level_id,
-        stage,
-        count(*) as total,
-        count(*) filter (where learned) as learned
-      from items
-      group by 1, 2
+      select level_id, stage, sum(total) as total, sum(learned) as learned
+      from rollup group by 1, 2
     ),
     current as (
       select level_id, min(stage) as stage
@@ -749,6 +744,13 @@ export async function getQueue(userId: string, query: StudyQueueQuery): Promise<
 
   shuffle(items)
 
+  // Scoped by the SAME filters as the queue and the new-card count.
+  //
+  // These used to be language-wide while `newAvailable` respected the level and
+  // deck pickers, so the three numbers printed side by side — "11 due · 46
+  // learning · 73 new" — were measured over different sets and could not be
+  // read together. The pickers sit directly above that row; the numbers now
+  // mean what those pickers say.
   const [counts] = await db
     .select({
       // Review-state only. Learning-step repeats are counted separately so the
@@ -758,7 +760,15 @@ export async function getQueue(userId: string, query: StudyQueueQuery): Promise<
       ghost: sql<number>`count(*) filter (where ${srsCards.ghost} and not ${srsCards.suspended})`.mapWith(Number)
     })
     .from(srsCards)
-    .where(and(eq(srsCards.userId, userId), eq(srsCards.languageId, language.id)))
+    .innerJoin(studyItemFacets, eq(studyItemFacets.id, srsCards.facetId))
+    .innerJoin(studyItems, eq(studyItems.id, studyItemFacets.studyItemId))
+    .where(and(
+      eq(srsCards.userId, userId),
+      eq(srsCards.languageId, language.id),
+      ...kindFilter,
+      ...unitFilter,
+      ...levelFilter
+    ))
 
   const [newAvailable] = await db
     .select({ total: sql<number>`count(*)`.mapWith(Number) })
@@ -1155,33 +1165,20 @@ export async function getCourse(userId: string, languageCode: string): Promise<C
     return { levels: [] }
 
   const rollup = await db.execute(sql`
-    with stages as (
-      select
-        si.level_id,
-        ceil(si.sort_index::float / ${STAGE_SIZE}) as stage,
-        si.kind,
-        count(*) as total,
-        count(*) filter (where sc.state >= 2) as learned
-      from study_items si
-      join study_item_facets f on f.study_item_id = si.id and f.enabled
-      left join srs_cards sc on sc.facet_id = f.id and sc.user_id = ${userId}
-      where si.published and si.active
-        and si.level_id is not null
-        and si.language_id = ${language.id}
-      group by 1, 2, 3
-    )
-    select l.code as level, l.sort_index as level_order, s.stage, s.kind, s.total, s.learned
+    with stages as (${stageRollup(userId, language.id)})
+    select l.code as level, l.sort_index as level_order, s.stage, s.kind, s.total, s.learned, s.items
     from stages s
     join language_levels l on l.id = s.level_id
     order by l.sort_index, s.stage, s.kind
   `)
 
-  interface Row { level: string, level_order: number, stage: number, kind: string, total: number, learned: number }
+  interface Row { level: string, level_order: number, stage: number, kind: string, total: number, learned: number, items: number }
   const rows = ((rollup.rows ?? []) as unknown as Row[]).map(r => ({
     ...r,
     stage: Number(r.stage),
     total: Number(r.total),
-    learned: Number(r.learned)
+    learned: Number(r.learned),
+    items: Number(r.items)
   }))
 
   // Group into levels, then stages.
@@ -1191,7 +1188,8 @@ export async function getCourse(userId: string, languageCode: string): Promise<C
     const stage = level.get(row.stage) ?? { total: 0, learned: 0, kinds: new Map<string, number>() }
     stage.total += row.total
     stage.learned += row.learned
-    stage.kinds.set(row.kind, (stage.kinds.get(row.kind) ?? 0) + row.total)
+    // Keyed on ITEMS: this is the "what is in this stage" line, not progress.
+    stage.kinds.set(row.kind, (stage.kinds.get(row.kind) ?? 0) + row.items)
     level.set(row.stage, stage)
     byLevel.set(row.level, level)
   }

@@ -251,6 +251,7 @@ export async function getSummary(userId: string): Promise<ProgressSummary> {
     started: 0,
     learned: 0,
     due: 0,
+    learning: 0,
     newAvailable: 0
   }
   if (!language)
@@ -278,7 +279,15 @@ export async function getSummary(userId: string): Promise<ProgressSummary> {
       started: sql<number>`count(*)`.mapWith(Number),
       // Graduated past the learning steps: the honest "learned".
       learned: sql<number>`count(*) filter (where ${srsCards.state} >= 2)`.mapWith(Number),
-      due: sql<number>`count(*) filter (where ${srsCards.due} <= now() and not ${srsCards.suspended})`.mapWith(Number)
+      // Split the same way Study splits it, and for the same reason.
+      //
+      // This was one number covering every state, so the progress page said "57
+      // due" while Study said "11 due · 46 learning" — the same 57 cards, one
+      // page adding them and the other separating them, both using the word
+      // "due". `due` now means the same thing in both places: cards in review
+      // whose interval has elapsed. Learning-step repeats are their own number.
+      due: sql<number>`count(*) filter (where ${srsCards.due} <= now() and ${srsCards.state} = 2 and not ${srsCards.suspended})`.mapWith(Number),
+      learning: sql<number>`count(*) filter (where ${srsCards.due} <= now() and ${srsCards.state} in (1, 3) and not ${srsCards.suspended})`.mapWith(Number)
     })
     .from(srsCards)
     .where(and(eq(srsCards.userId, userId), eq(srsCards.languageId, language.id)))
@@ -304,6 +313,7 @@ export async function getSummary(userId: string): Promise<ProgressSummary> {
     started: cards?.started ?? 0,
     learned: cards?.learned ?? 0,
     due: cards?.due ?? 0,
+    learning: cards?.learning ?? 0,
     newAvailable: unseen?.total ?? 0
   }
 }
