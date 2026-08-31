@@ -253,6 +253,23 @@ watch(stage, (next) => {
  * whenever the formatter reflowed it, and Vue renders that as a space before
  * the punctuation — "stage 12 , and you are on stage 1".
  */
+/**
+ * The current stage is started but unfinished, and nothing new is left in it.
+ *
+ * This is a different situation from being gated, and it was being described as
+ * if it were the same: the screen said material opens at a later stage while the
+ * real reason it was empty is that every card in THIS stage has already been
+ * met. Nothing is locked; the remaining ones are simply in progress and come
+ * back as reviews rather than as new cards.
+ */
+const stageInProgress = computed(() => {
+  const st = stage.value
+  if (!st || counts.value.newAvailable > 0)
+    return null
+  const left = st.total - st.learned
+  return left > 0 ? left : null
+})
+
 const gateSentence = computed(() => {
   const g = gate.value
   if (!g)
@@ -987,7 +1004,9 @@ watch(() => lang.code, async () => {
           <span class="text-sm text-[var(--color-muted)]">
             <template v-if="mode === 'due'">
               {{ counts.due }} due
-              <template v-if="counts.learning > 0"> &middot; {{ counts.learning }} learning</template>
+              <template v-if="counts.learning > 0">
+                &middot; {{ counts.learning }} in progress<template v-if="stageInProgress">, {{ stageInProgress }} here</template>
+              </template>
             </template>
             <template v-else>{{ counts.newAvailable }} new</template>
           </span>
@@ -1028,7 +1047,9 @@ watch(() => lang.code, async () => {
           >
             <span class="text-sm text-[var(--color-muted)]">
               {{ counts.due }} due
-              <template v-if="counts.learning > 0"> &middot; {{ counts.learning }} learning</template>
+              <template v-if="counts.learning > 0">
+                &middot; {{ counts.learning }} in progress<template v-if="stageInProgress">, {{ stageInProgress }} here</template>
+              </template>
               &middot; {{ counts.newAvailable }} new
             </span>
           </Tooltip>
@@ -1083,7 +1104,29 @@ watch(() => lang.code, async () => {
       </p>
 
       <div v-else-if="finished" class="rounded-xl border border-[var(--color-border)] p-10 text-center">
-        <template v-if="gate">
+        <!--
+          Order matters: "you have started everything here" is the true reason
+          this deck is empty whenever it applies, and the gate explanation is
+          only right when the current stage is genuinely finished.
+        -->
+        <!--
+          Reached only when the stage has nothing to give RIGHT NOW: every card
+          introduced, and the unfinished ones not yet due back. That is a wait,
+          not a dead end, and saying so is the difference between "the app is
+          stuck" and "come back shortly".
+        -->
+        <template v-if="stageInProgress">
+          <p class="text-2xl font-semibold">
+            Caught up for now.
+          </p>
+          <p class="mx-auto mt-3 max-w-md text-sm text-[var(--color-muted)]">
+            Every card in {{ stage?.level }} stage {{ stage?.stage }} has been introduced, and
+            {{ stageInProgress }} {{ stageInProgress === 1 ? 'is' : 'are' }} still bedding in.
+            They come back within the hour — that gap is what makes them stick — and
+            stage {{ (stage?.stage ?? 0) + 1 }} opens once they have.
+          </p>
+        </template>
+        <template v-else-if="gate">
           <p class="text-2xl font-semibold">
             Not yet — this comes later.
           </p>
@@ -1091,7 +1134,7 @@ watch(() => lang.code, async () => {
             {{ gateSentence }}
           </p>
         </template>
-        <p v-else class="text-2xl font-semibold">
+        <p v-else-if="!stageInProgress" class="text-2xl font-semibold">
           {{ mode === 'new' ? 'Nothing new right now.' : 'Nothing due right now.' }}
         </p>
         <!--

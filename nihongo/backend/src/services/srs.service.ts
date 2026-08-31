@@ -48,7 +48,7 @@ import {
   replay
 } from '@nihongo/shared/lib'
 import { ghostPolicySchema } from '@nihongo/shared/types'
-import { and, asc, eq, inArray, isNull, lte, sql } from 'drizzle-orm'
+import { and, asc, eq, inArray, isNull, lt, lte, sql } from 'drizzle-orm'
 
 import { assetUrl, withAssetUrls, withDialogueAudio } from '@/lib/assets.js'
 
@@ -572,7 +572,14 @@ export async function getQueue(userId: string, query: StudyQueueQuery): Promise<
   // excluded new cards from the start, but `new` never excluded due ones, so
   // "Learning new cards" quietly served reviews alongside — the opposite of
   // what the chip on the page promised.
-  const dueRows = query.mode === 'new'
+  //
+  // In `new` mode this stays empty on the first pass, and is refilled below
+  // with the CURRENT STAGE's unfinished cards when there is nothing new left.
+  // Without that fallback the deck dead-ends: a stage whose cards have all been
+  // introduced but not yet learned offers nothing here, while the cards needed
+  // to finish it sit in the review queue mixed with every other stage — so
+  // there was no screen that answered "what is left in stage 4".
+  let dueRows = query.mode === 'new'
     ? []
     : await db
         .select({
@@ -670,6 +677,71 @@ export async function getQueue(userId: string, query: StudyQueueQuery): Promise<
         ))
         .orderBy(asc(studyItems.sortIndex))
         .limit(Math.max(0, Math.min(newLimit, query.limit - dueRows.length)))
+
+  // --- Finish the stage -----------------------------------------------------
+  //
+  // Study means "the stage you are on", not "cards you have never seen". Those
+  // are the same thing until the stage runs out of new material, and then they
+  // diverge badly: with every card introduced but not yet learned, this deck
+  // went empty and told the reader material was locked ahead, while the cards
+  // that would actually finish the stage sat in the review queue among every
+  // other stage's. There was no screen that answered "what is left here".
+  //
+  // So when `new` has nothing more to introduce, fall through to the unfinished
+  // cards of the CURRENT stage — not the whole curriculum, because a review of
+  // something learned two stages ago is not what finishing this one means.
+  if (query.mode === 'new' && newRows.length === 0 && ceilings.size > 0) {
+    dueRows = await db
+      // Same shape as the primary due select — these rows join the same list.
+      .select({
+        cardId: srsCards.id,
+        facetId: studyItemFacets.id,
+        studyItemId: studyItems.id,
+        kind: studyItems.kind,
+        facet: studyItemFacets.facet,
+        due: srsCards.due,
+        ghost: srsCards.ghost,
+        state: srsCards.state,
+        stability: srsCards.stability,
+        difficulty: srsCards.difficulty,
+        elapsedDays: srsCards.elapsedDays,
+        scheduledDays: srsCards.scheduledDays,
+        learningSteps: srsCards.learningSteps,
+        reps: srsCards.reps,
+        lapses: srsCards.lapses,
+        lastReview: srsCards.lastReview,
+        ...promptColumns
+      })
+      .from(srsCards)
+      .innerJoin(studyItemFacets, eq(studyItemFacets.id, srsCards.facetId))
+      .innerJoin(studyItems, eq(studyItems.id, studyItemFacets.studyItemId))
+      .innerJoin(exercisePrompts, and(
+        eq(exercisePrompts.facetId, studyItemFacets.id),
+        eq(exercisePrompts.id, sql`(
+          select p.id from exercise_prompts p
+          where p.facet_id = ${studyItemFacets.id} and p.status = 'published'
+          order by md5(p.id || ${promptSalt}) limit 1
+        )`)
+      ))
+      .innerJoin(exerciseTemplates, eq(exerciseTemplates.id, exercisePrompts.templateId))
+      .where(and(
+        eq(srsCards.userId, userId),
+        eq(srsCards.languageId, language.id),
+        eq(srsCards.suspended, false),
+        // Not yet learned. A graduated card in this stage is finished; its
+        // review belongs in the review queue, not in "finish the stage".
+        lt(srsCards.state, 2),
+        lte(srsCards.due, horizon),
+        eq(studyItems.published, true),
+        eq(studyItems.active, true),
+        sql.raw(currentStagePredicate(ceilings, STAGE_SIZE)),
+        ...kindFilter,
+        ...unitFilter,
+        ...levelFilter
+      ))
+      .orderBy(asc(srsCards.due))
+      .limit(query.limit)
+  }
 
   /**
    * Shuffle before returning.
@@ -789,7 +861,11 @@ export async function getQueue(userId: string, query: StudyQueueQuery): Promise<
 
   // What this deck is holding back, if anything. Only worth asking when the
   // deck came up empty of new material — otherwise there is nothing to explain.
-  const gate = newAvailable?.total || withinCurriculum.length === 0
+  // Only when the deck genuinely has nothing to give. `newAvailable` being zero
+  // is no longer sufficient: the stage fallback above may have filled the queue
+  // with the current stage's unfinished cards, and explaining that material is
+  // locked ahead while handing the reader twenty cards is simply false.
+  const gate = items.length > 0 || newAvailable?.total || withinCurriculum.length === 0
     ? null
     : await deckGate(userId, language.id, [...kindFilter, ...unitFilter, ...levelFilter])
 
@@ -1096,6 +1172,30 @@ export async function getDueList(userId: string, query: DueListQuery): Promise<D
  * The ids come from the database, never from user input, and are quoted
  * regardless.
  */
+/**
+ * Just the stage the reader is ON, not everything up to it.
+ *
+ * `curriculumPredicate` bounds new material at the top of the current stage,
+ * which is right for introducing things. Finishing a stage needs the narrower
+ * window: cards from earlier stages are already learned and their reviews are
+ * not what "finish stage 4" means.
+ */
+function currentStagePredicate(ceilings: Map<string, number>, stageSize: number): string {
+  const quote = (value: string) => `'${value.replace(/'/gu, "''")}'`
+  const ids = [...ceilings.keys()].map(quote).join(', ')
+  const lo = [...ceilings]
+    .map(([levelId, ceiling]) => `when ${quote(levelId)} then ${Math.floor(ceiling) - stageSize}`)
+    .join(' ')
+  const hi = [...ceilings]
+    .map(([levelId, ceiling]) => `when ${quote(levelId)} then ${Math.floor(ceiling)}`)
+    .join(' ')
+  return `(
+    study_items.level_id in (${ids})
+    and study_items.sort_index > (case study_items.level_id ${lo} end)
+    and study_items.sort_index <= (case study_items.level_id ${hi} end)
+  )`
+}
+
 function curriculumPredicate(ceilings: Map<string, number>): string {
   const quote = (value: string) => `'${value.replace(/'/gu, "''")}'`
   const ids = [...ceilings.keys()].map(quote).join(', ')
