@@ -1,6 +1,6 @@
 {
-  "name": "語 go — language practice",
-  "short_name": "語 go",
+  "name": "\u8a9e go \u2014 language practice",
+  "short_name": "\u8a9e go",
   "description": "Learn a language, and learn why it works the way it does.",
   "icons": [
     {
@@ -26,9 +26,10 @@
       "purpose": "maskable"
     }
   ],
-  "start_url": "/study",
+  "start_url": "/progress",
   "scope": "/",
   "display": "standalone",
   "theme_color": "#2f4858",
-  "background_color": "#fbfaf7"
+  "background_color": "#fbfaf7",
+  "id": "/"
 }
