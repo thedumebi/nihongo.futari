@@ -15,7 +15,6 @@ const route = useRoute()
 const router = useRouter()
 const auth = useAuthStore()
 const lang = useLanguageStore()
-const mainEl = ref<HTMLElement>()
 const languageIcon = Globe
 
 /**
@@ -70,7 +69,11 @@ onMounted(() => {
 })
 
 watch(() => route.fullPath, () => {
-  mainEl.value?.scrollTo({ top: 0 })
+  // The WINDOW scrolls, not <main>. main is a plain flex child with no overflow
+  // of its own, so scrollTo on it silently did nothing and every navigation
+  // landed at the previous page's scroll offset — arriving halfway down a page
+  // you had never seen. Harmless-looking, and invisible until you look for it.
+  window.scrollTo({ top: 0 })
   // Tapping a link must dismiss the panel, or the destination arrives hidden
   // behind it.
   menuOpen.value = false
@@ -85,7 +88,22 @@ async function signOut() {
 
 <template>
   <div class="flex min-h-screen flex-col bg-[var(--color-bg)] text-[var(--color-text)]">
-    <header class="border-b border-[var(--color-border)]">
+    <!--
+      Pinned to the top rather than scrolling away with the page.
+
+      The menu is the only way out of a screen on mobile, and it was leaving with
+      the header — so getting anywhere from halfway down a long conversation or
+      the dictionary meant scrolling back to the top first. A navigation control
+      you have to go and find is one that stops being used.
+
+      `sticky` rather than `fixed`: it keeps the header in the document flow, so
+      the content below starts underneath it without a hand-maintained top
+      offset that would drift the moment the header's height changed.
+
+      The z-index sits below the mobile drawer's overlay (z-40) and panel
+      (z-50), so an open menu still covers the header rather than fighting it.
+    -->
+    <header class="sticky top-0 z-30 border-b border-[var(--color-border)] bg-[var(--color-bg)]">
       <nav class="mx-auto max-w-4xl px-6 py-4">
         <div class="flex items-center gap-6">
           <!-- 語 is read "go" and means "language"; the name comes from it. -->
@@ -207,7 +225,7 @@ async function signOut() {
       </Teleport>
     </header>
 
-    <main ref="mainEl" class="flex-1">
+    <main class="flex-1">
       <slot />
     </main>
 
