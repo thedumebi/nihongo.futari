@@ -725,10 +725,25 @@ async function load() {
   }
 }
 
+/**
+ * Whether focusing an input is free.
+ *
+ * On a desktop it is: the caret lands in the box and the whole session is
+ * Enter, Enter, Enter without touching the mouse. On a phone it is not — focus
+ * throws up the on-screen keyboard, which eats half the screen and covers the
+ * card you are being asked to read, before you have decided to answer.
+ *
+ * `pointer: fine` is the honest test. It asks whether the pointing device is
+ * precise — a mouse or trackpad — rather than sniffing the user agent, and a
+ * tablet with a keyboard attached correctly reports fine.
+ */
+const canAutoFocus = typeof window !== 'undefined'
+  && window.matchMedia('(pointer: fine)').matches
+
 async function focusInput() {
   buildChoices()
   await nextTick()
-  if (!isChoice.value && !isCanvas.value && !isOrdering.value)
+  if (canAutoFocus && !isChoice.value && !isCanvas.value && !isOrdering.value)
     answerInput.value?.focus()
 }
 

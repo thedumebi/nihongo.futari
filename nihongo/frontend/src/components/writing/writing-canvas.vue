@@ -77,7 +77,7 @@ function toBoxSpace(event: PointerEvent): Point {
  * average of the whole stroke.
  */
 function drawStrokeOrder(ctx: CanvasRenderingContext2D, colour: string) {
-  const R = 4.2
+  const R = 3.8
 
   ctx.save()
   ctx.lineWidth = 1.4
@@ -94,15 +94,35 @@ function drawStrokeOrder(ctx: CanvasRenderingContext2D, colour: string) {
     const ahead = points[Math.min(points.length - 1, Math.max(1, Math.floor(points.length * 0.1)))]
     if (ahead && (ahead.x !== start.x || ahead.y !== start.y)) {
       const angle = Math.atan2(ahead.y - start.y, ahead.x - start.x)
-      // Sits clear of the dot so the two do not merge into a blob.
-      const tipX = start.x + Math.cos(angle) * (R + 5)
-      const tipY = start.y + Math.sin(angle) * (R + 5)
-      const wing = 2.6
+      const cos = Math.cos(angle)
+      const sin = Math.sin(angle)
+
+      // A thin shaft with a distinct head, rather than one squat triangle.
+      // A lone triangle reads as a blob at this size and leaves you guessing
+      // which end is the point; a shaft gives the head something to point AWAY
+      // from, which is what makes the direction legible at a glance.
+      const HEAD = 5.2
+      const SPREAD = 0.34
+      const tipX = start.x + cos * (R + 8)
+      const tipY = start.y + sin * (R + 8)
+      const baseX = tipX - cos * HEAD
+      const baseY = tipY - sin * HEAD
+
+      ctx.strokeStyle = colour
+      ctx.lineWidth = 1.1
+      ctx.lineCap = 'round'
+      ctx.beginPath()
+      ctx.moveTo(start.x + cos * R, start.y + sin * R)
+      ctx.lineTo(baseX, baseY)
+      ctx.stroke()
+
+      // Long and narrow: the length says "this way", the narrowness stops it
+      // reading as a diamond when the two wings are similar in size.
       ctx.fillStyle = colour
       ctx.beginPath()
       ctx.moveTo(tipX, tipY)
-      ctx.lineTo(tipX - Math.cos(angle - 0.5) * wing * 2, tipY - Math.sin(angle - 0.5) * wing * 2)
-      ctx.lineTo(tipX - Math.cos(angle + 0.5) * wing * 2, tipY - Math.sin(angle + 0.5) * wing * 2)
+      ctx.lineTo(baseX - Math.cos(angle - Math.PI / 2) * HEAD * SPREAD, baseY - Math.sin(angle - Math.PI / 2) * HEAD * SPREAD)
+      ctx.lineTo(baseX - Math.cos(angle + Math.PI / 2) * HEAD * SPREAD, baseY - Math.sin(angle + Math.PI / 2) * HEAD * SPREAD)
       ctx.closePath()
       ctx.fill()
     }
