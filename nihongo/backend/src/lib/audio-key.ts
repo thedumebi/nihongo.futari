@@ -27,9 +27,20 @@ import { createHash } from 'node:crypto'
 /**
  * The two voices, here rather than in the generator, because the key depends on
  * them: whoever builds a URL must name the same voice the clip was made with.
+ *
+ * Enhanced variants, and a male voice for the learner. The pairing was Kyoko
+ * against Reed, which was two problems at once: Reed ships compact and sounded
+ * robotic beside a full-quality voice, and both being female meant you had to
+ * track who was speaking rather than hearing it. Otoya is male and enhanced, so
+ * whose turn it is is audible before the words are.
+ *
+ * These names must exist in `say -v '?'` on the machine that generates audio.
+ * The enhanced variants are downloaded, not built in — System Settings →
+ * Accessibility → Spoken Content → Manage Voices — and a missing one fails the
+ * clip rather than silently substituting, which is the behaviour you want.
  */
-export const VOICE_OTHER = 'Kyoko'
-export const VOICE_LEARNER = 'Reed (Japanese (Japan))'
+export const VOICE_OTHER = 'Kyoko (Enhanced)'
+export const VOICE_LEARNER = 'Otoya (Enhanced)'
 
 export function audioKeyFor(text: string, voice: string): string {
   const digest = createHash('sha256').update(`${voice} ${text}`, 'utf8').digest('base64url')
