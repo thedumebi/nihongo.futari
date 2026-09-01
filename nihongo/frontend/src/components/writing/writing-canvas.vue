@@ -31,12 +31,27 @@ const props = withDefaults(defineProps<{
    * recover by looking at the finished glyph.
    */
   showOrder?: boolean
+  /**
+   * Mark only the stroke that comes next, rather than all of them at once.
+   *
+   * Showing every marker together is a reference chart, and it stops working as
+   * one the moment the character is busy: ロ has three strokes and two of them
+   * already needed nudging apart, while 曜 has eighteen and there is nowhere for
+   * them to go. It also answers the wrong question — the reader is midway
+   * through and wants to know what comes NEXT, not to re-read the whole order.
+   *
+   * Following along means at most one marker on screen, so crowding cannot
+   * happen however dense the character, and the guide becomes a prompt rather
+   * than a diagram.
+   */
+  followAlong?: boolean
   /** Number of reference strokes to reveal as a hint. */
   revealStrokes?: number
   disabled?: boolean
 }>(), {
   showGuide: true,
   showOrder: true,
+  followAlong: true,
   revealStrokes: 0,
   disabled: false
 })
@@ -88,7 +103,15 @@ function drawStrokeOrder(ctx: CanvasRenderingContext2D, colour: string) {
   // Where each marker ended up, so the next one can avoid it.
   const placed: Point[] = []
 
-  for (const [i, points] of referencePoints.value.entries()) {
+  // Which strokes to mark. Following along, that is just the one the reader is
+  // about to draw — index equal to how many they have already completed.
+  const entries = props.followAlong
+    ? referencePoints.value
+        .map((points, i) => [i, points] as const)
+        .filter(([i]) => i === strokes.value.length)
+    : referencePoints.value.map((points, i) => [i, points] as const)
+
+  for (const [i, points] of entries) {
     const first = points[0]
     if (!first)
       continue
@@ -318,7 +341,7 @@ watch(canvas, (el) => {
     draw()
   }
 }, { immediate: true })
-watch(() => [props.reference, props.showGuide, props.showOrder, props.revealStrokes], () => draw(), { deep: true })
+watch(() => [props.reference, props.showGuide, props.showOrder, props.followAlong, props.revealStrokes], () => draw(), { deep: true })
 onBeforeUnmount(() => observer.disconnect())
 
 defineExpose({ undo, clear })
