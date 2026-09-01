@@ -65,7 +65,7 @@ ON CONFLICT DO NOTHING;
 
 INSERT INTO grammar_mistakes (id, grammar_point_id, wrong, "right", why_wrong, explanation, sort_index) VALUES
   ('gm-desu-0', 'gp-desu', '学生だです。', '学生です。', 'だ and です are the same slot.', 'They are two registers of one copula, so only one can appear. Plain だ or polite です — never both.', 0),
-  ('gm-desu-1', 'gp-desu', 'высокийです。', '高いです。', 'i-adjectives keep their own ending.', 'An i-adjective already carries the predicate, so です only adds politeness: 高いです, never 高いだ.', 1),
+  ('gm-desu-1', 'gp-desu', '高いだ。', '高いです。', 'i-adjectives keep their own ending.', 'An i-adjective already carries the predicate, so です only adds politeness: 高いです, never 高いだ.', 1),
   ('gm-masu-0', 'gp-masu', '食べるます。', '食べます。', 'ます attaches to the stem, not the dictionary form.', 'Drop the final る (or shift the う-row) first: 食べる → 食べ + ます.', 0),
   ('gm-te-form-0', 'gp-te-form', '行くて', '行って', 'く-verbs take いて, but 行く is irregular.', '書く → 書いて follows the rule; 行く is the one exception and takes 行って.', 0),
   ('gm-ta-form-0', 'gp-ta-form', '行いた', '行った', 'The た-form mirrors the て-form exactly.', 'If you know 行って, then 行った follows; the two forms always share their shape.', 0),
