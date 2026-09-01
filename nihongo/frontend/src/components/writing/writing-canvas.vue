@@ -85,13 +85,43 @@ function drawStrokeOrder(ctx: CanvasRenderingContext2D, colour: string) {
   ctx.textAlign = 'center'
   ctx.textBaseline = 'middle'
 
+  // Where each marker ended up, so the next one can avoid it.
+  const placed: Point[] = []
+
   for (const [i, points] of referencePoints.value.entries()) {
-    const start = points[0]
-    if (!start)
+    const first = points[0]
+    if (!first)
       continue
 
+    /**
+     * Slide the marker along its own stroke until it is clear of the others.
+     *
+     * Strokes very often share a start: both of ロ's first two begin at the same
+     * top-left corner, so their markers landed exactly on top of each other and
+     * neither number was readable. Nudging in an arbitrary direction would break
+     * the association — a marker floating beside two strokes belongs to neither —
+     * whereas a marker further ALONG its own stroke is still unambiguously that
+     * stroke's, because it is sitting on it.
+     *
+     * Falls back to the start point if the whole stroke is crowded, which is
+     * better than pushing the marker off the glyph entirely.
+     */
+    let start = first
+    for (let step = 0; step <= 8; step++) {
+      const candidate = points[Math.min(points.length - 1, Math.round((points.length - 1) * step * 0.08))]
+      if (!candidate)
+        break
+      const clear = placed.every(q => Math.hypot(q.x - candidate.x, q.y - candidate.y) >= R * 2.3)
+      if (clear) {
+        start = candidate
+        break
+      }
+    }
+    placed.push(start)
+
     // The arrow first, so the numbered dot sits on top of its tail.
-    const ahead = points[Math.min(points.length - 1, Math.max(1, Math.floor(points.length * 0.1)))]
+    const from = points.indexOf(start)
+    const ahead = points[Math.min(points.length - 1, Math.max(from + 1, from + Math.floor(points.length * 0.1)))]
     if (ahead && (ahead.x !== start.x || ahead.y !== start.y)) {
       const angle = Math.atan2(ahead.y - start.y, ahead.x - start.x)
       const cos = Math.cos(angle)
