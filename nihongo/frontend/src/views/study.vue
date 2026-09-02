@@ -375,7 +375,10 @@ const intro = computed(() => {
 
   // The thing being taught. On a cloze that is the word cut out of the
   // sentence, which lives in the answer rather than the prompt.
-  const subject = str(p.character) || str(p.word) || str(p.component) || answer
+  // `introWord` first: a listening card withholds the word from its question on
+  // purpose, so without it the subject fell through to the answer and announced
+  // the English as the thing being learned.
+  const subject = str(p.introWord) || str(p.character) || str(p.word) || str(p.component) || answer
 
   // `hint` is the reading on a cloze; on dictation it is the English, so that
   // one is deliberately excluded.
@@ -383,26 +386,35 @@ const intro = computed(() => {
   // reading the answer is the reading, and without this fallback such a card
   // introduced itself as a bare glyph with nothing attached.
   const asksForReading = !answerIsEnglish.value && answer !== subject
-  const reading = str(p.reading)
+  const reading = str(p.introReading) || str(p.reading)
     || (current.value?.templateCode === 'dictation' ? '' : str(p.hint))
     || (asksForReading ? answer : '')
 
   // The meaning. `translation` is the sentence's English on cloze and
   // word-order; otherwise the answer is the meaning only when the card asks
   // for English.
-  const meaning = str(p.translation) || str(p.gloss)
+  // On a listening or dictation card the answer is the meaning or the reading,
+  // and `introWord` now supplies the subject, so the answer is free to be what
+  // it is rather than standing in for the word.
+  const meaning = str(p.gloss) || str(p.translation)
     || (answerIsEnglish.value ? answer : '')
+    || (current.value?.templateCode === 'dictation' ? str(p.hint) : '')
 
   // The sentence a cloze word was taken from, so the word is met in use rather
   // than as a flashcard with no context.
   const sentence = str(p.sentence)
+  // The sentence's English, kept apart from the word's. A cloze carries both
+  // and they answer different questions: the gloss says what 今年 means, the
+  // translation shows the sentence it was cut from doing its job.
+  const sentenceMeaning = str(p.translation)
 
   return {
     subject,
     // Never repeat the subject back as its own reading or meaning.
     reading: reading && reading !== subject ? reading : '',
     meaning: meaning && meaning !== subject ? meaning : '',
-    sentence: sentence && sentence !== subject ? sentence : ''
+    sentence: sentence && sentence !== subject ? sentence : '',
+    sentenceMeaning: sentence && sentenceMeaning !== meaning ? sentenceMeaning : ''
   }
 })
 
@@ -764,6 +776,23 @@ const audioSrc = computed(() => {
  */
 const canPlayAudio = computed(() =>
   Boolean(audioSrc.value) && (!isCloze.value || revealed.value || introducing.value))
+
+/**
+ * The word's own clip, where the card's main clip is something larger.
+ *
+ * A cloze teaching 今月 inside 今月いっぱいここにいます could play the sentence and
+ * never the word alone — but they are different things and both are worth
+ * hearing. Only set when the two actually differ, so a card whose audio IS the
+ * word does not grow a second identical button.
+ */
+const wordAudioSrc = computed(() => {
+  const src = current.value?.assets?.wordAudio
+  return typeof src === 'string' && src !== audioSrc.value ? src : ''
+})
+
+function playWord() {
+  playAudio(wordAudioSrc.value)
+}
 const finished = computed(() => !loading.value && !current.value)
 const accuracy = computed(() =>
   sessionSeen.value === 0 ? 0 : Math.round((sessionCorrect.value / sessionSeen.value) * 100))
@@ -1377,14 +1406,27 @@ watch(() => lang.code, async () => {
             >
               {{ intro.sentence }}
             </p>
-            <button
-              v-if="audioSrc"
-              type="button"
-              class="mt-6 rounded-full border border-[var(--color-border)] px-4 py-2 text-sm text-[var(--color-muted)] transition hover:text-[var(--color-text)]"
-              @click="play"
-            >
-              Hear it
-            </button>
+            <p v-if="intro.sentenceMeaning" class="mx-auto mt-1 max-w-sm text-sm text-[var(--color-muted)]">
+              {{ intro.sentenceMeaning }}
+            </p>
+            <div v-if="audioSrc || wordAudioSrc" class="mt-6 flex flex-wrap justify-center gap-2">
+              <button
+                v-if="wordAudioSrc"
+                type="button"
+                class="rounded-full border border-[var(--color-border)] px-4 py-2 text-sm text-[var(--color-muted)] transition hover:text-[var(--color-text)]"
+                @click="playWord"
+              >
+                Hear the word
+              </button>
+              <button
+                v-if="audioSrc"
+                type="button"
+                class="rounded-full border border-[var(--color-border)] px-4 py-2 text-sm text-[var(--color-muted)] transition hover:text-[var(--color-text)]"
+                @click="play"
+              >
+                {{ wordAudioSrc ? 'Hear the sentence' : 'Hear it' }}
+              </button>
+            </div>
             <div class="mt-8">
               <Button variant="primary" @click="introducing = false">
                 Got it — ask me
@@ -1514,6 +1556,24 @@ watch(() => lang.code, async () => {
               {{ subLabel }}
             </p>
             <div class="mb-8" />
+
+            <!--
+            The word on its own, beside the sentence. Held to the same reveal
+            rule as the sentence on a cloze, since hearing the missing word read
+            aloud gives the answer just as plainly.
+          -->
+            <div v-if="wordAudioSrc && (!isCloze || revealed)" class="mb-4 flex justify-center">
+              <button
+                type="button"
+                class="flex items-center gap-2 rounded-full border border-[var(--color-border)] px-4 py-2 text-sm text-[var(--color-muted)] transition hover:text-[var(--color-text)]"
+                @click="playWord"
+              >
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                  <path d="M11 5 6 9H2v6h4l5 4V5z" />
+                </svg>
+                Hear the word
+              </button>
+            </div>
 
             <div v-if="canPlayAudio" class="mb-8 flex justify-center">
               <button
