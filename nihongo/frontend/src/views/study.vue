@@ -289,6 +289,22 @@ const errorMsg = ref('')
 const answer = ref('')
 const revealed = ref(false)
 const wasCorrect = ref(false)
+/**
+ * Showing a new card's answer BEFORE asking for it.
+ *
+ * Everything was a quiz. A card would ask for いちばん from someone who had
+ * never seen the word, which is not a test of recall but a guess — and getting
+ * it wrong teaches nothing, because there was nothing there to recall. The
+ * scheduler assumed an introduction had happened somewhere, and no screen ever
+ * performed one.
+ *
+ * A new card now shows what it is first — the subject, its reading, its meaning,
+ * with audio and the illustration if there are any — and asks afterwards. Only
+ * on the FIRST encounter: a card that has been seen is a review, and putting the
+ * answer in front of it would defeat the whole exercise.
+ */
+const introducing = ref(false)
+
 const expected = ref('')
 const answerInput = ref<HTMLInputElement>()
 const rated = ref(false)
@@ -312,12 +328,44 @@ const RATINGS = [
 ]
 
 const current = computed<StudyQueueItem | undefined>(() => items.value[index.value])
+
+/**
+ * A card that has never been seen opens on its introduction.
+ *
+ * Driven off `current` rather than set in `resetCard`, because resetCard runs
+ * BEFORE the index moves — reading `isNew` there would describe the card just
+ * finished, not the one arriving.
+ */
+watch(current, (card) => {
+  introducing.value = Boolean(card?.isNew)
+}, { immediate: true })
+
 // Kana prompts carry `character`, word prompts carry `word`. One display slot.
+/** The answer, readable before it has been earned — only during the intro. */
+const introAnswer = computed(() => {
+  const primary = current.value?.answer?.primary
+  return typeof primary === 'string' ? primary : ''
+})
+
 const character = computed(() => String(
   current.value?.prompt?.character ?? current.value?.prompt?.word ?? current.value?.prompt?.component ?? ''
 ))
 const subLabel = computed(() => String(current.value?.prompt?.reading ?? ''))
-const scriptLabel = computed(() => String(current.value?.prompt?.script ?? current.value?.kind ?? ''))
+/**
+ * What KIND of thing this card is about — kana, word, kanji, grammar.
+ *
+ * It used to prefer `prompt.script`, so a kana card announced "hiragana" and a
+ * word card "word", and there was no single label you could rely on to tell
+ * what you were being asked about. The kind is the stable answer to that; the
+ * script is extra detail worth keeping when it says something the kind does
+ * not.
+ */
+const kindLabel = computed(() => String(current.value?.kind ?? ''))
+const scriptLabel = computed(() => {
+  const script = String(current.value?.prompt?.script ?? '')
+  const kind = kindLabel.value
+  return script && script !== kind ? `${kind} · ${script}` : kind
+})
 const isChoice = computed(() => current.value?.inputMode === 'choice')
 
 /**
@@ -656,6 +704,21 @@ const audioSrc = computed(() => {
   const src = current.value?.assets?.audio
   return typeof src === 'string' ? src : ''
 })
+
+/**
+ * Whether the clip can be offered yet.
+ *
+ * A cloze card's audio is the WHOLE sentence, missing word included, so playing
+ * it before the answer is given would simply read out the answer. Held back
+ * until the reveal, where it becomes the useful half of the exercise: knowing a
+ * word fits the gap is not the same as knowing how the sentence sounds with it
+ * in place.
+ *
+ * Every other card type is unaffected — dictation in particular NEEDS the clip
+ * up front, since hearing it is the question.
+ */
+const canPlayAudio = computed(() =>
+  Boolean(audioSrc.value) && (!isCloze.value || revealed.value || introducing.value))
 const finished = computed(() => !loading.value && !current.value)
 const accuracy = computed(() =>
   sessionSeen.value === 0 ? 0 : Math.round((sessionCorrect.value / sessionSeen.value) * 100))
@@ -1243,344 +1306,379 @@ watch(() => lang.code, async () => {
             {{ scriptLabel }}<span v-if="current.isNew"> &middot; new</span>
           </p>
 
-          <!-- A conversation owns the whole card: the prompt, the choices and
-               the verdict are one flow, not a question with an answer box. -->
-          <DialogueCard
-            v-if="isDialogue"
-            :title="String(current.prompt?.title ?? '')"
-            :situation="String(current.prompt?.situation ?? '')"
-            :turns="dialogueTurns"
-            :mode="furiganaMode"
-            @finished="onDialogueFinished"
-          />
+          <!--
+            The introduction. Shown instead of the question, not beside it —
+            reading the answer and answering are two different acts, and putting
+            them on one screen turns the second into copying.
+          -->
+          <div v-if="introducing" class="py-8 text-center">
+            <p class="text-sm text-[var(--color-muted)]">
+              Something new — here it is first.
+            </p>
+            <p v-if="character" class="mt-6 text-6xl leading-tight" style="font-family: var(--font-jp)">
+              {{ character }}
+            </p>
+            <p v-if="subLabel" class="mt-3 text-lg text-[var(--color-muted)]" style="font-family: var(--font-jp)">
+              {{ subLabel }}
+            </p>
+            <p v-if="introAnswer" class="mx-auto mt-4 max-w-sm text-xl">
+              {{ introAnswer }}
+            </p>
+            <button
+              v-if="audioSrc"
+              type="button"
+              class="mt-6 rounded-full border border-[var(--color-border)] px-4 py-2 text-sm text-[var(--color-muted)] transition hover:text-[var(--color-text)]"
+              @click="play"
+            >
+              Hear it
+            </button>
+            <div class="mt-8">
+              <Button variant="primary" @click="introducing = false">
+                Got it — ask me
+              </Button>
+            </div>
+          </div>
 
-          <p
-            v-else-if="isCloze"
-            class="mt-8 text-center text-3xl leading-relaxed"
-            style="font-family: var(--font-jp)"
-          >
-            <!--
+          <template v-else>
+            <!-- A conversation owns the whole card: the prompt, the choices and
+               the verdict are one flow, not a question with an answer box. -->
+            <DialogueCard
+              v-if="isDialogue"
+              :title="String(current.prompt?.title ?? '')"
+              :situation="String(current.prompt?.situation ?? '')"
+              :turns="dialogueTurns"
+              :mode="furiganaMode"
+              @finished="onDialogueFinished"
+            />
+
+            <p
+              v-else-if="isCloze"
+              class="mt-8 text-center text-3xl leading-relaxed"
+              style="font-family: var(--font-jp)"
+            >
+              <!--
               TokenLine, not FuriganaText: it renders the ruby AND makes each
               word tappable for its meaning. Two components cannot own the same
               run of text, so this one does both. It falls back to the plain
               line when the backend supplied no tokens.
             -->
-            <TokenLine
-              v-if="clozeBeforeTokens.length"
-              :tokens="clozeBeforeTokens"
-              :text="String(current.prompt?.before ?? '')"
-              reading=""
-              :mode="furiganaMode"
-              :known-kanji="knownKanji"
-              :selected="selectedIn('before')"
-              @pick="pickWord('before', clozeBeforeTokens, $event)"
-            />
-            <FuriganaText
-              v-else
-              :text="String(current.prompt?.before ?? '')"
-              :segments="clozeBefore"
-              :mode="furiganaMode"
-              :known-kanji="knownKanji"
-            />
-            <span
-              class="mx-1 inline-block min-w-[3ch] border-b-2 px-2 align-bottom"
-              :class="revealed ? 'border-[var(--color-success)] text-[var(--color-success)]' : 'border-[var(--color-muted)]'"
-            >{{ revealed ? current.answer.primary : '' }}</span>
-            <TokenLine
-              v-if="clozeAfterTokens.length"
-              :tokens="clozeAfterTokens"
-              :text="String(current.prompt?.after ?? '')"
-              reading=""
-              :mode="furiganaMode"
-              :known-kanji="knownKanji"
-              :selected="selectedIn('after')"
-              @pick="pickWord('after', clozeAfterTokens, $event)"
-            />
-            <FuriganaText
-              v-else
-              :text="String(current.prompt?.after ?? '')"
-              :segments="clozeAfter"
-              :mode="furiganaMode"
-              :known-kanji="knownKanji"
-            />
-          </p>
-          <p v-if="isCloze && clozeTranslation" class="mt-4 text-center text-sm text-[var(--color-muted)]">
-            {{ clozeTranslation }}
-          </p>
-
-          <p v-if="isOrdering && clozeTranslation" class="mt-6 text-center text-lg text-[var(--color-heading)]">
-            {{ clozeTranslation }}
-          </p>
-
-          <div v-if="isSeries" class="mt-4 text-center">
-            <p class="text-2xl tracking-widest text-[var(--color-muted)]" style="font-family: var(--font-jp)">
-              {{ seriesExampleText }}
+              <TokenLine
+                v-if="clozeBeforeTokens.length"
+                :tokens="clozeBeforeTokens"
+                :text="String(current.prompt?.before ?? '')"
+                reading=""
+                :mode="furiganaMode"
+                :known-kanji="knownKanji"
+                :selected="selectedIn('before')"
+                @pick="pickWord('before', clozeBeforeTokens, $event)"
+              />
+              <FuriganaText
+                v-else
+                :text="String(current.prompt?.before ?? '')"
+                :segments="clozeBefore"
+                :mode="furiganaMode"
+                :known-kanji="knownKanji"
+              />
+              <span
+                class="mx-1 inline-block min-w-[3ch] border-b-2 px-2 align-bottom"
+                :class="revealed ? 'border-[var(--color-success)] text-[var(--color-success)]' : 'border-[var(--color-muted)]'"
+              >{{ revealed ? current.answer.primary : '' }}</span>
+              <TokenLine
+                v-if="clozeAfterTokens.length"
+                :tokens="clozeAfterTokens"
+                :text="String(current.prompt?.after ?? '')"
+                reading=""
+                :mode="furiganaMode"
+                :known-kanji="knownKanji"
+                :selected="selectedIn('after')"
+                @pick="pickWord('after', clozeAfterTokens, $event)"
+              />
+              <FuriganaText
+                v-else
+                :text="String(current.prompt?.after ?? '')"
+                :segments="clozeAfter"
+                :mode="furiganaMode"
+                :known-kanji="knownKanji"
+              />
             </p>
-            <p v-if="seriesReliability !== null" class="mt-2 text-xs text-[var(--color-muted)]">
-              Holds for {{ seriesReliability }}% of the characters that use it
+            <p v-if="isCloze && clozeTranslation" class="mt-4 text-center text-sm text-[var(--color-muted)]">
+              {{ clozeTranslation }}
             </p>
-          </div>
 
-          <template v-else-if="grammarSentence">
-            <p class="mt-8 text-center text-2xl leading-relaxed" style="font-family: var(--font-jp)">
-              {{ grammarSentence }}
+            <p v-if="isOrdering && clozeTranslation" class="mt-6 text-center text-lg text-[var(--color-heading)]">
+              {{ clozeTranslation }}
             </p>
-            <!-- Only AFTER the reveal. For a cloze the point IS what goes in the
+
+            <div v-if="isSeries" class="mt-4 text-center">
+              <p class="text-2xl tracking-widest text-[var(--color-muted)]" style="font-family: var(--font-jp)">
+                {{ seriesExampleText }}
+              </p>
+              <p v-if="seriesReliability !== null" class="mt-2 text-xs text-[var(--color-muted)]">
+                Holds for {{ seriesReliability }}% of the characters that use it
+              </p>
+            </div>
+
+            <template v-else-if="grammarSentence">
+              <p class="mt-8 text-center text-2xl leading-relaxed" style="font-family: var(--font-jp)">
+                {{ grammarSentence }}
+              </p>
+              <!-- Only AFTER the reveal. For a cloze the point IS what goes in the
                blank, so showing it up front hands over the answer. -->
-            <p v-if="grammarPoint && (revealed || teaching)" class="mt-3 text-center text-sm text-[var(--color-muted)]" style="font-family: var(--font-jp)">
-              {{ grammarPoint }}
-            </p>
-            <p v-if="grammarGloss" class="mt-1 text-center text-sm text-[var(--color-muted)]">
-              {{ grammarGloss }}
-            </p>
-          </template>
-
-          <p
-            v-else-if="!isOrdering && character"
-            class="mt-8 text-center leading-none"
-            :class="character.length > 3 ? 'text-5xl' : 'text-8xl'"
-            style="font-family: var(--font-jp)"
-          >
-            <FuriganaText
-              v-if="showFurigana && subLabel"
-              :text="character"
-              :reading="subLabel"
-              :mode="furiganaMode"
-              :known-kanji="knownKanji"
-            />
-            <template v-else>
-              {{ character }}
+              <p v-if="grammarPoint && (revealed || teaching)" class="mt-3 text-center text-sm text-[var(--color-muted)]" style="font-family: var(--font-jp)">
+                {{ grammarPoint }}
+              </p>
+              <p v-if="grammarGloss" class="mt-1 text-center text-sm text-[var(--color-muted)]">
+                {{ grammarGloss }}
+              </p>
             </template>
-          </p>
 
-          <WordMeaning
-            v-if="pickedWord"
-            class="mt-4"
-            :word="pickedWord.word"
-            @close="pickedWord = null"
-          />
-
-          <p v-if="subLabel && revealed" class="mt-3 text-center text-lg text-[var(--color-muted)]" style="font-family: var(--font-jp)">
-            {{ subLabel }}
-          </p>
-          <div class="mb-8" />
-
-          <div v-if="audioSrc" class="mb-8 flex justify-center">
-            <button
-              type="button"
-              class="flex items-center gap-2 rounded-full border border-[var(--color-border)] px-4 py-2 text-sm text-[var(--color-muted)] transition hover:text-[var(--color-text)]"
-              :aria-label="`Hear ${character}`"
-              @click="play"
+            <p
+              v-else-if="!isOrdering && character"
+              class="mt-8 text-center leading-none"
+              :class="character.length > 3 ? 'text-5xl' : 'text-8xl'"
+              style="font-family: var(--font-jp)"
             >
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
-                <path d="M11 5 6 9H2v6h4l5 4V5z" />
-                <path d="M15.5 8.5a5 5 0 0 1 0 7" />
-              </svg>
-              Hear it
-            </button>
-          </div>
+              <FuriganaText
+                v-if="showFurigana && subLabel"
+                :text="character"
+                :reading="subLabel"
+                :mode="furiganaMode"
+                :known-kanji="knownKanji"
+              />
+              <template v-else>
+                {{ character }}
+              </template>
+            </p>
 
-          <form v-if="!isDialogue" class="flex flex-col gap-4" @submit.prevent="onEnter">
-            <div v-if="isChoice" class="flex flex-col gap-2">
+            <WordMeaning
+              v-if="pickedWord"
+              class="mt-4"
+              :word="pickedWord.word"
+              @close="pickedWord = null"
+            />
+
+            <p v-if="subLabel && revealed" class="mt-3 text-center text-lg text-[var(--color-muted)]" style="font-family: var(--font-jp)">
+              {{ subLabel }}
+            </p>
+            <div class="mb-8" />
+
+            <div v-if="canPlayAudio" class="mb-8 flex justify-center">
               <button
-                v-for="option in choices"
-                :key="option"
                 type="button"
-                class="rounded-lg border px-4 py-3 text-left transition"
-                :class="[
-                  !revealed ? 'border-[var(--color-border)] hover:border-[var(--color-text)]' : '',
-                  revealed && option === current.answer.primary ? 'border-[var(--color-success)] text-[var(--color-success)]' : '',
-                  revealed && option === answer && option !== current.answer.primary ? 'border-[var(--color-danger)] text-[var(--color-danger)]' : '',
-                  revealed && option !== current.answer.primary && option !== answer ? 'border-[var(--color-border)] opacity-50' : '',
-                ]"
-                :disabled="revealed"
-                @click="choose(option)"
+                class="flex items-center gap-2 rounded-full border border-[var(--color-border)] px-4 py-2 text-sm text-[var(--color-muted)] transition hover:text-[var(--color-text)]"
+                :aria-label="`Hear ${character}`"
+                @click="play"
               >
-                {{ option }}
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                  <path d="M11 5 6 9H2v6h4l5 4V5z" />
+                  <path d="M15.5 8.5a5 5 0 0 1 0 7" />
+                </svg>
+                Hear it
               </button>
             </div>
 
-            <div v-else-if="isOrdering" class="flex flex-col gap-4">
-              <!-- The line being built. Empty slots make it obvious this is an
-                 arrangement rather than a text field. -->
-              <div
-                class="flex min-h-14 flex-wrap items-center gap-1.5 rounded-lg border border-dashed border-[var(--color-border)] p-3 text-xl"
-                style="font-family: var(--font-jp)"
-              >
+            <form v-if="!isDialogue" class="flex flex-col gap-4" @submit.prevent="onEnter">
+              <div v-if="isChoice" class="flex flex-col gap-2">
                 <button
-                  v-for="(tileIndex, position) in placed"
-                  :key="`placed-${position}`"
+                  v-for="option in choices"
+                  :key="option"
                   type="button"
-                  class="rounded-md bg-[var(--color-washi)] px-2.5 py-1 transition hover:opacity-70"
+                  class="rounded-lg border px-4 py-3 text-left transition"
+                  :class="[
+                    !revealed ? 'border-[var(--color-border)] hover:border-[var(--color-text)]' : '',
+                    revealed && option === current.answer.primary ? 'border-[var(--color-success)] text-[var(--color-success)]' : '',
+                    revealed && option === answer && option !== current.answer.primary ? 'border-[var(--color-danger)] text-[var(--color-danger)]' : '',
+                    revealed && option !== current.answer.primary && option !== answer ? 'border-[var(--color-border)] opacity-50' : '',
+                  ]"
                   :disabled="revealed"
-                  @click="removeTile(position)"
+                  @click="choose(option)"
                 >
-                  <FuriganaText
-                    :text="orderTiles[tileIndex] ?? ''"
-                    :segments="tileFurigana[orderTiles[tileIndex] ?? '']"
-                    :mode="furiganaMode"
-                    :known-kanji="knownKanji"
-                  />
-                </button>
-                <span v-if="placed.length === 0" class="text-base text-[var(--color-muted)]">
-                  Tap the words below
-                </span>
-              </div>
-
-              <div class="flex flex-wrap gap-1.5" style="font-family: var(--font-jp)">
-                <button
-                  v-for="(tile, tileIndex) in orderTiles"
-                  :key="`tile-${tileIndex}`"
-                  type="button"
-                  class="rounded-md border border-[var(--color-border)] px-3 py-2 text-xl transition"
-                  :class="placed.includes(tileIndex)
-                    ? 'invisible'
-                    : 'hover:border-[var(--color-text)]'"
-                  :disabled="revealed || placed.includes(tileIndex)"
-                  @click="placeTile(tileIndex)"
-                >
-                  <FuriganaText
-                    :text="tile"
-                    :segments="tileFurigana[tile]"
-                    :mode="furiganaMode"
-                    :known-kanji="knownKanji"
-                  />
+                  {{ option }}
                 </button>
               </div>
-            </div>
 
-            <div v-else-if="isCanvas" class="flex flex-col gap-3">
-              <WritingCanvas
-                ref="canvas"
-                :reference="referenceStrokes"
-                :show-guide="showGuide"
-                :disabled="revealed"
-                @update:strokes="drawnStrokes = $event"
-              />
-              <div v-if="!revealed" class="flex gap-2">
-                <button
-                  type="button"
-                  class="flex-1 rounded-lg border border-[var(--color-border)] px-3 py-2 text-sm transition hover:border-[var(--color-text)]"
-                  :class="showGuide ? 'text-[var(--color-text)]' : 'text-[var(--color-muted)]'"
-                  @click="showGuide = !showGuide"
+              <div v-else-if="isOrdering" class="flex flex-col gap-4">
+                <!-- The line being built. Empty slots make it obvious this is an
+                 arrangement rather than a text field. -->
+                <div
+                  class="flex min-h-14 flex-wrap items-center gap-1.5 rounded-lg border border-dashed border-[var(--color-border)] p-3 text-xl"
+                  style="font-family: var(--font-jp)"
                 >
-                  {{ showGuide ? 'Hide guide' : 'Show guide' }}
-                </button>
-                <button
-                  type="button"
-                  class="flex-1 rounded-lg border border-[var(--color-border)] px-3 py-2 text-sm text-[var(--color-muted)] transition hover:border-[var(--color-text)]"
-                  @click="canvas?.undo()"
-                >
-                  Undo
-                </button>
-                <button
-                  type="button"
-                  class="flex-1 rounded-lg border border-[var(--color-border)] px-3 py-2 text-sm text-[var(--color-muted)] transition hover:border-[var(--color-text)]"
-                  @click="canvas?.clear()"
-                >
-                  Clear
-                </button>
+                  <button
+                    v-for="(tileIndex, position) in placed"
+                    :key="`placed-${position}`"
+                    type="button"
+                    class="rounded-md bg-[var(--color-washi)] px-2.5 py-1 transition hover:opacity-70"
+                    :disabled="revealed"
+                    @click="removeTile(position)"
+                  >
+                    <FuriganaText
+                      :text="orderTiles[tileIndex] ?? ''"
+                      :segments="tileFurigana[orderTiles[tileIndex] ?? '']"
+                      :mode="furiganaMode"
+                      :known-kanji="knownKanji"
+                    />
+                  </button>
+                  <span v-if="placed.length === 0" class="text-base text-[var(--color-muted)]">
+                    Tap the words below
+                  </span>
+                </div>
+
+                <div class="flex flex-wrap gap-1.5" style="font-family: var(--font-jp)">
+                  <button
+                    v-for="(tile, tileIndex) in orderTiles"
+                    :key="`tile-${tileIndex}`"
+                    type="button"
+                    class="rounded-md border border-[var(--color-border)] px-3 py-2 text-xl transition"
+                    :class="placed.includes(tileIndex)
+                      ? 'invisible'
+                      : 'hover:border-[var(--color-text)]'"
+                    :disabled="revealed || placed.includes(tileIndex)"
+                    @click="placeTile(tileIndex)"
+                  >
+                    <FuriganaText
+                      :text="tile"
+                      :segments="tileFurigana[tile]"
+                      :mode="furiganaMode"
+                      :known-kanji="knownKanji"
+                    />
+                  </button>
+                </div>
               </div>
-            </div>
 
-            <input
-              v-else
-              ref="answerInput"
-              v-model="answer"
-              :readonly="revealed"
-              class="w-full rounded-lg border border-[var(--color-border)] bg-transparent px-4 py-3 text-center text-xl outline-none focus:border-[var(--color-text)]"
-              :placeholder="inputHint"
-              autocomplete="off"
-              autocapitalize="off"
-              autocorrect="off"
-              spellcheck="false"
-            >
+              <div v-else-if="isCanvas" class="flex flex-col gap-3">
+                <WritingCanvas
+                  ref="canvas"
+                  :reference="referenceStrokes"
+                  :show-guide="showGuide"
+                  :disabled="revealed"
+                  @update:strokes="drawnStrokes = $event"
+                />
+                <div v-if="!revealed" class="flex gap-2">
+                  <button
+                    type="button"
+                    class="flex-1 rounded-lg border border-[var(--color-border)] px-3 py-2 text-sm transition hover:border-[var(--color-text)]"
+                    :class="showGuide ? 'text-[var(--color-text)]' : 'text-[var(--color-muted)]'"
+                    @click="showGuide = !showGuide"
+                  >
+                    {{ showGuide ? 'Hide guide' : 'Show guide' }}
+                  </button>
+                  <button
+                    type="button"
+                    class="flex-1 rounded-lg border border-[var(--color-border)] px-3 py-2 text-sm text-[var(--color-muted)] transition hover:border-[var(--color-text)]"
+                    @click="canvas?.undo()"
+                  >
+                    Undo
+                  </button>
+                  <button
+                    type="button"
+                    class="flex-1 rounded-lg border border-[var(--color-border)] px-3 py-2 text-sm text-[var(--color-muted)] transition hover:border-[var(--color-text)]"
+                    @click="canvas?.clear()"
+                  >
+                    Clear
+                  </button>
+                </div>
+              </div>
 
-            <div v-if="revealed && handwriting" class="text-center">
-              <p class="font-semibold" :class="handwriting.passed ? 'text-[var(--color-success)]' : 'text-[var(--color-danger)]'">
-                {{ Math.round(handwriting.score) }}% accuracy
-                <span class="ml-1 text-sm font-normal text-[var(--color-muted)]">
-                  {{ handwriting.strokeCountDrawn }} of {{ handwriting.strokeCountExpected }} strokes
-                </span>
-              </p>
-              <ul v-if="handwriting.issues.length" class="mt-1 text-sm text-[var(--color-muted)]">
-                <li v-for="issue in handwriting.issues" :key="issue">
-                  {{ HANDWRITING_ISSUE_TEXT[issue] ?? issue }}
-                </li>
-              </ul>
-              <!-- Which stroke number went wrong is the part that tells you what
+              <input
+                v-else
+                ref="answerInput"
+                v-model="answer"
+                :readonly="revealed"
+                class="w-full rounded-lg border border-[var(--color-border)] bg-transparent px-4 py-3 text-center text-xl outline-none focus:border-[var(--color-text)]"
+                :placeholder="inputHint"
+                autocomplete="off"
+                autocapitalize="off"
+                autocorrect="off"
+                spellcheck="false"
+              >
+
+              <div v-if="revealed && handwriting" class="text-center">
+                <p class="font-semibold" :class="handwriting.passed ? 'text-[var(--color-success)]' : 'text-[var(--color-danger)]'">
+                  {{ Math.round(handwriting.score) }}% accuracy
+                  <span class="ml-1 text-sm font-normal text-[var(--color-muted)]">
+                    {{ handwriting.strokeCountDrawn }} of {{ handwriting.strokeCountExpected }} strokes
+                  </span>
+                </p>
+                <ul v-if="handwriting.issues.length" class="mt-1 text-sm text-[var(--color-muted)]">
+                  <li v-for="issue in handwriting.issues" :key="issue">
+                    {{ HANDWRITING_ISSUE_TEXT[issue] ?? issue }}
+                  </li>
+                </ul>
+                <!-- Which stroke number went wrong is the part that tells you what
                  to do differently next time. -->
-              <ol class="mt-2 flex flex-wrap justify-center gap-1.5">
-                <li
-                  v-for="stroke in handwriting.strokes"
-                  :key="stroke.referenceIndex"
-                  class="rounded px-1.5 py-0.5 text-xs"
-                  :class="stroke.attemptIndex !== null && stroke.score >= 70
-                    ? 'bg-[var(--color-success)]/15 text-[var(--color-success)]'
-                    : 'bg-[var(--color-danger)]/15 text-[var(--color-danger)]'"
-                >
-                  {{ stroke.referenceIndex + 1 }}
-                </li>
-              </ol>
-            </div>
-
-            <div v-else-if="revealed" class="text-center">
-              <p v-if="wasCorrect" class="font-semibold text-[var(--color-success)]">
-                Correct
-              </p>
-              <p v-else class="font-semibold text-[var(--color-danger)]">
-                Not quite &mdash; it's <strong>{{ expected }}</strong>
-              </p>
-            </div>
-
-            <template v-if="revealed && wasCorrect && !isCanvas">
-              <div class="flex gap-2">
-                <button
-                  v-for="r in RATINGS"
-                  :key="r.value"
-                  type="button"
-                  class="flex-1 rounded-lg border border-[var(--color-border)] px-3 py-2.5 text-sm transition hover:border-[var(--color-text)]"
-                  @click="submitRating(r.value); next()"
-                >
-                  {{ r.label }} <span class="text-[var(--color-muted)]">{{ r.key }}</span>
-                </button>
+                <ol class="mt-2 flex flex-wrap justify-center gap-1.5">
+                  <li
+                    v-for="stroke in handwriting.strokes"
+                    :key="stroke.referenceIndex"
+                    class="rounded px-1.5 py-0.5 text-xs"
+                    :class="stroke.attemptIndex !== null && stroke.score >= 70
+                      ? 'bg-[var(--color-success)]/15 text-[var(--color-success)]'
+                      : 'bg-[var(--color-danger)]/15 text-[var(--color-danger)]'"
+                  >
+                    {{ stroke.referenceIndex + 1 }}
+                  </li>
+                </ol>
               </div>
-              <p class="text-center text-xs text-[var(--color-muted)]">
-                Enter for Good &middot; space to replay
-              </p>
-            </template>
-            <Button
-              v-else-if="!isChoice || revealed"
-              type="submit"
-              variant="primary"
-              :disabled="isOrdering && !revealed && placed.length !== orderTiles.length"
-            >
-              {{ revealed ? 'Next' : 'Check' }}
-            </Button>
 
-            <!--
+              <div v-else-if="revealed" class="text-center">
+                <p v-if="wasCorrect" class="font-semibold text-[var(--color-success)]">
+                  Correct
+                </p>
+                <p v-else class="font-semibold text-[var(--color-danger)]">
+                  Not quite &mdash; it's <strong>{{ expected }}</strong>
+                </p>
+              </div>
+
+              <template v-if="revealed && wasCorrect && !isCanvas">
+                <div class="flex gap-2">
+                  <button
+                    v-for="r in RATINGS"
+                    :key="r.value"
+                    type="button"
+                    class="flex-1 rounded-lg border border-[var(--color-border)] px-3 py-2.5 text-sm transition hover:border-[var(--color-text)]"
+                    @click="submitRating(r.value); next()"
+                  >
+                    {{ r.label }} <span class="text-[var(--color-muted)]">{{ r.key }}</span>
+                  </button>
+                </div>
+                <p class="text-center text-xs text-[var(--color-muted)]">
+                  Enter for Good &middot; space to replay
+                </p>
+              </template>
+              <Button
+                v-else-if="!isChoice || revealed"
+                type="submit"
+                variant="primary"
+                :disabled="isOrdering && !revealed && placed.length !== orderTiles.length"
+              >
+                {{ revealed ? 'Next' : 'Check' }}
+              </Button>
+
+              <!--
               Move through the queue without answering. Quiet styling on
               purpose: this is an escape hatch from a card you do not want right
               now, not a third way to finish one.
             -->
-            <div class="flex items-center justify-between pt-1">
-              <button
-                type="button"
-                class="rounded-lg px-2 py-1 text-sm text-[var(--color-muted)] transition enabled:hover:text-[var(--color-text)] disabled:opacity-40"
-                :disabled="!canGoBack"
-                @click="back"
-              >
-                &larr; Back
-              </button>
-              <button
-                type="button"
-                class="rounded-lg px-2 py-1 text-sm text-[var(--color-muted)] transition hover:text-[var(--color-text)]"
-                @click="skip"
-              >
-                Skip &rarr;
-              </button>
-            </div>
-          </form>
+              <div class="flex items-center justify-between pt-1">
+                <button
+                  type="button"
+                  class="rounded-lg px-2 py-1 text-sm text-[var(--color-muted)] transition enabled:hover:text-[var(--color-text)] disabled:opacity-40"
+                  :disabled="!canGoBack"
+                  @click="back"
+                >
+                  &larr; Back
+                </button>
+                <button
+                  type="button"
+                  class="rounded-lg px-2 py-1 text-sm text-[var(--color-muted)] transition hover:text-[var(--color-text)]"
+                  @click="skip"
+                >
+                  Skip &rarr;
+                </button>
+              </div>
+            </form>
+          </template>
         </div>
       </div>
 
