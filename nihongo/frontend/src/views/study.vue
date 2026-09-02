@@ -418,6 +418,57 @@ const intro = computed(() => {
   }
 })
 
+/**
+ * What a conjugation card is actually asking for, in words.
+ *
+ * The instruction said "Give the plain past (〜た)" and stopped. That is a term
+ * from a grammar book handed to someone who has not read one — it names the
+ * form without saying what it does, when you would use it, or what shape the
+ * answer takes. Being told the answer afterwards does not fix that, because you
+ * still do not know what was wanted.
+ *
+ * Four forms exist, so each gets a sentence and a worked example rather than an
+ * abbreviation.
+ */
+const FORM_HELP: Record<string, { what: string, example: string }> = {
+  masu: {
+    what: 'The polite form — how you would say it to someone you are not close to.',
+    example: 'たべる → たべます'
+  },
+  te: {
+    what: 'The te-form. It does not mean anything on its own; it is the joint that lets a verb connect to what follows — asking, linking, continuing.',
+    example: 'たべる → たべて'
+  },
+  ta: {
+    what: 'The plain past — it already happened, said casually. Add です・ます register only if you need to be polite.',
+    example: 'たべる → たべた'
+  },
+  nai: {
+    what: 'The plain negative — it does not or will not happen, said casually.',
+    example: 'たべる → たべない'
+  }
+}
+
+/** Suru verbs are conjugated through する, which the bare noun does not show. */
+const CLASS_NOTE: Record<string, string> = {
+  suru: 'This is a suru-verb: it becomes a verb by taking する, and する is the part that changes.',
+  kuru: 'くる is irregular — it does not follow either regular pattern.',
+  aru: 'ある is irregular in the negative.'
+}
+
+const formHelp = computed(() => {
+  if (current.value?.templateCode !== 'conjugation-drill')
+    return null
+  const form = String(current.value?.prompt?.targetForm ?? '')
+  const help = FORM_HELP[form]
+  if (!help)
+    return null
+  return {
+    ...help,
+    classNote: CLASS_NOTE[String(current.value?.prompt?.verbClass ?? '')] ?? ''
+  }
+})
+
 const character = computed(() => String(
   current.value?.prompt?.character ?? current.value?.prompt?.word ?? current.value?.prompt?.component ?? ''
 ))
@@ -1409,6 +1460,23 @@ watch(() => lang.code, async () => {
             <p v-if="intro.sentenceMeaning" class="mx-auto mt-1 max-w-sm text-sm text-[var(--color-muted)]">
               {{ intro.sentenceMeaning }}
             </p>
+
+            <!--
+              What the card is about to ask for. A form named and not explained
+              is a term from a grammar book handed to someone who has not read
+              one.
+            -->
+            <div v-if="formHelp" class="mx-auto mt-6 max-w-sm rounded-lg border border-[var(--color-border)] p-4 text-left">
+              <p class="text-sm leading-relaxed">
+                {{ formHelp.what }}
+              </p>
+              <p v-if="formHelp.classNote" class="mt-2 text-sm leading-relaxed text-[var(--color-muted)]">
+                {{ formHelp.classNote }}
+              </p>
+              <p class="mt-2 text-sm text-[var(--color-muted)]" style="font-family: var(--font-jp)">
+                {{ formHelp.example }}
+              </p>
+            </div>
             <div v-if="audioSrc || wordAudioSrc" class="mt-6 flex flex-wrap justify-center gap-2">
               <button
                 v-if="wordAudioSrc"
@@ -1562,6 +1630,17 @@ watch(() => lang.code, async () => {
             rule as the sentence on a cloze, since hearing the missing word read
             aloud gives the answer just as plainly.
           -->
+            <!--
+            Kept on the card, not only in the introduction: a form you were shown
+            once a week ago is not a form you know, and hiding the explanation
+            after the first meeting recreates the problem it was added to solve.
+          -->
+            <p v-if="formHelp" class="mx-auto mb-6 max-w-sm text-center text-sm leading-relaxed text-[var(--color-muted)]">
+              {{ formHelp.what }}
+              <span v-if="formHelp.classNote"> {{ formHelp.classNote }}</span>
+              <span class="mt-1 block" style="font-family: var(--font-jp)">{{ formHelp.example }}</span>
+            </p>
+
             <div v-if="wordAudioSrc && (!isCloze || revealed)" class="mb-4 flex justify-center">
               <button
                 type="button"
