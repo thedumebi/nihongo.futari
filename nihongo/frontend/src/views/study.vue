@@ -341,10 +341,69 @@ watch(current, (card) => {
 }, { immediate: true })
 
 // Kana prompts carry `character`, word prompts carry `word`. One display slot.
-/** The answer, readable before it has been earned — only during the intro. */
-const introAnswer = computed(() => {
+/**
+ * Whether the card is asking for the English meaning.
+ *
+ * A drawing of coins beside the options "and / summer vacation / money /
+ * overseas student" is not decoration, it is the answer. Decided from the
+ * expected answer's own script rather than from the facet name: if what you
+ * have to produce is Japanese, a picture of the thing gives nothing away, and
+ * if it is English, it gives away everything.
+ */
+const answerIsEnglish = computed(() => {
   const primary = current.value?.answer?.primary
-  return typeof primary === 'string' ? primary : ''
+  return typeof primary === 'string' && scriptOf(primary) === 'other'
+})
+
+/**
+ * What to actually SHOW when introducing a card.
+ *
+ * The first version read `prompt.word` and `prompt.reading` and fell back to the
+ * bare answer — which is empty on half the card types. A cloze has neither
+ * field, so it introduced 今月 with no reading, no meaning, and played the whole
+ * sentence: the word on screen and nothing saying it means "this month".
+ *
+ * Every card type keeps its subject somewhere different, so this reads each in
+ * turn rather than hoping one shape fits. The MEANING is the part that was
+ * missing and the part that matters: `translation` on a cloze or word-order,
+ * the answer itself where the answer IS the meaning.
+ */
+const intro = computed(() => {
+  const p = current.value?.prompt ?? {}
+  const str = (v: unknown) => (typeof v === 'string' ? v : '')
+  const answer = str(current.value?.answer?.primary)
+
+  // The thing being taught. On a cloze that is the word cut out of the
+  // sentence, which lives in the answer rather than the prompt.
+  const subject = str(p.character) || str(p.word) || str(p.component) || answer
+
+  // `hint` is the reading on a cloze; on dictation it is the English, so that
+  // one is deliberately excluded.
+  // The reading, wherever this card type files it. On a card that ASKS for the
+  // reading the answer is the reading, and without this fallback such a card
+  // introduced itself as a bare glyph with nothing attached.
+  const asksForReading = !answerIsEnglish.value && answer !== subject
+  const reading = str(p.reading)
+    || (current.value?.templateCode === 'dictation' ? '' : str(p.hint))
+    || (asksForReading ? answer : '')
+
+  // The meaning. `translation` is the sentence's English on cloze and
+  // word-order; otherwise the answer is the meaning only when the card asks
+  // for English.
+  const meaning = str(p.translation) || str(p.gloss)
+    || (answerIsEnglish.value ? answer : '')
+
+  // The sentence a cloze word was taken from, so the word is met in use rather
+  // than as a flashcard with no context.
+  const sentence = str(p.sentence)
+
+  return {
+    subject,
+    // Never repeat the subject back as its own reading or meaning.
+    reading: reading && reading !== subject ? reading : '',
+    meaning: meaning && meaning !== subject ? meaning : '',
+    sentence: sentence && sentence !== subject ? sentence : ''
+  }
 })
 
 const character = computed(() => String(
@@ -602,20 +661,6 @@ function buildChoices() {
 const imageSrc = computed(() => {
   const src = current.value?.assets?.image
   return typeof src === 'string' ? src : ''
-})
-
-/**
- * Whether the card is asking for the English meaning.
- *
- * A drawing of coins beside the options "and / summer vacation / money /
- * overseas student" is not decoration, it is the answer. Decided from the
- * expected answer's own script rather than from the facet name: if what you
- * have to produce is Japanese, a picture of the thing gives nothing away, and
- * if it is English, it gives away everything.
- */
-const answerIsEnglish = computed(() => {
-  const primary = current.value?.answer?.primary
-  return typeof primary === 'string' && scriptOf(primary) === 'other'
 })
 
 /**
@@ -1315,14 +1360,22 @@ watch(() => lang.code, async () => {
             <p class="text-sm text-[var(--color-muted)]">
               Something new — here it is first.
             </p>
-            <p v-if="character" class="mt-6 text-6xl leading-tight" style="font-family: var(--font-jp)">
-              {{ character }}
+            <p v-if="intro.subject" class="mt-6 text-6xl leading-tight" style="font-family: var(--font-jp)">
+              {{ intro.subject }}
             </p>
-            <p v-if="subLabel" class="mt-3 text-lg text-[var(--color-muted)]" style="font-family: var(--font-jp)">
-              {{ subLabel }}
+            <p v-if="intro.reading" class="mt-3 text-lg text-[var(--color-muted)]" style="font-family: var(--font-jp)">
+              {{ intro.reading }}
             </p>
-            <p v-if="introAnswer" class="mx-auto mt-4 max-w-sm text-xl">
-              {{ introAnswer }}
+            <p v-if="intro.meaning" class="mx-auto mt-4 max-w-sm text-xl">
+              {{ intro.meaning }}
+            </p>
+            <!-- Met in use, not as an isolated flashcard. -->
+            <p
+              v-if="intro.sentence"
+              class="mx-auto mt-6 max-w-sm text-base leading-relaxed text-[var(--color-muted)]"
+              style="font-family: var(--font-jp)"
+            >
+              {{ intro.sentence }}
             </p>
             <button
               v-if="audioSrc"
