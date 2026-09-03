@@ -33,6 +33,7 @@
     "audio:sentences": "tsx src/pipeline/generate-audio.ts sentences",
     "audio:dialogues": "tsx src/pipeline/generate-audio.ts dialogues",
     "audio:all": "tsx src/pipeline/generate-audio.ts all",
+    "check:examples": "tsx src/pipeline/check-examples.ts",
     "admin:create": "tsx src/db/create-admin.ts",
     "typecheck": "tsc --noEmit",
     "import:vocab": "tsx src/pipeline/import-vocab.ts",

@@ -110,6 +110,21 @@ registerRoute(
   })
 )
 
+// Grammar lessons, on the same terms.
+//
+// Only `/study/` was cached, so the explanations were the one thing that
+// vanished on a train — the half of the app that is pure reading, and the half
+// most worth having offline. The example audio is already covered by the
+// `/audio/` route above.
+registerRoute(
+  ({ url, request }) => request.method === 'GET' && url.pathname.includes('/grammar'),
+  new NetworkFirst({
+    cacheName: 'go-grammar',
+    networkTimeoutSeconds: 4,
+    plugins: [new CacheableResponsePlugin({ statuses: [0, 200] })]
+  })
+)
+
 interface PushPayload {
   title?: string
   body?: string

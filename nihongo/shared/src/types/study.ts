@@ -2,6 +2,7 @@ import { z } from '@hono/zod-openapi'
 
 import { EXERCISE_TEMPLATE_CODES, STUDY_FACETS, STUDY_ITEM_KINDS } from '@/constants/endpoints.js'
 
+import { furiganaSegmentSchema } from './sentences.js'
 import { cardStateSchema } from './srs.js'
 
 /**
@@ -19,19 +20,39 @@ import { cardStateSchema } from './srs.js'
  * answer, so it carries the subject and the schedule and none of the prompt or
  * answer payload.
  */
-export const dueItemSchema = z.object({
+/** One card of a due item — which skill it tests, and how that card is doing. */
+export const dueFacetSchema = z.object({
   cardId: z.string(),
   facetId: z.string(),
+  facet: z.string(),
+  due: z.string(),
+  ghost: z.boolean(),
+  lapses: z.number().int()
+}).openapi('DueFacet')
+
+export type DueFacet = z.infer<typeof dueFacetSchema>
+
+/**
+ * One ITEM waiting, with the cards of it that are due.
+ *
+ * A row was a card, so 仕事 appeared up to four times in a list headed "26
+ * cards" while the app's other surfaces said 5. Grouping by item makes the row
+ * count and the headline the same number, and makes that number the one the
+ * reader thinks in — words, not the three or four schedules behind each word.
+ */
+export const dueItemSchema = z.object({
   studyItemId: z.string(),
   kind: z.string(),
-  facet: z.string(),
-  /** What the card is about: the word, the character, the pattern's name. */
+  /** What the item is: the word, the character, the pattern's name. */
   subject: z.string(),
   /** Reading or gloss, where the subject alone is not enough to recognise it. */
   detail: z.string().nullable(),
+  /** The earliest due card of this item — what makes it wait at the front. */
   due: z.string(),
+  /** True if ANY of its due cards is flagged as not sticking. */
   ghost: z.boolean(),
-  lapses: z.number().int(),
+  /** The due cards themselves, earliest first. */
+  facets: z.array(dueFacetSchema),
   /** Where to read more about this item, or null if it has no page. */
   href: z.string().nullable()
 }).openapi('DueItem')
@@ -49,9 +70,14 @@ export type DueListQuery = z.infer<typeof dueListQuerySchema>
 
 export const dueListResponseSchema = z.object({
   items: z.array(dueItemSchema),
-  /** Everything due, not just this page — the count the list is headed with. */
+  /**
+   * Everything due, not just this page — the count the list is headed with,
+   * in ITEMS, matching `items.length` when the page holds it all.
+   */
   total: z.number().int(),
-  /** How many are due per kind, for the filter chips. */
+  /** The same set in cards, for the secondary line. */
+  totalCards: z.number().int(),
+  /** How many ITEMS are due per kind, for the filter chips. */
   byKind: z.array(z.object({ kind: z.string(), count: z.number().int() })),
   serverTime: z.string()
 }).openapi('DueList')
@@ -80,45 +106,6 @@ export const studyQueueQuerySchema = z.object({
 
 export type StudyQueueQuery = z.infer<typeof studyQueueQuerySchema>
 
-/**
- * One renderable prompt.
- *
- * `answer` ships to the client on purpose: reviews are graded offline, so the
- * device needs it. This is a learning tool — the only person a peeker cheats is
- * themselves — and the alternative is no offline mode at all.
- */
-export const studyQueueItemSchema = z.object({
-  /** Null for an item never studied — the card is created by the first answer. */
-  cardId: z.string().nullable(),
-  facetId: z.string(),
-  studyItemId: z.string(),
-  kind: z.enum(STUDY_ITEM_KINDS),
-  facet: z.enum(STUDY_FACETS),
-  due: z.iso.datetime(),
-  isNew: z.boolean(),
-  ghost: z.boolean(),
-  card: cardStateSchema.nullable(),
-  templateCode: z.enum(EXERCISE_TEMPLATE_CODES),
-  inputMode: z.string(),
-  graderCode: z.string(),
-  prompt: z.record(z.string(), z.unknown()),
-  answer: z.object({ primary: z.string(), accepted: z.array(z.string()) }),
-  distractors: z.array(z.unknown()),
-  assets: z.record(z.string(), z.unknown())
-}).openapi('StudyQueueItem')
-
-export type StudyQueueItem = z.infer<typeof studyQueueItemSchema>
-
-/**
- * Where the reader has reached in a level's curriculum.
- *
- * New material is introduced a stage at a time and the next opens when this
- * one is mostly retained, so without this the gate is invisible: the queue
- * simply runs out of new cards and nothing says why.
- */
-/**
- * One stage of a level: a block of material introduced together.
- */
 /**
  * What a word means, for the tap-a-word popover in a conversation.
  *
@@ -153,6 +140,120 @@ export const glossedTokenSchema = z.object({
 
 export type GlossedToken = z.infer<typeof glossedTokenSchema>
 
+/** An authored sentence demonstrating a grammar point. */
+export const grammarExampleSchema = z.object({
+  sentenceId: z.string(),
+  text: z.string(),
+  /** Kana with particles already spoken (は→わ), which romaji is built from. */
+  reading: z.string().nullish(),
+  translation: z.string().nullish(),
+  audio: z.string().nullish(),
+  /**
+   * The sentence cut into tappable words.
+   *
+   * `GlossedToken` and not a shape of its own: `token-line.vue` already renders
+   * these with ruby, romaji and a tap target, and a word tapped in a lesson
+   * should teach exactly what the same word taught in a conversation.
+   */
+  tokens: z.array(glossedTokenSchema)
+}).openapi('GrammarExample')
+
+export type GrammarExample = z.infer<typeof grammarExampleSchema>
+
+/**
+ * A grammar point as the study loop needs it: enough to TEACH before asking.
+ *
+ * Deliberately not `GrammarPointView`. That is a reference page and carries
+ * etymology and sources; this rides along on a queue row and is trimmed to what
+ * a lesson card shows — one mistake rather than all of them, no sources, no
+ * relations beyond the link out.
+ */
+export const studyLessonSchema = z.object({
+  slug: z.string(),
+  title: z.string(),
+  titleFurigana: z.array(furiganaSegmentSchema),
+  pattern: z.string(),
+  meaningShort: z.string(),
+  meaningLong: z.string().nullish(),
+  nuance: z.string().nullish(),
+  formations: z.array(z.object({
+    ruleTemplate: z.string(),
+    example: z.string().nullish()
+  })),
+  mistake: z.object({
+    wrong: z.string(),
+    right: z.string(),
+    whyWrong: z.string()
+  }).nullish(),
+  examples: z.array(grammarExampleSchema),
+  href: z.string()
+}).openapi('StudyLesson')
+
+export type StudyLesson = z.infer<typeof studyLessonSchema>
+
+/**
+ * What "Show Hints" reveals: the pattern and how it attaches, never the answer.
+ *
+ * Rides on every grammar card and not only new ones — a hint is wanted most on
+ * the review three weeks later, which is exactly when the lesson is gone.
+ */
+export const studyHintSchema = z.object({
+  pattern: z.string(),
+  formations: z.array(z.object({
+    ruleTemplate: z.string(),
+    example: z.string().nullish()
+  })),
+  href: z.string()
+}).openapi('StudyHint')
+
+export type StudyHint = z.infer<typeof studyHintSchema>
+
+/**
+ * One renderable prompt.
+ *
+ * `answer` ships to the client on purpose: reviews are graded offline, so the
+ * device needs it. This is a learning tool — the only person a peeker cheats is
+ * themselves — and the alternative is no offline mode at all.
+ */
+export const studyQueueItemSchema = z.object({
+  /** Null for an item never studied — the card is created by the first answer. */
+  cardId: z.string().nullable(),
+  facetId: z.string(),
+  studyItemId: z.string(),
+  kind: z.enum(STUDY_ITEM_KINDS),
+  facet: z.enum(STUDY_FACETS),
+  due: z.iso.datetime(),
+  isNew: z.boolean(),
+  ghost: z.boolean(),
+  card: cardStateSchema.nullable(),
+  templateCode: z.enum(EXERCISE_TEMPLATE_CODES),
+  inputMode: z.string(),
+  graderCode: z.string(),
+  prompt: z.record(z.string(), z.unknown()),
+  answer: z.object({ primary: z.string(), accepted: z.array(z.string()) }),
+  distractors: z.array(z.unknown()),
+  assets: z.record(z.string(), z.unknown()),
+  /**
+   * Teach before asking. Present only on a grammar card at first exposure —
+   * every other card, and every review, carries null and pays nothing.
+   */
+  lesson: studyLessonSchema.nullish(),
+  /** Present on every grammar card, new or not. See `studyHintSchema`. */
+  hint: studyHintSchema.nullish()
+}).openapi('StudyQueueItem')
+
+export type StudyQueueItem = z.infer<typeof studyQueueItemSchema>
+
+/**
+ * Where the reader has reached in a level's curriculum.
+ *
+ * New material is introduced a stage at a time and the next opens when this
+ * one is mostly retained, so without this the gate is invisible: the queue
+ * simply runs out of new cards and nothing says why.
+ */
+/**
+ * One stage of a level: a block of material introduced together.
+ */
 /** One line of a scripted conversation. */
 export const dialogueTurnSchema = z.object({
   index: z.number().int(),
@@ -232,7 +333,18 @@ export const courseStageSchema = z.object({
   /** A few of its subjects, for a one-line preview. */
   sample: z.array(z.string()),
   /** False for stages the reader has not reached yet. */
-  open: z.boolean()
+  open: z.boolean(),
+  /**
+   * The grammar lessons in this stage, readable in ANY order and regardless of
+   * `open` — reading ahead is allowed, being quizzed ahead is not. `read` is
+   * what `lesson_views` recorded.
+   */
+  lessons: z.array(z.object({
+    slug: z.string(),
+    title: z.string(),
+    meaningShort: z.string(),
+    read: z.boolean()
+  }))
 }).openapi('CourseStage')
 
 export type CourseStage = z.infer<typeof courseStageSchema>
@@ -271,17 +383,53 @@ export const stageProgressSchema = z.object({
 
 export type StageProgress = z.infer<typeof stageProgressSchema>
 
+/**
+ * A stage genuinely passed, announced once per account rather than once per
+ * device.
+ *
+ * Null on almost every request. Present only on the response that first sees a
+ * level's stage exceed the highest ever reached, and the server records it in
+ * the same breath — so opening the app on a second phone cannot replay it, and
+ * a stage that dropped because new material landed in an earlier stage cannot
+ * fire it on the way back up.
+ */
+export const stageCelebrationSchema = z.object({
+  level: z.string(),
+  from: z.number().int(),
+  to: z.number().int(),
+  stages: z.number().int()
+}).openapi('StageCelebration')
+
+export type StageCelebration = z.infer<typeof stageCelebrationSchema>
+
 export const studyQueueResponseSchema = z.object({
+  /** Set once, by the server, when a stage is genuinely passed. */
+  celebrate: stageCelebrationSchema.nullish(),
   items: z.array(studyQueueItemSchema),
   counts: z.object({
-    /** Cards in Review state whose interval has elapsed — real reviews. */
-    due: z.number().int(),
     /**
-     * Cards still on FSRS's short learning steps, which come back in minutes
-     * rather than days. Counted separately: showing "6 due" moments after you
-     * studied them reads as a bug, when it is the algorithm working.
+     * ITEMS waiting — words, kanji, topics — not cards.
+     *
+     * A word is three or four cards (7,646 carry three, 594 carry four), so
+     * counting cards told the reader "26 due" when 21 words were waiting, and
+     * every surface counted a different set on top of that. One card per item
+     * is served per queue, so this is also the number of questions that will
+     * actually be asked.
+     *
+     * Learning and relearning states are INCLUDED. A card whose step has
+     * elapsed is due to a person, whatever the scheduler calls it.
+     */
+    due: z.number().int(),
+    /** The same set in cards, for the few places that genuinely mean cards. */
+    dueCards: z.number().int(),
+    /**
+     * How many of those are still on FSRS's short learning steps, which come
+     * back in minutes rather than days. Small print — printed as a peer number
+     * it read as a separate backlog, which is how "5 due · 21 in learning"
+     * came to sit beside a list showing 26.
      */
     learning: z.number().int(),
+    /** Items never studied that the curriculum will release next. */
     newAvailable: z.number().int(),
     ghost: z.number().int()
   }),
@@ -409,3 +557,23 @@ export const studyDecksResponseSchema = z.object({
 }).openapi('StudyDecks')
 
 export type StudyDecksResponse = z.infer<typeof studyDecksResponseSchema>
+
+/**
+ * "I have read this lesson."
+ *
+ * Keyed on the study item rather than the grammar point, matching `lesson_views`
+ * — the same record has to serve a kana or kanji lesson later without a second
+ * table and a second endpoint.
+ */
+export const lessonSeenSchema = z.object({
+  studyItemId: z.string()
+}).openapi('LessonSeen')
+
+export type LessonSeenInput = z.infer<typeof lessonSeenSchema>
+
+export const lessonSeenResultSchema = z.object({
+  studyItemId: z.string(),
+  firstSeenAt: z.iso.datetime()
+}).openapi('LessonSeenResult')
+
+export type LessonSeenResult = z.infer<typeof lessonSeenResultSchema>

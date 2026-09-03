@@ -21,6 +21,8 @@ import {
 import { aggregateReviews, computeStreak, studyDateFor, studyDayRange } from '@nihongo/shared/lib'
 import { and, eq, gte, inArray, isNull, sql } from 'drizzle-orm'
 
+import { countDue } from './srs.service.js'
+
 /**
  * Progress aggregates.
  *
@@ -251,6 +253,7 @@ export async function getSummary(userId: string): Promise<ProgressSummary> {
     started: 0,
     learned: 0,
     due: 0,
+    dueCards: 0,
     learning: 0,
     newAvailable: 0
   }
@@ -279,18 +282,18 @@ export async function getSummary(userId: string): Promise<ProgressSummary> {
       started: sql<number>`count(*)`.mapWith(Number),
       // Graduated past the learning steps: the honest "learned".
       learned: sql<number>`count(*) filter (where ${srsCards.state} >= 2)`.mapWith(Number),
-      // Split the same way Study splits it, and for the same reason.
-      //
-      // This was one number covering every state, so the progress page said "57
-      // due" while Study said "11 due · 46 learning" — the same 57 cards, one
-      // page adding them and the other separating them, both using the word
-      // "due". `due` now means the same thing in both places: cards in review
-      // whose interval has elapsed. Learning-step repeats are their own number.
-      due: sql<number>`count(*) filter (where ${srsCards.due} <= now() and ${srsCards.state} = 2 and not ${srsCards.suspended})`.mapWith(Number),
+      // How many of those are on a learning step, for the caption. NOT a
+      // headline: shown as a peer number it read as a second backlog, and this
+      // page said "5 due · 21 in learning" while the list it linked to showed
+      // 26. `due` itself now comes from `countDue` below — the one definition
+      // every surface shares — rather than a fourth one written here.
       learning: sql<number>`count(*) filter (where ${srsCards.due} <= now() and ${srsCards.state} in (1, 3) and not ${srsCards.suspended})`.mapWith(Number)
     })
     .from(srsCards)
     .where(and(eq(srsCards.userId, userId), eq(srsCards.languageId, language.id)))
+
+  // The canonical count, in items, exactly as the due list and Study report it.
+  const due = await countDue(userId, language.id)
 
   const [unseen] = await db
     .select({ total: sql<number>`count(*)`.mapWith(Number) })
@@ -312,7 +315,8 @@ export async function getSummary(userId: string): Promise<ProgressSummary> {
     longestStreak: streak?.longest ?? 0,
     started: cards?.started ?? 0,
     learned: cards?.learned ?? 0,
-    due: cards?.due ?? 0,
+    due: due.items,
+    dueCards: due.cards,
     learning: cards?.learning ?? 0,
     newAvailable: unseen?.total ?? 0
   }

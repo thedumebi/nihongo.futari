@@ -16,5 +16,6 @@ router.openapi(routes.queue, handlers.queue)
 router.openapi(routes.due, handlers.due)
 router.openapi(routes.course, handlers.course)
 router.openapi(routes.answer, handlers.answer)
+router.openapi(routes.lessonSeen, handlers.lessonSeen)
 
 export default router

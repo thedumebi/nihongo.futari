@@ -1,4 +1,4 @@
-import { boolean, pgTable, text, timestamp } from 'drizzle-orm/pg-core'
+import { boolean, pgTable, text, timestamp, uniqueIndex } from 'drizzle-orm/pg-core'
 
 /**
  * better-auth managed tables. The schema is documented at
@@ -45,6 +45,21 @@ export const sessions = pgTable('sessions', {
 
 export const accounts = pgTable('accounts', {
   id: text('id').primaryKey(),
+  /**
+   * Which authority vouched for this identity.
+   *
+   * Required by better-auth from 1.7 — account identity is scoped by issuer, so
+   * a provider id can no longer collide with an internal login method. Local
+   * methods get a synthetic one (`local:credential`), OAuth providers without a
+   * real issuer get `local:oauth:<provider>`.
+   *
+   * Missing this column did NOT fail loudly. The Drizzle adapter looked the
+   * field up, found nothing, and emitted an empty identifier — producing
+   * `... and  = $3 ...` and a bare Postgres syntax error (42601), which
+   * surfaced to the reader as "That code was not accepted" when they tried to
+   * set a password. Every credential lookup ran through that path.
+   */
+  issuer: text('issuer').notNull(),
   accountId: text('account_id').notNull(),
   providerId: text('provider_id').notNull(),
   userId: text('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
@@ -57,7 +72,10 @@ export const accounts = pgTable('accounts', {
   password: text('password'),
   createdAt: timestamp('created_at').notNull().defaultNow(),
   updatedAt: timestamp('updated_at').notNull().defaultNow()
-})
+}, t => ({
+  /** better-auth declares this: one identity per (issuer, account). */
+  identityUnique: uniqueIndex('accounts_issuer_account_id_unique').on(t.issuer, t.accountId)
+}))
 
 export const verifications = pgTable('verifications', {
   id: text('id').primaryKey(),

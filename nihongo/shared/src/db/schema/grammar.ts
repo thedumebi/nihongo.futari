@@ -4,6 +4,7 @@ import { boolean, index, integer, pgTable, primaryKey, text, timestamp, uniqueIn
 import { users } from './auth.js'
 import { primaryId, timestamps } from './columns.js'
 import { languageLevels, languages } from './languages.js'
+import { sentences } from './sentences.js'
 
 /**
  * Grammar points are the part of this app no open dataset provides. Only the
@@ -101,10 +102,48 @@ export const grammarPointRelationships = pgTable('grammar_relations', {
   toIdx: index('grammar_relations_to_idx').on(t.toId)
 }))
 
+/**
+ * The example sentences a lesson is built from — Bunpo's 1,700, which is the
+ * half of a grammar lesson this app never had.
+ *
+ * A join rather than a `grammar_examples` table, because `sentences` already
+ * carries everything an example needs and everything a QUESTION needs: tokens
+ * with per-token furigana and `wordId` (which is what makes tap-a-word
+ * possible), `charStart`/`charEnd` (which is what lets the cloze engine blank
+ * the right span), a translation row, and audio at `/audio/sentences/{id}.m4a`.
+ * Authoring one example therefore yields the lesson card, the cloze and the
+ * word-order drill at once.
+ *
+ * Examples are `source = 'authored'`, never Tatoeba: an example has to
+ * demonstrate the point using vocabulary already introduced, which is not
+ * something a found sentence can be relied on to do.
+ */
+export const grammarPointSentences = pgTable('grammar_point_sentences', {
+  grammarPointId: text('grammar_point_id').notNull().references(() => grammarPoints.id, { onDelete: 'cascade' }),
+  sentenceId: text('sentence_id').notNull().references(() => sentences.id, { onDelete: 'cascade' }),
+  /** `example` teaches the point. `contrast` shows the neighbouring pattern it is confused with. */
+  role: text('role').notNull().default('example'),
+  sortIndex: integer('sort_index').notNull().default(0),
+  ...timestamps
+}, t => ({
+  pk: primaryKey({ columns: [t.grammarPointId, t.sentenceId, t.role] }),
+  pointIdx: index('grammar_point_sentences_point_idx').on(t.grammarPointId, t.sortIndex),
+  sentenceIdx: index('grammar_point_sentences_sentence_idx').on(t.sentenceId)
+}))
+
 export const grammarPointsRelations = relations(grammarPoints, ({ one, many }) => ({
   language: one(languages, { fields: [grammarPoints.languageId], references: [languages.id] }),
   level: one(languageLevels, { fields: [grammarPoints.levelId], references: [languageLevels.id] }),
   formations: many(grammarFormations),
   variants: many(grammarVariants),
-  mistakes: many(grammarMistakes)
+  mistakes: many(grammarMistakes),
+  examples: many(grammarPointSentences)
+}))
+
+export const grammarPointSentencesRelations = relations(grammarPointSentences, ({ one }) => ({
+  grammarPoint: one(grammarPoints, {
+    fields: [grammarPointSentences.grammarPointId],
+    references: [grammarPoints.id]
+  }),
+  sentence: one(sentences, { fields: [grammarPointSentences.sentenceId], references: [sentences.id] })
 }))

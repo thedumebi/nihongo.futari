@@ -21,6 +21,7 @@ const lang = useLanguageStore()
 const items = ref<DueItem[]>([])
 const byKind = ref<Array<{ kind: string, count: number }>>([])
 const total = ref(0)
+const totalCards = ref(0)
 const serverTime = ref('')
 const kind = ref('')
 const offset = ref(0)
@@ -46,6 +47,19 @@ const FACET_LABELS: Record<string, string> = {
   writing: 'writing',
   usage: 'usage',
   pitch: 'pitch'
+}
+
+/**
+ * "Vocabulary · meaning · production".
+ *
+ * Built here rather than in the template: a `v-for` around a separator put the
+ * whitespace in the wrong place and rendered "MEANING· PRODUCTION".
+ */
+function describe(item: DueItem): string {
+  return [
+    KIND_LABELS[item.kind] ?? item.kind,
+    ...item.facets.map(f => FACET_LABELS[f.facet] ?? f.facet)
+  ].join(' \u00B7 ')
 }
 
 const hasMore = computed(() => offset.value + items.value.length < total.value)
@@ -83,6 +97,7 @@ async function load() {
     items.value = data.items
     byKind.value = data.byKind
     total.value = data.total
+    totalCards.value = data.totalCards
     serverTime.value = data.serverTime
   } catch {
     errorMsg.value = "Couldn't load what's due."
@@ -118,7 +133,10 @@ onMounted(load)
         <h1 class="text-3xl font-semibold">
           Due now
         </h1>
-        <span class="text-[var(--color-muted)]">{{ total }} {{ total === 1 ? 'card' : 'cards' }}</span>
+        <span class="text-[var(--color-muted)]">
+          {{ total }} {{ total === 1 ? 'item' : 'items' }}
+          <span v-if="totalCards > total" class="opacity-70">&middot; {{ totalCards }} cards</span>
+        </span>
         <router-link v-if="total > 0" :to="`${ROUTES.STUDY}?mode=due`" class="ml-auto">
           <Button variant="primary">
             Review these
@@ -169,7 +187,7 @@ onMounted(load)
       </div>
 
       <ul v-else class="mt-6 divide-y divide-[var(--color-border)] border-y border-[var(--color-border)]">
-        <li v-for="item in items" :key="item.cardId" class="flex items-center gap-4 py-3">
+        <li v-for="item in items" :key="item.studyItemId" class="flex items-center gap-4 py-3">
           <component
             :is="item.href ? 'router-link' : 'span'"
             :to="item.href ?? undefined"
@@ -184,8 +202,11 @@ onMounted(load)
             <span v-if="item.detail" class="ml-2 truncate text-sm text-[var(--color-muted)]">{{ item.detail }}</span>
           </component>
 
+          <!-- One row per ITEM, so the skills waiting on it are listed rather
+               than each getting a row of its own. 仕事 used to appear four
+               times under a header counting something else again. -->
           <span class="shrink-0 text-xs uppercase tracking-wide text-[var(--color-muted)]">
-            {{ KIND_LABELS[item.kind] ?? item.kind }} &middot; {{ FACET_LABELS[item.facet] ?? item.facet }}
+            {{ describe(item) }}
           </span>
 
           <!-- A ghost is a card that has lapsed enough times to come back on a
@@ -194,7 +215,7 @@ onMounted(load)
           <span
             v-if="item.ghost"
             class="shrink-0 rounded-full border border-[var(--color-border)] px-2 py-0.5 text-xs text-[var(--color-muted)]"
-            :title="`Lapsed ${item.lapses} times`"
+            :title="`Lapsed ${item.facets.reduce((n, f) => n + f.lapses, 0)} times`"
           >
             ghost
           </span>

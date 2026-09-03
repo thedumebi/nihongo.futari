@@ -25,6 +25,12 @@ export const signInOtpSchema = emailRecipientSchema.extend({
 })
 export type SignInOtpType = z.infer<typeof signInOtpSchema>
 
+/** Setting or changing a password with a code rather than a link. */
+export const passwordOtpSchema = emailRecipientSchema.extend({
+  otp: z.string()
+})
+export type PasswordOtpType = z.infer<typeof passwordOtpSchema>
+
 export const resetPasswordEmailSchema = emailRecipientSchema.extend({
   url: z.string()
 })

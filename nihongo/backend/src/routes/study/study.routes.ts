@@ -5,6 +5,8 @@ import {
   courseResponseSchema,
   dueListQuerySchema,
   dueListResponseSchema,
+  lessonSeenResultSchema,
+  lessonSeenSchema,
   studyDecksResponseSchema,
   studyQueueQuerySchema,
   studyQueueResponseSchema,
@@ -95,3 +97,20 @@ export const answer = createSecuredRoute({
   }
 })
 export type AnswerRoute = typeof answer
+
+export const lessonSeen = createSecuredRoute({
+  tags,
+  path: STUDY_ROUTES.LESSON_SEEN,
+  method: 'post',
+  summary: 'Record that a lesson has been read',
+  description:
+    'Idempotent on (user, item): `firstSeenAt` records when the lesson was FIRST read and is never moved. '
+    + 'A lesson read here is not shown again as the introduction to its card.',
+  middleware: [authMiddleware, writeLimiter],
+  request: { body: jsonContentRequired(lessonSeenSchema, 'The lesson that was read') },
+  responses: {
+    [HttpStatusCodes.OK]: jsonContent(lessonSeenResultSchema, 'When it was first read'),
+    [HttpStatusCodes.NOT_FOUND]: jsonContent(ErrorSchema, 'Unknown study item')
+  }
+})
+export type LessonSeenRoute = typeof lessonSeen

@@ -4,7 +4,6 @@ import db from '@nihongo/shared/db'
 import {
   notificationLog,
   pushSubscriptions,
-  srsCards,
   srsDailyStats,
   users,
   userSettings,
@@ -17,6 +16,8 @@ import { and, desc, eq, gte, sql } from 'drizzle-orm'
 import { DateTime } from 'luxon'
 
 import { pushConfigured, sendPush } from '@/lib/push.js'
+
+import { countDue } from './srs.service.js'
 
 /**
  * Daily study reminders.
@@ -45,7 +46,7 @@ interface Candidate {
   reminderMinute: number
   emailEnabled: boolean
   pushEnabled: boolean
-  dueCount: number
+  languageId: string | null
   streak: number
 }
 
@@ -61,10 +62,26 @@ async function findCandidates(): Promise<Candidate[]> {
       reminderMinute: userSettings.reminderMinute,
       emailEnabled: userSettings.reminderEmailEnabled,
       pushEnabled: userSettings.reminderPushEnabled,
-      dueCount: sql<number>`(
-        select count(*) from ${srsCards} c
-        where c.user_id = ${users.id} and c.due <= now() and not c.suspended
-      )`.mapWith(Number),
+      // Which language to count, resolved in SQL because none of the obvious
+      // answers is reliable on its own.
+      //
+      // Reading `users.active_language_id` alone looked right and was a silent
+      // disaster: NOTHING writes that column — `store/language.ts` says as much
+      // and defers it — so it is NULL for every account, and a reminder scoped
+      // to it counts zero forever. That is worse than the over-counting it
+      // replaced: an inflated number is wrong, a permanent "all clear" stops
+      // the reminder doing its job at all.
+      //
+      // So: the chosen language if one is ever set, else the primary language
+      // this reader is studying, else the only language the app has. Ordered by
+      // id at the end purely so the fallback is deterministic.
+      languageId: sql<string | null>`coalesce(
+        ${users.activeLanguageId},
+        (select ul.language_id from user_languages ul
+          where ul.user_id = ${users.id}
+          order by ul.is_primary desc, ul.language_id limit 1),
+        (select l.id from languages l order by l.id limit 1)
+      )`,
       streak: sql<number>`coalesce((
         select max(s.current_streak) from ${userStreaks} s where s.user_id = ${users.id}
       ), 0)`.mapWith(Number)
@@ -146,6 +163,20 @@ export async function runReminders(now = new Date()): Promise<ReminderRunResult>
       continue
     }
 
+    // Counted HERE, not in `findCandidates`.
+    //
+    // It used to be one subquery run for everybody before an unbounded serial
+    // loop of SMTP and web-push calls, so by the time a message was composed —
+    // let alone read — the number was already old. It also counted every
+    // language, every state, and cards on unpublished items, which is why the
+    // email could say 26 while no screen in the app agreed.
+    //
+    // `countDue` is the same definition Study, Progress and the due list use,
+    // measured in items, milliseconds before the message goes out.
+    const due = c.languageId
+      ? await countDue(c.userId, c.languageId, now)
+      : { items: 0, cards: 0 }
+
     const localDate = studyDateFor(now, c.timezone, c.dayBoundaryHour)
     const dedupeKey = `${c.userId}:${REMINDER_KIND}:${localDate}`
 
@@ -170,7 +201,7 @@ export async function runReminders(now = new Date()): Promise<ReminderRunResult>
         await SendMail.sendStudyReminder({
           email: c.email,
           name,
-          dueCount: c.dueCount,
+          dueCount: due.items,
           streak: c.streak,
           url: `${env.FRONTEND_URL.replace(/\/$/, '')}/study`
         })
@@ -202,8 +233,8 @@ export async function runReminders(now = new Date()): Promise<ReminderRunResult>
           title: c.streak > 1 ? `${c.streak}-day streak` : 'Time to study',
           // A cleared queue still gets a nudge, so this cannot assume there is
           // anything due — "0 cards are waiting" is worse than staying silent.
-          body: c.dueCount > 0
-            ? `${c.dueCount} ${c.dueCount === 1 ? 'card is' : 'cards are'} waiting.`
+          body: due.items > 0
+            ? `${due.items} ${due.items === 1 ? 'item is' : 'items are'} waiting.`
             : 'Reviews all clear — time to learn something new.',
           url: '/study'
         })

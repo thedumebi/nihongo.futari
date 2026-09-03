@@ -2,9 +2,9 @@ import { HttpStatusCodes } from '@nihongo/shared/constants'
 
 import type { AppRouteHandler } from '@/lib/types.js'
 
-import { getCourse, getDecks, getDueList, getQueue, submitAnswer } from '@/services/srs.service.js'
+import { getCourse, getDecks, getDueList, getQueue, markLessonSeen, submitAnswer } from '@/services/srs.service.js'
 
-import type { AnswerRoute, CourseRoute, DecksRoute, DueRoute, QueueRoute } from './study.routes.js'
+import type { AnswerRoute, CourseRoute, DecksRoute, DueRoute, LessonSeenRoute, QueueRoute } from './study.routes.js'
 
 export const decks: AppRouteHandler<DecksRoute> = async (c) => {
   const user = c.get('user')!
@@ -39,5 +39,17 @@ export const answer: AppRouteHandler<AnswerRoute> = async (c) => {
       return c.json({ message: err.message }, HttpStatusCodes.NOT_FOUND)
     }
     throw err
+  }
+}
+
+export const lessonSeen: AppRouteHandler<LessonSeenRoute> = async (c) => {
+  const user = c.get('user')!
+  const { studyItemId } = c.req.valid('json')
+  try {
+    return c.json(await markLessonSeen(user.id, studyItemId), HttpStatusCodes.OK)
+  } catch {
+    // The only way the insert fails is the study item FK, and an unknown item
+    // is a 404 rather than a 500 — the client sent a stale id.
+    return c.json({ message: 'Unknown study item' }, HttpStatusCodes.NOT_FOUND)
   }
 }

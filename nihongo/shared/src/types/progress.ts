@@ -105,7 +105,10 @@ export const progressSummarySchema = z.object({
   /** Cards graduated past the learning steps. The strict sense. */
   learned: z.number().int(),
   /** Review cards whose interval has elapsed. Same meaning as Study's "due". */
+  /** ITEMS due — the same number Study and the due list show. */
   due: z.number().int(),
+  /** The same set in cards, for the caption. */
+  dueCards: z.number().int(),
   /** Cards still on the short learning steps. Counted apart from `due`. */
   learning: z.number().int(),
   newAvailable: z.number().int()

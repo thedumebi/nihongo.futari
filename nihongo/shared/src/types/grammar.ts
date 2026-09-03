@@ -8,6 +8,7 @@ import type {
 } from '@/db/schema/grammar.js'
 
 import { furiganaSegmentSchema } from './sentences.js'
+import { grammarExampleSchema } from './study.js'
 
 /**
  * Grammar points and their formations, variants and common mistakes.
@@ -114,7 +115,9 @@ export const grammarPointViewSchema = z.object({
     title: z.string(),
     kind: z.string(),
     note: z.string().nullable()
-  }))
+  })),
+  /** The sentences the lesson is built from. Ordered. */
+  examples: z.array(grammarExampleSchema)
 }).openapi('GrammarPoint')
 
 export type GrammarPointView = z.infer<typeof grammarPointViewSchema>

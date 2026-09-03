@@ -8,9 +8,11 @@ import {
   pgTable,
   primaryKey,
   text,
+  timestamp,
   uniqueIndex
 } from 'drizzle-orm/pg-core'
 
+import { users } from './auth.js'
 import { primaryId, timestamps } from './columns.js'
 import { dialogues } from './dialogues.js'
 import { grammarPoints } from './grammar.js'
@@ -99,6 +101,27 @@ export const studyItemPrerequisites = pgTable('study_item_prerequisites', {
 }, t => ({
   pk: primaryKey({ columns: [t.itemId, t.requiresItemId] }),
   requiresIdx: index('study_item_prerequisites_requires_idx').on(t.requiresItemId)
+}))
+
+/**
+ * Which lessons a user has actually read.
+ *
+ * `isNew` cannot answer this: it goes false the moment the first card is
+ * answered, so it can gate a lesson once and can never say afterwards whether
+ * the lesson was read. The Course needs a read mark, and a lesson opened ahead
+ * of its stage has to be remembered without pulling its cards into the queue.
+ *
+ * Keyed on the study item rather than the grammar point so kana and kanji
+ * lessons can follow without a second table.
+ */
+export const lessonViews = pgTable('lesson_views', {
+  userId: text('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  studyItemId: text('study_item_id').notNull().references(() => studyItems.id, { onDelete: 'cascade' }),
+  firstSeenAt: timestamp('first_seen_at').notNull().defaultNow(),
+  ...timestamps
+}, t => ({
+  pk: primaryKey({ columns: [t.userId, t.studyItemId] }),
+  userIdx: index('lesson_views_user_idx').on(t.userId)
 }))
 
 /** Ordered lesson groupings — "N5 Unit 3". Optional; the SRS works without them. */

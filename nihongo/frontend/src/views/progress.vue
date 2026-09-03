@@ -34,37 +34,34 @@ const stats = computed(() => {
       to: null
     },
     {
-      label: 'Items started',
+      // Says "cards" because it counts cards. It read "Items started" over a
+      // card count, on the same page as a "Due now" measured in items — 38
+      // against 25 real words. Every number here now names its own unit.
+      label: 'Cards started',
       value: s.started,
-      tip: 'Cards you have met at least once. Starting one is not the same as retaining it, which is why this sits beside the stricter count.',
+      tip: 'Individual cards you have met at least once. A word is three or four cards — recognising it, reading it and hearing it are separate skills — so this is larger than the number of words. Starting a card is not the same as retaining it, which is why the stricter count sits beside it.',
       to: null
     },
     {
-      label: 'Items learned',
+      label: 'Cards learned',
       value: s.learned,
-      tip: 'Cards that graduated past the short learning steps, so they are genuinely retained rather than seen once. This is the number the JLPT coverage below counts.',
+      tip: 'Cards that graduated past the short learning steps, so they are genuinely retained rather than seen once. This is the number the JLPT coverage below counts, and it is in cards for the same reason that panel is.',
       to: null
     },
     {
+      // One number, one definition, shared by Study, the due list and the
+      // reminder email. It used to be this page's own — review-state only —
+      // which is why it read 0 straight after a session, when every card sits
+      // in a learning step, while the list it links to showed a full page.
       label: 'Due now',
       value: s.due,
       tip: s.due > 0
-        ? 'Review cards whose interval has elapsed — the same number Study shows. Click to see exactly which ones.'
-        : 'Nothing is due for review right now. New cards are still available whenever you want them.',
+        ? `${s.due} ${s.due === 1 ? 'item' : 'items'} waiting — ${s.dueCards} ${s.dueCards === 1 ? 'card' : 'cards'} in total, since a word is several. ${s.learning > 0 ? `${s.learning} of them are still on short learning steps. ` : ''}The same number Study and the reminder show. Click to see exactly which ones.`
+        : 'Nothing is due for review right now. New material is still available whenever you want it.',
       to: ROUTES.DUE
     },
     {
-      // Shown apart from "Due now" because it is a different kind of waiting.
-      // Merged into one number, this page said "57 due" where Study said "11
-      // due · 46 learning" — the same cards, counted once and split once, both
-      // called due.
-      label: 'In learning',
-      value: s.learning,
-      tip: 'Cards you have met but which have not graduated yet. They come back within minutes rather than days, so this number moves fast and is not a backlog.',
-      to: null
-    },
-    {
-      label: 'Not yet seen',
+      label: 'Cards not yet seen',
       value: s.newAvailable,
       tip: 'Cards in the curriculum you have never met. Click to learn new ones only. Introduced a few a day rather than all at once, so reviews stay manageable.',
       to: `${ROUTES.STUDY}?mode=new`

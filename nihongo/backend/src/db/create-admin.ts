@@ -239,6 +239,9 @@ async function main() {
         } else {
           await db.insert(accounts).values({
             id: crypto.randomUUID(),
+            // better-auth scopes account identity by issuer from 1.7, and
+            // builds this one as `local:` + the provider id.
+            issuer: 'local:credential',
             accountId: existing.id,
             providerId: 'credential',
             userId: existing.id,
@@ -279,6 +282,7 @@ async function main() {
       if (hashed) {
         await tx.insert(accounts).values({
           id: crypto.randomUUID(),
+          issuer: 'local:credential',
           accountId: userId,
           providerId: 'credential',
           userId,

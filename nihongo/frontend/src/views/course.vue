@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { CourseLevel, CourseStage } from '@nihongo/shared/types'
 
-import { Check, Lock } from 'lucide-vue-next'
+import { BookOpen, Check, Lock } from 'lucide-vue-next'
 import { computed, onMounted, ref, watch } from 'vue'
 
 import { getCourse } from '@/api/course'
@@ -154,40 +154,67 @@ onMounted(load)
               <li
                 v-for="stage in level.stages"
                 :key="stage.stage"
-                class="flex items-center gap-3 border-b border-[var(--color-border)] px-4 py-3 last:border-b-0"
-                :class="stage.open ? '' : 'opacity-45'"
+                class="border-b border-[var(--color-border)] px-4 py-3 last:border-b-0"
               >
-                <span class="w-8 shrink-0 text-sm text-[var(--color-muted)]">{{ stage.stage }}</span>
-                <span class="min-w-0 flex-1">
-                  <span class="block truncate" style="font-family: var(--font-jp)">
-                    {{ stage.sample.join('  ') }}
-                  </span>
-                  <span class="block text-xs text-[var(--color-muted)]">{{ describe(stage) }}</span>
-                </span>
                 <!--
+                  Dimming is on the SCHEDULE row only. A locked stage's lessons
+                  stay legible and clickable on purpose: reading ahead is
+                  allowed, being quizzed ahead is not.
+                -->
+                <div class="flex items-center gap-3" :class="stage.open ? '' : 'opacity-45'">
+                  <span class="w-8 shrink-0 text-sm text-[var(--color-muted)]">{{ stage.stage }}</span>
+                  <span class="min-w-0 flex-1">
+                    <span class="block truncate" style="font-family: var(--font-jp)">
+                      {{ stage.sample.join('  ') }}
+                    </span>
+                    <span class="block text-xs text-[var(--color-muted)]">{{ describe(stage) }}</span>
+                  </span>
+                  <!--
                   Labelled, because a bare fraction next to "stage 2 of 60" reads
                   as a second stage count. It is neither: it is how much of THIS
                   stage has stuck, in the same unit the study header uses.
                 -->
-                <Tooltip
-                  :content="`${stage.learned} of ${stage.total} CARDS in this stage have graduated. Every item has several cards — recognising a kana and writing it are counted separately — so this number is larger than the ${describe(stage)} above it, and every one must graduate before the next stage opens.`"
-                  position="left"
-                >
-                  <span class="shrink-0 text-xs text-[var(--color-muted)]">
-                    {{ stage.learned }}/{{ stage.total }} cards
-                  </span>
-                </Tooltip>
-                <Tooltip
-                  v-if="!stage.open"
-                  content="Opens once the stages before it have mostly stuck."
-                  position="left"
-                >
-                  <Lock class="h-4 w-4 text-[var(--color-muted)]" />
-                </Tooltip>
-                <Check
-                  v-else-if="stage.learned >= stage.total"
-                  class="h-4 w-4 shrink-0 text-[var(--color-success)]"
-                />
+                  <Tooltip
+                    :content="`${stage.learned} of ${stage.total} CARDS in this stage have graduated. Every item has several cards — recognising a kana and writing it are counted separately — so this number is larger than the ${describe(stage)} above it, and every one must graduate before the next stage opens.`"
+                    position="left"
+                  >
+                    <span class="shrink-0 text-xs text-[var(--color-muted)]">
+                      {{ stage.learned }}/{{ stage.total }} cards
+                    </span>
+                  </Tooltip>
+                  <Tooltip
+                    v-if="!stage.open"
+                    content="Opens once the stages before it have mostly stuck."
+                    position="left"
+                  >
+                    <Lock class="h-4 w-4 text-[var(--color-muted)]" />
+                  </Tooltip>
+                  <Check
+                    v-else-if="stage.learned >= stage.total"
+                    class="h-4 w-4 shrink-0 text-[var(--color-success)]"
+                  />
+                </div>
+
+                <!--
+                  What there is to READ in this stage, as opposed to what there
+                  is to answer. The lesson was the thing the app never had: the
+                  explanations existed in full and only a reference page nobody
+                  linked to ever showed them.
+                -->
+                <ul v-if="stage.lessons.length" class="mt-2 flex flex-wrap gap-x-3 gap-y-1 pl-11">
+                  <li v-for="lesson in stage.lessons" :key="lesson.slug">
+                    <RouterLink
+                      :to="`${ROUTES.GRAMMAR}/${lesson.slug}`"
+                      class="inline-flex items-center gap-1 text-xs transition hover:text-[var(--color-text)]"
+                      :class="lesson.read ? 'text-[var(--color-muted)]' : 'text-[var(--color-text)]'"
+                      :title="lesson.meaningShort"
+                    >
+                      <Check v-if="lesson.read" class="h-3 w-3 text-[var(--color-success)]" />
+                      <BookOpen v-else class="h-3 w-3" />
+                      <span style="font-family: var(--font-jp)">{{ lesson.title }}</span>
+                    </RouterLink>
+                  </li>
+                </ul>
               </li>
             </ol>
           </li>

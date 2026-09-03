@@ -1,12 +1,17 @@
 <script setup lang="ts">
 import type { GrammarPointView } from '@nihongo/shared/types'
 
-import { onMounted, ref, watch } from 'vue'
+import { useLocalStorage } from '@vueuse/core'
+import { Volume2 } from 'lucide-vue-next'
+import { computed, onMounted, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 
 import { getGrammarPoint } from '@/api/grammar'
 import FuriganaText from '@/components/ja/furigana-text.vue'
+import TokenLine from '@/components/ja/token-line.vue'
+import WordMeaning from '@/components/ja/word-meaning.vue'
 import AppShell from '@/components/layout/app-shell.vue'
+import { playAudio } from '@/composables/use-audio'
 import { useFurigana } from '@/composables/use-furigana'
 import { ROUTES } from '@/constants'
 import { useLanguageStore } from '@/store/language'
@@ -30,6 +35,23 @@ async function load() {
     loading.value = false
   }
 }
+
+/**
+ * Whether translations show. The same key the study lesson uses, so the choice
+ * follows the reader between the two places an example is met.
+ */
+const showEnglish = useLocalStorage('go-lesson-english', true)
+
+/** Which example has a word open. */
+const picked = ref<{ example: number, token: number } | null>(null)
+
+const pickedWord = computed(() =>
+  picked.value ? point.value?.examples[picked.value.example]?.tokens[picked.value.token]?.w ?? null : null)
+
+// A different point means different examples; nothing should stay open.
+watch(() => route.params.slug, () => {
+  picked.value = null
+})
 
 /** Tier 1 is scholarly, tier 3 crowd-sourced. Readers deserve to know which. */
 function tierLabel(tier: number) {
@@ -97,6 +119,61 @@ watch(() => route.params.slug, load)
               </p>
             </li>
           </ul>
+        </section>
+
+        <!--
+          The half of a grammar lesson this page never had. Tappable, because a
+          worked example whose vocabulary you cannot read teaches only the
+          pattern — and the same tap teaches the same thing in a conversation.
+        -->
+        <section v-if="point.examples.length" class="mt-8">
+          <div class="flex items-baseline justify-between">
+            <h2 class="text-sm font-semibold uppercase tracking-wide text-[var(--color-muted)]">
+              In use
+            </h2>
+            <button
+              type="button"
+              class="text-xs text-[var(--color-muted)] underline underline-offset-4 transition hover:text-[var(--color-text)]"
+              @click="showEnglish = !showEnglish"
+            >
+              {{ showEnglish ? 'Hide English' : 'Show English' }}
+            </button>
+          </div>
+          <ul class="mt-3 space-y-4">
+            <li v-for="(ex, i) in point.examples" :key="ex.sentenceId">
+              <div class="flex items-start gap-2">
+                <button
+                  v-if="ex.audio"
+                  type="button"
+                  class="mt-1 shrink-0 text-[var(--color-muted)] transition hover:text-[var(--color-text)]"
+                  :aria-label="`Hear ${ex.text}`"
+                  @click="playAudio(ex.audio)"
+                >
+                  <Volume2 class="h-4 w-4" />
+                </button>
+                <p class="leading-relaxed">
+                  <TokenLine
+                    :tokens="ex.tokens"
+                    :text="ex.text"
+                    :reading="ex.reading ?? ''"
+                    :mode="mode"
+                    :known-kanji="knownKanji"
+                    :selected="picked?.example === i ? picked.token : null"
+                    @pick="t => picked = t === null ? null : { example: i, token: t }"
+                  />
+                </p>
+              </div>
+              <p v-if="showEnglish && ex.translation" class="mt-1 pl-6 text-sm text-[var(--color-muted)]">
+                {{ ex.translation }}
+              </p>
+            </li>
+          </ul>
+          <WordMeaning
+            v-if="pickedWord"
+            class="mt-4"
+            :word="pickedWord"
+            @close="picked = null"
+          />
         </section>
 
         <section v-if="point.nuance" class="mt-8">

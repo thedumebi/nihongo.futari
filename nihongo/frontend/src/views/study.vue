@@ -5,6 +5,7 @@ import type {
   GlossedToken,
   HandwritingGrade,
   ReferenceStroke,
+  StageCelebration,
   StageProgress,
   Stroke,
   StudyDeck,
@@ -23,12 +24,13 @@ import { useRoute, useRouter } from 'vue-router'
 import type { DropdownOption } from '@/components/ui/dropdown.vue'
 import type { SyncState } from '@/offline/sync'
 
-import { getDecks, getQueue } from '@/api/study'
+import { getDecks, getQueue, markLessonSeen } from '@/api/study'
 import FuriganaText from '@/components/ja/furigana-text.vue'
 import TokenLine from '@/components/ja/token-line.vue'
 import WordMeaning from '@/components/ja/word-meaning.vue'
 import AppShell from '@/components/layout/app-shell.vue'
 import DialogueCard from '@/components/study/dialogue-card.vue'
+import GrammarLesson from '@/components/study/grammar-lesson.vue'
 import Button from '@/components/ui/button.vue'
 import Dropdown from '@/components/ui/dropdown.vue'
 import Tooltip from '@/components/ui/tooltip.vue'
@@ -178,7 +180,7 @@ let stopSyncListener: (() => void) | undefined
 
 const items = ref<StudyQueueItem[]>([])
 const index = ref(0)
-const counts = ref({ due: 0, learning: 0, newAvailable: 0, ghost: 0 })
+const counts = ref({ due: 0, dueCards: 0, learning: 0, newAvailable: 0, ghost: 0 })
 
 /**
  * Curriculum position, one entry per unfinished level.
@@ -187,6 +189,8 @@ const counts = ref({ due: 0, learning: 0, newAvailable: 0, ghost: 0 })
  * explains that it is a stage boundary rather than an empty corpus.
  */
 const progress = ref<StageProgress[]>([])
+/** The server's verdict on whether a stage was just passed. */
+const queueCelebration = ref<StageCelebration | null>(null)
 
 /**
  * Why this deck has no new cards, when the curriculum is the reason.
@@ -198,8 +202,18 @@ const progress = ref<StageProgress[]>([])
 const gate = ref<StudyQueueResponse['gate']>(null)
 
 /** The level being studied, or the earliest unfinished one when showing all. */
+/**
+ * This level's progress, and NO fallback to whatever came first.
+ *
+ * It used to end `?? progress.value[0]`. `useLevel()` starts at '' until the
+ * server setting arrives, no progress row has `level === ''`, and
+ * `stageProgress` returns every level ordered by sort_index — so on a fresh
+ * device this reliably reported N5 regardless of the level being studied, and
+ * the old watcher wrote that into the celebration record. Undefined until the
+ * level resolves is the honest answer; the header simply waits a beat.
+ */
 const stage = computed(() =>
-  progress.value.find(p => p.level === levelCode.value) ?? progress.value[0])
+  progress.value.find(p => p.level === levelCode.value))
 
 /**
  * The stage you just finished, while the congratulation is on screen.
@@ -216,35 +230,21 @@ const stage = computed(() =>
 const stageUp = ref<{ level: string, from: number, to: number, stages: number } | null>(null)
 
 /**
- * The stage this reader was last SHOWN, per level.
+ * Set from the queue response, which is where the decision is now made.
  *
- * Persisted, because the first version compared against the previous value of a
- * reactive ref and so could only ever notice a change that happened while the
- * page was open. `progress` refreshes on queue reload, so catching it meant
- * finishing a whole queue at the exact moment the stage tipped; cross a stage
- * and close the app, and on return `previous` is undefined and the guard drops
- * the event silently. That is the common case, and it is why the celebration
- * never appeared.
- *
- * Comparing against what was last shown instead means the transition survives a
- * reload, a background, and a week away.
+ * This was `useLocalStorage('go-seen-stage')` compared against the current
+ * stage. Three things were wrong with that and all of them showed: the record
+ * was per DEVICE, so a second phone had no history and replayed a stage passed
+ * weeks ago; the value stored was the CURRENT stage, which falls whenever a
+ * seed adds cards to an earlier stage, so finishing that work looked like an
+ * advance; and it was written before the level had resolved. The server now
+ * compares against the highest stage ever reached and records the announcement
+ * as it makes it, so it happens once per account rather than once per browser.
  */
-const seenStage = useLocalStorage<Record<string, number>>('go-seen-stage', {})
-
-watch(stage, (next) => {
-  if (!next)
-    return
-  const before = seenStage.value[next.level]
-  // Record first, so a failure to render cannot re-fire this every reload.
-  seenStage.value = { ...seenStage.value, [next.level]: next.stage }
-
-  // Nothing remembered yet: this is the first look at the level, not an
-  // advance. Celebrating here would congratulate a brand new account.
-  if (before === undefined || next.stage <= before)
-    return
-
-  stageUp.value = { level: next.level, from: before, to: next.stage, stages: next.stages }
-}, { immediate: true })
+watch(() => queueCelebration.value, (next) => {
+  if (next)
+    stageUp.value = next
+})
 
 /**
  * The "not yet" explanation, assembled here rather than in the template.
@@ -547,6 +547,61 @@ const grammarBlank = computed(() => {
  * a test. A first exposure introduces; every one after it examines.
  */
 const teaching = computed(() => Boolean(current.value?.isNew))
+
+/**
+ * The lesson for this card, when there is one.
+ *
+ * Present only on a grammar card at first exposure, and only when the reader
+ * has not already read it from the Course — the backend decides both, because
+ * `isNew` alone cannot tell the difference between "never taught" and "taught
+ * on the Course page yesterday".
+ */
+const lesson = computed(() => current.value?.lesson ?? null)
+
+/**
+ * Show Hints: the pattern and how it attaches, never the answer.
+ *
+ * Reset per card. A hint is most wanted on the review three weeks later, which
+ * is exactly when the lesson is long gone — so this rides on every grammar
+ * card, not only new ones.
+ */
+const hintOpen = ref(false)
+const hint = computed(() => current.value?.hint ?? null)
+
+watch(current, () => {
+  hintOpen.value = false
+})
+
+/**
+ * Finish the lesson and start the questions.
+ *
+ * Recorded so it is not shown again on the next card for the same point, and
+ * so the Course can mark it read. Deliberately not awaited — a failed record
+ * costs one repeated explanation, and blocking the quiz on it would be worse.
+ */
+function lessonDone(): void {
+  const id = current.value?.studyItemId
+  if (id)
+    void markLessonSeen(id).catch(() => {})
+  introducing.value = false
+}
+
+/**
+ * Dismissing the introduction for anything that is not a grammar lesson.
+ *
+ * The same record as `lessonDone`, and that is the point: the introduction is
+ * an event in the life of an ITEM, not of the card that happened to carry it.
+ * 仕事 is four cards, and until this was recorded each of them introduced the
+ * word again — "I see card that introduces shigoto ... then I see introduction
+ * card again".
+ *
+ * Fire-and-forget: failing to record costs one repeated explanation, and the
+ * backend picks one introducer per item per response anyway, so a slow round
+ * trip cannot produce a double.
+ */
+function introDone(): void {
+  lessonDone()
+}
 const grammarGloss = computed(() => {
   const value = current.value?.prompt?.gloss
   return typeof value === 'string' ? value : ''
@@ -881,6 +936,7 @@ async function load() {
     items.value = queue.items
     counts.value = queue.counts
     progress.value = queue.progress
+    queueCelebration.value = queue.celebrate ?? null
     gate.value = queue.gate
     index.value = 0
     // Keep the last good queue so a session survives losing signal mid-way.
@@ -893,7 +949,10 @@ async function load() {
     const cached = await readBundle(`${lang.code}:${mode.value}:${levelCode.value}:${deck?.kind ?? ''}:${deck?.unit ?? ''}`)
     if (cached && cached.items.length > 0) {
       items.value = cached.items
-      counts.value = cached.counts
+      // A bundle cached before `dueCards` existed has no such field, and the
+      // reader is offline — the worst moment to throw. Default it rather than
+      // trusting the shape of something written by an older build.
+      counts.value = { dueCards: 0, ...cached.counts }
       index.value = 0
       // Say so when the cache is standing in while the network is fine. A
       // silent fallback masked a server error that made the whole curriculum
@@ -1255,7 +1314,7 @@ watch(() => lang.code, async () => {
             silently mixed scopes and the numbers could not be compared.
           -->
           <Tooltip
-            :content="`${counts.due} review card${counts.due === 1 ? '' : 's'} ready · ${counts.learning} still on the short learning steps · ${counts.newAvailable} never seen. Cards, not words — one word can have several. Counted within the filters shown.`"
+            :content="`${counts.due} item${counts.due === 1 ? '' : 's'} ready to review — ${counts.dueCards} card${counts.dueCards === 1 ? '' : 's'}, since one word is several · ${counts.learning} of those still on the short learning steps · ${counts.newAvailable} never seen. Words, not cards, and the same number Progress, the due list and the reminder show. Counted within the filters shown.`"
             position="bottom"
           >
             <span class="text-sm text-[var(--color-muted)]">
@@ -1437,69 +1496,82 @@ watch(() => lang.code, async () => {
             them on one screen turns the second into copying.
           -->
           <div v-if="introducing" class="py-8 text-center">
-            <p class="text-sm text-[var(--color-muted)]">
-              Something new — here it is first.
-            </p>
-            <p v-if="intro.subject" class="mt-6 text-6xl leading-tight" style="font-family: var(--font-jp)">
-              {{ intro.subject }}
-            </p>
-            <p v-if="intro.reading" class="mt-3 text-lg text-[var(--color-muted)]" style="font-family: var(--font-jp)">
-              {{ intro.reading }}
-            </p>
-            <p v-if="intro.meaning" class="mx-auto mt-4 max-w-sm text-xl">
-              {{ intro.meaning }}
-            </p>
-            <!-- Met in use, not as an isolated flashcard. -->
-            <p
-              v-if="intro.sentence"
-              class="mx-auto mt-6 max-w-sm text-base leading-relaxed text-[var(--color-muted)]"
-              style="font-family: var(--font-jp)"
-            >
-              {{ intro.sentence }}
-            </p>
-            <p v-if="intro.sentenceMeaning" class="mx-auto mt-1 max-w-sm text-sm text-[var(--color-muted)]">
-              {{ intro.sentenceMeaning }}
-            </p>
-
             <!--
+              A grammar point gets the real lesson: what it means, how it
+              attaches, examples you can hear and tap, and the mistake it
+              invites. Everything else keeps the one-screen introduction, which
+              is the right size for a word or a kanji.
+            -->
+            <GrammarLesson
+              v-if="lesson"
+              :lesson="lesson"
+              @done="lessonDone"
+            />
+            <template v-else>
+              <p class="text-sm text-[var(--color-muted)]">
+                Something new — here it is first.
+              </p>
+              <p v-if="intro.subject" class="mt-6 text-6xl leading-tight" style="font-family: var(--font-jp)">
+                {{ intro.subject }}
+              </p>
+              <p v-if="intro.reading" class="mt-3 text-lg text-[var(--color-muted)]" style="font-family: var(--font-jp)">
+                {{ intro.reading }}
+              </p>
+              <p v-if="intro.meaning" class="mx-auto mt-4 max-w-sm text-xl">
+                {{ intro.meaning }}
+              </p>
+              <!-- Met in use, not as an isolated flashcard. -->
+              <p
+                v-if="intro.sentence"
+                class="mx-auto mt-6 max-w-sm text-base leading-relaxed text-[var(--color-muted)]"
+                style="font-family: var(--font-jp)"
+              >
+                {{ intro.sentence }}
+              </p>
+              <p v-if="intro.sentenceMeaning" class="mx-auto mt-1 max-w-sm text-sm text-[var(--color-muted)]">
+                {{ intro.sentenceMeaning }}
+              </p>
+
+              <!--
               What the card is about to ask for. A form named and not explained
               is a term from a grammar book handed to someone who has not read
               one.
             -->
-            <div v-if="formHelp" class="mx-auto mt-6 max-w-sm rounded-lg border border-[var(--color-border)] p-4 text-left">
-              <p class="text-sm leading-relaxed">
-                {{ formHelp.what }}
-              </p>
-              <p v-if="formHelp.classNote" class="mt-2 text-sm leading-relaxed text-[var(--color-muted)]">
-                {{ formHelp.classNote }}
-              </p>
-              <p class="mt-2 text-sm text-[var(--color-muted)]" style="font-family: var(--font-jp)">
-                {{ formHelp.example }}
-              </p>
-            </div>
-            <div v-if="audioSrc || wordAudioSrc" class="mt-6 flex flex-wrap justify-center gap-2">
-              <button
-                v-if="wordAudioSrc"
-                type="button"
-                class="rounded-full border border-[var(--color-border)] px-4 py-2 text-sm text-[var(--color-muted)] transition hover:text-[var(--color-text)]"
-                @click="playWord"
-              >
-                Hear the word
-              </button>
-              <button
-                v-if="audioSrc"
-                type="button"
-                class="rounded-full border border-[var(--color-border)] px-4 py-2 text-sm text-[var(--color-muted)] transition hover:text-[var(--color-text)]"
-                @click="play"
-              >
-                {{ wordAudioSrc ? 'Hear the sentence' : 'Hear it' }}
-              </button>
-            </div>
-            <div class="mt-8">
-              <Button variant="primary" @click="introducing = false">
-                Got it — ask me
-              </Button>
-            </div>
+              <div v-if="formHelp" class="mx-auto mt-6 max-w-sm rounded-lg border border-[var(--color-border)] p-4 text-left">
+                <p class="text-sm leading-relaxed">
+                  {{ formHelp.what }}
+                </p>
+                <p v-if="formHelp.classNote" class="mt-2 text-sm leading-relaxed text-[var(--color-muted)]">
+                  {{ formHelp.classNote }}
+                </p>
+                <p class="mt-2 text-sm text-[var(--color-muted)]" style="font-family: var(--font-jp)">
+                  {{ formHelp.example }}
+                </p>
+              </div>
+              <div v-if="audioSrc || wordAudioSrc" class="mt-6 flex flex-wrap justify-center gap-2">
+                <button
+                  v-if="wordAudioSrc"
+                  type="button"
+                  class="rounded-full border border-[var(--color-border)] px-4 py-2 text-sm text-[var(--color-muted)] transition hover:text-[var(--color-text)]"
+                  @click="playWord"
+                >
+                  Hear the word
+                </button>
+                <button
+                  v-if="audioSrc"
+                  type="button"
+                  class="rounded-full border border-[var(--color-border)] px-4 py-2 text-sm text-[var(--color-muted)] transition hover:text-[var(--color-text)]"
+                  @click="play"
+                >
+                  {{ wordAudioSrc ? 'Hear the sentence' : 'Hear it' }}
+                </button>
+              </div>
+              <div class="mt-8">
+                <Button variant="primary" @click="introDone">
+                  Got it — ask me
+                </Button>
+              </div>
+            </template>
           </div>
 
           <template v-else>
@@ -1667,6 +1739,49 @@ watch(() => lang.code, async () => {
                 </svg>
                 Hear it
               </button>
+            </div>
+
+            <!--
+              Show Hints, Bunpo's affordance and deliberately narrow: the
+              pattern and how it attaches, never the answer. On every grammar
+              card and not only new ones — a hint is wanted most on the review
+              three weeks later, which is exactly when the lesson is gone.
+            -->
+            <div v-if="hint && !revealed" class="mt-6 text-center">
+              <button
+                v-if="!hintOpen"
+                type="button"
+                class="text-xs text-[var(--color-muted)] underline underline-offset-4 transition hover:text-[var(--color-text)]"
+                @click="hintOpen = true"
+              >
+                Show hints
+              </button>
+              <div
+                v-else
+                class="mx-auto max-w-sm rounded-lg border border-[var(--color-border)] p-4 text-left"
+              >
+                <p class="text-sm" style="font-family: var(--font-jp)">
+                  {{ hint.pattern }}
+                </p>
+                <ul v-if="hint.formations.length" class="mt-2 space-y-1">
+                  <li
+                    v-for="(f, i) in hint.formations"
+                    :key="i"
+                    class="text-sm text-[var(--color-muted)]"
+                    style="font-family: var(--font-jp)"
+                  >
+                    {{ f.ruleTemplate }}<template v-if="f.example">
+                      — {{ f.example }}
+                    </template>
+                  </li>
+                </ul>
+                <RouterLink
+                  :to="hint.href"
+                  class="mt-3 inline-block text-xs text-[var(--color-muted)] underline underline-offset-4 transition hover:text-[var(--color-text)]"
+                >
+                  Read the full explanation
+                </RouterLink>
+              </div>
             </div>
 
             <form v-if="!isDialogue" class="flex flex-col gap-4" @submit.prevent="onEnter">

@@ -2,6 +2,7 @@ import { relations, sql } from 'drizzle-orm'
 import { boolean, index, integer, jsonb, pgTable, smallint, text, uniqueIndex } from 'drizzle-orm/pg-core'
 
 import { primaryId, timestamps } from './columns.js'
+import { grammarPoints } from './grammar.js'
 import { languages } from './languages.js'
 import { studyItemFacets } from './study-items.js'
 
@@ -84,6 +85,17 @@ export const exercisePrompts = pgTable('exercise_prompts', {
   answer: jsonb('answer').$type<{ primary: string, accepted: string[] }>().notNull(),
   distractors: jsonb('distractors').$type<unknown[]>().notNull().default([]),
   assets: jsonb('assets').$type<Record<string, unknown>>().notNull().default({}),
+  /**
+   * Withhold this prompt until that grammar point has been learned.
+   *
+   * The gate is on the PROMPT and not on `study_item_prerequisites`, which is
+   * keyed per item: 仕事 arrives at sort_index 154 carrying its meaning, its
+   * reading AND its four conjugation drills, while 〜た is at 173 and 〜ない at
+   * 188. Blocking the item would delay the word to fix the drills. This holds
+   * back only the drills.
+   */
+  requiresGrammarPointId: text('requires_grammar_point_id')
+    .references(() => grammarPoints.id, { onDelete: 'set null' }),
   contentHash: text('content_hash'),
   version: integer('version').notNull().default(1),
   generatedBy: text('generated_by').notNull().default('system'),

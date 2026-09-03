@@ -84,6 +84,41 @@ export const userLanguages = pgTable('user_languages', {
 }))
 
 /**
+ * The highest stage a reader has been CONGRATULATED on, per level.
+ *
+ * Three things went wrong with the previous version, which kept this in
+ * `localStorage` under `go-seen-stage`:
+ *
+ * 1. It was per device. "What was I last shown" is a fact about the account,
+ *    so a second phone had no history, recorded whatever it saw first, and
+ *    then congratulated on the way back up — "I am on stage 4 on one phone and
+ *    I open the site on another and it shows me congrats that I have passed
+ *    stage 1".
+ *
+ * 2. It stored the CURRENT stage, which is `min(stage) where learned < total`
+ *    — the lowest unfinished stage, not the furthest reached. That number moves
+ *    DOWN whenever content is added to an earlier stage, which seeds do
+ *    routinely (`038-listening-cards.sql` added a listening facet to N5 words
+ *    and demoted everyone). Recording a number that can fall and celebrating
+ *    when it rises is celebrating noise.
+ *
+ * 3. It was written before the level had resolved, so the value recorded often
+ *    belonged to a different level entirely.
+ *
+ * Hence: the HIGHEST stage ever reached, per level, on the server. It only ever
+ * increases, so a stage that drops because new material arrived can never
+ * re-fire a celebration when it is finished again.
+ */
+export const stageCelebrations = pgTable('stage_celebrations', {
+  userId: text('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  levelId: text('level_id').notNull().references(() => languageLevels.id, { onDelete: 'cascade' }),
+  highestStageSeen: integer('highest_stage_seen').notNull().default(0),
+  ...timestamps
+}, t => ({
+  pk: primaryKey({ columns: [t.userId, t.levelId] })
+}))
+
+/**
  * Materialised, not derived on the fly: the furigana renderer needs an O(1)
  * set membership test per token, and the client caches it as a Set in
  * IndexedDB. Written by the SRS service on state transition and rebuilt on

@@ -11,7 +11,7 @@
        there is always something here. */
   %>
   <% if (dueCount > 0) { %>
-    Hi <%= name %>, <%= dueCount %> <%= dueCount === 1 ? 'card is' : 'cards are' %> ready for review.
+    Hi <%= name %>, <%= dueCount %> <%= dueCount === 1 ? 'item is' : 'items are' %> ready for review.
     <% if (streak > 1) { %>A few minutes keeps the streak going.<% } %>
   <% } else { %>
     Hi <%= name %>, your reviews are all clear &mdash; a good moment to pick up something new.

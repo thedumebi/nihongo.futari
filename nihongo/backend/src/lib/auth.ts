@@ -208,8 +208,15 @@ export const auth = betterAuth({
         if (env.NODE_ENV === 'development') {
           pino.info(`[AUTH] ${type} code sent to ${email}`)
         }
+        // Each purpose gets its own words. `type` is one of three, and the
+        // `else` used to sweep two of them into the verify-your-email template
+        // — so asking to set a password produced "use the code below to verify
+        // your email and activate your go account", which is wrong twice: the
+        // account is already active, and no email is being verified.
         if (type === 'sign-in')
           await SendMail.sendSignInOtp({ email, name: email, otp })
+        else if (type === 'forget-password')
+          await SendMail.sendPasswordOtp({ email, name: email, otp })
         else
           await SendMail.sendVerifyOtp({ email, name: email, otp })
       },

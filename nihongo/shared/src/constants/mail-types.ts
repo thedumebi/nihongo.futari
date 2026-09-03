@@ -3,6 +3,7 @@ export const MAIL_TYPES = {
   VERIFY_OTP: 'verify-otp',
   SIGNIN_OTP: 'signin-otp',
   RESET_PASSWORD: 'reset-password',
+  PASSWORD_OTP: 'password-otp',
   STUDY_REMINDER: 'study-reminder',
   VERIFY_EMAIL: 'verify-email',
   WEEKLY_SUMMARY: 'weekly-summary',

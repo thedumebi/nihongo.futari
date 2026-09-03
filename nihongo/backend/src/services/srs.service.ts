@@ -6,8 +6,10 @@ import type {
   DueListQuery,
   DueListResponse,
   GhostPolicy,
+  LessonSeenResult,
   ReviewEvent,
   SrsCard,
+  StageCelebration,
   StageProgress,
   StudyDecksResponse,
   StudyQueueItem,
@@ -15,7 +17,7 @@ import type {
   StudyQueueResponse,
   SubmitAnswerInput
 } from '@nihongo/shared/types'
-import type { SQL } from 'drizzle-orm'
+import type { SQL, SQLWrapper } from 'drizzle-orm'
 
 import { ROUTE_BASE_PATHS } from '@nihongo/shared/constants'
 import db from '@nihongo/shared/db'
@@ -29,11 +31,13 @@ import {
   kanji,
   languageLevels,
   languages,
+  lessonViews,
   phoneticSeries,
   sentences,
   srsCards,
   srsGhostEvents,
   srsReviewLogs,
+  stageCelebrations,
   studyItemFacets,
   studyItems,
   userSettings,
@@ -53,6 +57,7 @@ import { and, asc, eq, inArray, isNull, lt, lte, sql } from 'drizzle-orm'
 import { assetUrl, withAssetUrls, withDialogueAudio } from '@/lib/assets.js'
 
 import { glossary, withDialogueTokens, withPromptTokens } from './glossary.service.js'
+import { hintFromLesson, loadLessons } from './grammar.service.js'
 import { recomputeProgress } from './progress.service.js'
 
 /**
@@ -124,6 +129,81 @@ async function loadPolicy(userId: string): Promise<{ policy: GhostPolicy, fsrsPa
  * The whole thing runs in one transaction with the card row locked, so two
  * concurrent syncs for the same card serialise instead of racing.
  */
+/**
+ * What "due" means. One definition, used by every surface that prints a number.
+ *
+ * There were four, and they disagreed. Read off one account at one instant:
+ * the reminder email said 26, Progress said "5 due · 21 in learning", the due
+ * list said 26, and the Study header said 5 — for 21 actual words. The email
+ * counted every state in every language including unpublished items and was
+ * computed before a slow send loop; Progress counted `state = 2` only, which is
+ * why it read 0 right after a session when everything sits in a learning step;
+ * the due list counted every state; the queue header counted `state = 2` again.
+ *
+ * The rules, and why:
+ *
+ * - **States 1, 2 and 3 all count.** A learning-step card whose step has
+ *   elapsed is, to a person, due. Splitting it into a second number called
+ *   "in learning" is a scheduler-internal distinction leaking onto the screen,
+ *   and it is what made Progress say 0 while the list it linked to had items.
+ * - **State 0 never counts.** A card that has never been answered is "new",
+ *   which is a different number.
+ * - **published / active / enabled are part of it.** Without them the email
+ *   counted cards on content that no longer exists, which no in-app surface
+ *   could ever match.
+ *
+ * Note what is NOT here: nothing defers a scheduled review. Sibling burying —
+ * answering one card of a word and hiding its others until tomorrow, which is
+ * what Anki does — was built and then removed, because it delays reviews that
+ * are owed. The owner's rule: "I would rather a review comes when it is due.
+ * The new one can come later. I dont want it deferred." A word is still only
+ * asked about once per queue (see the dedupe in `getQueue`); it is simply not
+ * silenced for the rest of the day.
+ */
+function dueCardsWhere(userId: string, languageId: string, at: Date): SQL {
+  return and(
+    eq(srsCards.userId, userId),
+    eq(srsCards.languageId, languageId),
+    eq(srsCards.suspended, false),
+    lte(srsCards.due, at),
+    inArray(srsCards.state, [1, 2, 3]),
+    eq(studyItemFacets.enabled, true),
+    eq(studyItems.published, true),
+    eq(studyItems.active, true)
+  )!
+}
+
+/**
+ * How much is due, in both units.
+ *
+ * `items` is the headline everywhere. A word is three or four cards — 7,646 of
+ * them carry three, 594 carry four — so counting cards told the reader "26 due"
+ * when 21 words were waiting, and the owner has said more than once that the
+ * numbers are confusing. Cards stay available for the places that genuinely
+ * mean cards.
+ *
+ * Since one card per item is served per session (see `getQueue`), the item
+ * count is also the number of questions the reader will actually be asked,
+ * which is the property that makes it honest rather than merely smaller.
+ */
+export async function countDue(
+  userId: string,
+  languageId: string,
+  at: Date = new Date()
+): Promise<{ items: number, cards: number }> {
+  const [row] = await db
+    .select({
+      items: sql<number>`count(distinct ${studyItems.id})`.mapWith(Number),
+      cards: sql<number>`count(*)`.mapWith(Number)
+    })
+    .from(srsCards)
+    .innerJoin(studyItemFacets, eq(studyItemFacets.id, srsCards.facetId))
+    .innerJoin(studyItems, eq(studyItems.id, studyItemFacets.studyItemId))
+    .where(dueCardsWhere(userId, languageId, at))
+
+  return { items: row?.items ?? 0, cards: row?.cards ?? 0 }
+}
+
 export async function submitAnswer(userId: string, input: SubmitAnswerInput): Promise<AnswerResult> {
   const receivedAt = new Date()
   const { policy, fsrsParams } = await loadPolicy(userId)
@@ -315,6 +395,19 @@ export async function submitAnswer(userId: string, input: SubmitAnswerInput): Pr
       })
     }
 
+    // Answering something IS meeting it.
+    //
+    // The introduction is suppressed by a `lesson_views` row, and the only
+    // other thing that writes one is a fire-and-forget call from the browser as
+    // the intro is dismissed. Lose that request — offline, a closed tab, a
+    // skipped card — and the item introduces itself again next time. An answer
+    // is unambiguous proof the reader met the item, so record it here too,
+    // inside the transaction, where it cannot be dropped.
+    await tx
+      .insert(lessonViews)
+      .values({ userId, studyItemId: facet.studyItemId })
+      .onConflictDoNothing()
+
     return {
       languageId: facet.languageId,
       result: {
@@ -361,6 +454,27 @@ export async function submitAnswer(userId: string, input: SubmitAnswerInput): Pr
  * at 57 stages — small enough that finishing one is a real event, large enough
  * that the whole level is not a thousand tick-boxes.
  */
+/**
+ * Record that an item has been introduced.
+ *
+ * Idempotent on `(user, item)`: meeting something twice, or pressing "Got it"
+ * after having opened the same lesson from the Course, must not move
+ * `first_seen_at` — the interesting fact is when it was FIRST met, and a queue
+ * flush replaying an old action should not rewrite it.
+ */
+export async function markLessonSeen(userId: string, studyItemId: string): Promise<LessonSeenResult> {
+  const [row] = await db
+    .insert(lessonViews)
+    .values({ userId, studyItemId })
+    .onConflictDoUpdate({
+      target: [lessonViews.userId, lessonViews.studyItemId],
+      set: { updatedAt: new Date() }
+    })
+    .returning({ studyItemId: lessonViews.studyItemId, firstSeenAt: lessonViews.firstSeenAt })
+
+  return { studyItemId: row!.studyItemId, firstSeenAt: row!.firstSeenAt.toISOString() }
+}
+
 const STAGE_SIZE = 50
 
 /**
@@ -493,6 +607,179 @@ export async function stageProgress(userId: string, languageId: string): Promise
   }))
 }
 
+/**
+ * WHICH prompt a facet shows this time.
+ *
+ * Three rules, all configured in the schema long before anything read them:
+ *
+ * 1. `requires_grammar_point_id` — withhold a drill until the grammar that
+ *    explains it has been learned. This is what stops 仕事's te-form drill
+ *    arriving at sort_index 154 when 〜て form is at 165. A HARD filter.
+ *
+ * 2. `first_exposure_only` — the introduction goes first on first exposure and
+ *    last afterwards. Deliberately an ORDERING and not a filter: `mcq` carries
+ *    the flag globally, and for a kanji meaning facet it is the only prompt
+ *    there is. Filtering would delete the card instead of demoting it.
+ *
+ * 3. `min_state` / `max_reps` — a template that should not appear until a card
+ *    has bedded in, or should stop appearing once it has.
+ */
+function promptPick(
+  languageId: string,
+  userId: string,
+  salt: string,
+  state: SQLWrapper,
+  reps: SQLWrapper
+): SQL {
+  return sql`(
+    select p.id
+    from exercise_prompts p
+    join exercise_templates t on t.id = p.template_id
+    left join kind_facet_templates kft
+      on kft.language_id = ${languageId}
+     and kft.kind = ${studyItems.kind}
+     and kft.facet = ${studyItemFacets.facet}
+     and kft.template_id = p.template_id
+    where p.facet_id = ${studyItemFacets.id}
+      and p.status = 'published'
+      and (
+        p.requires_grammar_point_id is null
+        or exists (
+          select 1
+          from srs_cards rc
+          join study_item_facets rf on rf.id = rc.facet_id
+          join study_items rsi on rsi.id = rf.study_item_id
+          where rc.user_id = ${userId}
+            and rsi.grammar_point_id = p.requires_grammar_point_id
+            and rc.state >= 2
+        )
+      )
+      and (kft.min_state is null or ${state} >= kft.min_state)
+      and (kft.max_reps is null or ${reps} <= kft.max_reps)
+    order by
+      case
+        when coalesce(kft.first_exposure_only, t.first_exposure_only)
+        then case when ${state} = 0 then 0 else 2 end
+        else 1
+      end,
+      md5(p.id || ${salt})
+    limit 1
+  )`
+}
+
+/**
+ * The ONE facet of an item that may enter the new pool next.
+ *
+ * A word is several cards — 仕事 is `meaning`, `reading`, `production` and
+ * `listening` — and the pool selected all four the moment the word came up.
+ * Shuffled apart, each carrying `isNew`, that is four introductions of the same
+ * word scattered through a session.
+ *
+ * So an item offers its LOWEST `intro_order` uncarded facet and nothing else.
+ * That column has been written by ten importers since the beginning — meaning
+ * 0, reading 1, production 2, writing 5, listening 6 — and read by nothing.
+ * Reading it now means a word is met by its meaning first, and the rest follow
+ * one at a time as each previous facet earns a card.
+ */
+function firstUncardedFacet(userId: string): SQL {
+  return sql`not exists (
+    select 1
+    from study_item_facets f2
+    left join srs_cards c2 on c2.facet_id = f2.id and c2.user_id = ${userId}
+    where f2.study_item_id = ${studyItems.id}
+      and f2.enabled
+      and c2.id is null
+      and (
+        f2.intro_order < ${studyItemFacets.introOrder}
+        or (f2.intro_order = ${studyItemFacets.introOrder} and f2.id < ${studyItemFacets.id})
+      )
+  )`
+}
+
+/**
+ * Whether a stage was genuinely passed, and the record that it was announced.
+ *
+ * Decided on the server so the answer is a fact about the ACCOUNT. The old
+ * version kept it in `localStorage`, so a second device had no history and
+ * replayed a celebration for a stage passed weeks ago on the first — "I am on
+ * stage 4 on one phone and I open the site on another and it shows me congrats
+ * that I have passed stage 1".
+ *
+ * Compared against the HIGHEST stage ever reached, never the current one.
+ * `stageProgress` reports `min(stage) where learned < total` — the lowest
+ * UNFINISHED stage — which falls whenever a seed adds material to an earlier
+ * stage. Storing that and celebrating a rise would congratulate the reader
+ * every time they cleaned up after a content release.
+ */
+async function claimStageCelebration(
+  userId: string,
+  progress: StageProgress[]
+): Promise<StageCelebration | null> {
+  if (progress.length === 0)
+    return null
+
+  const levels = await db
+    .select({ id: languageLevels.id, code: languageLevels.code })
+    .from(languageLevels)
+    .where(inArray(languageLevels.code, progress.map(p => p.level)))
+
+  const idByCode = new Map(levels.map(l => [l.code, l.id]))
+  const seen = new Map(
+    (await db
+      .select({ levelId: stageCelebrations.levelId, highest: stageCelebrations.highestStageSeen })
+      .from(stageCelebrations)
+      .where(and(
+        eq(stageCelebrations.userId, userId),
+        inArray(stageCelebrations.levelId, [...idByCode.values()])
+      ))).map(r => [r.levelId, r.highest])
+  )
+
+  let announced: StageCelebration | null = null
+
+  for (const p of progress) {
+    const levelId = idByCode.get(p.level)
+    if (!levelId)
+      continue
+    const highest = seen.get(levelId)
+
+    // First sight of a level: record where it is and say nothing.
+    if (highest === undefined) {
+      await db
+        .insert(stageCelebrations)
+        .values({ userId, levelId, highestStageSeen: p.stage })
+        .onConflictDoNothing()
+      continue
+    }
+
+    if (p.stage <= highest)
+      continue
+
+    // Claim the announcement with the WRITE, not with the read above.
+    //
+    // Two queue requests in flight at once — two devices, or a retry — both
+    // read the old value and would both decide to celebrate. Worse, an
+    // unconditional update let the slower one write a LOWER number back and
+    // re-arm the whole thing.
+    //
+    // `where` makes the update fire only when it raises the mark, and
+    // `returning` reports whether this request was the one that raised it.
+    const claimed = await db
+      .insert(stageCelebrations)
+      .values({ userId, levelId, highestStageSeen: p.stage })
+      .onConflictDoUpdate({
+        target: [stageCelebrations.userId, stageCelebrations.levelId],
+        set: { highestStageSeen: p.stage, updatedAt: new Date() },
+        where: lt(stageCelebrations.highestStageSeen, p.stage)
+      })
+      .returning({ highest: stageCelebrations.highestStageSeen })
+
+    if (claimed.length > 0 && announced === null)
+      announced = { level: p.level, from: highest, to: p.stage, stages: p.stages }
+  }
+
+  return announced
+}
+
 export async function getQueue(userId: string, query: StudyQueueQuery): Promise<StudyQueueResponse> {
   const now = new Date()
   const horizon = new Date(now.getTime() + query.horizonDays * 24 * 60 * 60 * 1000)
@@ -504,7 +791,7 @@ export async function getQueue(userId: string, query: StudyQueueQuery): Promise<
     .limit(1)
 
   if (!language) {
-    return { items: [], counts: { due: 0, learning: 0, newAvailable: 0, ghost: 0 }, gate: null, progress: [], serverTime: now.toISOString() }
+    return { items: [], counts: { due: 0, dueCards: 0, learning: 0, newAvailable: 0, ghost: 0 }, gate: null, progress: [], serverTime: now.toISOString() }
   }
 
   const [settings] = await db
@@ -557,6 +844,12 @@ export async function getQueue(userId: string, query: StudyQueueQuery): Promise<
   const unitFilter = unitIds ? [inArray(studyItems.id, unitIds.length > 0 ? unitIds : [''])] : []
 
   const promptColumns = {
+    // Not a prompt column, but needed on every queue row for the same reason
+    // they are: it is what the lesson and the hint are looked up by, and all
+    // three selects join `study_items` already.
+    grammarPointId: studyItems.grammarPointId,
+    /** Which facet introduces an item, when several arrive together. */
+    introOrder: studyItemFacets.introOrder,
     templateCode: exerciseTemplates.code,
     inputMode: exerciseTemplates.inputMode,
     graderCode: exerciseTemplates.graderCode,
@@ -610,11 +903,7 @@ export async function getQueue(userId: string, query: StudyQueueQuery): Promise<
       // times in a single queue.
         .innerJoin(exercisePrompts, and(
           eq(exercisePrompts.facetId, studyItemFacets.id),
-          eq(exercisePrompts.id, sql`(
-        select p.id from exercise_prompts p
-        where p.facet_id = ${studyItemFacets.id} and p.status = 'published'
-        order by md5(p.id || ${promptSalt}) limit 1
-      )`)
+          eq(exercisePrompts.id, promptPick(language.id, userId, promptSalt, srsCards.state, srsCards.reps))
         ))
         .innerJoin(exerciseTemplates, eq(exerciseTemplates.id, exercisePrompts.templateId))
         .where(and(
@@ -624,6 +913,11 @@ export async function getQueue(userId: string, query: StudyQueueQuery): Promise<
           lte(srsCards.due, horizon),
           eq(studyItems.published, true),
           eq(studyItems.active, true),
+          // Match what the counts count. Without this a card on a facet that
+          // has since been disabled is SERVED in a session while being absent
+          // from the due number, the due list and the reminder — the exact
+          // class of disagreement this phase exists to end.
+          eq(studyItemFacets.enabled, true),
           ...kindFilter,
           ...unitFilter,
           ...levelFilter
@@ -656,11 +950,8 @@ export async function getQueue(userId: string, query: StudyQueueQuery): Promise<
         .innerJoin(studyItems, eq(studyItems.id, studyItemFacets.studyItemId))
         .innerJoin(exercisePrompts, and(
           eq(exercisePrompts.facetId, studyItemFacets.id),
-          eq(exercisePrompts.id, sql`(
-            select p.id from exercise_prompts p
-            where p.facet_id = ${studyItemFacets.id} and p.status = 'published'
-            order by md5(p.id || ${promptSalt}) limit 1
-          )`)
+          // No srs_cards row exists yet, so state and reps are zero by definition.
+          eq(exercisePrompts.id, promptPick(language.id, userId, promptSalt, sql`0`, sql`0`))
         ))
         .innerJoin(exerciseTemplates, eq(exerciseTemplates.id, exercisePrompts.templateId))
         .leftJoin(srsCards, and(eq(srsCards.facetId, studyItemFacets.id), eq(srsCards.userId, userId)))
@@ -670,6 +961,7 @@ export async function getQueue(userId: string, query: StudyQueueQuery): Promise<
           eq(studyItems.active, true),
           eq(studyItemFacets.enabled, true),
           isNull(srsCards.id),
+          firstUncardedFacet(userId),
           ...withinCurriculum,
           ...kindFilter,
           ...unitFilter,
@@ -717,17 +1009,14 @@ export async function getQueue(userId: string, query: StudyQueueQuery): Promise<
       .innerJoin(studyItems, eq(studyItems.id, studyItemFacets.studyItemId))
       .innerJoin(exercisePrompts, and(
         eq(exercisePrompts.facetId, studyItemFacets.id),
-        eq(exercisePrompts.id, sql`(
-          select p.id from exercise_prompts p
-          where p.facet_id = ${studyItemFacets.id} and p.status = 'published'
-          order by md5(p.id || ${promptSalt}) limit 1
-        )`)
+        eq(exercisePrompts.id, promptPick(language.id, userId, promptSalt, srsCards.state, srsCards.reps))
       ))
       .innerJoin(exerciseTemplates, eq(exerciseTemplates.id, exercisePrompts.templateId))
       .where(and(
         eq(srsCards.userId, userId),
         eq(srsCards.languageId, language.id),
         eq(srsCards.suspended, false),
+        eq(studyItemFacets.enabled, true),
         // Not yet learned. A graduated card in this stage is finished; its
         // review belongs in the review queue, not in "finish the stage".
         lt(srsCards.state, 2),
@@ -764,7 +1053,7 @@ export async function getQueue(userId: string, query: StudyQueueQuery): Promise<
   // the process lifetime, so this is a map lookup after the first request.
   const gloss = await glossary(query.languageCode)
 
-  const items: StudyQueueItem[] = [
+  let items: StudyQueueItem[] = [
     ...dueRows.map(r => ({
       cardId: r.cardId,
       facetId: r.facetId,
@@ -814,7 +1103,128 @@ export async function getQueue(userId: string, query: StudyQueueQuery): Promise<
     }))
   ]
 
+  // Which facet introduces an item, when several arrive together.
+  const introOrderByFacet = new Map<string, number>()
+  for (const r of [...dueRows, ...newRows])
+    introOrderByFacet.set(r.facetId, r.introOrder ?? 0)
+
+  // One card per item per queue.
+  //
+  // `firstUncardedFacet` bounds the NEW pool, but the due pool legitimately
+  // holds every facet of an item at once — 仕事's meaning, reading, production
+  // and listening all come due together — so a twenty-card session showed the
+  // same word four times: "I see card that introduces shigoto, then study card
+  // asks me for audio which is shigoto then I see introduction card again".
+  //
+  // This is the whole of the fix. An earlier version also buried the item's
+  // other cards for a day after one was answered, which suppressed the repeat
+  // across queue REFETCHES too — but burying delays reviews that are owed, and
+  // the owner's rule is that it must not: "I would rather a review comes when
+  // it is due. The new one can come later. I dont want it deferred." So a word
+  // can still come round again later in the day if you refetch; it just never
+  // arrives twice in the same handful of cards, and nothing is postponed.
+  //
+  // Done BEFORE the shuffle, so the survivor is chosen by the order the pools
+  // were built in — due cards earliest-first, new cards in curriculum order —
+  // rather than by chance.
+  //
+  // A DUE card always outranks a new one, so a review is never displaced by
+  // something never seen. Between two due cards the earliest wins; between two
+  // new facets the lowest `intro_order` wins, so a word is met by its meaning
+  // rather than by a drill on it.
+  const isDueCard = (i: StudyQueueItem): boolean => i.cardId !== null
+  const beats = (challenger: StudyQueueItem, held: StudyQueueItem): boolean => {
+    if (isDueCard(challenger) !== isDueCard(held))
+      return isDueCard(challenger)
+    if (isDueCard(held))
+      return challenger.due < held.due
+    return (introOrderByFacet.get(challenger.facetId) ?? 0) < (introOrderByFacet.get(held.facetId) ?? 0)
+  }
+
+  const oneEach = new Map<string, StudyQueueItem>()
+  for (const item of items) {
+    const held = oneEach.get(item.studyItemId)
+    if (!held || beats(item, held))
+      oneEach.set(item.studyItemId, item)
+  }
+  items = [...oneEach.values()]
+
   shuffle(items)
+
+  // Introduce an item ONCE, ever.
+  //
+  // `isNew` is a fact about a CARD — state 0 — but "have I met 仕事?" is a fact
+  // about the ITEM, and a word is three or four cards. So the introduction
+  // fired for every facet: meaning, reading, production, listening, each
+  // shuffled to a different point in the session, all announcing the same word.
+  //
+  // `lesson_views` is the record. It was written only for grammar lessons and
+  // read only to decide whether to attach a lesson payload; it now governs the
+  // introduction for every kind, which is what its own doc comment always said
+  // it was for.
+  const seen = new Set(
+    items.length === 0
+      ? []
+      : (await db
+          .select({ studyItemId: lessonViews.studyItemId })
+          .from(lessonViews)
+          .where(and(
+            eq(lessonViews.userId, userId),
+            inArray(lessonViews.studyItemId, [...new Set(items.map(i => i.studyItemId))])
+          ))).map(r => r.studyItemId)
+  )
+
+  const introducer = new Map<string, string>()
+  for (const item of items) {
+    if (!item.isNew || seen.has(item.studyItemId))
+      continue
+    const current = introducer.get(item.studyItemId)
+    if (current === undefined
+      || (introOrderByFacet.get(item.facetId) ?? 0) < (introOrderByFacet.get(current) ?? 0)) {
+      introducer.set(item.studyItemId, item.facetId)
+    }
+  }
+
+  for (const item of items)
+    item.isNew = introducer.get(item.studyItemId) === item.facetId
+
+  // Teach before asking.
+  //
+  // A grammar card at first exposure carries the whole lesson; every other
+  // grammar card carries only the hint. Examples are loaded for the new ones
+  // alone — a hint is the pattern and how it attaches, and pulling four
+  // sentences per review to render two lines would be waste.
+  //
+  // Kept beside the items rather than on them — the point id is how the lesson
+  // is looked up, not something the client has any use for.
+  const pointByFacet = new Map<string, string>()
+  for (const r of [...dueRows, ...newRows]) {
+    if (r.grammarPointId)
+      pointByFacet.set(r.facetId, r.grammarPointId)
+  }
+
+  if (pointByFacet.size > 0) {
+    const grammarItems = items.filter(i => pointByFacet.has(i.facetId))
+    const teachIds = [...new Set(
+      grammarItems.filter(i => i.isNew).map(i => pointByFacet.get(i.facetId)!)
+    )]
+    const hintIds = [...new Set(
+      grammarItems.map(i => pointByFacet.get(i.facetId)!).filter(id => !teachIds.includes(id))
+    )]
+
+    const [taught, hinted] = await Promise.all([
+      loadLessons(query.languageCode, teachIds, true),
+      loadLessons(query.languageCode, hintIds, false)
+    ])
+
+    for (const item of grammarItems) {
+      const pointId = pointByFacet.get(item.facetId)!
+      const lesson = taught.get(pointId)
+      const forHint = lesson ?? hinted.get(pointId)
+      item.lesson = lesson ?? null
+      item.hint = forHint ? hintFromLesson(forHint) : null
+    }
+  }
 
   // Scoped by the SAME filters as the queue and the new-card count.
   //
@@ -823,27 +1233,51 @@ export async function getQueue(userId: string, query: StudyQueueQuery): Promise<
   // learning · 73 new" — were measured over different sets and could not be
   // read together. The pickers sit directly above that row; the numbers now
   // mean what those pickers say.
+  // The canonical predicate (§`dueCardsWhere`), narrowed by the deck on screen.
+  //
+  // This used to be its own definition — `state = 2` only — which is why the
+  // header said 5 while the list it linked to showed 26, and why Progress could
+  // read 0 the moment after a session when every card sits in a learning step.
   const [counts] = await db
     .select({
-      // Review-state only. Learning-step repeats are counted separately so the
-      // headline number means "things you actually need to revisit".
-      due: sql<number>`count(*) filter (where ${srsCards.due} <= ${now} and ${srsCards.state} = 2 and not ${srsCards.suspended})`.mapWith(Number),
-      learning: sql<number>`count(*) filter (where ${srsCards.due} <= ${now} and ${srsCards.state} in (1, 3) and not ${srsCards.suspended})`.mapWith(Number),
-      ghost: sql<number>`count(*) filter (where ${srsCards.ghost} and not ${srsCards.suspended})`.mapWith(Number)
+      due: sql<number>`count(distinct ${studyItems.id})`.mapWith(Number),
+      dueCards: sql<number>`count(*)`.mapWith(Number),
+      learning: sql<number>`count(*) filter (where ${srsCards.state} in (1, 3))`.mapWith(Number)
     })
+    .from(srsCards)
+    .innerJoin(studyItemFacets, eq(studyItemFacets.id, srsCards.facetId))
+    .innerJoin(studyItems, eq(studyItems.id, studyItemFacets.studyItemId))
+    .where(and(
+      dueCardsWhere(userId, language.id, now),
+      ...kindFilter,
+      ...unitFilter,
+      ...levelFilter
+    ))
+
+  // Ghosts are not a due measure — a ghost is a card the scheduler has flagged
+  // as not sticking, due or not — so it keeps its own query and its own rules.
+  const [ghosts] = await db
+    .select({ total: sql<number>`count(distinct ${studyItems.id})`.mapWith(Number) })
     .from(srsCards)
     .innerJoin(studyItemFacets, eq(studyItemFacets.id, srsCards.facetId))
     .innerJoin(studyItems, eq(studyItems.id, studyItemFacets.studyItemId))
     .where(and(
       eq(srsCards.userId, userId),
       eq(srsCards.languageId, language.id),
+      eq(srsCards.suspended, false),
+      eq(srsCards.ghost, true),
       ...kindFilter,
       ...unitFilter,
       ...levelFilter
     ))
 
+  // Counted in ITEMS, not facets.
+  //
+  // The pool now offers one facet per item (`firstUncardedFacet`), so counting
+  // facets promised four cards where one was coming. It also matches the unit
+  // every other number on screen is moving to: a word, not a word's cards.
   const [newAvailable] = await db
-    .select({ total: sql<number>`count(*)`.mapWith(Number) })
+    .select({ total: sql<number>`count(distinct ${studyItems.id})`.mapWith(Number) })
     .from(studyItemFacets)
     .innerJoin(studyItems, eq(studyItems.id, studyItemFacets.studyItemId))
     .leftJoin(srsCards, and(eq(srsCards.facetId, studyItemFacets.id), eq(srsCards.userId, userId)))
@@ -869,15 +1303,19 @@ export async function getQueue(userId: string, query: StudyQueueQuery): Promise<
     ? null
     : await deckGate(userId, language.id, [...kindFilter, ...unitFilter, ...levelFilter])
 
+  const progress = await stageProgress(userId, language.id)
+
   return {
     items,
     gate,
-    progress: await stageProgress(userId, language.id),
+    progress,
+    celebrate: await claimStageCelebration(userId, progress),
     counts: {
       due: counts?.due ?? 0,
+      dueCards: counts?.dueCards ?? 0,
       learning: counts?.learning ?? 0,
       newAvailable: newAvailable?.total ?? 0,
-      ghost: counts?.ghost ?? 0
+      ghost: ghosts?.total ?? 0
     },
     serverTime: now.toISOString()
   }
@@ -923,7 +1361,11 @@ export async function getDecks(userId: string, languageCode: string, level?: str
     .select({
       kind: studyItems.kind,
       total: sql<number>`count(distinct ${studyItemFacets.id})`.mapWith(Number),
-      due: sql<number>`count(distinct ${srsCards.id}) filter (where ${srsCards.due} <= ${now} and ${srsCards.state} = 2 and not ${srsCards.suspended})`.mapWith(Number),
+      // The same definition every other surface uses, in ITEMS: states 1-3,
+      // unsuspended, counted per distinct item. These sit in the deck picker
+      // directly above the Study header, and while this counted state-2 cards
+      // the two disagreed on the same screen — 18 here against 12 there.
+      due: sql<number>`count(distinct ${studyItems.id}) filter (where ${srsCards.due} <= ${now} and ${srsCards.state} in (1, 2, 3) and not ${srsCards.suspended})`.mapWith(Number),
       learning: sql<number>`count(distinct ${srsCards.id}) filter (where ${srsCards.due} <= ${now} and ${srsCards.state} in (1, 3) and not ${srsCards.suspended})`.mapWith(Number),
       unseen: sql<number>`count(distinct ${studyItemFacets.id}) filter (where ${srsCards.id} is null${sql.raw(ceilings.size === 0 ? '' : ` and ${curriculumPredicate(ceilings)}`)})`.mapWith(Number),
       locked: sql<number>`count(distinct ${studyItemFacets.id}) filter (where ${srsCards.id} is null${sql.raw(ceilings.size === 0 ? ' and false' : ` and not ${curriculumPredicate(ceilings)}`)})`.mapWith(Number)
@@ -948,7 +1390,11 @@ export async function getDecks(userId: string, languageCode: string, level?: str
       imageUrl: curriculumUnits.imageUrl,
       sortIndex: curriculumUnits.sortIndex,
       total: sql<number>`count(distinct ${studyItemFacets.id})`.mapWith(Number),
-      due: sql<number>`count(distinct ${srsCards.id}) filter (where ${srsCards.due} <= ${now} and ${srsCards.state} = 2 and not ${srsCards.suspended})`.mapWith(Number),
+      // The same definition every other surface uses, in ITEMS: states 1-3,
+      // unsuspended, counted per distinct item. These sit in the deck picker
+      // directly above the Study header, and while this counted state-2 cards
+      // the two disagreed on the same screen — 18 here against 12 there.
+      due: sql<number>`count(distinct ${studyItems.id}) filter (where ${srsCards.due} <= ${now} and ${srsCards.state} in (1, 2, 3) and not ${srsCards.suspended})`.mapWith(Number),
       learning: sql<number>`count(distinct ${srsCards.id}) filter (where ${srsCards.due} <= ${now} and ${srsCards.state} in (1, 3) and not ${srsCards.suspended})`.mapWith(Number),
       unseen: sql<number>`count(distinct ${studyItemFacets.id}) filter (where ${srsCards.id} is null${sql.raw(ceilings.size === 0 ? '' : ` and ${curriculumPredicate(ceilings)}`)})`.mapWith(Number),
       locked: sql<number>`count(distinct ${studyItemFacets.id}) filter (where ${srsCards.id} is null${sql.raw(ceilings.size === 0 ? ' and false' : ` and not ${curriculumPredicate(ceilings)}`)})`.mapWith(Number)
@@ -1053,61 +1499,80 @@ export async function getDueList(userId: string, query: DueListQuery): Promise<D
     .where(eq(languages.code, query.languageCode))
     .limit(1)
   if (!language)
-    return { items: [], total: 0, byKind: [], serverTime: now.toISOString() }
+    return { items: [], total: 0, totalCards: 0, byKind: [], serverTime: now.toISOString() }
 
   const kindFilter = query.kind ? [eq(studyItems.kind, query.kind)] : []
 
-  // Learning and relearning cards count as due alongside review cards: all
-  // three are things the scheduler wants back now.
-  const isDue = and(
-    eq(srsCards.userId, userId),
-    eq(srsCards.languageId, language.id),
-    eq(srsCards.suspended, false),
-    lte(srsCards.due, now),
-    eq(studyItems.published, true),
-    eq(studyItems.active, true)
-  )
+  // The canonical predicate, so this page and every number that points at it
+  // describe the same set. It previously had no state filter and no check on
+  // `study_item_facets.enabled`, which is how a page headed "26 cards" sat
+  // behind a tile reading 5.
+  const isDue = dueCardsWhere(userId, language.id, now)
 
-  const rows = await db
+  // Page over ITEMS, not cards.
+  //
+  // Paging over cards meant a page of 50 could be a dozen words, and the header
+  // counted something else again. An item's position is its earliest due card,
+  // so the thing waiting longest is still at the top.
+  const page = await db
     .select({
-      cardId: srsCards.id,
-      facetId: studyItemFacets.id,
       studyItemId: studyItems.id,
-      kind: studyItems.kind,
-      facet: studyItemFacets.facet,
-      due: srsCards.due,
-      ghost: srsCards.ghost,
-      lapses: srsCards.lapses,
-      kanaCharacter: kana.character,
-      kanaRomaji: kana.romaji,
-      kanjiCharacter: kanji.character,
-      kanjiMeanings: kanji.meanings,
-      wordForm: words.primaryForm,
-      wordReading: words.primaryReading,
-      grammarTitle: grammarPoints.title,
-      grammarPattern: grammarPoints.pattern,
-      grammarSlug: grammarPoints.slug,
-      sentenceText: sentences.text,
-      sentenceReading: sentences.readingKana,
-      seriesCharacter: phoneticSeries.componentCharacter,
-      seriesReading: phoneticSeries.primaryReading
+      due: sql<Date>`min(${srsCards.due})`
     })
     .from(srsCards)
     .innerJoin(studyItemFacets, eq(studyItemFacets.id, srsCards.facetId))
     .innerJoin(studyItems, eq(studyItems.id, studyItemFacets.studyItemId))
-    .leftJoin(kana, eq(kana.id, studyItems.kanaId))
-    .leftJoin(kanji, eq(kanji.id, studyItems.kanjiId))
-    .leftJoin(words, eq(words.id, studyItems.wordId))
-    .leftJoin(grammarPoints, eq(grammarPoints.id, studyItems.grammarPointId))
-    .leftJoin(sentences, eq(sentences.id, studyItems.sentenceId))
-    .leftJoin(phoneticSeries, eq(phoneticSeries.id, studyItems.phoneticSeriesId))
     .where(and(isDue, ...kindFilter))
-    .orderBy(asc(srsCards.due))
+    .groupBy(studyItems.id)
+    .orderBy(asc(sql`min(${srsCards.due})`))
     .limit(query.limit)
     .offset(query.offset)
 
+  const pageIds = page.map(r => r.studyItemId)
+
+  const rows = pageIds.length === 0
+    ? []
+    : await db
+        .select({
+          cardId: srsCards.id,
+          facetId: studyItemFacets.id,
+          studyItemId: studyItems.id,
+          kind: studyItems.kind,
+          facet: studyItemFacets.facet,
+          due: srsCards.due,
+          ghost: srsCards.ghost,
+          lapses: srsCards.lapses,
+          kanaCharacter: kana.character,
+          kanaRomaji: kana.romaji,
+          kanjiCharacter: kanji.character,
+          kanjiMeanings: kanji.meanings,
+          wordForm: words.primaryForm,
+          wordReading: words.primaryReading,
+          grammarTitle: grammarPoints.title,
+          grammarPattern: grammarPoints.pattern,
+          grammarSlug: grammarPoints.slug,
+          sentenceText: sentences.text,
+          sentenceReading: sentences.readingKana,
+          seriesCharacter: phoneticSeries.componentCharacter,
+          seriesReading: phoneticSeries.primaryReading
+        })
+        .from(srsCards)
+        .innerJoin(studyItemFacets, eq(studyItemFacets.id, srsCards.facetId))
+        .innerJoin(studyItems, eq(studyItems.id, studyItemFacets.studyItemId))
+        .leftJoin(kana, eq(kana.id, studyItems.kanaId))
+        .leftJoin(kanji, eq(kanji.id, studyItems.kanjiId))
+        .leftJoin(words, eq(words.id, studyItems.wordId))
+        .leftJoin(grammarPoints, eq(grammarPoints.id, studyItems.grammarPointId))
+        .leftJoin(sentences, eq(sentences.id, studyItems.sentenceId))
+        .leftJoin(phoneticSeries, eq(phoneticSeries.id, studyItems.phoneticSeriesId))
+        .where(and(isDue, inArray(studyItems.id, pageIds)))
+        .orderBy(asc(srsCards.due))
+
   const [totals] = await db
-    .select({ total: sql<number>`count(*)`.mapWith(Number) })
+    .select({
+      total: sql<number>`count(distinct ${studyItems.id})`.mapWith(Number),
+      totalCards: sql<number>`count(*)`.mapWith(Number)
+    })
     .from(srsCards)
     .innerJoin(studyItemFacets, eq(studyItemFacets.id, srsCards.facetId))
     .innerJoin(studyItems, eq(studyItems.id, studyItemFacets.studyItemId))
@@ -1116,7 +1581,7 @@ export async function getDueList(userId: string, query: DueListQuery): Promise<D
   // The chip counts ignore the kind filter — otherwise selecting one kind
   // would zero every other chip and there would be no way back.
   const byKind = await db
-    .select({ kind: studyItems.kind, count: sql<number>`count(*)`.mapWith(Number) })
+    .select({ kind: studyItems.kind, count: sql<number>`count(distinct ${studyItems.id})`.mapWith(Number) })
     .from(srsCards)
     .innerJoin(studyItemFacets, eq(studyItemFacets.id, srsCards.facetId))
     .innerJoin(studyItems, eq(studyItems.id, studyItemFacets.studyItemId))
@@ -1124,7 +1589,17 @@ export async function getDueList(userId: string, query: DueListQuery): Promise<D
     .groupBy(studyItems.kind)
     .orderBy(asc(studyItems.kind))
 
-  const items = rows.map((r) => {
+  // Group the cards under their item, keeping the page's ordering.
+  const byItem = new Map<string, typeof rows>()
+  for (const r of rows)
+    byItem.set(r.studyItemId, [...(byItem.get(r.studyItemId) ?? []), r])
+
+  const items = pageIds.flatMap((id) => {
+    const cards = byItem.get(id)
+    if (!cards || cards.length === 0)
+      return []
+    const r = cards[0]!
+
     // One arm of the exclusive arc is set, so exactly one of these holds.
     const [subject, detail, href] = r.kanaCharacter
       ? [r.kanaCharacter, r.kanaRomaji, null]
@@ -1140,22 +1615,32 @@ export async function getDueList(userId: string, query: DueListQuery): Promise<D
                 ? [r.seriesCharacter, r.seriesReading, null]
                 : ['(untitled)', null, null]
 
-    return {
-      cardId: r.cardId,
-      facetId: r.facetId,
-      studyItemId: r.studyItemId,
+    return [{
+      studyItemId: id,
       kind: r.kind,
-      facet: r.facet,
       subject,
       detail,
       due: r.due.toISOString(),
-      ghost: r.ghost,
-      lapses: r.lapses,
+      ghost: cards.some(c => c.ghost),
+      facets: cards.map(c => ({
+        cardId: c.cardId,
+        facetId: c.facetId,
+        facet: c.facet,
+        due: c.due.toISOString(),
+        ghost: c.ghost,
+        lapses: c.lapses
+      })),
       href
-    }
+    }]
   })
 
-  return { items, total: totals?.total ?? 0, byKind, serverTime: now.toISOString() }
+  return {
+    items,
+    total: totals?.total ?? 0,
+    totalCards: totals?.totalCards ?? 0,
+    byKind,
+    serverTime: now.toISOString()
+  }
 }
 
 /**
@@ -1295,6 +1780,7 @@ export async function getCourse(userId: string, languageCode: string): Promise<C
   }
 
   const samples = await stageSamples(language.id)
+  const lessons = await stageLessons(userId, language.id)
 
   const levels: CourseLevel[] = []
   for (const [level, stageMap] of byLevel) {
@@ -1315,12 +1801,54 @@ export async function getCourse(userId: string, languageCode: string): Promise<C
         kinds: [...v.kinds].map(([kind, count]) => ({ kind, count })).sort((a, b) => b.count - a.count),
         sample: samples.get(`${level}:${stage}`) ?? [],
         // Everything up to and including the current stage is reachable.
-        open: current === null || stage <= current
+        open: current === null || stage <= current,
+        // Not filtered by `open`. A lesson is reference material you may read
+        // whenever you like; the gate is on the QUESTIONS, not the explanation.
+        lessons: lessons.get(`${level}:${stage}`) ?? []
       }))
     })
   }
 
   return { levels }
+}
+
+/**
+ * The grammar lessons in each stage, with whether they have been read.
+ *
+ * Separate from `stageSamples` because it is a different question: samples say
+ * what a stage is ABOUT, this says what there is to read in it and whether you
+ * have. Only grammar for now — `lesson_views` is keyed on the study item so
+ * kana and kanji lessons drop in here later without a second query.
+ */
+async function stageLessons(
+  userId: string,
+  languageId: string
+): Promise<Map<string, Array<{ slug: string, title: string, meaningShort: string, read: boolean }>>> {
+  const result = await db.execute(sql`
+    select
+      l.code as level,
+      ceil(si.sort_index::float / ${STAGE_SIZE}) as stage,
+      g.slug, g.title, g.meaning_short,
+      (lv.study_item_id is not null) as read
+    from study_items si
+    join grammar_points g on g.id = si.grammar_point_id
+    join language_levels l on l.id = si.level_id
+    left join lesson_views lv on lv.study_item_id = si.id and lv.user_id = ${userId}
+    where si.language_id = ${languageId}
+      and si.published and si.active
+      and g.published
+    order by l.sort_index, stage, si.sort_index
+  `)
+
+  interface Row { level: string, stage: number, slug: string, title: string, meaning_short: string, read: boolean }
+  const out = new Map<string, Array<{ slug: string, title: string, meaningShort: string, read: boolean }>>()
+  for (const r of (result.rows ?? []) as unknown as Row[]) {
+    const key = `${r.level}:${Number(r.stage)}`
+    const list = out.get(key) ?? []
+    list.push({ slug: r.slug, title: r.title, meaningShort: r.meaning_short, read: r.read })
+    out.set(key, list)
+  }
+  return out
 }
 
 /** Up to four subjects per stage, so a stage can be described by its content. */
