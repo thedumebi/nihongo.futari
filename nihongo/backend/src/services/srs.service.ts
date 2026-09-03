@@ -1408,6 +1408,11 @@ export async function getDecks(userId: string, languageCode: string, level?: str
       eq(curriculumUnits.languageId, language.id),
       eq(curriculumUnits.published, true),
       eq(studyItems.published, true),
+      // The sibling query on `kind` filters this and this one did not, so a
+      // unit holding a deactivated item counted it in every one of its numbers
+      // while no other surface did. Nothing is inactive today, which is exactly
+      // how a drift like this survives until it matters.
+      eq(studyItems.active, true),
       eq(studyItemFacets.enabled, true),
       ...levelFilter
     ))
