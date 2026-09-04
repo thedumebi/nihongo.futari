@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { CourseLevel, CourseStage } from '@nihongo/shared/types'
 
-import { BookOpen, Check, Lock } from 'lucide-vue-next'
+import { Check, Lock } from 'lucide-vue-next'
 import { computed, onMounted, ref, watch } from 'vue'
 
 import { getCourse } from '@/api/course'
@@ -91,8 +91,9 @@ onMounted(load)
         Your course
       </h1>
       <p class="mt-2 text-[var(--color-muted)]">
-        Kana first, then each JLPT level in turn. New material arrives one stage at a time;
-        the next stage opens once most of this one has stuck.
+        Kana, words and kanji, in the order they are best met. New material arrives one
+        stage at a time; the next opens once most of this one has stuck.
+        Grammar is not staged &mdash; topics live in Lessons and you take them in any order.
       </p>
 
       <p v-if="loading" class="mt-10 text-center text-[var(--color-muted)]">
@@ -175,7 +176,7 @@ onMounted(load)
                   stage has stuck, in the same unit the study header uses.
                 -->
                   <Tooltip
-                    :content="`${stage.learned} of ${stage.total} CARDS in this stage have graduated. Every item has several cards — recognising a kana and writing it are counted separately — so this number is larger than the ${describe(stage)} above it, and every one must graduate before the next stage opens.`"
+                    :content="`${stage.learned} of ${stage.total} CARDS in this stage have graduated. Every item has several cards — recognising a kana and writing it are counted separately — so this number is larger than the ${describe(stage)} above it. Most of them must graduate before the next stage opens; a card you have suspended is not counted either way.`"
                     position="left"
                   >
                     <span class="shrink-0 text-xs text-[var(--color-muted)]">
@@ -194,27 +195,6 @@ onMounted(load)
                     class="h-4 w-4 shrink-0 text-[var(--color-success)]"
                   />
                 </div>
-
-                <!--
-                  What there is to READ in this stage, as opposed to what there
-                  is to answer. The lesson was the thing the app never had: the
-                  explanations existed in full and only a reference page nobody
-                  linked to ever showed them.
-                -->
-                <ul v-if="stage.lessons.length" class="mt-2 flex flex-wrap gap-x-3 gap-y-1 pl-11">
-                  <li v-for="lesson in stage.lessons" :key="lesson.slug">
-                    <RouterLink
-                      :to="`${ROUTES.GRAMMAR}/${lesson.slug}`"
-                      class="inline-flex items-center gap-1 text-xs transition hover:text-[var(--color-text)]"
-                      :class="lesson.read ? 'text-[var(--color-muted)]' : 'text-[var(--color-text)]'"
-                      :title="lesson.meaningShort"
-                    >
-                      <Check v-if="lesson.read" class="h-3 w-3 text-[var(--color-success)]" />
-                      <BookOpen v-else class="h-3 w-3" />
-                      <span style="font-family: var(--font-jp)">{{ lesson.title }}</span>
-                    </RouterLink>
-                  </li>
-                </ul>
               </li>
             </ol>
           </li>

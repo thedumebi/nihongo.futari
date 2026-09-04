@@ -502,7 +502,7 @@ const STAGE_SIZE = 50
  * indefinitely, where 0.8 left slack for exactly that. If progression ever
  * stalls on one stubborn card, this is the number to look at first.
  */
-const STAGE_PASS = 1
+const STAGE_PASS = 0.85
 
 /**
  * Stage progress, defined ONCE.
@@ -529,8 +529,14 @@ function stageRollup(userId: string, languageId: string) {
       si.level_id,
       ceil(si.sort_index::float / ${STAGE_SIZE}) as stage,
       si.kind,
-      count(*) as total,
-      count(*) filter (where sc.state >= 2) as learned,
+      -- Suspended cards are excluded from BOTH halves of the ratio.
+      --
+      -- A leech you have given up on should not hold a stage shut: with the
+      -- pass mark at 100% one suspended card made a stage unpassable forever,
+      -- and counting it as unlearned-but-required is the opposite of what
+      -- suspending it meant.
+      count(*) filter (where sc.id is null or not sc.suspended) as total,
+      count(*) filter (where sc.state >= 2 and not sc.suspended) as learned,
       -- Both units, because a stage needs both to describe itself honestly:
       -- "50 kana" is what the stage IS, "14/96" is how far through its cards
       -- you are. Printing the card count as the content count is what made a
@@ -542,6 +548,15 @@ function stageRollup(userId: string, languageId: string) {
     where si.published and si.active
       and si.level_id is not null
       and si.language_id = ${languageId}
+      -- Grammar topics are not part of the stage system.
+      --
+      -- A topic is admitted to review by reading its lesson, and Lessons is a
+      -- surface of its own that a reader moves through in their own order. Two
+      -- gates on the same content meant a topic could be unlocked by the
+      -- curriculum and barred by the lesson, or the reverse; and it made the
+      -- stage a reader is on depend on how much grammar they happened to have
+      -- read, which is not what a stage is for.
+      and si.kind <> 'grammar'
     group by 1, 2, 3
   `
 }
@@ -1841,7 +1856,6 @@ export async function getCourse(userId: string, languageCode: string): Promise<C
   }
 
   const samples = await stageSamples(language.id)
-  const lessons = await stageLessons(userId, language.id)
 
   const levels: CourseLevel[] = []
   for (const [level, stageMap] of byLevel) {
@@ -1862,54 +1876,12 @@ export async function getCourse(userId: string, languageCode: string): Promise<C
         kinds: [...v.kinds].map(([kind, count]) => ({ kind, count })).sort((a, b) => b.count - a.count),
         sample: samples.get(`${level}:${stage}`) ?? [],
         // Everything up to and including the current stage is reachable.
-        open: current === null || stage <= current,
-        // Not filtered by `open`. A lesson is reference material you may read
-        // whenever you like; the gate is on the QUESTIONS, not the explanation.
-        lessons: lessons.get(`${level}:${stage}`) ?? []
+        open: current === null || stage <= current
       }))
     })
   }
 
   return { levels }
-}
-
-/**
- * The grammar lessons in each stage, with whether they have been read.
- *
- * Separate from `stageSamples` because it is a different question: samples say
- * what a stage is ABOUT, this says what there is to read in it and whether you
- * have. Only grammar for now — `lesson_views` is keyed on the study item so
- * kana and kanji lessons drop in here later without a second query.
- */
-async function stageLessons(
-  userId: string,
-  languageId: string
-): Promise<Map<string, Array<{ slug: string, title: string, meaningShort: string, read: boolean }>>> {
-  const result = await db.execute(sql`
-    select
-      l.code as level,
-      ceil(si.sort_index::float / ${STAGE_SIZE}) as stage,
-      g.slug, g.title, g.meaning_short,
-      (lv.study_item_id is not null) as read
-    from study_items si
-    join grammar_points g on g.id = si.grammar_point_id
-    join language_levels l on l.id = si.level_id
-    left join lesson_views lv on lv.study_item_id = si.id and lv.user_id = ${userId}
-    where si.language_id = ${languageId}
-      and si.published and si.active
-      and g.published
-    order by l.sort_index, stage, si.sort_index
-  `)
-
-  interface Row { level: string, stage: number, slug: string, title: string, meaning_short: string, read: boolean }
-  const out = new Map<string, Array<{ slug: string, title: string, meaningShort: string, read: boolean }>>()
-  for (const r of (result.rows ?? []) as unknown as Row[]) {
-    const key = `${r.level}:${Number(r.stage)}`
-    const list = out.get(key) ?? []
-    list.push({ slug: r.slug, title: r.title, meaningShort: r.meaning_short, read: r.read })
-    out.set(key, list)
-  }
-  return out
 }
 
 /** Up to four subjects per stage, so a stage can be described by its content. */
@@ -1931,6 +1903,9 @@ async function stageSamples(languageId: string): Promise<Map<string, string[]>> 
       left join words w on w.id = si.word_id
       left join grammar_points g on g.id = si.grammar_point_id
       where si.published and si.active and si.language_id = ${languageId}
+        -- Same reason as the rollup: grammar is not in a stage any more, so it
+        -- cannot be what a stage is about.
+        and si.kind <> 'grammar'
     )
     select level, stage, subject from numbered
     where n <= 4 and subject <> ''

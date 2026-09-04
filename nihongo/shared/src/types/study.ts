@@ -334,19 +334,14 @@ export const courseStageSchema = z.object({
   kinds: z.array(z.object({ kind: z.string(), count: z.number().int() })),
   /** A few of its subjects, for a one-line preview. */
   sample: z.array(z.string()),
-  /** False for stages the reader has not reached yet. */
-  open: z.boolean(),
   /**
-   * The grammar lessons in this stage, readable in ANY order and regardless of
-   * `open` — reading ahead is allowed, being quizzed ahead is not. `read` is
-   * what `lesson_views` recorded.
+   * False for stages the reader has not reached yet.
+   *
+   * Grammar topics are no longer counted here or listed under a stage: a topic
+   * is admitted to review by reading its lesson, and Lessons is its own surface
+   * with its own order. A stage is kana, words and kanji.
    */
-  lessons: z.array(z.object({
-    slug: z.string(),
-    title: z.string(),
-    meaningShort: z.string(),
-    read: z.boolean()
-  }))
+  open: z.boolean()
 }).openapi('CourseStage')
 
 export type CourseStage = z.infer<typeof courseStageSchema>
