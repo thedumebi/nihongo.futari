@@ -26,10 +26,10 @@ import type { SyncState } from '@/offline/sync'
 
 import { getDecks, getQueue, markLessonSeen } from '@/api/study'
 import FuriganaText from '@/components/ja/furigana-text.vue'
-import TokenLine from '@/components/ja/token-line.vue'
 import WordMeaning from '@/components/ja/word-meaning.vue'
 import AppShell from '@/components/layout/app-shell.vue'
 import ChoiceInput from '@/components/study/choice-input.vue'
+import ClozePrompt from '@/components/study/cloze-prompt.vue'
 import DialogueCard from '@/components/study/dialogue-card.vue'
 import GrammarLesson from '@/components/study/grammar-lesson.vue'
 import OrderInput from '@/components/study/order-input.vue'
@@ -1588,56 +1588,22 @@ watch(() => lang.code, async () => {
               @finished="onDialogueFinished"
             />
 
-            <p
+            <ClozePrompt
               v-else-if="isCloze"
-              class="mt-8 text-center text-3xl leading-relaxed"
-              style="font-family: var(--font-jp)"
-            >
-              <!--
-              TokenLine, not FuriganaText: it renders the ruby AND makes each
-              word tappable for its meaning. Two components cannot own the same
-              run of text, so this one does both. It falls back to the plain
-              line when the backend supplied no tokens.
-            -->
-              <TokenLine
-                v-if="clozeBeforeTokens.length"
-                :tokens="clozeBeforeTokens"
-                :text="String(current.prompt?.before ?? '')"
-                reading=""
-                :mode="furiganaMode"
-                :known-kanji="knownKanji"
-                :selected="selectedIn('before')"
-                @pick="pickWord('before', clozeBeforeTokens, $event)"
-              />
-              <FuriganaText
-                v-else
-                :text="String(current.prompt?.before ?? '')"
-                :segments="clozeBefore"
-                :mode="furiganaMode"
-                :known-kanji="knownKanji"
-              />
-              <span
-                class="mx-1 inline-block min-w-[3ch] border-b-2 px-2 align-bottom"
-                :class="revealed ? 'border-[var(--color-success)] text-[var(--color-success)]' : 'border-[var(--color-muted)]'"
-              >{{ revealed ? current.answer.primary : '' }}</span>
-              <TokenLine
-                v-if="clozeAfterTokens.length"
-                :tokens="clozeAfterTokens"
-                :text="String(current.prompt?.after ?? '')"
-                reading=""
-                :mode="furiganaMode"
-                :known-kanji="knownKanji"
-                :selected="selectedIn('after')"
-                @pick="pickWord('after', clozeAfterTokens, $event)"
-              />
-              <FuriganaText
-                v-else
-                :text="String(current.prompt?.after ?? '')"
-                :segments="clozeAfter"
-                :mode="furiganaMode"
-                :known-kanji="knownKanji"
-              />
-            </p>
+              :before="String(current.prompt?.before ?? '')"
+              :after="String(current.prompt?.after ?? '')"
+              :before-tokens="clozeBeforeTokens"
+              :after-tokens="clozeAfterTokens"
+              :before-segments="clozeBefore"
+              :after-segments="clozeAfter"
+              :answer="current.answer.primary"
+              :revealed="revealed"
+              :mode="furiganaMode"
+              :known-kanji="knownKanji"
+              :selected-before="selectedIn('before')"
+              :selected-after="selectedIn('after')"
+              @pick="(half, index) => pickWord(half, half === 'before' ? clozeBeforeTokens : clozeAfterTokens, index)"
+            />
             <p v-if="isCloze && clozeTranslation" class="mt-4 text-center text-sm text-[var(--color-muted)]">
               {{ clozeTranslation }}
             </p>
