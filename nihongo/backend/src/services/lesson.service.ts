@@ -282,7 +282,16 @@ export async function getLesson(userId: string, languageCode: string, slug: stri
     prose: await proseFurigana(languageCode, [
       lesson.meaningLong,
       lesson.nuance,
-      ...mistakes.flatMap(m => [m.right, m.wrong, m.whyWrong])
+      // "How it attaches" is the slide that actually teaches the conjugation —
+      // 食べる → 食べ + ます / て / た / ない — so it is the LAST place that
+      // should be printing kanji a beginner cannot read.
+      ...lesson.formations.flatMap(f => [f.ruleTemplate, f.example]),
+      // Both the full list and the single one the teach deck shows: they are
+      // loaded separately and need not be the same row.
+      ...mistakes.flatMap(m => [m.right, m.wrong, m.whyWrong]),
+      lesson.mistake?.right,
+      lesson.mistake?.wrong,
+      lesson.mistake?.whyWrong
     ]),
     examples: examples.get(point.id) ?? [],
     questions: ordered.map(({ firstExposureOnly: _drop, ...q }) => q),

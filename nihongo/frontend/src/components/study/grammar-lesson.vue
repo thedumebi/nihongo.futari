@@ -212,10 +212,10 @@ function onTouchEnd(e: TouchEvent): void {
         <ul class="mt-3 space-y-3">
           <li v-for="(f, i) in lesson.formations" :key="i">
             <p class="text-sm" style="font-family: var(--font-jp)">
-              {{ f.ruleTemplate }}
+              <JaProse :text="f.ruleTemplate" :prose="prose" :mode="mode" :known-kanji="knownKanji" />
             </p>
             <p v-if="f.example" class="mt-1 text-sm text-[var(--color-muted)]" style="font-family: var(--font-jp)">
-              {{ f.example }}
+              <JaProse :text="f.example" :prose="prose" :mode="mode" :known-kanji="knownKanji" />
             </p>
           </li>
         </ul>
@@ -288,13 +288,13 @@ function onTouchEnd(e: TouchEvent): void {
           A common mistake
         </h3>
         <p class="mt-3 text-sm text-[var(--color-danger)]" style="font-family: var(--font-jp)">
-          ✗ {{ lesson.mistake.wrong }}
+          ✗ <JaProse :text="lesson.mistake.wrong" :prose="prose" :mode="mode" :known-kanji="knownKanji" />
         </p>
         <p class="mt-1 text-sm text-[var(--color-success)]" style="font-family: var(--font-jp)">
-          ✓ {{ lesson.mistake.right }}
+          ✓ <JaProse :text="lesson.mistake.right" :prose="prose" :mode="mode" :known-kanji="knownKanji" />
         </p>
         <p class="mt-3 text-sm leading-relaxed text-[var(--color-muted)]">
-          {{ lesson.mistake.whyWrong }}
+          <JaProse :text="lesson.mistake.whyWrong" :prose="prose" :mode="mode" :known-kanji="knownKanji" />
         </p>
       </template>
     </div>
