@@ -94,7 +94,10 @@ function tokenise(id: string, text: string, reading: string | null, g: Awaited<R
       sentenceId: id,
       index,
       surface: token.t,
-      reading: token.r ?? null,
+      // Trimmed: authored `reading_kana` spaces the words apart so the reading
+      // is legible to whoever writes it, and glossLine hands those spaces
+      // through onto the token — ' わ' rather than 'わ'.
+      reading: token.r?.trim() || null,
       wordId: token.w ? ids.get(token.w.form) ?? null : null,
       charStart,
       charEnd: cursor,
@@ -106,6 +109,10 @@ function tokenise(id: string, text: string, reading: string | null, g: Awaited<R
 }
 
 const emitSql = process.argv.includes('--emit-sql')
+// `--all` re-reads sentences that already have tokens. Needed when a sentence
+// is REWORDED: its old tokens still exist, so the default query skips it and
+// the emitted SQL would describe the sentence as it used to be.
+const all = process.argv.includes('--all')
 
 async function main(): Promise<void> {
   // Only sentences with no tokens at all, so a re-run is free and a partially
@@ -113,9 +120,11 @@ async function main(): Promise<void> {
   const pending = await db
     .select({ id: sentences.id, text: sentences.text, reading: sentences.readingKana })
     .from(sentences)
-    .where(sql`${sentences.source} = 'authored' and ${notExists(
-      db.select({ one: sql`1` }).from(sentenceTokens).where(eq(sentenceTokens.sentenceId, sentences.id))
-    )}`)
+    .where(all
+      ? sql`${sentences.source} = 'authored'`
+      : sql`${sentences.source} = 'authored' and ${notExists(
+        db.select({ one: sql`1` }).from(sentenceTokens).where(eq(sentenceTokens.sentenceId, sentences.id))
+      )}`)
 
   if (pending.length === 0) {
     console.log('Every authored sentence already has tokens.')
@@ -124,28 +133,33 @@ async function main(): Promise<void> {
 
   const g = await glossary('ja')
   const ids = await wordIdsByForm()
-  const all = pending.flatMap(s => tokenise(s.id, s.text, s.reading, g, ids))
+  const tokens = pending.flatMap(s => tokenise(s.id, s.text, s.reading, g, ids))
+
+  const lit = (v: string) => `'${v.replace(/'/g, "''")}'`
 
   if (emitSql) {
-    const lit = (v: string) => `'${v.replace(/'/g, "''")}'`
     console.log('-- Tokens for the authored sentences in this batch.')
     console.log('-- Produced by `pnpm -C nihongo/backend tokenise:authored -- --emit-sql`.')
+    // Delete-then-insert rather than ON CONFLICT: `sentence_tokens` is unique
+    // on `id` alone, so there is no (sentence_id, index) constraint for an
+    // upsert to target and the statement would abort. It also makes a REWORDED
+    // sentence correct — an upsert would leave the old trailing tokens behind.
+    console.log(`DELETE FROM sentence_tokens WHERE sentence_id IN (${pending.map(s => lit(s.id)).join(', ')});`)
     console.log('INSERT INTO sentence_tokens (id, sentence_id, index, surface, reading, word_id, char_start, char_end, furigana) VALUES')
-    console.log(all.map(r =>
+    console.log(`${tokens.map(r =>
       `  (gen_random_uuid()::text, ${lit(r.sentenceId)}, ${r.index}, ${lit(r.surface)}, `
       + `${r.reading === null ? 'NULL' : lit(r.reading)}, ${r.wordId === null ? 'NULL' : lit(r.wordId)}, `
       + `${r.charStart}, ${r.charEnd}, ${lit(JSON.stringify(r.furigana))}::jsonb)`
-    ).join(',\n'))
-    console.log('ON CONFLICT (sentence_id, index) DO NOTHING;')
+    ).join(',\n')};`)
     return
   }
 
-  for (let i = 0; i < all.length; i += 500)
-    await db.insert(sentenceTokens).values(all.slice(i, i + 500)).onConflictDoNothing()
+  for (let i = 0; i < tokens.length; i += 500)
+    await db.insert(sentenceTokens).values(tokens.slice(i, i + 500)).onConflictDoNothing()
 
-  console.log(`${pending.length} sentences tokenised, ${all.length} tokens written.`)
-  const tappable = all.filter(r => r.wordId !== null).length
-  console.log(`  ${tappable}/${all.length} tokens link to a dictionary word (the tappable ones).`)
+  console.log(`${pending.length} sentences tokenised, ${tokens.length} tokens written.`)
+  const tappable = tokens.filter(r => r.wordId !== null).length
+  console.log(`  ${tappable}/${tokens.length} tokens link to a dictionary word (the tappable ones).`)
 }
 
 main()

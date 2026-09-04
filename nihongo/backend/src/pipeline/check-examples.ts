@@ -24,12 +24,26 @@ const PARTICLES = new Set(['を', 'が'])
 // Explicit code points: the literal ranges are unreadable, and eslint rejects
 // them for exactly that reason.
 const KANA = /^[\u3041-\u309F\u30A0-\u30FF]$/
+const KANJI = /^[\u4E00-\u9FFF]+$/
 
-const rows = await db
-  .select({ id: sentences.id, text: sentences.text, reading: sentences.readingKana })
-  .from(sentences)
-  .innerJoin(grammarPointSentences, eq(grammarPointSentences.sentenceId, sentences.id))
-  .where(eq(sentences.source, 'authored'))
+// Candidate sentences can be checked BEFORE they are seeded:
+//
+//   pnpm -C nihongo/backend check:examples '毎朝早く起きる。|まいあさ はやく おきる。'
+//
+// Authoring a sentence, seeding it, and only then discovering the tokeniser
+// shreds it means unpicking a seed that has already run. Text before the pipe,
+// spoken reading after it (optional).
+const argv = process.argv.slice(2)
+const rows = argv.length
+  ? argv.map((arg, i) => {
+      const [text, reading] = arg.split('|')
+      return { id: `arg-${i + 1}`, text: text!, reading: reading ?? null }
+    })
+  : await db
+      .select({ id: sentences.id, text: sentences.text, reading: sentences.readingKana })
+      .from(sentences)
+      .innerJoin(grammarPointSentences, eq(grammarPointSentences.sentenceId, sentences.id))
+      .where(eq(sentences.source, 'authored'))
 
 const g = await glossary('ja')
 let bad = 0
@@ -56,6 +70,19 @@ for (const r of rows) {
     run = []
   }
 
+  // Two single kanji side by side: a compound split into its characters.
+  //
+  // The kana check above cannot see this, because each half is often a real
+  // published word on its own — 田中 tokenises as 田 + 中, 七時 as 七 + 時, and
+  // both halves gloss fine. It only shows up as a word-order question asking
+  // the reader to assemble a name from two characters.
+  for (let i = 1; i < tokens.length; i++) {
+    const a = tokens[i - 1]!
+    const b = tokens[i]!
+    if (KANJI.test(a.t) && KANJI.test(b.t) && [...a.t].length === 1 && [...b.t].length === 1)
+      problems.push(`compound split into single kanji: ${a.t}|${b.t}`)
+  }
+
   // A particle glued to the end of a longer token: the gloss is then for a
   // word that is not there.
   for (const t of tokens) {
@@ -75,5 +102,5 @@ for (const r of rows) {
   }
 }
 
-console.log(`\n${rows.length - bad}/${rows.length} authored examples tokenise cleanly.`)
+console.log(`\n${rows.length - bad}/${rows.length} sentences tokenise cleanly.`)
 process.exit(bad > 0 ? 1 : 0)

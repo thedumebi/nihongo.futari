@@ -88,6 +88,11 @@ async function synthesise(text: string, key: string, voice = VOICE): Promise<boo
   }
 }
 
+// Comma-separated ids: `audio:sentences -- --redo sent-ex-desu-3,sent-ex-masu-2`
+const redoArg = process.argv.find(a => a.startsWith('--redo='))
+  ?? (process.argv.includes('--redo') ? process.argv[process.argv.indexOf('--redo') + 1] : undefined)
+const redo = new Set((redoArg?.replace(/^--redo=/, '') ?? '').split(',').map(s => s.trim()).filter(Boolean))
+
 type AudioKind = 'kana' | 'words' | 'sentences' | 'dialogues'
 
 async function generate(kind: AudioKind) {
@@ -162,7 +167,14 @@ async function generate(kind: AudioKind) {
     const key = kind === 'dialogues'
       ? `audio/dialogues/${audioKeyFor(t.text, t.voice ?? VOICE)}.m4a`
       : `audio/${kind}/${t.name}.m4a`
-    if (stored.has(key)) {
+    // `--redo` re-records a clip that is already in the bucket.
+    //
+    // The skip above rests on ids being stable AND their text never changing,
+    // which holds right up until a sentence is REWORDED — then the id still
+    // resolves, the clip is skipped as present, and it goes on speaking the old
+    // wording forever. Silent, and worst in dictation, where the learner types
+    // what they hear and is marked wrong for getting it right.
+    if (stored.has(key) && !redo.has(t.name)) {
       skipped++
       continue
     }
