@@ -4,9 +4,10 @@ import env from '@/env'
 import router from '@/router/index'
 import { useAuthStore } from '@/store/auth'
 
-// Absolute API base (ofuma-style). Dev points straight at the backend
-// (VITE_API_URL=http://localhost:<port>); the backend CORS allows the frontend
-// origin (ALLOWED_ORIGINS).
+// Same origin as the app, with /api proxied to the backend — nginx does it in
+// production and the Vite dev server does it in dev, with the same two rules.
+// So this is <site>/api in both, and the backend's own port is an
+// implementation detail neither the browser nor better-auth needs to know.
 export const apiUrl = env.VITE_API_URL
 
 export const api = axios.create({

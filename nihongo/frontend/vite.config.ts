@@ -45,9 +45,35 @@ export default defineConfig(({ mode }) => {
     esbuild: { drop: mode === 'production' ? ['console', 'debugger'] : [] },
     server: {
       hmr: { overlay: true },
-      port: env.VITE_PORT
-      // No dev proxy: the SPA calls VITE_API_URL (the backend) directly and the
-      // backend's CORS allows the frontend origin (ALLOWED_ORIGINS).
+      port: env.VITE_PORT,
+      /**
+       * The same two rules `nginx.conf` applies in production.
+       *
+       * Dev used to call the backend directly on its own port, which made the
+       * two environments differently shaped: production is same-origin with
+       * /api proxied, dev was cross-origin. Anything that depends on where the
+       * app thinks it lives then works in one and not the other — and one did.
+       * better-auth builds its OAuth redirect from BETTER_AUTH_URL, so Google
+       * came back to the frontend origin, which had no such route, and the
+       * reader got a 404 with a valid authorisation code in the URL bar.
+       *
+       * Order matters: /api/auth is matched before /api, because the first
+       * keeps the prefix and the second strips it.
+       */
+      proxy: {
+        // better-auth's basePath IS /api/auth, so the prefix stays.
+        '/api/auth': {
+          target: `http://localhost:${env.VITE_BACKEND_PORT || '3008'}`,
+          changeOrigin: true
+        },
+        // Everything else maps to the backend's root routes:
+        // /api/study/queue -> /study/queue.
+        '/api': {
+          target: `http://localhost:${env.VITE_BACKEND_PORT || '3008'}`,
+          changeOrigin: true,
+          rewrite: p => p.replace(/^\/api/, '')
+        }
+      }
     }
   }
 })
