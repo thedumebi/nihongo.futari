@@ -1,7 +1,7 @@
 import type { GlossedToken, WordGloss } from '@nihongo/shared/types'
 
 import db from '@nihongo/shared/db'
-import { languageLevels, languages, wordForms, words, wordSenses } from '@nihongo/shared/db/schema'
+import { grammarPoints, languageLevels, languages, wordForms, words, wordSenses } from '@nihongo/shared/db/schema'
 import { buildTokenIndex, classifyVerb, conjugateAll, tokenise } from '@nihongo/shared/lib'
 import { and, asc, eq } from 'drizzle-orm'
 
@@ -95,6 +95,8 @@ let cached: Promise<Glossary> | null = null
  */
 /** Verbs whose KANA spelling conjugates too — see the note where it is used. */
 const KANA_CONJUGATING = new Set(['有る', '居る', '成る'])
+
+const JAPANESE_RUN = /[\u3040-\u309F\u30A0-\u30FF\u4E00-\u9FFF\u3005]+/g
 
 const RARE_TAGS = new Set(['oK', 'iK', 'rK', 'ok', 'ik', 'rk'])
 
@@ -288,6 +290,34 @@ async function build(languageCode: string): Promise<Glossary> {
   for (const { surface, gloss } of inflections)
     claim(surface, gloss)
 
+  // Then the grammar patterns, which fill what is left.
+  //
+  // Japanese grammar is largely assembled from pieces that are not words, and
+  // JMdict is a dictionary of words — so です, ます, てもいい, なければなりません,
+  // でしょう, つもり and けど are in NONE of it. Every one of them shredded into
+  // the kana it is spelled with: 学生です came apart as 学生 | で | す, and nine
+  // N5 topics could not have example sentences written at all, because the
+  // sentences that teach a pattern necessarily contain it.
+  //
+  // The patterns are already in the database — every lesson has a title, and a
+  // title is the pattern. So they are read from there rather than invented, and
+  // a topic added later is indexed without anybody remembering to.
+  //
+  // Claimed LAST, after even the conjugations, so this can only ever fill a
+  // gap. Anything a real word or a real inflection already holds keeps it.
+  for (const p of await patterns(languageCode)) {
+    // Not if the pattern merely glues a particle onto a word that already
+    // exists. The 〜が好き topic is titled with its particle attached, and
+    // indexing it whole made 音楽が好きです cut as 音楽 | が好き | です — which
+    // hides the が the lesson is about, and puts it inside a chip the reader
+    // cannot place. A pattern is worth indexing when it is a unit the
+    // dictionary lacks, not when it is a word with something stuck to it.
+    const tail = [...p.form].slice(1).join('')
+    if (tail.length > 1 && byForm.has(tail))
+      continue
+    claim(p.form, p)
+  }
+
   return { index: buildTokenIndex(byForm.keys()), byForm }
 }
 
@@ -305,6 +335,57 @@ export async function glossary(languageCode: string): Promise<Glossary> {
  * renders its own romaji instead of the whole line being romanised as one
  * string, which also spaces the words apart for free.
  */
+/**
+ * Tokenisable fragments of every published lesson title.
+ *
+ * A title is written the way the pattern is written — 〜てもいい, これ・それ・
+ * あれ・どれ, 〜から (because) — so the Japanese runs inside it ARE the forms to
+ * index. The English, the 〜 and the separators fall out on their own.
+ */
+async function patterns(languageCode: string): Promise<WordGloss[]> {
+  const rows = await db
+    .select({ title: grammarPoints.title, pattern: grammarPoints.pattern, meaning: grammarPoints.meaningShort })
+    .from(grammarPoints)
+    .innerJoin(languages, eq(languages.id, grammarPoints.languageId))
+    .where(and(eq(languages.code, languageCode), eq(grammarPoints.published, true)))
+
+  const seen = new Set<string>()
+  const out: WordGloss[] = []
+  for (const row of rows) {
+    // The `pattern` column as well as the title, because they cut differently
+    // and both cuts are needed. The title of the 〜てもいい topic is 〜てもいい,
+    // which can never match: the verb's own conjugation takes the て first, so
+    // the string to look for is もいい — and that is what `pattern` holds,
+    // "Verb-て + もいい".
+    //
+    // ・ is katakana-block punctuation, so it sits inside the run pattern and
+    // これ・それ・あれ・どれ matched as ONE form. Split on it first.
+    const source = `${row.title} ${row.pattern ?? ''}`.replace(/・/g, ' ')
+    for (const raw of source.match(JAPANESE_RUN) ?? []) {
+      // Trailing copula and particles come off, because they are indexed in
+      // their own right and a pattern that keeps them swallows them: the 〜つもり
+      // pattern is written "つもりです" and cut 行くつもりです as 行く | つもりです,
+      // and a これは pattern hid the は the reader is meant to place.
+      // Only when something substantial is left: the です topic is titled です,
+      // and trimming that leaves nothing to index — which is how the copula
+      // stopped being a word again.
+      const trimmed = raw.replace(/(?:です|ます|でした)$/, '').replace(/[はをにがでもとやへか]$/, '')
+      const form = [...trimmed].length >= 2 ? trimmed : raw
+      // Single characters are left alone. They are particles the dictionary
+      // already holds, and claiming the rest — い from an adjective pattern, た
+      // from the past tense — told `check:examples` that a shredded run was
+      // fine, because every piece of it now had a gloss. The check exists to
+      // catch exactly that, and this blinded it.
+      if ([...form].length < 2 || seen.has(form))
+        continue
+      seen.add(form)
+      out.push({ form, reading: form, meanings: [row.meaning], pos: 'grammar' })
+    }
+  }
+  // Longest first, so 〜てもいい is claimed before 〜て can take the front of it.
+  return out.sort((a, b) => b.form.length - a.form.length)
+}
+
 export function glossLine(line: string, g: Glossary, reading?: string): GlossedToken[] {
   const tokens = tokenise(line, g.index)
   const readings = reading ? splitReading(line, reading, tokens.map(t => [...t.t].length)) : null
