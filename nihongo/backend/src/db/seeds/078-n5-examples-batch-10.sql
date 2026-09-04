@@ -164,15 +164,15 @@ ON CONFLICT (grammar_point_id, sentence_id, role) DO NOTHING;
 -- migrations and seeds; the quiz derivation cuts its chips from these rows.
 DELETE FROM sentence_tokens WHERE sentence_id IN ('sent-ex-nakute-1', 'sent-ex-nakute-2', 'sent-ex-nakute-3', 'sent-ex-nakute-4');
 INSERT INTO sentence_tokens (id, sentence_id, index, surface, reading, word_id, char_start, char_end, furigana) VALUES
-  (gen_random_uuid()::text, 'sent-ex-nakute-1', 0, '寒くて', 'さむくて', '7804ecd2-11fd-4390-9b3d-061a74ac662d', 0, 3, '[{"t":"寒","r":"さむ"},{"t":"くて"}]'::jsonb),
-  (gen_random_uuid()::text, 'sent-ex-nakute-1', 1, '行きませんでした', 'いきませんでした', '6897cf00-2694-4be3-bbf5-0486e60dcdcb', 3, 11, '[{"t":"行","r":"い"},{"t":"きませんでした"}]'::jsonb),
+  (gen_random_uuid()::text, 'sent-ex-nakute-1', 0, '寒くて', 'さむくて', (select id from words where primary_form = '寒い' and language_id = 'lang-ja' and published order by id limit 1), 0, 3, '[{"t":"寒","r":"さむ"},{"t":"くて"}]'::jsonb),
+  (gen_random_uuid()::text, 'sent-ex-nakute-1', 1, '行きませんでした', 'いきませんでした', (select id from words where primary_form = '行く' and language_id = 'lang-ja' and published order by id limit 1), 3, 11, '[{"t":"行","r":"い"},{"t":"きませんでした"}]'::jsonb),
   (gen_random_uuid()::text, 'sent-ex-nakute-1', 2, '。', '。', NULL, 11, 12, '[{"t":"。"}]'::jsonb),
-  (gen_random_uuid()::text, 'sent-ex-nakute-2', 0, '高くて', 'たかくて', 'ddc1e88a-997a-4781-8bc9-d3a184a07301', 0, 3, '[{"t":"高","r":"たか"},{"t":"くて"}]'::jsonb),
-  (gen_random_uuid()::text, 'sent-ex-nakute-2', 1, '買いませんでした', 'かいませんでした', '5f7e2bcd-8631-4aeb-b3a4-c00877dedc47', 3, 11, '[{"t":"買","r":"か"},{"t":"いませんでした"}]'::jsonb),
+  (gen_random_uuid()::text, 'sent-ex-nakute-2', 0, '高くて', 'たかくて', (select id from words where primary_form = '高まる' and language_id = 'lang-ja' and published order by id limit 1), 0, 3, '[{"t":"高","r":"たか"},{"t":"くて"}]'::jsonb),
+  (gen_random_uuid()::text, 'sent-ex-nakute-2', 1, '買いませんでした', 'かいませんでした', (select id from words where primary_form = '買う' and language_id = 'lang-ja' and published order by id limit 1), 3, 11, '[{"t":"買","r":"か"},{"t":"いませんでした"}]'::jsonb),
   (gen_random_uuid()::text, 'sent-ex-nakute-2', 2, '。', '。', NULL, 11, 12, '[{"t":"。"}]'::jsonb),
-  (gen_random_uuid()::text, 'sent-ex-nakute-3', 0, '忙しくて', 'いそがしくて', '65ae7422-9448-4faa-b28d-f80a027123bf', 0, 4, '[{"t":"忙","r":"いそが"},{"t":"しくて"}]'::jsonb),
-  (gen_random_uuid()::text, 'sent-ex-nakute-3', 1, '休みませんでした', 'やすみませんでした', '52fd60de-a97d-47be-9b31-894be752027a', 4, 12, '[{"t":"休","r":"やす"},{"t":"みませんでした"}]'::jsonb),
+  (gen_random_uuid()::text, 'sent-ex-nakute-3', 0, '忙しくて', 'いそがしくて', (select id from words where primary_form = '忙しい' and language_id = 'lang-ja' and published order by id limit 1), 0, 4, '[{"t":"忙","r":"いそが"},{"t":"しくて"}]'::jsonb),
+  (gen_random_uuid()::text, 'sent-ex-nakute-3', 1, '休みませんでした', 'やすみませんでした', (select id from words where primary_form = '休む' and language_id = 'lang-ja' and published order by id limit 1), 4, 12, '[{"t":"休","r":"やす"},{"t":"みませんでした"}]'::jsonb),
   (gen_random_uuid()::text, 'sent-ex-nakute-3', 2, '。', '。', NULL, 12, 13, '[{"t":"。"}]'::jsonb),
-  (gen_random_uuid()::text, 'sent-ex-nakute-4', 0, '暑くて', 'あつくて', '24ba41c3-4af8-45a2-9f3a-318c80560e5b', 0, 3, '[{"t":"暑","r":"あつ"},{"t":"くて"}]'::jsonb),
-  (gen_random_uuid()::text, 'sent-ex-nakute-4', 1, '寝ませんでした', 'ねませんでした', '056f037c-201a-4cd0-85be-f063237124fd', 3, 10, '[{"t":"寝","r":"ね"},{"t":"ませんでした"}]'::jsonb),
+  (gen_random_uuid()::text, 'sent-ex-nakute-4', 0, '暑くて', 'あつくて', (select id from words where primary_form = '暑い' and language_id = 'lang-ja' and published order by id limit 1), 0, 3, '[{"t":"暑","r":"あつ"},{"t":"くて"}]'::jsonb),
+  (gen_random_uuid()::text, 'sent-ex-nakute-4', 1, '寝ませんでした', 'ねませんでした', (select id from words where primary_form = '寝る' and language_id = 'lang-ja' and published order by id limit 1), 3, 10, '[{"t":"寝","r":"ね"},{"t":"ませんでした"}]'::jsonb),
   (gen_random_uuid()::text, 'sent-ex-nakute-4', 2, '。', '。', NULL, 10, 11, '[{"t":"。"}]'::jsonb);

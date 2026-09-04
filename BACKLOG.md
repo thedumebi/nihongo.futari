@@ -58,10 +58,13 @@
       — so a build running during generation died with ENOENT on a temp file
       that had already been converted and deleted. It goes to the system temp
       directory now.
-- [ ] **76% of referenced clips did not exist.** Importers wrote a URL for
+- [x] **76% of referenced clips did not exist.** Importers wrote a URL for
       every published word across N5–N1 but `audio:words` had only run for N5.
-      All 1,730 listening prompts were fine — the gap is the optional "Hear it"
-      button on reading and meaning cards. Generation is running.
+      All 1,730 listening prompts were fine — the gap was the optional "Hear it"
+      button on reading and meaning cards. Generation finished: all 10,490
+      referenced clips resolve to a key in the bucket, checked by listing
+      `audio/words/`, `audio/sentences/` and `audio/kana/` and matching every
+      `assets.audio` and `assets.wordAudio` against them.
 
 ## Deployment
 
