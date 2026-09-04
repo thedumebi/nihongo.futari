@@ -93,6 +93,9 @@ let cached: Promise<Glossary> | null = null
  * irregular kanji, rare or irregular kana. Indexing them is how 行 ends up
  * glossed as 件 "paragraph" — a real entry, and never what the line means.
  */
+/** Verbs whose KANA spelling conjugates too — see the note where it is used. */
+const KANA_CONJUGATING = new Set(['有る', '居る'])
+
 const RARE_TAGS = new Set(['oK', 'iK', 'rK', 'ok', 'ik', 'rk'])
 
 /** Whether a spelling contains any kanji at all. */
@@ -230,13 +233,26 @@ async function build(languageCode: string): Promise<Glossary> {
     // Only from the primary spelling — conjugating an alternate one would
     // produce forms nobody writes.
     //
-    // Except the kana spelling of a word the dictionary marks `uk`, which is
-    // the spelling people DO write. 居る is tagged rK — a rare kanji — so that
-    // row is dropped as rare before it can conjugate, and its kana form いる was
-    // then refused here for not being the primary spelling. Between the two,
-    // います matched nothing and 猫がいます。 came apart into 猫|が|い|ま|す.
-    // Every usually-kana verb with a rare kanji headword had the same hole.
-    if (row.form !== row.primaryForm && !(!HAS_KANJI.test(row.form) && (sense?.misc ?? []).includes('uk')))
+    // Except the kana spelling of ある and いる.
+    //
+    // 居る is tagged rK — a rare kanji — so that row is dropped as rare before
+    // it can conjugate, and its kana form いる was then refused here for not
+    // being the primary spelling. Between the two, います matched nothing and
+    // 猫がいます。 came apart into 猫|が|い|ま|す, which makes the あります／います
+    // lesson impossible to write.
+    //
+    // This was once every `uk` verb, and that was too much: kana collides with
+    // far more of the language than kanji does, and conjugating all of them let
+    // the wrong homograph claim common spellings first. いって was claimed by
+    // 要る "to be needed" — so いってきます glossed as needing something —
+    // かかります by 罹る "to contract a disease", and 居る claimed the います
+    // inside ありがとうございます, on 342 lines. Every one of those was a real
+    // word wrongly identified, which is worse than an unrecognised one.
+    //
+    // These two are named because they are unavoidable: they are the existential
+    // verbs, they appear on nearly every page, and neither has a homograph that
+    // could take the spelling from it.
+    if (row.form !== row.primaryForm && !(KANA_CONJUGATING.has(row.primaryForm) && !HAS_KANJI.test(row.form)))
       continue
 
     // Verbs only. `conjugate` has no adjective branch — its switch covers the

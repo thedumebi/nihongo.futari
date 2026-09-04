@@ -36,13 +36,47 @@ export function readingFor(token: GlossedToken): { reading: string | null, furig
   // and those spaces ride through onto the token as ' でんわ して'.
   const clean = (r: unknown) => (typeof r === 'string' ? r.replace(/\s+/g, '') : '')
 
-  for (const r of [clean(token.w?.reading), clean(token.r)]) {
+  // The LINE's reading first, then the dictionary's.
+  //
+  // The line knows which word this is; the dictionary only knows which words
+  // share the spelling. 寝る前に reads まえ, but 前 is also ぜん, and a single
+  // kanji aligns against ANY reading — so preferring the dictionary annotated
+  // 前 as ぜん, 店 as てん, 家 as け and ご飯 as ごめし. Four wrong readings
+  // taught with the authority of ruby, and `check:examples` cannot see them
+  // because the segmentation is perfectly correct.
+  const line = clean(token.r)
+  const dict = clean(token.w?.reading)
+
+  const fits = (r: string) => {
     if (!r || r === token.t)
-      continue
+      return null
     const aligned = alignFurigana(token.t, r)
-    if (aligned.confidence > 0)
-      return { reading: r, furigana: aligned.segments }
+    return aligned.confidence > 0 ? { reading: r, furigana: aligned.segments } : null
   }
+
+  const fromLine = fits(line)
+  const fromDict = fits(dict)
+
+  // The line usually wins, because it knows WHICH word this is where the
+  // dictionary only knows which words share the spelling: 寝る前に reads まえ,
+  // and 前 is also ぜん. A single kanji aligns against any reading at all, so
+  // trusting the dictionary annotated 前 as ぜん, 店 as てん, 家 as け.
+  //
+  // Except when the line's reading has swallowed a neighbour. `splitReading`
+  // puts a whole run of kanji's reading on its first character — correct for
+  // spacing romaji, wrong for ruby — so 毎朝早く gave 毎朝 the reading
+  // まいあさはや.
+  //
+  // The tell is that the dictionary reading is a PREFIX of the line's: the word
+  // is there, with somebody else's reading stuck to the end of it. Merely being
+  // shorter is not enough — 家 is いえ in the line and け in the dictionary, and
+  // け is shorter but is simply a different word.
+  if (fromLine && fromDict)
+    return dict && line.startsWith(dict) && dict.length < line.length ? fromDict : fromLine
+  if (fromLine)
+    return fromLine
+  if (fromDict)
+    return fromDict
 
   // The word INFLECTED, which is neither its dictionary reading nor a reading
   // the line could supply.

@@ -11,6 +11,7 @@ import { markLessonSeen } from '@/api/study'
 import AppShell from '@/components/layout/app-shell.vue'
 import ChoiceInput from '@/components/study/choice-input.vue'
 import GrammarLesson from '@/components/study/grammar-lesson.vue'
+import KanaLesson from '@/components/study/kana-lesson.vue'
 import OrderInput from '@/components/study/order-input.vue'
 import Button from '@/components/ui/button.vue'
 import Input from '@/components/ui/input.vue'
@@ -231,8 +232,15 @@ onMounted(async () => {
       <template v-else-if="detail">
         <!-- TEACH — the same deck the study introduction shows, so a topic
              reads identically wherever you meet it. -->
+        <KanaLesson
+          v-if="phase === 'teach' && detail.kana"
+          :kana="detail.kana"
+          :finish-label="detail.questions.length > 0 ? 'Got it — quiz me' : 'Got it'"
+          @done="startQuiz"
+        />
+
         <GrammarLesson
-          v-if="phase === 'teach'"
+          v-else-if="phase === 'teach' && detail.lesson"
           :lesson="detail.lesson"
           :prose="detail.prose"
           :finish-label="detail.questions.length > 0 ? 'Got it — quiz me' : 'Got it'"
@@ -242,7 +250,7 @@ onMounted(async () => {
         <!-- QUIZ -->
         <div v-else-if="phase === 'quiz' && question" class="flex flex-col gap-6">
           <div class="flex items-baseline justify-between text-xs text-[var(--color-muted)]">
-            <span style="font-family: var(--font-jp)">{{ detail.lesson.title }}</span>
+            <span style="font-family: var(--font-jp)">{{ detail.lesson?.title ?? detail.kana?.rowLabel }}</span>
             <span>{{ answered }}/{{ total }}</span>
           </div>
 
@@ -339,7 +347,7 @@ onMounted(async () => {
             Lesson complete
           </p>
           <p class="mt-3 text-4xl" style="font-family: var(--font-jp)">
-            {{ detail.lesson.title }}
+            {{ detail.lesson?.title ?? detail.kana?.characters.map(c => c.character).join('') }}
           </p>
           <p v-if="total > 0" class="mt-6 text-2xl">
             {{ score }}%

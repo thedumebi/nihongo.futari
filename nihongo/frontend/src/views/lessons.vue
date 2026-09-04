@@ -35,7 +35,11 @@ const STATUS: Record<LessonStatus, { label: string, tone: string }> = {
 
 /** A lesson with no examples is an explanation and one question. Say so. */
 function isShort(lesson: LessonSummary): boolean {
-  return lesson.exampleCount === 0
+  // "short" warns that a GRAMMAR topic has no example sentences yet, so its
+  // lesson is the explanation and one question. A writing-system lesson has no
+  // example sentences by nature — it teaches five characters — so the marker
+  // would read as a gap where there is none.
+  return lesson.exampleCount === 0 && !lesson.slug.startsWith('kana-')
 }
 
 onMounted(async () => {

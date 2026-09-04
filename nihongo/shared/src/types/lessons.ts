@@ -84,9 +84,33 @@ export const lessonQuestionSchema = z.object({
 
 export type LessonQuestion = z.infer<typeof lessonQuestionSchema>
 
+/**
+ * A writing-system lesson: one row of the syllabary.
+ *
+ * Present INSTEAD of `lesson` when the slug names a kana row. The two teach
+ * decks have nothing in common — a grammar topic is one pattern explained at
+ * length, a kana row is five characters and their sounds — so they are separate
+ * fields rather than one shape bent to cover both.
+ */
+export const kanaLessonSchema = z.object({
+  script: z.string(),
+  /** "あ行", the row as a Japanese learner names it. */
+  rowLabel: z.string(),
+  characters: z.array(z.object({
+    character: z.string(),
+    romaji: z.string(),
+    audio: z.string().nullish()
+  }))
+}).openapi('KanaLesson')
+
 export const lessonDetailSchema = z.object({
-  /** Everything the teach deck renders, shared with the study introduction. */
-  lesson: studyLessonSchema,
+  /**
+   * Everything the teach deck renders, shared with the study introduction.
+   *
+   * Absent for a writing-system lesson, which carries `kana` instead.
+   */
+  lesson: studyLessonSchema.nullish(),
+  kana: kanaLessonSchema.nullish(),
   /** The full list, where the study card takes only one. */
   mistakes: z.array(z.object({
     wrong: z.string(),

@@ -29,6 +29,7 @@ import { and, asc, eq, inArray, isNull, sql } from 'drizzle-orm'
 import { readingFor } from '../lib/token-reading.js'
 import { glossary, glossLine } from './glossary.service.js'
 import { loadExamples, loadLessons } from './grammar.service.js'
+import { getKanaLesson, KANA_SLUG_PREFIX, kanaLessonItems, kanaLessonSummaries } from './kana-lesson.service.js'
 
 /**
  * Japanese embedded in English prose, with readings attached.
@@ -199,6 +200,25 @@ export async function listLessons(userId: string, languageCode: string): Promise
       next = { level: r.level, slug: r.slug, title: r.title }
   }
 
+  // The writing system comes first, before any grammar.
+  //
+  // Furigana IS kana, so every other lesson in the app assumes this one. A
+  // reader who has not met あ cannot use the ruby that makes the kanji legible,
+  // and Lessons used to open at です.
+  const kanaLessons = await kanaLessonSummaries(userId, language.id)
+  const first = [...levels.values()].sort((a, b) => a.sort - b.sort)[0]
+  if (first && kanaLessons.length > 0) {
+    first.groups = new Map([
+      ['writing-system', { code: 'writing-system', title: 'The writing system', imageUrl: null, lessons: kanaLessons }],
+      ...first.groups
+    ])
+    if (next === null || kanaLessons.some(l => l.status === 'not-started')) {
+      const firstUnseen = kanaLessons.find(l => l.status === 'not-started')
+      if (firstUnseen)
+        next = { level: first.level, slug: firstUnseen.slug, title: firstUnseen.title }
+    }
+  }
+
   return {
     levels: [...levels.values()]
       .sort((a, b) => a.sort - b.sort)
@@ -214,6 +234,14 @@ export async function listLessons(userId: string, languageCode: string): Promise
 }
 
 export async function getLesson(userId: string, languageCode: string, slug: string): Promise<LessonDetail | null> {
+  // The writing system is taught by a different kind of lesson entirely — five
+  // characters and their sounds, not one pattern explained — so it takes its
+  // own path rather than being forced through the grammar shape.
+  if (slug.startsWith(KANA_SLUG_PREFIX)) {
+    const [language] = await db.select({ id: languages.id }).from(languages).where(eq(languages.code, languageCode)).limit(1)
+    return language ? getKanaLesson(userId, language.id, slug) : null
+  }
+
   const [point] = await db
     .select({
       id: grammarPoints.id,
@@ -326,6 +354,34 @@ export async function completeLesson(
   slug: string,
   input: CompleteLessonInput
 ): Promise<CompleteLessonResult | null> {
+  if (slug.startsWith(KANA_SLUG_PREFIX)) {
+    const [language] = await db.select({ id: languages.id }).from(languages).where(eq(languages.code, languageCode)).limit(1)
+    const items = language ? await kanaLessonItems(language.id, slug) : null
+    if (!items || items.length === 0)
+      return null
+
+    // A row is five separate study items, so finishing it records five views.
+    // Marking only the first would leave four characters looking untaught and,
+    // worse, still barred from Review.
+    for (const studyItemId of items) {
+      await db
+        .insert(lessonViews)
+        .values({ userId, studyItemId, completedAt: new Date(), quizScore: input.score })
+        .onConflictDoUpdate({
+          target: [lessonViews.userId, lessonViews.studyItemId],
+          set: { completedAt: sql`coalesce(${lessonViews.completedAt}, now())`, quizScore: input.score }
+        })
+    }
+    return {
+      studyItemId: items[0]!,
+      completedAt: new Date().toISOString(),
+      score: input.score,
+      // The kana already have cards from the course; a lesson does not create
+      // them, it only records that the characters have now been taught.
+      addedToReview: false
+    }
+  }
+
   const [point] = await db
     .select({ studyItemId: studyItems.id })
     .from(grammarPoints)
