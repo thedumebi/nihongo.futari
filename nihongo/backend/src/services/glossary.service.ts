@@ -94,7 +94,7 @@ let cached: Promise<Glossary> | null = null
  * glossed as 件 "paragraph" — a real entry, and never what the line means.
  */
 /** Verbs whose KANA spelling conjugates too — see the note where it is used. */
-const KANA_CONJUGATING = new Set(['有る', '居る'])
+const KANA_CONJUGATING = new Set(['有る', '居る', '成る'])
 
 const RARE_TAGS = new Set(['oK', 'iK', 'rK', 'ok', 'ik', 'rk'])
 
@@ -249,9 +249,12 @@ async function build(languageCode: string): Promise<Glossary> {
     // inside ありがとうございます, on 342 lines. Every one of those was a real
     // word wrongly identified, which is worse than an unrecognised one.
     //
-    // These two are named because they are unavoidable: they are the existential
-    // verbs, they appear on nearly every page, and neither has a homograph that
-    // could take the spelling from it.
+    // These three are named because they are unavoidable: ある and いる are the
+    // existential verbs and なる is how anything becomes anything — 先生になります
+    // is the pattern an N5 topic is built on, and it was coming apart as
+    // な|り|ま|す. Naming them individually is what keeps the homographs out:
+    // なる is also 鳴る "to sound" and 生る "to bear fruit", and only 成る is
+    // listed here, so only 成る can claim なります.
     if (row.form !== row.primaryForm && !(KANA_CONJUGATING.has(row.primaryForm) && !HAS_KANJI.test(row.form)))
       continue
 
