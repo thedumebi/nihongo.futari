@@ -186,6 +186,10 @@ export async function getKanaLesson(userId: string, languageId: string, slug: st
       eq(exercisePrompts.status, 'published'),
       eq(exerciseTemplates.code, 'kana-romaji')
     ))
+    // In the row's own order, so the quiz asks あ い う え お rather than
+    // whatever the planner returned — a lesson that shuffles itself between
+    // visits is harder to come back to.
+    .orderBy(asc(exercisePrompts.id))
 
   return {
     lesson: null,

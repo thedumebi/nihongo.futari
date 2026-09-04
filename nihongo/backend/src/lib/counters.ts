@@ -45,6 +45,13 @@ const COUNTERS: Counter[] = [
     ]
   },
   {
+    // Before 時, so 一時間 is claimed ahead of the 一時 that would take its front
+    // — 一時間ぐらい was cutting as 一時 | 間 and leaving 間 with no reading.
+    suffix: '時間',
+    counts: 'hours',
+    readings: ['いちじかん', 'にじかん', 'さんじかん', 'よじかん', 'ごじかん', 'ろくじかん', 'しちじかん', 'はちじかん', 'くじかん', 'じゅうじかん']
+  },
+  {
     suffix: '分',
     counts: 'minutes',
     readings: ['いっぷん', 'にふん', 'さんぷん', 'よんぷん', 'ごふん', 'ろっぷん', 'ななふん', 'はっぷん', 'きゅうふん', 'じゅっぷん']

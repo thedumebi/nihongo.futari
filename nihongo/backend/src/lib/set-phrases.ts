@@ -19,10 +19,15 @@ import type { WordGloss } from '@nihongo/shared/types'
 
 const PHRASES: Array<[form: string, reading: string, meaning: string]> = [
   // Greetings and partings.
+  //
+  // こんにちは and こんばんは are SPELLED with は and SAID with わ — they end in
+  // the topic particle, frozen into the word. The reading is the spoken form
+  // because that is what romaji is built from; stored as written, they
+  // romanised as konnichiha.
   ['おはよう', 'おはよう', 'good morning (casual)'],
   ['おはようございます', 'おはようございます', 'good morning'],
-  ['こんにちは', 'こんにちは', 'hello, good afternoon'],
-  ['こんばんは', 'こんばんは', 'good evening'],
+  ['こんにちは', 'こんにちわ', 'hello, good afternoon'],
+  ['こんばんは', 'こんばんわ', 'good evening'],
   ['さようなら', 'さようなら', 'goodbye'],
   ['おやすみ', 'おやすみ', 'good night (casual)'],
   ['おやすみなさい', 'おやすみなさい', 'good night'],

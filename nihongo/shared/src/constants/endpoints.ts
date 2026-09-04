@@ -456,3 +456,12 @@ export const API_ENDPOINTS = {
     DASHBOARD: `${ROUTE_BASE_PATHS.ADMIN}${ADMIN_ROUTES.DASHBOARD}`
   }
 } as const
+
+/**
+ * How a writing-system lesson's slug begins.
+ *
+ * Shared because both sides test for it: the service dispatches on it and the
+ * list suppresses the "short" marker for it. Two copies of a magic string is
+ * one copy too many.
+ */
+export const KANA_LESSON_PREFIX = 'kana-'

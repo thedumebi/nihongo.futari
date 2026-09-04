@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import type { LessonListResponse, LessonStatus, LessonSummary } from '@nihongo/shared/types'
 
+import { KANA_LESSON_PREFIX } from '@nihongo/shared/constants'
 import { BookOpen, Check, CircleDot } from 'lucide-vue-next'
 import { computed, onMounted, ref } from 'vue'
 
@@ -39,7 +40,7 @@ function isShort(lesson: LessonSummary): boolean {
   // lesson is the explanation and one question. A writing-system lesson has no
   // example sentences by nature — it teaches five characters — so the marker
   // would read as a gap where there is none.
-  return lesson.exampleCount === 0 && !lesson.slug.startsWith('kana-')
+  return lesson.exampleCount === 0 && !lesson.slug.startsWith(KANA_LESSON_PREFIX)
 }
 
 onMounted(async () => {

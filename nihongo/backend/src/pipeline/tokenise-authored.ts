@@ -32,7 +32,7 @@ import { and, eq, inArray, notExists, sql } from 'drizzle-orm'
 import { readingFor } from '../lib/token-reading.js'
 import { glossary, glossLine } from '../services/glossary.service.js'
 
-interface Row { sentenceId: string, index: number, surface: string, reading: string | null, wordId: string | null, charStart: number, charEnd: number, furigana: Array<{ t: string, r?: string }> }
+interface Row { sentenceId: string, index: number, surface: string, reading: string | null, wordId: string | null, wordForm: string | null, charStart: number, charEnd: number, furigana: Array<{ t: string, r?: string }> }
 
 /**
  * Dictionary form -> word id.
@@ -82,6 +82,7 @@ function tokenise(id: string, text: string, reading: string | null, g: Awaited<R
       surface: token.t,
       reading,
       wordId: token.w ? ids.get(token.w.form) ?? null : null,
+      wordForm: token.w && ids.has(token.w.form) ? token.w.form : null,
       charStart,
       charEnd: cursor,
       furigana
@@ -134,7 +135,14 @@ async function main(): Promise<void> {
     console.log('INSERT INTO sentence_tokens (id, sentence_id, index, surface, reading, word_id, char_start, char_end, furigana) VALUES')
     console.log(`${tokens.map(r =>
       `  (gen_random_uuid()::text, ${lit(r.sentenceId)}, ${r.index}, ${lit(r.surface)}, `
-      + `${r.reading === null ? 'NULL' : lit(r.reading)}, ${r.wordId === null ? 'NULL' : lit(r.wordId)}, `
+      // The word is looked up by SPELLING, not pasted in as an id.
+      //
+      // `words.id` is a uuid minted by whichever `import:vocab` run built the
+      // table, so a seed carrying literal ids only applies to a database
+      // descended from the same run — and `sentence_tokens.word_id` has a real
+      // foreign key, so a fresh database aborts on the first token seed rather
+      // than merely mislinking. Resolving the spelling makes the seed portable.
+      + `${r.reading === null ? 'NULL' : lit(r.reading)}, ${r.wordForm === null ? 'NULL' : `(select id from words where primary_form = ${lit(r.wordForm)} and language_id = 'lang-ja' and published order by id limit 1)`}, `
       + `${r.charStart}, ${r.charEnd}, ${lit(JSON.stringify(r.furigana))}::jsonb)`
     ).join(',\n')};`)
     return
@@ -151,7 +159,7 @@ async function main(): Promise<void> {
   }
 
   for (let i = 0; i < tokens.length; i += 500)
-    await db.insert(sentenceTokens).values(tokens.slice(i, i + 500)).onConflictDoNothing()
+    await db.insert(sentenceTokens).values(tokens.slice(i, i + 500).map(({ wordForm: _drop, ...t }) => t)).onConflictDoNothing()
 
   console.log(`${pending.length} sentences tokenised, ${tokens.length} tokens written.`)
   const tappable = tokens.filter(r => r.wordId !== null).length

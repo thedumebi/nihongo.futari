@@ -12,9 +12,30 @@ import type { GlossedToken } from '@nihongo/shared/types'
 import { alignFurigana, alignInflected } from '@nihongo/shared/lib'
 
 /**
+ * Forms whose reading cannot be derived from their lemma.
+ *
+ * 来る shifts its stem vowel across the paradigm — く / き / こ — so aligning
+ * against くる gives 来 = く for every one of them. There is no rule to infer
+ * here; the paradigm is the exception.
+ */
+const IRREGULAR: Record<string, string> = {
+  来ます: 'きます',
+  来ました: 'きました',
+  来ません: 'きません',
+  来ませんでした: 'きませんでした',
+  来て: 'きて',
+  来た: 'きた',
+  来ない: 'こない',
+  来なかった: 'こなかった',
+  来られる: 'こられる',
+  来い: 'こい',
+  来る: 'くる'
+}
+
+/**
  * This token's reading and its ruby, or neither.
  *
- * The DICTIONARY reading is tried first and the line's own cut second.
+ * The LINE's reading is tried first and the dictionary's second.
  *
  * `glossLine`'s per-token reading comes from `splitReading`, which exists to
  * space romaji: inside a run of kanji it puts the whole run's reading on the
@@ -55,7 +76,31 @@ export function readingFor(token: GlossedToken): { reading: string | null, furig
     return { reading: token.t, furigana: [{ t: token.t }] }
 
   const line = clean(token.r)
-  const dict = clean(token.w?.reading)
+  // A pattern entry carries its own spelling as its "reading" — 前に reads 前に —
+  // which is not a reading at all. Taking it made `alignFurigana` put 前 above
+  // 前 as its own ruby on 62 prose runs.
+  const dict = token.w && token.w.reading !== token.w.form ? clean(token.w.reading) : ''
+
+  // 来る is irregular in a way `alignInflected` cannot know: the stem changes
+  // vowel, so 来ました is きました and not くました. Aligning the lemma gives
+  // 来 = く and annotates the commonest verb in the language wrongly.
+  const irregular = IRREGULAR[token.t]
+  if (irregular) {
+    const aligned = alignFurigana(token.t, irregular)
+    if (aligned.confidence > 0)
+      return { reading: irregular, furigana: aligned.segments }
+  }
+
+  // A single kanji is never guessed from the dictionary.
+  //
+  // Any reading "aligns" with one character, so the dictionary's first entry
+  // wins whatever it says: 東京 gave 東 = ひがし, 使い方 gave 方 = ほう, 我が家
+  // gave 家 = け, 三年前 gave 年 = とし and 前 = ぜん. Where the line supplies a
+  // reading it is trusted, because the line knows which word this is; where
+  // there is none — an explanation is prose, not a sentence with a reading —
+  // the character goes without ruby rather than with the wrong one.
+  if (!line && [...token.t].length === 1 && /[\u4E00-\u9FFF]/.test(token.t))
+    return { reading: null, furigana: [{ t: token.t }] }
 
   const fits = (r: string) => {
     if (!r || r === token.t)
