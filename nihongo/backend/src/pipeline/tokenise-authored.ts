@@ -29,7 +29,7 @@ import type { GlossedToken } from '@nihongo/shared/types'
 import db from '@nihongo/shared/db'
 import { sentences, sentenceTokens, words } from '@nihongo/shared/db/schema'
 import { alignFurigana } from '@nihongo/shared/lib'
-import { and, eq, notExists, sql } from 'drizzle-orm'
+import { and, eq, inArray, notExists, sql } from 'drizzle-orm'
 
 import { glossary, glossLine } from '../services/glossary.service.js'
 
@@ -42,11 +42,36 @@ interface Row { sentenceId: string, index: number, surface: string, reading: str
  * `alignFurigana` anchors the reading to the kanji, which is the same routine
  * the Tatoeba import uses, so both corpora carry the same shape.
  */
-function rubyFor(token: GlossedToken): Array<{ t: string, r?: string }> {
-  if (!token.r || token.r === token.t)
-    return [{ t: token.t }]
-  const aligned = alignFurigana(token.t, token.r)
-  return aligned.confidence > 0 ? aligned.segments : [{ t: token.t, r: token.r }]
+/**
+ * This token's reading and its ruby, or neither.
+ *
+ * The DICTIONARY reading is tried first and the line's own cut second.
+ *
+ * `glossLine`'s per-token reading comes from `splitReading`, which exists to
+ * space romaji: inside a run of kanji it puts the whole run's reading on the
+ * first character, because slicing anywhere in the run still romanises
+ * correctly. That is right for its purpose and wrong for ruby — 毎朝早く came
+ * back with 毎朝 annotated まいあさ はや, carrying 早's reading into the word
+ * before it. The dictionary knows 毎朝 is まいあさ and has no such problem.
+ *
+ * The line's cut is still needed for anything inflected: the dictionary holds
+ * 行く/いく, and only the sentence knows this one says 行きます/いきます.
+ *
+ * If neither aligns, the token gets no reading at all. A word shown with no
+ * furigana is a gap; a word shown with the wrong furigana teaches the wrong
+ * thing, and 早く annotated く is worse than 早く annotated nothing.
+ */
+function readingFor(token: GlossedToken): { reading: string | null, furigana: Array<{ t: string, r?: string }> } {
+  const candidates = [token.w?.reading, token.r]
+    .map(r => (typeof r === 'string' ? r.trim() : ''))
+    .filter(r => r && r !== token.t)
+
+  for (const r of candidates) {
+    const aligned = alignFurigana(token.t, r)
+    if (aligned.confidence > 0)
+      return { reading: r, furigana: aligned.segments }
+  }
+  return { reading: null, furigana: [{ t: token.t }] }
 }
 
 /**
@@ -90,18 +115,16 @@ function tokenise(id: string, text: string, reading: string | null, g: Awaited<R
     if (charStart < 0)
       return
     cursor = charStart + token.t.length
+    const { reading, furigana } = readingFor(token)
     rows.push({
       sentenceId: id,
       index,
       surface: token.t,
-      // Trimmed: authored `reading_kana` spaces the words apart so the reading
-      // is legible to whoever writes it, and glossLine hands those spaces
-      // through onto the token — ' わ' rather than 'わ'.
-      reading: token.r?.trim() || null,
+      reading,
       wordId: token.w ? ids.get(token.w.form) ?? null : null,
       charStart,
       charEnd: cursor,
-      furigana: rubyFor(token)
+      furigana
     })
   })
 
@@ -140,10 +163,13 @@ async function main(): Promise<void> {
   if (emitSql) {
     console.log('-- Tokens for the authored sentences in this batch.')
     console.log('-- Produced by `pnpm -C nihongo/backend tokenise:authored -- --emit-sql`.')
-    // Delete-then-insert rather than ON CONFLICT: `sentence_tokens` is unique
-    // on `id` alone, so there is no (sentence_id, index) constraint for an
-    // upsert to target and the statement would abort. It also makes a REWORDED
-    // sentence correct — an upsert would leave the old trailing tokens behind.
+    // Delete-then-insert rather than ON CONFLICT, because a REWORDED sentence
+    // usually has a DIFFERENT number of tokens. An upsert updates the indexes
+    // it has rows for and leaves any trailing ones from the longer old sentence
+    // in place, so the sentence ends with words it no longer contains.
+    //
+    // (`sentence_tokens_unique (sentence_id, index)` does exist, so an upsert
+    // would run — it would just be wrong here.)
     console.log(`DELETE FROM sentence_tokens WHERE sentence_id IN (${pending.map(s => lit(s.id)).join(', ')});`)
     console.log('INSERT INTO sentence_tokens (id, sentence_id, index, surface, reading, word_id, char_start, char_end, furigana) VALUES')
     console.log(`${tokens.map(r =>
@@ -152,6 +178,16 @@ async function main(): Promise<void> {
       + `${r.charStart}, ${r.charEnd}, ${lit(JSON.stringify(r.furigana))}::jsonb)`
     ).join(',\n')};`)
     return
+  }
+
+  // The same delete-then-insert the emitted SQL does, and for the same reason.
+  //
+  // `onConflictDoNothing` alone made `--all` a no-op that reported success:
+  // every row conflicted on (sentence_id, index), nothing was written, and the
+  // script still printed "150 tokens written". The one thing the flag exists
+  // for — refreshing a sentence that changed — silently did not happen.
+  if (all) {
+    await db.delete(sentenceTokens).where(inArray(sentenceTokens.sentenceId, pending.map(s => s.id)))
   }
 
   for (let i = 0; i < tokens.length; i += 500)

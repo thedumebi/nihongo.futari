@@ -92,6 +92,13 @@ async function synthesise(text: string, key: string, voice = VOICE): Promise<boo
 const redoArg = process.argv.find(a => a.startsWith('--redo='))
   ?? (process.argv.includes('--redo') ? process.argv[process.argv.indexOf('--redo') + 1] : undefined)
 const redo = new Set((redoArg?.replace(/^--redo=/, '') ?? '').split(',').map(s => s.trim()).filter(Boolean))
+// A `--redo` that names nothing re-records nothing, and every clip is then
+// skipped as already present — the run reports success having done exactly
+// what it was told not to do. Say so instead.
+if (process.argv.some(a => a === '--redo' || a.startsWith('--redo=')) && redo.size === 0) {
+  console.error('--redo needs comma-separated ids, e.g. --redo sent-ex-desu-3,sent-ex-masu-2')
+  process.exit(1)
+}
 
 type AudioKind = 'kana' | 'words' | 'sentences' | 'dialogues'
 
@@ -194,7 +201,11 @@ async function generate(kind: AudioKind) {
 
 const KINDS: AudioKind[] = ['kana', 'words', 'sentences', 'dialogues']
 
-const requested = process.argv[2]
+// The first argument that is not a flag. `--redo` takes a value, so reading
+// argv[2] positionally let `--redo sent-ex-desu-3` occupy the kind slot and the
+// script quietly generated KANA instead of what was asked for.
+const requested = process.argv.slice(2).find((a, i, all) =>
+  !a.startsWith('--') && all[i - 1] !== '--redo' && a !== '--')
 // `all` runs the lot in order, which is what a fresh machine wants; anything
 // unrecognised still falls back to kana, as it always did.
 const wanted: AudioKind[] = requested === 'all'

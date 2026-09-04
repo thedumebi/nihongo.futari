@@ -336,7 +336,10 @@ function splitReading(line: string, reading: string, lengths: number[]): string[
     }
 
     if (!HAS_KANJI.test(char)) {
-      if (j >= kana.length || spoken(char) !== spoken(kana[j]!))
+      // The reading is already spoken, so it may hold either form: わ where
+      // the author transcribed a particle, は where the character is part of a
+      // word. Accept both rather than mapping the reading.
+      if (j >= kana.length || (spoken(char) !== kana[j]! && char !== kana[j]!))
         return null
       // The READING's character is kept, not the surface's: it is the one that
       // romanises correctly, which is the entire point of storing it.
@@ -361,10 +364,17 @@ function splitReading(line: string, reading: string, lengths: number[]): string[
     while (anchorEnd < surface.length && !HAS_KANJI.test(surface[anchorEnd]!))
       anchorEnd += 1
     const anchor = surface.slice(end, anchorEnd).map(spoken).join('')
-
     // Spaces are stripped for the anchor search only: they mark word
     // boundaries, and a boundary may fall anywhere inside the run's reading.
-    const rest = kana.slice(j).filter(c => !/\s/.test(c)).map(spoken).join('')
+    //
+    // `spoken` is deliberately NOT applied here. It converts は to わ, and the
+    // reading is already spoken — so the only は it can meet is one INSIDE a
+    // word, where the substitution is simply wrong. 母は先生です。 reads
+    // はは わ せんせい です。; mapping the reading turned はは into わわ, the
+    // anchor わ matched at the first character instead of the third, and 母
+    // came out annotated は. Every word whose reading contains は, を or へ was
+    // cut one character short.
+    const rest = kana.slice(j).filter(c => !/\s/.test(c)).join('')
 
     // No anchor means the run reaches the end of the line, so it takes the
     // rest of the reading.

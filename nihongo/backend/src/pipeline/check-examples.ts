@@ -33,7 +33,9 @@ const KANJI = /^[\u4E00-\u9FFF]+$/
 // Authoring a sentence, seeding it, and only then discovering the tokeniser
 // shreds it means unpicking a seed that has already run. Text before the pipe,
 // spoken reading after it (optional).
-const argv = process.argv.slice(2)
+// `--` survives `pnpm run check:examples -- '…'` and would otherwise be
+// checked as a sentence of its own, and counted as one that passed.
+const argv = process.argv.slice(2).filter(a => a !== '--')
 const rows = argv.length
   ? argv.map((arg, i) => {
       const [text, reading] = arg.split('|')
@@ -47,10 +49,12 @@ const rows = argv.length
 
 const g = await glossary('ja')
 let bad = 0
+let warned = 0
 
 for (const r of rows) {
   const tokens = glossLine(r.text, g, r.reading ?? undefined)
   const problems: string[] = []
+  const warnings: string[] = []
 
   // A run of bare single kana means a word the index does not hold.
   //
@@ -76,11 +80,17 @@ for (const r of rows) {
   // published word on its own — 田中 tokenises as 田 + 中, 七時 as 七 + 時, and
   // both halves gloss fine. It only shows up as a word-order question asking
   // the reader to assemble a name from two characters.
+  //
+  // A WARNING and not a failure, because the same shape occurs in correct
+  // Japanese: 今雨が降っている and 今何を食べる put two unrelated single-kanji
+  // words side by side and are both fine. There is no way to tell those from
+  // 田中 without knowing the compound, so this asks a human to look rather than
+  // refusing the sentence — a hard gate here would block valid writing.
   for (let i = 1; i < tokens.length; i++) {
     const a = tokens[i - 1]!
     const b = tokens[i]!
     if (KANJI.test(a.t) && KANJI.test(b.t) && [...a.t].length === 1 && [...b.t].length === 1)
-      problems.push(`compound split into single kanji: ${a.t}|${b.t}`)
+      warnings.push(`two single kanji adjacent — a split compound, or just two words? ${a.t}|${b.t}`)
   }
 
   // A particle glued to the end of a longer token: the gloss is then for a
@@ -94,13 +104,18 @@ for (const r of rows) {
   if (r.reading && !tokens.some(t => t.r))
     problems.push('no per-token readings — romaji mode cannot space the words')
 
-  if (problems.length > 0) {
-    bad += 1
-    console.log(`\n✗ ${r.id}  ${r.text}`)
+  if (problems.length > 0 || warnings.length > 0) {
+    if (problems.length > 0)
+      bad += 1
+    else warned += 1
+    console.log(`\n${problems.length > 0 ? '✗' : '⚠'} ${r.id}  ${r.text}`)
     console.log(`   ${tokens.map(t => t.t).join(' | ')}`)
     for (const p of problems) console.log(`   → ${p}`)
+    for (const w of warnings) console.log(`   ? ${w}`)
   }
 }
 
 console.log(`\n${rows.length - bad}/${rows.length} sentences tokenise cleanly.`)
+if (warned > 0)
+  console.log(`${warned} to look over — marked ⚠, not counted as failures.`)
 process.exit(bad > 0 ? 1 : 0)
