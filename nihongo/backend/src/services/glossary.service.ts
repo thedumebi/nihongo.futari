@@ -6,6 +6,7 @@ import { buildTokenIndex, classifyVerb, conjugateAll, tokenise } from '@nihongo/
 import { and, asc, eq } from 'drizzle-orm'
 
 import { counterWords } from '../lib/counters.js'
+import { setPhrases } from '../lib/set-phrases.js'
 
 /**
  * Turning a line of Japanese into words you can tap.
@@ -300,6 +301,11 @@ async function build(languageCode: string): Promise<Glossary> {
   // glosses.
   for (const c of counterWords())
     claim(c.form, c)
+
+  // Fixed expressions, for the same reason: ありがとうございます is one thing to
+  // a learner and 有り難う + ございます to a dictionary.
+  for (const p of setPhrases())
+    claim(p.form, p)
 
   // Then the grammar patterns, which fill what is left.
   //
