@@ -2,7 +2,8 @@
 import type { LessonDetail, LessonQuestion } from '@nihongo/shared/types'
 
 import { gradeAnswer } from '@nihongo/shared/lib'
-import { computed, onMounted, ref, shallowRef } from 'vue'
+import { Volume2 } from 'lucide-vue-next'
+import { computed, onMounted, ref, shallowRef, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 
 import { completeLesson, getLesson } from '@/api/lessons'
@@ -13,6 +14,7 @@ import GrammarLesson from '@/components/study/grammar-lesson.vue'
 import OrderInput from '@/components/study/order-input.vue'
 import Button from '@/components/ui/button.vue'
 import Input from '@/components/ui/input.vue'
+import { playAudio } from '@/composables/use-audio'
 import { useFurigana } from '@/composables/use-furigana'
 import { ROUTES } from '@/constants'
 import { useLanguageStore } from '@/store/language'
@@ -66,6 +68,10 @@ const total = computed(() => detail.value?.questions.length ?? 0)
 
 const isChoice = computed(() => question.value?.inputMode === 'choice')
 const isOrdering = computed(() => question.value?.inputMode === 'ordering')
+// Dictation and listening ask about the SOUND, so the clip is the question
+// rather than a hint beside it.
+const isListening = computed(() =>
+  question.value?.templateCode === 'dictation' || question.value?.templateCode === 'listening')
 
 const choices = computed(() => {
   const q = question.value
@@ -107,6 +113,25 @@ const promptText = computed(() => {
     translation: str(p.translation) || str(p.gloss)
   }
 })
+
+/**
+ * This question's clip, where it has one.
+ *
+ * A dictation question is "listen and type what you hear", and the lesson had
+ * no audio code at all — so it asked the reader to transcribe silence. The clip
+ * was in the prompt's assets the whole time; nothing ever played it.
+ */
+const audioSrc = computed(() => {
+  const src = question.value?.assets?.audio
+  return typeof src === 'string' && src ? src : ''
+})
+
+// Played on arrival for a listening question, because that IS the question.
+// Anything else offers the button and stays quiet.
+watch(question, (q) => {
+  if (q && audioSrc.value && isListening.value)
+    playAudio(audioSrc.value)
+}, { immediate: true })
 
 // Shown only after the answer — see the note beside it in the template.
 const explanation = computed(() => {
@@ -238,6 +263,22 @@ onMounted(async () => {
           <p v-if="promptText.translation" class="text-center text-sm text-[var(--color-muted)]">
             {{ promptText.translation }}
           </p>
+
+          <!--
+            Replay. A listening question plays itself on arrival, but once is
+            rarely enough to transcribe a sentence, and there was previously no
+            way to hear it a second time — or a first, since nothing played at
+            all.
+          -->
+          <button
+            v-if="audioSrc"
+            type="button"
+            class="mx-auto flex items-center gap-2 rounded-full border border-[var(--color-border)] px-4 py-2 text-sm text-[var(--color-muted)]"
+            @click="playAudio(audioSrc)"
+          >
+            <Volume2 class="h-4 w-4" />
+            {{ isListening ? 'Play again' : 'Listen' }}
+          </button>
 
           <form class="flex flex-col gap-4" @submit.prevent="revealed ? next() : submit()">
             <ChoiceInput

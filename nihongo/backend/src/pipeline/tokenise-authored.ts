@@ -28,7 +28,7 @@ import type { GlossedToken } from '@nihongo/shared/types'
 
 import db from '@nihongo/shared/db'
 import { sentences, sentenceTokens, words } from '@nihongo/shared/db/schema'
-import { alignFurigana } from '@nihongo/shared/lib'
+import { alignFurigana, alignInflected } from '@nihongo/shared/lib'
 import { and, eq, inArray, notExists, sql } from 'drizzle-orm'
 
 import { glossary, glossLine } from '../services/glossary.service.js'
@@ -58,15 +58,36 @@ function readingFor(token: GlossedToken): { reading: string | null, furigana: Ar
   // Whitespace stripped, not trimmed: a token is ONE word, so no space belongs
   // inside its reading. The authoring format spaces words apart — 電話 して —
   // and those spaces ride through onto the token as ' でんわ して'.
-  const candidates = [token.w?.reading, token.r]
-    .map(r => (typeof r === 'string' ? r.replace(/\s+/g, '') : ''))
-    .filter(r => r && r !== token.t)
+  const clean = (r: unknown) => (typeof r === 'string' ? r.replace(/\s+/g, '') : '')
 
-  for (const r of candidates) {
+  for (const r of [clean(token.w?.reading), clean(token.r)]) {
+    if (!r || r === token.t)
+      continue
     const aligned = alignFurigana(token.t, r)
     if (aligned.confidence > 0)
       return { reading: r, furigana: aligned.segments }
   }
+
+  // The word INFLECTED, which is neither its dictionary reading nor a reading
+  // the line could supply.
+  //
+  // 早く is 早い bent into an adverb: the dictionary says はやい, which does not
+  // align with 早く, and the line's own cut gave just く. It ended up with no
+  // reading at all — and a chip with no ruby renders as the bare kanji, so the
+  // word-order question showed 早く with "早 ku" over it in romaji mode. A
+  // beginner cannot read that, which is the whole reason furigana exists.
+  //
+  // `alignInflected` knows the trick: align the LEMMA, keep the reading of its
+  // kanji stem, and let the okurigana differ.
+  const w = token.w
+  if (w?.form && w.reading) {
+    const aligned = alignInflected(token.t, w.form, clean(w.reading))
+    if (aligned.confidence > 0) {
+      const reading = aligned.segments.map(seg => seg.r ?? seg.t).join('')
+      return { reading, furigana: aligned.segments }
+    }
+  }
+
   return { reading: null, furigana: [{ t: token.t }] }
 }
 

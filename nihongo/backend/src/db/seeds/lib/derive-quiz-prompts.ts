@@ -123,18 +123,29 @@ SELECT
   ),
   jsonb_build_object(
     'primary', s.text,
-    -- NOT the stored reading. \`reading_kana\` is deliberately SPOKEN — は is
-    -- written わ, を is お — so accepting it would mark わたしわがくせいです
-    -- correct and teach a misspelling. Only the sentence, with or without its
-    -- full stop.
-    -- Dictation is typed, so the sentence as written is the primary answer —
-    -- but punctuation is not what is being tested, and a learner who hears
-    -- 電話して、会社に行きます and types it without the comma has got it right.
+    -- The sentence as written is the answer, but kana is accepted too.
+    --
+    -- This is N5. Demanding 友だちが来る。 keyed in kanji tests an IME and a
+    -- kanji you have not been taught, not whether you heard the sentence.
+    --
+    -- The kana comes from the TOKENS, not from \`reading_kana\`. The stored
+    -- reading is deliberately SPOKEN — は written わ, を written お — so
+    -- accepting it would mark わたしわがくせいです correct and teach a
+    -- misspelling. Each token contributes its ruby where it has one and its own
+    -- surface where it does not, which spells the sentence the way it is
+    -- actually written: わたしはがくせいです。
+    --
+    -- Punctuation is not what is being tested either, so every variant is
+    -- offered with and without it.
     'accepted', jsonb_build_array(
       s.text,
       regexp_replace(s.text, '[。、！？]+$', ''),
       regexp_replace(s.text, '[。、！？「」]', '', 'g')
-    )
+    ) || CASE WHEN k.kana IS NULL THEN '[]'::jsonb ELSE jsonb_build_array(
+      k.kana,
+      regexp_replace(k.kana, '[。、！？]+$', ''),
+      regexp_replace(k.kana, '[。、！？「」]', '', 'g')
+    ) END
   ),
   '[]'::jsonb,
   jsonb_build_object('audio', '/audio/sentences/' || s.id || '.m4a', 'sentenceId', s.id),
@@ -144,6 +155,13 @@ JOIN sentences s ON s.id = gps.sentence_id AND s.published AND s.source = 'autho
 JOIN study_items si ON si.grammar_point_id = gps.grammar_point_id
 JOIN study_item_facets f ON f.study_item_id = si.id AND f.facet = 'usage'
 LEFT JOIN sentence_translations tr ON tr.sentence_id = s.id AND tr.lang = 'en'
+-- The sentence spelled in kana, assembled from its tokens' ruby.
+LEFT JOIN LATERAL (
+  SELECT string_agg(COALESCE(e.seg ->> 'r', e.seg ->> 't'), '' ORDER BY st.index, e.ord) AS kana
+  FROM sentence_tokens st
+  CROSS JOIN LATERAL jsonb_array_elements(st.furigana) WITH ORDINALITY e(seg, ord)
+  WHERE st.sentence_id = s.id
+) k ON true
 WHERE gps.role = 'example' AND s.reading_kana IS NOT NULL
 ON CONFLICT (facet_id, template_id, version) DO NOTHING;
 
