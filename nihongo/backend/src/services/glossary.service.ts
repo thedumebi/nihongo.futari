@@ -5,6 +5,8 @@ import { grammarPoints, languageLevels, languages, wordForms, words, wordSenses 
 import { buildTokenIndex, classifyVerb, conjugateAll, tokenise } from '@nihongo/shared/lib'
 import { and, asc, eq } from 'drizzle-orm'
 
+import { counterWords } from '../lib/counters.js'
+
 /**
  * Turning a line of Japanese into words you can tap.
  *
@@ -289,6 +291,15 @@ async function build(languageCode: string): Promise<Glossary> {
   // take a spelling that is some other word's plain dictionary entry.
   for (const { surface, gloss } of inflections)
     claim(surface, gloss)
+
+  // Counted things, which the dictionary generates rather than lists.
+  //
+  // 三時 is a word everybody knows, with one reading, but JMdict holds 時 and it
+  // holds 三. Claimed here, before the patterns and after everything real, so
+  // the entries that DO exist — 一つ, 一人, 二人, 一時, 十分 — keep their own
+  // glosses.
+  for (const c of counterWords())
+    claim(c.form, c)
 
   // Then the grammar patterns, which fill what is left.
   //
