@@ -29,8 +29,10 @@ import FuriganaText from '@/components/ja/furigana-text.vue'
 import TokenLine from '@/components/ja/token-line.vue'
 import WordMeaning from '@/components/ja/word-meaning.vue'
 import AppShell from '@/components/layout/app-shell.vue'
+import ChoiceInput from '@/components/study/choice-input.vue'
 import DialogueCard from '@/components/study/dialogue-card.vue'
 import GrammarLesson from '@/components/study/grammar-lesson.vue'
+import OrderInput from '@/components/study/order-input.vue'
 import Button from '@/components/ui/button.vue'
 import Dropdown from '@/components/ui/dropdown.vue'
 import Tooltip from '@/components/ui/tooltip.vue'
@@ -1785,73 +1787,26 @@ watch(() => lang.code, async () => {
             </div>
 
             <form v-if="!isDialogue" class="flex flex-col gap-4" @submit.prevent="onEnter">
-              <div v-if="isChoice" class="flex flex-col gap-2">
-                <button
-                  v-for="option in choices"
-                  :key="option"
-                  type="button"
-                  class="rounded-lg border px-4 py-3 text-left transition"
-                  :class="[
-                    !revealed ? 'border-[var(--color-border)] hover:border-[var(--color-text)]' : '',
-                    revealed && option === current.answer.primary ? 'border-[var(--color-success)] text-[var(--color-success)]' : '',
-                    revealed && option === answer && option !== current.answer.primary ? 'border-[var(--color-danger)] text-[var(--color-danger)]' : '',
-                    revealed && option !== current.answer.primary && option !== answer ? 'border-[var(--color-border)] opacity-50' : '',
-                  ]"
-                  :disabled="revealed"
-                  @click="choose(option)"
-                >
-                  {{ option }}
-                </button>
-              </div>
+              <ChoiceInput
+                v-if="isChoice"
+                :options="choices"
+                :correct="current.answer.primary"
+                :chosen="answer"
+                :revealed="revealed"
+                @choose="choose"
+              />
 
-              <div v-else-if="isOrdering" class="flex flex-col gap-4">
-                <!-- The line being built. Empty slots make it obvious this is an
-                 arrangement rather than a text field. -->
-                <div
-                  class="flex min-h-14 flex-wrap items-center gap-1.5 rounded-lg border border-dashed border-[var(--color-border)] p-3 text-xl"
-                  style="font-family: var(--font-jp)"
-                >
-                  <button
-                    v-for="(tileIndex, position) in placed"
-                    :key="`placed-${position}`"
-                    type="button"
-                    class="rounded-md bg-[var(--color-washi)] px-2.5 py-1 transition hover:opacity-70"
-                    :disabled="revealed"
-                    @click="removeTile(position)"
-                  >
-                    <FuriganaText
-                      :text="orderTiles[tileIndex] ?? ''"
-                      :segments="tileFurigana[orderTiles[tileIndex] ?? '']"
-                      :mode="furiganaMode"
-                      :known-kanji="knownKanji"
-                    />
-                  </button>
-                  <span v-if="placed.length === 0" class="text-base text-[var(--color-muted)]">
-                    Tap the words below
-                  </span>
-                </div>
-
-                <div class="flex flex-wrap gap-1.5" style="font-family: var(--font-jp)">
-                  <button
-                    v-for="(tile, tileIndex) in orderTiles"
-                    :key="`tile-${tileIndex}`"
-                    type="button"
-                    class="rounded-md border border-[var(--color-border)] px-3 py-2 text-xl transition"
-                    :class="placed.includes(tileIndex)
-                      ? 'invisible'
-                      : 'hover:border-[var(--color-text)]'"
-                    :disabled="revealed || placed.includes(tileIndex)"
-                    @click="placeTile(tileIndex)"
-                  >
-                    <FuriganaText
-                      :text="tile"
-                      :segments="tileFurigana[tile]"
-                      :mode="furiganaMode"
-                      :known-kanji="knownKanji"
-                    />
-                  </button>
-                </div>
-              </div>
+              <OrderInput
+                v-else-if="isOrdering"
+                :tiles="orderTiles"
+                :tile-furigana="tileFurigana"
+                :placed="placed"
+                :revealed="revealed"
+                :mode="furiganaMode"
+                :known-kanji="knownKanji"
+                @place="placeTile"
+                @remove="removeTile"
+              />
 
               <div v-else-if="isCanvas" class="flex flex-col gap-3">
                 <WritingCanvas
