@@ -1,7 +1,8 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 
+import { getSignupMode } from '@/api/invites'
 import AppShell from '@/components/layout/app-shell.vue'
 import Button from '@/components/ui/button.vue'
 import Input from '@/components/ui/input.vue'
@@ -25,6 +26,46 @@ const password = ref('')
 const loading = ref(false)
 const errorMsg = ref('')
 const notice = ref('')
+const googleEnabled = ref(false)
+
+onMounted(async () => {
+  // Whether the button can work at all is a fact about the server's env.
+  try {
+    googleEnabled.value = (await getSignupMode()).googleEnabled
+  } catch { /* the button simply does not appear */ }
+
+  // A rejected Google sign-in comes back here with the reason in the URL, and
+  // the page used to read `redirect` and ignore `error` — so somebody turned
+  // away by the invite gate landed on a silent form with no idea why.
+  const error = route.query.error
+  if (typeof error === 'string' && error)
+    errorMsg.value = googleMessage(error)
+})
+
+/**
+ * What to say when Google hands the reader back.
+ *
+ * better-auth puts its own message in the URL when it has one — the invite
+ * gate's refusal reaches here that way. Anything else is ours to explain, and
+ * the likeliest cause by far is an address with no invite behind it.
+ */
+function googleMessage(raw: string): string {
+  const decoded = decodeURIComponent(raw)
+  if (decoded && decoded !== 'google')
+    return decoded
+  return 'Google sign-in could not finish. This app is invite-only — redeem your invite code on the sign-up page first, then try Google again with the same email address.'
+}
+
+async function signInWithGoogle() {
+  errorMsg.value = ''
+  const origin = window.location.origin
+  const redirect = typeof route.query.redirect === 'string' ? route.query.redirect : ROUTES.PROGRESS
+  await authClient.signIn.social({
+    provider: 'google',
+    callbackURL: origin + redirect,
+    errorCallbackURL: `${origin}${ROUTES.LOGIN}?error=google`
+  })
+}
 
 function afterSignIn() {
   const redirect = route.query.redirect
@@ -157,6 +198,22 @@ function useAnotherEmail() {
             Sign in
           </Button>
         </form>
+
+        <!--
+          Google sits below the form rather than above it, because the emailed
+          code is the path most people here already use and the one the invite
+          system was built around.
+        -->
+        <div v-if="googleEnabled" class="mt-6 flex flex-col gap-3">
+          <div class="flex items-center gap-3 text-xs text-[var(--color-muted)]">
+            <span class="h-px flex-1 bg-[var(--color-border)]" />
+            or
+            <span class="h-px flex-1 bg-[var(--color-border)]" />
+          </div>
+          <Button variant="ghost" @click="signInWithGoogle">
+            Continue with Google
+          </Button>
+        </div>
 
         <div class="mt-6 border-t border-[var(--color-border)] pt-4 text-center text-sm">
           <button

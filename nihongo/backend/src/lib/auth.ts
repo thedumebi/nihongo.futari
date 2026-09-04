@@ -36,6 +36,9 @@ import { consumeReservation, findReservation, isDomainAllowed } from '@/services
 
 const signupMode = env.SIGNUP_MODE
 
+/** Both halves or nothing — a client id without its secret cannot sign anybody in. */
+export const googleEnabled = Boolean(env.GOOGLE_CLIENT_ID && env.GOOGLE_CLIENT_SECRET)
+
 async function assertMayCreateAccount(email: string): Promise<{ role: string, reservationId?: string }> {
   if (!isDomainAllowed(email)) {
     throw new APIError('FORBIDDEN', { message: 'That email domain is not allowed to register.' })
@@ -119,7 +122,40 @@ export const auth = betterAuth({
     expiresIn: 60 * 60 * 24 * 30,
     updateAge: 60 * 60 * 24
   },
-  account: { modelName: 'accounts' },
+  account: {
+    modelName: 'accounts',
+    /**
+     * A Google sign-in on an address that already has an account joins it.
+     *
+     * Without this, somebody who signed up by emailed code and later presses
+     * "Continue with Google" is told the address is taken — by their own
+     * account. Trusted because Google verifies the address before it tells us,
+     * which is the same assurance our own emailed code gives.
+     */
+    accountLinking: { enabled: true, trustedProviders: ['google'] }
+  },
+
+  /**
+   * Google, only when it has been configured.
+   *
+   * The invite gate needs no changes to cover this: better-auth funnels social
+   * sign-up through `internalAdapter.createUser`, which runs the
+   * `databaseHooks.user.create.before` above — the same hook the emailed code
+   * and the password path go through. A rejection there surfaces as the
+   * APIError it throws, because the OAuth callback re-throws API errors rather
+   * than swallowing them.
+   */
+  ...(googleEnabled
+    ? {
+        socialProviders: {
+          google: {
+            clientId: env.GOOGLE_CLIENT_ID!,
+            clientSecret: env.GOOGLE_CLIENT_SECRET!,
+            disableSignUp: signupMode === 'closed'
+          }
+        }
+      }
+    : {}),
   verification: { modelName: 'verifications' },
   secret: env.BETTER_AUTH_SECRET,
   baseURL: env.BETTER_AUTH_URL,

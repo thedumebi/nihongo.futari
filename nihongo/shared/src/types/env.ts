@@ -55,6 +55,16 @@ export const EnvSchema = z.object({
    * Defaults to `invite` because an open registration form on a public URL
    * collects spam long before it collects learners.
    */
+  /**
+   * Google sign-in, both optional so every environment boots without them.
+   *
+   * Absent means the button never renders; the invite gate applies to Google
+   * exactly as it does to a code or a password, because better-auth funnels
+   * social sign-up through the same `user.create.before` hook.
+   */
+  GOOGLE_CLIENT_ID: z.string().optional(),
+  GOOGLE_CLIENT_SECRET: z.string().optional(),
+
   SIGNUP_MODE: z.enum(['closed', 'invite', 'open']).default('invite'),
   /** Optional extra gate: only these email domains may register at all. */
   SIGNUP_ALLOWED_DOMAINS: stringArray,

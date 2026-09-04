@@ -87,7 +87,15 @@ export const signupModeResponseSchema = z.object({
   /** Whether the signup form must collect an invite code. */
   requiresInvite: z.boolean(),
   /** Whether self-signup is possible at all. */
-  signupEnabled: z.boolean()
+  signupEnabled: z.boolean(),
+  /**
+   * Whether "Continue with Google" can work.
+   *
+   * Comes from the server because it depends on env the browser cannot see. A
+   * button that leads to a provider nobody configured is worse than no button:
+   * it fails at Google's end, with Google's wording, about our mistake.
+   */
+  googleEnabled: z.boolean()
 }).openapi('SignupMode')
 
 export type SignupModeResponse = z.infer<typeof signupModeResponseSchema>

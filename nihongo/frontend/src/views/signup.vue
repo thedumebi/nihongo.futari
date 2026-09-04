@@ -21,6 +21,18 @@ const signupEnabled = ref(true)
 const policyLoaded = ref(false)
 
 const step = ref<'details' | 'code'>('details')
+const googleEnabled = ref(false)
+
+/**
+ * The address an invite has actually been reserved for.
+ *
+ * Google is offered only after this exists, because the gate keys on it: the
+ * hook that admits a new account looks for a live reservation matching the
+ * address Google returns. Offering the button first would send somebody to
+ * Google and bounce them back refused, which reads as the app being broken
+ * rather than as an invite being required.
+ */
+const reservedFor = ref('')
 const name = ref('')
 const email = ref('')
 const inviteCode = ref('')
@@ -45,6 +57,7 @@ onMounted(async () => {
     const policy = await getSignupMode()
     requiresInvite.value = policy.requiresInvite
     signupEnabled.value = policy.signupEnabled
+    googleEnabled.value = policy.googleEnabled
   } catch {
     // Assume the stricter setting if the policy can't be read.
     requiresInvite.value = true
@@ -52,6 +65,16 @@ onMounted(async () => {
     policyLoaded.value = true
   }
 })
+
+async function signUpWithGoogle() {
+  errorMsg.value = ''
+  const origin = window.location.origin
+  await authClient.signIn.social({
+    provider: 'google',
+    callbackURL: origin + ROUTES.PROGRESS,
+    errorCallbackURL: `${origin}${ROUTES.LOGIN}?error=google`
+  })
+}
 
 async function startSignup() {
   errorMsg.value = ''
@@ -65,6 +88,7 @@ async function startSignup() {
         return
       }
     }
+    reservedFor.value = email.value
 
     const { error } = await authClient.emailOtp.sendVerificationOtp({ email: email.value, type: 'sign-in' })
     if (error) {
@@ -173,6 +197,27 @@ async function verifyCode() {
             Go back
           </button>
         </form>
+
+        <!--
+          Offered only now, and named with the address the invite was reserved
+          for. Google will hand back whichever account the reader picks, and if
+          that is a different address there is no reservation behind it and the
+          gate refuses — so saying which address this works for is the whole
+          point of the sentence.
+        -->
+        <div v-if="step === 'code' && googleEnabled && reservedFor" class="mt-6 flex flex-col gap-3">
+          <div class="flex items-center gap-3 text-xs text-[var(--color-muted)]">
+            <span class="h-px flex-1 bg-[var(--color-border)]" />
+            or
+            <span class="h-px flex-1 bg-[var(--color-border)]" />
+          </div>
+          <Button variant="ghost" @click="signUpWithGoogle">
+            Continue with Google
+          </Button>
+          <p class="text-center text-xs text-[var(--color-muted)]">
+            Use {{ reservedFor }} — that is the address your invite is held for.
+          </p>
+        </div>
       </div>
 
       <p class="mt-6 text-center text-sm text-[var(--color-muted)]">

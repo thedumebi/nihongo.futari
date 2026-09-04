@@ -7,12 +7,15 @@ import { createInvite, listInvites, reserveInvite, revokeInvite, sendInviteEmail
 
 import type { CreateRoute, ListRoute, ReserveRoute, RevokeRoute, SignupModeRoute } from './invites.routes.js'
 
+import { googleEnabled } from '../../lib/auth.js'
+
 export const signupMode: AppRouteHandler<SignupModeRoute> = (c) => {
   const mode = env.SIGNUP_MODE
   return c.json({
     mode,
     requiresInvite: mode === 'invite',
-    signupEnabled: mode !== 'closed'
+    signupEnabled: mode !== 'closed',
+    googleEnabled
   }, HttpStatusCodes.OK)
 }
 
