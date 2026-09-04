@@ -108,9 +108,12 @@
       anywhere. A code is now only sent to an address with an account or a live
       invite reservation. (The plugin still writes its verification row before
       the sender runs; harmless, since redeeming it 403s.)
-- [ ] **`SIGNUP_MODE=closed` disables invites too.** `assertMayCreateAccount`
+- [x] **`SIGNUP_MODE=closed` disables invites too.** `assertMayCreateAccount`
       throws for `closed` before it looks for a reservation, so invite-only is
-      `invite`, not `closed`. Worth a rename or a fourth mode if it confuses.
+      `invite`, not `closed`. Kept as behaviour — "closed" meaning closed to
+      everyone is defensible — and the ambiguity moved out of the reader's head
+      into the schema docstring, which now says plainly that an outstanding
+      invite stops working the moment it is set.
 
 - [x] **The invite link carries the email.** The invite already knows the
       address; making the invitee type it back was asking them to guess which
@@ -230,15 +233,20 @@ Last audited: 2026-08-26
       セイ, but ジョウ is what a learner actually meets (情報, 情熱). The passage
       now names the dominant reading when the matching one is not it — 14 of 120
       packets carry that caveat. The 情 entry was deleted for redrafting.
-- [ ] **5 items assert things their passage does not say** (queue ids in the
-      triage report): 学 and 戦 add "fewer strokes, easier to type"; イクラ adds
-      "luxury food"; の claims primacy in Old Japanese the passage does not
-      grant; 先 invents a semantic bridge to さっき. All true-ish, none sourced.
-      This is the known limit below — needs your call or a redraft.
-- [ ] **ええ is empty padding** — restates the claim without adding anything.
-- [ ] **Consider hedging a few hand-authored derivations.** です from であります,
-      ます from まゐらす and でしょう from であろう are stated as settled where
-      specialists offer competing chains.
+- [x] **5 items assert things their passage does not say.** Redrafted in seed
+      090 to say less: 学/戦 describe which element actually changed instead of
+      claiming typing is easier (kanji are typed by reading through an IME,
+      where stroke count costs nothing); イクラ keeps the 1928 citation and the
+      displaced 鮞 and drops "luxury food"; の keeps the noun-linking role and
+      drops "primary"; 先 keeps the 崎 cognate and drops the invented bridge to
+      さっき, which is a different word with its own history.
+- [x] **ええ is empty padding** — rewritten to say what the sound shift was:
+      よい lost its consonant and became いい in the east and ええ in the west,
+      which is why Kansai and Tokyo differ while both write 良い.
+- [x] **Consider hedging a few hand-authored derivations.** です, ます and
+      でしょう are marked disputed with confidence `probable`, and each body now
+      ends by saying the chain is reconstructed rather than recorded and that
+      specialists propose more than one route.
 
 ## Known limit of the safeguard
 
@@ -311,13 +319,17 @@ Last audited: 2026-08-26
       rows, so this keys on the token being that character alone — reliable at
       token granularity, since the syllable inside a word is not tokenised
       separately.
-- [ ] **`sentence_tokens.pos` is empty for every row.** The particle reading
-      above works around it. Anything needing real part-of-speech (better
-      distractors, conjugation drills from sentences) needs the tokenizer rerun
-      with POS retained.
-- [ ] **Word-order tiles drop numerals.** 「８から３を引けば５になる。」 tokenises
-      to から/を/引けば/になる, so the card teaches a mutilated sentence that
-      still grades as correct. Seen while re-running the importer; not measured.
+- [x] **`sentence_tokens.pos` is empty for every row.** Filled without rerunning
+      the tokenizer: the token already links to a word and the word's first
+      sense already carries JMdict's codes, so seed 089 derives it. All 6,544
+      linked tokens now carry codes rather than a label — は is `prt`, 行く is
+      `v5k-s,vi` — because a drill needs the codes and a rendered "godan verb"
+      throws away the half that matters. Unlinked tokens keep an empty pos;
+      guessing one would be worse than the gap.
+- [x] **Word-order tiles drop numerals.** Measured rather than eyeballed this
+      time: across all 1,687 word-order prompts, the chips spell their own
+      answer exactly — numerals included (`６つ`, `１日`, `１つ`). Whatever
+      dropped them was fixed before it was measured.
 - [x] **Grammar is searchable**, across the Japanese title, the pattern, the
       English meaning and the slug at once — and romaji is converted to kana
       first, so "masu" finds 〜ます without a Japanese keyboard.
@@ -355,9 +367,11 @@ Last audited: 2026-08-26
       but nothing filtered on it, so a beginner's queue served N1 vocabulary
       among the kana. The deck counts take the same filter, or the picker would
       promise cards the queue then refuses to hand over.
-- [ ] **A level filter hides the 63 sound-series items**, which carry no JLPT
-      level because the concept is not JLPT-graded. Excluding them is the
-      literal meaning of the filter, but it means picking N5 silently drops a
+- [x] **A level filter hides the 63 sound-series items**, which carry no JLPT
+      level because the concept is not JLPT-graded. Unlevelled items now pass
+      every level filter: narrowing to a level should narrow, not silently drop
+      a whole deck. Was: excluding them is the literal meaning of the filter,
+      but it means picking N5 silently drops a
       deck. Either level them or exempt them explicitly.
 - [x] **Cloze cards name the script they want.** "Fill in the blank" did not
       say whether the grader would take kana, katakana or kanji, and it accepts

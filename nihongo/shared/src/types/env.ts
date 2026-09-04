@@ -58,11 +58,21 @@ export const EnvSchema = z.object({
 
   /**
    * How self-signup is gated.
-   *   closed — no self-signup; an admin creates accounts
-   *   invite — a valid invite code is required (default)
-   *   open   — anyone with an email address
+   *
+   *   closed — NOBODY may sign themselves up, invited or not. An outstanding
+   *            invite stops working the moment this is set: the code is
+   *            checked after this gate, never before, and no verification
+   *            email is sent either. An admin creates accounts directly.
+   *   invite — a valid invite code is required. This is invite-only; `closed`
+   *            is not.
+   *   open   — anyone with an email address.
+   *
    * Defaults to `invite` because an open registration form on a public URL
    * collects spam long before it collects learners.
+   *
+   * The distinction is worth stating because the names invite the opposite
+   * reading: `closed` sounds like the strict form of invite-only, and is
+   * instead the form where invites do not work at all.
    */
   SIGNUP_MODE: z.enum(['closed', 'invite', 'open']).default('invite'),
   /** Optional extra gate: only these email domains may register at all. */

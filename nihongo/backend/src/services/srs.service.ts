@@ -53,7 +53,7 @@ import {
   replay
 } from '@nihongo/shared/lib'
 import { ghostPolicySchema } from '@nihongo/shared/types'
-import { and, asc, eq, inArray, isNull, lt, lte, sql } from 'drizzle-orm'
+import { and, asc, eq, inArray, isNull, lt, lte, or, sql } from 'drizzle-orm'
 
 import { assetUrl, withAssetUrls, withDialogueAudio } from '@/lib/assets.js'
 
@@ -891,7 +891,15 @@ export async function getQueue(userId: string, query: StudyQueueQuery): Promise<
         .limit(1)
       )[0]?.id ?? ''
     : null
-  const levelFilter = levelId === null ? [] : [eq(studyItems.levelId, levelId)]
+  // Unlevelled items pass every level filter.
+  //
+  // The 63 sound-series items carry no JLPT level, because the concept is not
+  // JLPT-graded. Excluding them is the filter's literal meaning and the wrong
+  // reading of it: picking N5 silently dropped a whole deck rather than
+  // narrowing to a level, and nothing said so.
+  const levelFilter = levelId === null
+    ? []
+    : [or(eq(studyItems.levelId, levelId), isNull(studyItems.levelId))!]
 
   const unitIds = query.unit
     ? (await db
@@ -1423,7 +1431,15 @@ export async function getDecks(userId: string, languageCode: string, level?: str
         .limit(1)
       )[0]?.id ?? ''
     : null
-  const levelFilter = levelId === null ? [] : [eq(studyItems.levelId, levelId)]
+  // Unlevelled items pass every level filter.
+  //
+  // The 63 sound-series items carry no JLPT level, because the concept is not
+  // JLPT-graded. Excluding them is the filter's literal meaning and the wrong
+  // reading of it: picking N5 silently dropped a whole deck rather than
+  // narrowing to a level, and nothing said so.
+  const levelFilter = levelId === null
+    ? []
+    : [or(eq(studyItems.levelId, levelId), isNull(studyItems.levelId))!]
 
   // The unseen counts must respect the curriculum too. Without this the picker
   // advertised "Kanji 1351 new" while the queue, correctly gated, served none
