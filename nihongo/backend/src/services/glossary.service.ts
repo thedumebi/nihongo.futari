@@ -229,7 +229,14 @@ async function build(languageCode: string): Promise<Glossary> {
     //
     // Only from the primary spelling — conjugating an alternate one would
     // produce forms nobody writes.
-    if (row.form !== row.primaryForm)
+    //
+    // Except the kana spelling of a word the dictionary marks `uk`, which is
+    // the spelling people DO write. 居る is tagged rK — a rare kanji — so that
+    // row is dropped as rare before it can conjugate, and its kana form いる was
+    // then refused here for not being the primary spelling. Between the two,
+    // います matched nothing and 猫がいます。 came apart into 猫|が|い|ま|す.
+    // Every usually-kana verb with a rare kanji headword had the same hole.
+    if (row.form !== row.primaryForm && !(!HAS_KANJI.test(row.form) && (sense?.misc ?? []).includes('uk')))
       continue
 
     // Verbs only. `conjugate` has no adjective branch — its switch covers the
@@ -239,7 +246,7 @@ async function build(languageCode: string): Promise<Glossary> {
     // stem without needing to know the rule.
     const verbClass = classifyVerb(sense?.pos ?? [])
     if (verbClass) {
-      for (const c of conjugateAll({ surface: row.primaryForm, reading: row.reading, verbClass }))
+      for (const c of conjugateAll({ surface: row.form, reading: row.reading, verbClass }))
         inflections.push({ surface: c.surface, gloss })
     }
   }
