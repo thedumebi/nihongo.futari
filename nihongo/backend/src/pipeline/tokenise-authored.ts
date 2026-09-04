@@ -36,13 +36,6 @@ import { glossary, glossLine } from '../services/glossary.service.js'
 interface Row { sentenceId: string, index: number, surface: string, reading: string | null, wordId: string | null, charStart: number, charEnd: number, furigana: Array<{ t: string, r?: string }> }
 
 /**
- * Ruby for one token.
- *
- * A token whose reading equals its surface (pure kana) needs none. Otherwise
- * `alignFurigana` anchors the reading to the kanji, which is the same routine
- * the Tatoeba import uses, so both corpora carry the same shape.
- */
-/**
  * This token's reading and its ruby, or neither.
  *
  * The DICTIONARY reading is tried first and the line's own cut second.
@@ -62,8 +55,11 @@ interface Row { sentenceId: string, index: number, surface: string, reading: str
  * thing, and 早く annotated く is worse than 早く annotated nothing.
  */
 function readingFor(token: GlossedToken): { reading: string | null, furigana: Array<{ t: string, r?: string }> } {
+  // Whitespace stripped, not trimmed: a token is ONE word, so no space belongs
+  // inside its reading. The authoring format spaces words apart — 電話 して —
+  // and those spaces ride through onto the token as ' でんわ して'.
   const candidates = [token.w?.reading, token.r]
-    .map(r => (typeof r === 'string' ? r.trim() : ''))
+    .map(r => (typeof r === 'string' ? r.replace(/\s+/g, '') : ''))
     .filter(r => r && r !== token.t)
 
   for (const r of candidates) {

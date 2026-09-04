@@ -303,12 +303,38 @@ export function glossLine(line: string, g: Glossary, reading?: string): GlossedT
  * rather than a word cut in the wrong place.
  */
 function splitReading(line: string, reading: string, lengths: number[]): string[] | null {
+  // Word boundaries first, earliest match second.
+  //
+  // Preferring a boundary is what lets 母 take はは rather than は, but it is a
+  // preference and not a rule: consuming to a later boundary can desync the
+  // rest of the walk and lose the line entirely. Trying it first and falling
+  // back means a line can only ever gain a better cut, never lose the one it
+  // already had.
+  return walkReading(line, reading, lengths, true) ?? walkReading(line, reading, lengths, false)
+}
+
+function walkReading(line: string, reading: string, lengths: number[], preferBoundary: boolean): string[] | null {
   const surface = [...line]
   const kana = [...reading]
 
   /** は/を/へ read as わ/お/え when they are particles, and only then. */
   const spoken = (char: string): string =>
     char === 'は' ? 'わ' : char === 'を' ? 'お' : char === 'へ' ? 'え' : char
+
+  /**
+   * Surface positions where a TOKEN begins.
+   *
+   * A kanji run's anchor is the kana that follow it, and those kana are only a
+   * word boundary if they start a new token. In 良い一日を the い is okurigana —
+   * part of 良い — so the space in よい いちにち お falls INSIDE the token, and
+   * preferring it cut 良い as よい+い and left 一日 reading ちにち.
+   */
+  const tokenStart = new Set<number>()
+  let cursor = 0
+  for (const len of lengths) {
+    tokenStart.add(cursor)
+    cursor += len
+  }
 
   const perChar: string[] = []
   let i = 0
@@ -336,10 +362,7 @@ function splitReading(line: string, reading: string, lengths: number[]): string[
     }
 
     if (!HAS_KANJI.test(char)) {
-      // The reading is already spoken, so it may hold either form: わ where
-      // the author transcribed a particle, は where the character is part of a
-      // word. Accept both rather than mapping the reading.
-      if (j >= kana.length || (spoken(char) !== kana[j]! && char !== kana[j]!))
+      if (j >= kana.length || spoken(char) !== spoken(kana[j]!))
         return null
       // The READING's character is kept, not the surface's: it is the one that
       // romanises correctly, which is the entire point of storing it.
@@ -367,14 +390,30 @@ function splitReading(line: string, reading: string, lengths: number[]): string[
     // Spaces are stripped for the anchor search only: they mark word
     // boundaries, and a boundary may fall anywhere inside the run's reading.
     //
-    // `spoken` is deliberately NOT applied here. It converts は to わ, and the
-    // reading is already spoken — so the only は it can meet is one INSIDE a
-    // word, where the substitution is simply wrong. 母は先生です。 reads
-    // はは わ せんせい です。; mapping the reading turned はは into わわ, the
-    // anchor わ matched at the first character instead of the third, and 母
-    // came out annotated は. Every word whose reading contains は, を or へ was
-    // cut one character short.
-    const rest = kana.slice(j).filter(c => !/\s/.test(c)).join('')
+    // Both sides are normalised, because a reading may be written either way:
+    // authored lines transcribe the particle は as わ, while a reading rebuilt
+    // from furigana keeps it as は.
+    const rest = kana.slice(j).filter(c => !/\s/.test(c)).map(spoken).join('')
+
+    // Which of those stripped characters START a word, according to the spaces
+    // the author put in.
+    //
+    // The anchor is a single kana often enough that it turns up INSIDE the run's
+    // own reading: 母は先生です。 reads はは わ せんせい です。, so the anchor わ
+    // (は spoken) matches はは's first character as readily as the particle, and
+    // 母 came out annotated は. The space after はは says where the word actually
+    // ends — better information than any guess — so a match on a word boundary
+    // wins over an earlier one that is not.
+    const startsWord: boolean[] = []
+    let atBoundary = true
+    for (const c of kana.slice(j)) {
+      if (/\s/.test(c)) {
+        atBoundary = true
+        continue
+      }
+      startsWord.push(atBoundary)
+      atBoundary = false
+    }
 
     // No anchor means the run reaches the end of the line, so it takes the
     // rest of the reading.
@@ -384,10 +423,18 @@ function splitReading(line: string, reading: string, lengths: number[]): string[
     } else {
       // At least one character must belong to the run itself, so the search
       // starts one past the run's first reading character.
-      const found = rest.indexOf(anchor, 1)
-      if (found === -1)
+      // Every place the anchor could sit, boundary matches preferred. With no
+      // spaces in the reading — cloze contexts rebuilt from furigana carry
+      // none — nothing starts a word past the first character, so this falls
+      // back to the earliest match and behaves exactly as it always did.
+      const hits: number[] = []
+      for (let at = rest.indexOf(anchor, 1); at !== -1; at = rest.indexOf(anchor, at + 1))
+        hits.push(at)
+      if (hits.length === 0)
         return null
-      consumed = found
+      consumed = (preferBoundary && tokenStart.has(end)
+        ? hits.find(n => startsWord[n])
+        : undefined) ?? hits[0]!
     }
 
     if (consumed <= 0)

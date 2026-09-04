@@ -206,6 +206,14 @@ const KINDS: AudioKind[] = ['kana', 'words', 'sentences', 'dialogues']
 // script quietly generated KANA instead of what was asked for.
 const requested = process.argv.slice(2).find((a, i, all) =>
   !a.startsWith('--') && all[i - 1] !== '--redo' && a !== '--')
+
+// `tsx generate-audio.ts --redo sent-ex-desu-3` names ids but no kind, and the
+// unrecognised-kind fallback would quietly run a full KANA pass while the ids
+// sat unused. Re-recording is deliberate enough to deserve an error.
+if (redo.size > 0 && !requested) {
+  console.error('--redo also needs a kind, e.g. `sentences --redo sent-ex-desu-3`')
+  process.exit(1)
+}
 // `all` runs the lot in order, which is what a fresh machine wants; anything
 // unrecognised still falls back to kana, as it always did.
 const wanted: AudioKind[] = requested === 'all'
