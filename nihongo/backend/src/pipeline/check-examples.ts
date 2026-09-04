@@ -63,13 +63,20 @@ for (const r of rows) {
   // a gap in the tokeniser rather than in this corpus, and failing every
   // polite sentence over it would make the check useless.
   const EXEMPT = new Set(['です', 'ます', 'ました', 'ません', 'でした'])
+  // A run made only of particles is not shredded text.
+  //
+  // を, へ and の are not in the dictionary — it holds words — so they carry no
+  // gloss and count as bare kana. Alone that is invisible, because the check
+  // wants a run of two; but 安いのを買います puts two of them together and the
+  // sentence was rejected for being ordinary Japanese.
+  const PARTICLE = new Set([...'はがをにでもとやへかのねよ'])
   let run: string[] = []
   for (const t of [...tokens, { t: '', w: undefined }]) {
     if (KANA.test(t.t) && !t.w) {
       run.push(t.t)
       continue
     }
-    if (run.length >= 2 && !EXEMPT.has(run.join('')))
+    if (run.length >= 2 && !EXEMPT.has(run.join('')) && !run.every(c => PARTICLE.has(c)))
       problems.push(`shredded into single kana: ${run.join('|')}`)
     run = []
   }
