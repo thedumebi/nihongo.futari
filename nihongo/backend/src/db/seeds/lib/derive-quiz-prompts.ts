@@ -27,7 +27,14 @@ const DERIVATION = `WITH grouped AS (
     -- arrives as the real particle で plus an orphan す — and it belongs to the
     -- chip before it. Dragging で and す separately is a puzzle about the
     -- tokeniser, not about Japanese.
-    sum(CASE WHEN st.word_id IS NOT NULL OR length(st.surface) > 1 THEN 1 ELSE 0 END)
+    -- を and へ start a chip even though the dictionary does not hold them.
+    --
+    -- They are particles, and the merge rule below folds an unlinked single
+    -- kana into the chip before it — so 音楽を came out as ONE chip and the
+    -- を-object topic never once showed を as a thing you place. It also left
+    -- those sentences with two chips, under the three-chip floor, so を-object
+    -- and 〜ましょう generated no word-order questions at ALL.
+    sum(CASE WHEN st.word_id IS NOT NULL OR length(st.surface) > 1 OR st.surface IN ('を', 'へ') THEN 1 ELSE 0 END)
       OVER (PARTITION BY st.sentence_id ORDER BY st.index
             ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW) AS grp
   FROM sentence_tokens st

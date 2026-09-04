@@ -44,6 +44,16 @@ export function readingFor(token: GlossedToken): { reading: string | null, furig
   // 前 as ぜん, 店 as てん, 家 as け and ご飯 as ごめし. Four wrong readings
   // taught with the authority of ruby, and `check:examples` cannot see them
   // because the segmentation is perfectly correct.
+  // A token with no kanji reads as itself, whatever the dictionary says.
+  //
+  // あります is spelled out in kana already, so there is nothing to annotate —
+  // but the dictionary's reading for the word it matches is ある, the LEMMA,
+  // and taking that stored あります as reading "ある". Harmless as ruby, since
+  // none is drawn, and wrong for everything else that reads the column: romaji,
+  // dictation's kana answer, and anything derived from it later.
+  if (!/[\u4E00-\u9FFF]/.test(token.t))
+    return { reading: token.t, furigana: [{ t: token.t }] }
+
   const line = clean(token.r)
   const dict = clean(token.w?.reading)
 
