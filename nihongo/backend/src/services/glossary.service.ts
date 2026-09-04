@@ -246,8 +246,20 @@ async function build(languageCode: string): Promise<Glossary> {
     // stem without needing to know the rule.
     const verbClass = classifyVerb(sense?.pos ?? [])
     if (verbClass) {
-      for (const c of conjugateAll({ surface: row.form, reading: row.reading, verbClass }))
+      const forms = conjugateAll({ surface: row.form, reading: row.reading, verbClass })
+      for (const c of forms)
         inflections.push({ surface: c.surface, gloss })
+
+      // 〜たい, off the ます stem.
+      //
+      // Not in `CONJUGATION_FORMS`, which drives the conjugation drills and is
+      // not the place to fix a tokenising problem. Without it 見たい cut as
+      // 見た | い — the PAST tense plus a stray kana — so the lesson teaching
+      // "want to" showed a chip meaning "saw". A single unmatched kana after a
+      // real word is exactly the shape the sentence checker cannot see.
+      const masu = forms.find(c => c.form === 'masu')
+      if (masu?.surface.endsWith('ます'))
+        inflections.push({ surface: `${masu.surface.slice(0, -2)}たい`, gloss })
     }
   }
 
