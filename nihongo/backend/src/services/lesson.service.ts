@@ -1,6 +1,7 @@
 import type {
   CompleteLessonInput,
   CompleteLessonResult,
+  GlossedToken,
   LessonDetail,
   LessonListResponse,
   LessonStatus,
@@ -25,7 +26,48 @@ import {
 } from '@nihongo/shared/db/schema'
 import { and, asc, eq, inArray, isNull, sql } from 'drizzle-orm'
 
+import { readingFor } from '../lib/token-reading.js'
+import { glossary, glossLine } from './glossary.service.js'
 import { loadExamples, loadLessons } from './grammar.service.js'
+
+/**
+ * Japanese embedded in English prose, with readings attached.
+ *
+ * An explanation is mostly English with Japanese dropped into it — "食べる →
+ * 食べます, 食べて, 食べた". The page rendered that as plain text, so a reader on
+ * romaji or furigana settings got bare kanji regardless: the setting only ever
+ * reached the tokenised parts of the page, and the explanation was not one of
+ * them. At N5 that is most of the lesson unreadable.
+ *
+ * These runs have no line reading to be cut from — they are fragments, not
+ * sentences — so every reading comes from the dictionary via `readingFor`, the
+ * same routine that gives the word-order chips their ruby.
+ *
+ * Keyed by the run itself, so the page can find the tokens for any Japanese it
+ * meets without the server having to understand the bold markup around it.
+ */
+const JAPANESE_RUN = /[\u3040-\u309F\u30A0-\u30FF\u4E00-\u9FFF\u3005]+/g
+
+async function proseFurigana(
+  languageCode: string,
+  texts: Array<string | null | undefined>
+): Promise<Record<string, { text: string, reading: string, tokens: GlossedToken[] }>> {
+  const g = await glossary(languageCode)
+  const out: Record<string, { text: string, reading: string, tokens: GlossedToken[] }> = {}
+
+  for (const text of texts) {
+    for (const run of text?.match(JAPANESE_RUN) ?? []) {
+      if (out[run])
+        continue
+      const tokens = glossLine(run, g).map((token) => {
+        const { reading } = readingFor(token)
+        return reading ? { ...token, r: reading } : token
+      })
+      out[run] = { text: run, reading: tokens.map(t => t.r ?? t.t).join(''), tokens }
+    }
+  }
+  return out
+}
 
 /**
  * Lessons.
@@ -237,6 +279,11 @@ export async function getLesson(userId: string, languageCode: string, slug: stri
   return {
     lesson,
     mistakes,
+    prose: await proseFurigana(languageCode, [
+      lesson.meaningLong,
+      lesson.nuance,
+      ...mistakes.flatMap(m => [m.right, m.wrong, m.whyWrong])
+    ]),
     examples: examples.get(point.id) ?? [],
     questions: ordered.map(({ firstExposureOnly: _drop, ...q }) => q),
     status: statusOf(point),

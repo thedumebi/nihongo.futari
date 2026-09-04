@@ -234,6 +234,7 @@ onMounted(async () => {
         <GrammarLesson
           v-if="phase === 'teach'"
           :lesson="detail.lesson"
+          :prose="detail.prose"
           :finish-label="detail.questions.length > 0 ? 'Got it — quiz me' : 'Got it'"
           @done="startQuiz"
         />

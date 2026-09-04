@@ -6,6 +6,7 @@ import { ChevronLeft, ChevronRight, Volume2 } from 'lucide-vue-next'
 import { computed, ref, watch } from 'vue'
 import { RouterLink } from 'vue-router'
 
+import JaProse from '@/components/ja/ja-prose.vue'
 import TokenLine from '@/components/ja/token-line.vue'
 import WordMeaning from '@/components/ja/word-meaning.vue'
 import Button from '@/components/ui/button.vue'
@@ -27,11 +28,19 @@ import { useFurigana } from '@/composables/use-furigana'
  * Reused rather than duplicated: the same component is the lesson before a
  * question and the lesson opened from the Course, so the two cannot drift.
  */
-const props = defineProps<{
+const props = withDefaults(defineProps<{
   lesson: StudyLesson
   /** Wording for the last card's button — a quiz follows, or nothing does. */
   finishLabel?: string
-}>()
+  /**
+   * Readings for the Japanese inside the explanation, keyed by the run.
+   *
+   * Optional because the study introduction shows this same deck without
+   * fetching a lesson; there the prose renders as it always did, unruby'd,
+   * rather than not at all.
+   */
+  prose?: Record<string, { text: string, reading: string, tokens: GlossedToken[] }>
+}>(), { prose: () => ({}) })
 
 const emit = defineEmits<{ (e: 'done'): void }>()
 
@@ -187,10 +196,10 @@ function onTouchEnd(e: TouchEvent): void {
             class="text-sm leading-relaxed text-[var(--color-muted)]"
           >
             <template v-for="(run, j) in para" :key="j">
-              <strong v-if="run.bold" class="text-[var(--color-text)]">{{ run.text }}</strong>
-              <template v-else>
-                {{ run.text }}
-              </template>
+              <strong v-if="run.bold" class="text-[var(--color-text)]">
+                <JaProse :text="run.text" :prose="prose" :mode="mode" :known-kanji="knownKanji" />
+              </strong>
+              <JaProse v-else :text="run.text" :prose="prose" :mode="mode" :known-kanji="knownKanji" />
             </template>
           </p>
         </div>
@@ -270,7 +279,7 @@ function onTouchEnd(e: TouchEvent): void {
           Worth knowing
         </h3>
         <p class="mt-3 text-sm leading-relaxed text-[var(--color-muted)]">
-          {{ lesson.nuance }}
+          <JaProse :text="lesson.nuance ?? ''" :prose="prose" :mode="mode" :known-kanji="knownKanji" />
         </p>
       </template>
 

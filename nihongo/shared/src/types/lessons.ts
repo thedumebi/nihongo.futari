@@ -1,6 +1,6 @@
 import { z } from '@hono/zod-openapi'
 
-import { grammarExampleSchema, studyLessonSchema } from './study.js'
+import { glossedTokenSchema, grammarExampleSchema, studyLessonSchema } from './study.js'
 
 /**
  * Lessons — the surface the app is organised around.
@@ -93,6 +93,20 @@ export const lessonDetailSchema = z.object({
     right: z.string(),
     whyWrong: z.string(),
     explanation: z.string().nullish()
+  })),
+  /**
+   * Readings for the Japanese embedded in the explanation, keyed by the run.
+   *
+   * An explanation is English with Japanese dropped into it — 食べる → 食べます —
+   * and it was rendered as plain text, so the reader's furigana or romaji
+   * setting never reached it. Keyed by the run itself so the page can look up
+   * any Japanese it meets without the server needing to know what markup
+   * surrounds it.
+   */
+  prose: z.record(z.string(), z.object({
+    text: z.string(),
+    reading: z.string(),
+    tokens: z.array(glossedTokenSchema)
   })),
   examples: z.array(grammarExampleSchema),
   questions: z.array(lessonQuestionSchema),
