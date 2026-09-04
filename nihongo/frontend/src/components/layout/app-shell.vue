@@ -131,7 +131,7 @@ async function signOut() {
         <div class="flex items-center gap-6">
           <!-- 語 is read "go" and means "language"; the name comes from it. -->
           <router-link
-            :to="auth.isAuthenticated ? ROUTES.PROGRESS : ROUTES.HOME"
+            :to="auth.isAuthenticated ? ROUTES.LESSONS : ROUTES.HOME"
             class="flex items-baseline gap-1.5 font-semibold"
           >
             <span class="text-[var(--color-accent)]" style="font-family: var(--font-jp)">{{ SITE_MARK }}</span>
@@ -181,6 +181,24 @@ async function signOut() {
               Sign in
             </router-link>
           </div>
+        </div>
+
+        <!--
+          The quieter row. Course, Due, Writing, Sounds and Grammar left the
+          main nav when it went from eight tabs to five, but they are still
+          whole pages — without this they were reachable on a desktop only by
+          typing the URL, while a comment claimed otherwise.
+        -->
+        <div v-if="secondary.length" class="mt-2 hidden flex-wrap gap-4 md:flex">
+          <router-link
+            v-for="item in secondary"
+            :key="item.to"
+            :to="item.to"
+            class="text-xs text-[var(--color-muted)] opacity-80 transition hover:text-[var(--color-text)] hover:opacity-100"
+            active-class="!text-[var(--color-text)] !opacity-100"
+          >
+            {{ item.label }}
+          </router-link>
         </div>
       </nav>
 

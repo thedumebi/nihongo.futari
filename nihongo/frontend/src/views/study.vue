@@ -1092,6 +1092,10 @@ async function send(item: StudyQueueItem, rating: 1 | 2 | 3 | 4, correct: boolea
     await enqueueAnswer({
       id: uuidv7(),
       facetId: item.facetId,
+      // Which prompt was answered, not just which facet. A facet can hold
+      // several; without this the server cannot tell which question was asked,
+      // and a question missed in a lesson could never be marked as recovered.
+      promptId: item.promptId,
       rating,
       reviewedAt: new Date().toISOString(),
       durationMs: Math.max(0, Date.now() - shownAt.value),

@@ -87,12 +87,24 @@ const tileFurigana = computed(() =>
 const promptText = computed(() => {
   const p = question.value?.prompt ?? {}
   const str = (v: unknown) => (typeof v === 'string' ? v : '')
+
+  // A grammar cloze stores its whole sentence with the gap marked by ＿, where
+  // a vocabulary cloze stores `before`/`after` either side of it. Reading only
+  // the second shape rendered every grammar fill-the-blank as a bare
+  // instruction and an empty box — unanswerable unless you already knew the
+  // topic. `study.vue` had always handled both; the lesson view dropped one.
+  const sentence = str(p.sentence)
+  const [gapBefore, gapAfter] = sentence.includes('＿')
+    ? [sentence.slice(0, sentence.indexOf('＿')), sentence.slice(sentence.lastIndexOf('＿') + 1)]
+    : ['', '']
+
   return {
     instruction: str(p.instruction),
     subject: str(p.character) || str(p.word) || '',
-    before: str(p.before),
-    after: str(p.after),
-    translation: str(p.translation)
+    before: str(p.before) || gapBefore,
+    after: str(p.after) || gapAfter,
+    // `gloss` on a grammar cloze, `translation` on a vocabulary one.
+    translation: str(p.translation) || str(p.gloss)
   }
 })
 
@@ -278,7 +290,8 @@ onMounted(async () => {
               {{ missed.size === 1 ? 'it' : 'them' }} first next time this comes round in review.
             </template>
             <template v-else>
-              This is now in your reviews, and will come back before you forget it.
+              Nothing missed. This topic is now open for review, and will come back
+              as the curriculum reaches it.
             </template>
           </p>
           <div class="mt-8 flex justify-center gap-3">

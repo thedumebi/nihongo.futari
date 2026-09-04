@@ -888,6 +888,15 @@ export async function getQueue(userId: string, query: StudyQueueQuery): Promise<
   const unitFilter = unitIds ? [inArray(studyItems.id, unitIds.length > 0 ? unitIds : [''])] : []
 
   const promptColumns = {
+    /**
+     * WHICH prompt this card is showing.
+     *
+     * Without it the answer comes back naming only the facet, so nothing can
+     * tell which of a facet's prompts was actually asked — which made the
+     * lesson-miss clearing dead code: a missed question stayed owed forever,
+     * pinning that one prompt on its facet.
+     */
+    promptId: exercisePrompts.id,
     // Not a prompt column, but needed on every queue row for the same reason
     // they are: it is what the lesson and the hint are looked up by, and all
     // three selects join `study_items` already.
@@ -1120,6 +1129,7 @@ export async function getQueue(userId: string, query: StudyQueueQuery): Promise<
         state: r.state,
         lastReview: r.lastReview
       },
+      promptId: r.promptId,
       templateCode: r.templateCode as StudyQueueItem['templateCode'],
       inputMode: r.inputMode,
       graderCode: r.graderCode,
@@ -1138,6 +1148,7 @@ export async function getQueue(userId: string, query: StudyQueueQuery): Promise<
       isNew: true,
       ghost: false,
       card: null,
+      promptId: r.promptId,
       templateCode: r.templateCode as StudyQueueItem['templateCode'],
       inputMode: r.inputMode,
       graderCode: r.graderCode,

@@ -226,6 +226,8 @@ export const studyQueueItemSchema = z.object({
   isNew: z.boolean(),
   ghost: z.boolean(),
   card: cardStateSchema.nullable(),
+  /** The prompt being shown, so the answer can say which one it answered. */
+  promptId: z.string(),
   templateCode: z.enum(EXERCISE_TEMPLATE_CODES),
   inputMode: z.string(),
   graderCode: z.string(),
