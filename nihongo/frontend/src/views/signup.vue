@@ -72,7 +72,7 @@ async function signUpWithGoogle() {
   await authClient.signIn.social({
     provider: 'google',
     callbackURL: origin + ROUTES.PROGRESS,
-    errorCallbackURL: `${origin}${ROUTES.LOGIN}?error=google`
+    errorCallbackURL: `${origin}${ROUTES.LOGIN}`
   })
 }
 

@@ -46,15 +46,6 @@ export const EnvSchema = z.object({
   BETTER_AUTH_SECRET: z.string().min(32),
   BETTER_AUTH_URL: z.string(),
   COOKIE_DOMAIN: z.string().optional(),
-
-  /**
-   * How self-signup is gated.
-   *   closed — no self-signup; an admin creates accounts
-   *   invite — a valid invite code is required (default)
-   *   open   — anyone with an email address
-   * Defaults to `invite` because an open registration form on a public URL
-   * collects spam long before it collects learners.
-   */
   /**
    * Google sign-in, both optional so every environment boots without them.
    *
@@ -65,6 +56,14 @@ export const EnvSchema = z.object({
   GOOGLE_CLIENT_ID: z.string().optional(),
   GOOGLE_CLIENT_SECRET: z.string().optional(),
 
+  /**
+   * How self-signup is gated.
+   *   closed — no self-signup; an admin creates accounts
+   *   invite — a valid invite code is required (default)
+   *   open   — anyone with an email address
+   * Defaults to `invite` because an open registration form on a public URL
+   * collects spam long before it collects learners.
+   */
   SIGNUP_MODE: z.enum(['closed', 'invite', 'open']).default('invite'),
   /** Optional extra gate: only these email domains may register at all. */
   SIGNUP_ALLOWED_DOMAINS: stringArray,

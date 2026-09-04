@@ -37,7 +37,9 @@ onMounted(async () => {
   // A rejected Google sign-in comes back here with the reason in the URL, and
   // the page used to read `redirect` and ignore `error` — so somebody turned
   // away by the invite gate landed on a silent form with no idea why.
-  const error = route.query.error
+  // A query key can arrive as a string or an array of them.
+  const raw = route.query.error
+  const error = Array.isArray(raw) ? raw.find(Boolean) : raw
   if (typeof error === 'string' && error)
     errorMsg.value = googleMessage(error)
 })
@@ -49,11 +51,25 @@ onMounted(async () => {
  * gate's refusal reaches here that way. Anything else is ours to explain, and
  * the likeliest cause by far is an address with no invite behind it.
  */
+const GOOGLE_ERRORS: Record<string, string> = {
+  INVITE_REQUIRED: 'Google sign-in could not finish. This app is invite-only — redeem your invite code on the sign-up page first, then try Google again with the same email address.',
+  SIGNUPS_CLOSED: 'Sign-ups are closed at the moment. Ask an administrator to create your account.',
+  DOMAIN_NOT_ALLOWED: 'That email domain is not allowed to register here.',
+  signup_disabled: 'Sign-ups are closed at the moment. Ask an administrator to create your account.',
+  access_denied: 'Google sign-in was cancelled.'
+}
+
+/**
+ * What to say when Google hands the reader back.
+ *
+ * better-auth puts a CODE in the URL, not a sentence — the refusal's own
+ * message never travels — so the wording lives here. Anything unrecognised
+ * falls back to the likeliest cause, which is an address with no invite behind
+ * it.
+ */
 function googleMessage(raw: string): string {
-  const decoded = decodeURIComponent(raw)
-  if (decoded && decoded !== 'google')
-    return decoded
-  return 'Google sign-in could not finish. This app is invite-only — redeem your invite code on the sign-up page first, then try Google again with the same email address.'
+  const code = decodeURIComponent(raw)
+  return GOOGLE_ERRORS[code] ?? GOOGLE_ERRORS.INVITE_REQUIRED!
 }
 
 async function signInWithGoogle() {
@@ -63,7 +79,10 @@ async function signInWithGoogle() {
   await authClient.signIn.social({
     provider: 'google',
     callbackURL: origin + redirect,
-    errorCallbackURL: `${origin}${ROUTES.LOGIN}?error=google`
+    // No `?error=` of our own: better-auth APPENDS one, and two of the same
+    // key parse as an ARRAY — which the reader below then failed the
+    // `typeof === 'string'` test on, so nothing was ever shown.
+    errorCallbackURL: `${origin}${ROUTES.LOGIN}`
   })
 }
 

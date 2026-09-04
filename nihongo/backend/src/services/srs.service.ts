@@ -492,15 +492,12 @@ export async function markLessonSeen(userId: string, studyItemId: string): Promi
 const STAGE_SIZE = 50
 
 /**
- * The share of a stage that must be retained before the next one opens.
+ * How much of a stage must have stuck before the next one opens.
  *
- * 1 means every card. Not 80%: a stage sitting at 79/96 was being called done
- * and the next one opened over the top of it, which is not what "complete"
- * means to anyone reading the screen.
- *
- * The cost of 1 is that a single card which never graduates blocks the level
- * indefinitely, where 0.8 left slack for exactly that. If progression ever
- * stalls on one stubborn card, this is the number to look at first.
+ * Not 1. At 100% a single leech held a stage shut forever, and there is always
+ * one — the card you keep failing is exactly the card that stops being worth
+ * waiting for. Suspended cards leave the ratio entirely rather than counting
+ * against it, so giving up on one is a decision the gate respects.
  */
 const STAGE_PASS = 0.85
 
@@ -582,7 +579,12 @@ export async function stageCeilings(userId: string, languageId: string): Promise
     from stages
     -- The first stage not yet retained well enough. Everything before it is
     -- done; it is the one you are on; nothing after it is offered yet.
-    where learned::float / greatest(total, 1) < ${STAGE_PASS}
+    -- The total > 0 test is so a stage whose every card is suspended cannot
+    -- become an eternal wall. Suspended cards leave both halves of the ratio,
+    -- so such a stage reports 0/0 — less than any pass mark — and it would be
+    -- the first open stage forever, blocking everything after it.
+    -- Nothing left to learn there is passed, not failed.
+    where total > 0 and learned::float / total < ${STAGE_PASS}
     group by 1
   `)
 
@@ -1766,6 +1768,14 @@ function curriculumPredicate(ceilings: Map<string, number>): string {
   return `(
     study_items.level_id is null
     or study_items.level_id not in (${ids})
+    -- Grammar is admitted by its LESSON, not by the curriculum.
+    --
+    -- Taking grammar out of the stage rollup stopped topics counting towards a
+    -- stage, but this predicate still bounded them by one — so a topic whose
+    -- lesson had been read was barred anyway if it sorted past the ceiling, and
+    -- the double gate the exclusion was meant to remove survived here. The
+    -- lesson gate in \`getQueue\` is the whole of it now.
+    or study_items.kind = 'grammar'
     or study_items.sort_index <= (case study_items.level_id ${arms} end)
   )`
 }
@@ -1861,7 +1871,7 @@ export async function getCourse(userId: string, languageCode: string): Promise<C
   for (const [level, stageMap] of byLevel) {
     const ordered = [...stageMap.entries()].sort((a, b) => a[0] - b[0])
     // The first stage not yet retained well enough — the one you are on.
-    const current = ordered.find(([, v]) => v.learned / Math.max(v.total, 1) < STAGE_PASS)?.[0] ?? null
+    const current = ordered.find(([, v]) => v.total > 0 && v.learned / v.total < STAGE_PASS)?.[0] ?? null
 
     levels.push({
       level,

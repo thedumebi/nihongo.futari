@@ -62,13 +62,17 @@ export default defineConfig(({ mode }) => {
        */
       proxy: {
         // better-auth's basePath IS /api/auth, so the prefix stays.
-        '/api/auth': {
+        //
+        // Matched on the path SEGMENT, as nginx's `location /api/auth/` is: a
+        // bare string key would also capture /api/authors and forward it with
+        // the prefix kept, which is not what production would do with it.
+        '^/api/auth(/|$)': {
           target: `http://localhost:${env.VITE_BACKEND_PORT || '3008'}`,
           changeOrigin: true
         },
         // Everything else maps to the backend's root routes:
         // /api/study/queue -> /study/queue.
-        '/api': {
+        '^/api(/|$)': {
           target: `http://localhost:${env.VITE_BACKEND_PORT || '3008'}`,
           changeOrigin: true,
           rewrite: p => p.replace(/^\/api/, '')

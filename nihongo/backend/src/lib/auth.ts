@@ -39,13 +39,26 @@ const signupMode = env.SIGNUP_MODE
 /** Both halves or nothing — a client id without its secret cannot sign anybody in. */
 export const googleEnabled = Boolean(env.GOOGLE_CLIENT_ID && env.GOOGLE_CLIENT_SECRET)
 
+/**
+ * Every refusal carries a `code`, and better-auth's OAuth callback needs it.
+ *
+ * 1.7.1 only redirects a failed callback to `errorCallbackURL` when the thrown
+ * APIError has `body.code`; without one it re-throws, and better-call turns it
+ * into a 403 JSON body served AT the callback URL. So a reader turned away by
+ * the invite gate saw a raw {"message":…} blob at /api/auth/callback/google
+ * instead of the login page — the app's own words, in the worst possible place.
+ */
 async function assertMayCreateAccount(email: string): Promise<{ role: string, reservationId?: string }> {
   if (!isDomainAllowed(email)) {
-    throw new APIError('FORBIDDEN', { message: 'That email domain is not allowed to register.' })
+    throw new APIError('FORBIDDEN', {
+      code: 'DOMAIN_NOT_ALLOWED',
+      message: 'That email domain is not allowed to register.'
+    })
   }
 
   if (signupMode === 'closed') {
     throw new APIError('FORBIDDEN', {
+      code: 'SIGNUPS_CLOSED',
       message: 'Sign-ups are closed. Ask an administrator to create your account.'
     })
   }
@@ -56,6 +69,7 @@ async function assertMayCreateAccount(email: string): Promise<{ role: string, re
   const reservation = await findReservation(email)
   if (!reservation) {
     throw new APIError('FORBIDDEN', {
+      code: 'INVITE_REQUIRED',
       message: 'You need a valid invite code to sign up. Enter it on the sign-up page first.'
     })
   }

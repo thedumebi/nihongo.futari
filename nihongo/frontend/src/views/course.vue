@@ -91,9 +91,10 @@ onMounted(load)
         Your course
       </h1>
       <p class="mt-2 text-[var(--color-muted)]">
-        Kana, words and kanji, in the order they are best met. New material arrives one
-        stage at a time; the next opens once most of this one has stuck.
-        Grammar is not staged &mdash; topics live in Lessons and you take them in any order.
+        Everything except grammar, in the order it is best met &mdash; kana, words, kanji,
+        sentences and conversations. New material arrives one stage at a time; the next
+        opens once most of this one has stuck. Grammar is not staged: topics live in
+        Lessons and you take them in any order.
       </p>
 
       <p v-if="loading" class="mt-10 text-center text-[var(--color-muted)]">
@@ -191,7 +192,7 @@ onMounted(load)
                     <Lock class="h-4 w-4 text-[var(--color-muted)]" />
                   </Tooltip>
                   <Check
-                    v-else-if="stage.learned >= stage.total"
+                    v-else-if="stage.total > 0 && stage.learned >= stage.total"
                     class="h-4 w-4 shrink-0 text-[var(--color-success)]"
                   />
                 </div>
