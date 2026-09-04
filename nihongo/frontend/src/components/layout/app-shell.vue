@@ -46,22 +46,45 @@ const links = computed(() => {
   if (!auth.isAuthenticated)
     return []
   const base: Array<{ label: string, to: string }> = [
-    // Course first: it is the answer to "where do I start", and Study is
-    // the drilling screen you reach from it.
-    { label: 'Course', to: ROUTES.COURSE },
-    { label: 'Study', to: ROUTES.STUDY },
+    // Lessons first, because it is the answer to "where do I start" and the
+    // thing the app is now organised around: learn a topic, then it comes back.
+    //
+    // Eight tabs became five. Grammar was a reference list sitting in the main
+    // nav while the lessons that teach the same material were buried inside it
+    // — "I dont want grammer. I want study lessons!!" — so it moves into
+    // Dictionary, which is where you go to look something up. Writing and
+    // Sounds are drills you reach from Review rather than destinations.
+    { label: 'Lessons', to: ROUTES.LESSONS },
+    { label: 'Review', to: ROUTES.STUDY },
     { label: 'Conversations', to: ROUTES.CONVERSATIONS },
     { label: 'Progress', to: ROUTES.PROGRESS },
-    { label: 'Grammar', to: ROUTES.GRAMMAR },
-    { label: 'Writing', to: ROUTES.WRITING },
-    { label: 'Dictionary', to: ROUTES.DICTIONARY },
-    { label: 'Sounds', to: ROUTES.SOUND_SERIES }
+    { label: 'Dictionary', to: ROUTES.DICTIONARY }
   ]
   // An admin is an ordinary account with a role, so the admin entry is an
   // addition to the normal nav rather than a separate area you log into.
   if (auth.isAdmin)
     base.push({ label: 'Admin', to: ROUTES.ADMIN })
   return base
+})
+
+/**
+ * The rest, reachable without cluttering the main five.
+ *
+ * Course, Due, Writing and Sounds left the primary nav when it went from eight
+ * tabs to five, but nothing about them was retired — losing a route because a
+ * tab moved would be a regression dressed as a tidy-up. On a phone they sit in
+ * the same drawer; on a desk they are a quieter second row.
+ */
+const secondary = computed(() => {
+  if (!auth.isAuthenticated)
+    return []
+  return [
+    { label: 'Course', to: ROUTES.COURSE },
+    { label: 'Due', to: ROUTES.DUE },
+    { label: 'Writing', to: ROUTES.WRITING },
+    { label: 'Sounds', to: ROUTES.SOUND_SERIES },
+    { label: 'Grammar', to: ROUTES.GRAMMAR }
+  ]
 })
 
 onMounted(() => {
@@ -203,6 +226,15 @@ async function signOut() {
               :key="item.to"
               :to="item.to"
               class="rounded-lg px-2 py-2 text-[var(--color-muted)] transition hover:text-[var(--color-text)]"
+              active-class="!text-[var(--color-text)]"
+            >
+              {{ item.label }}
+            </router-link>
+            <router-link
+              v-for="item in secondary"
+              :key="item.to"
+              :to="item.to"
+              class="rounded-lg px-2 py-1.5 text-sm text-[var(--color-muted)] opacity-80 transition hover:text-[var(--color-text)] hover:opacity-100"
               active-class="!text-[var(--color-text)]"
             >
               {{ item.label }}

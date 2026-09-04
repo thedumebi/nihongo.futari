@@ -19,6 +19,8 @@ export const ROUTES = {
   KANJI_DETAIL: (character: string) => `/kanji/${encodeURIComponent(character)}`,
   WORDS: '/words',
   WORD_DETAIL: (id: string) => `/words/${id}`,
+  LESSONS: '/lessons',
+  LESSON_DETAIL: (slug: string) => `/lessons/${slug}`,
   GRAMMAR: '/grammar',
   GRAMMAR_DETAIL: (slug: string) => `/grammar/${slug}`,
   WRITING: '/writing',

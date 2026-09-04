@@ -23,7 +23,7 @@ const auth = useAuthStore()
     </p>
     <div class="flex gap-4">
       <RouterLink
-        :to="auth.isAuthenticated ? ROUTES.PROGRESS : ROUTES.LOGIN"
+        :to="auth.isAuthenticated ? ROUTES.LESSONS : ROUTES.LOGIN"
         class="rounded-lg bg-[var(--color-primary)] px-5 py-2.5 text-[var(--color-bg)]"
       >
         {{ auth.isAuthenticated ? 'Open go' : 'Sign in' }}

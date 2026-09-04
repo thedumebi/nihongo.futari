@@ -78,6 +78,18 @@ const router = createRouter({
       meta: { requiresAuth: true, isAdmin: true }
     },
     {
+      path: ROUTES.LESSONS,
+      name: 'lessons',
+      component: () => import('@/views/lessons.vue'),
+      meta: { requiresAuth: true }
+    },
+    {
+      path: ROUTES.LESSON_DETAIL(':slug'),
+      name: 'lesson-detail',
+      component: () => import('@/views/lesson-session.vue'),
+      meta: { requiresAuth: true }
+    },
+    {
       path: ROUTES.GRAMMAR,
       name: 'grammar',
       component: () => import('@/views/grammar.vue'),
