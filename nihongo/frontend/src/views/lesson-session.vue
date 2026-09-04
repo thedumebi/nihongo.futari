@@ -108,6 +108,12 @@ const promptText = computed(() => {
   }
 })
 
+// Shown only after the answer — see the note beside it in the template.
+const explanation = computed(() => {
+  const v = question.value?.prompt?.explanation
+  return typeof v === 'string' ? v : ''
+})
+
 function reset() {
   answer.value = ''
   placed.value = []
@@ -265,6 +271,18 @@ onMounted(async () => {
 
             <p v-if="revealed" class="text-center font-semibold" :class="correct ? 'text-[var(--color-success)]' : 'text-[var(--color-danger)]'">
               {{ correct ? 'Correct' : `Not quite — ${question.answer.primary}` }}
+            </p>
+
+            <!--
+              Why the wrong one is wrong, and only once the answer is in.
+
+              It used to ride along as the question's subtitle, where "く-verbs
+              take いて, but 行く is irregular" sat above 行くて and 行って and
+              answered the question for you. The explanation is the valuable
+              part of a mistake question; it just has to come second.
+            -->
+            <p v-if="revealed && explanation" class="text-center text-sm text-[var(--color-muted)]">
+              {{ explanation }}
             </p>
 
             <Button type="submit" variant="primary">

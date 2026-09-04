@@ -101,8 +101,19 @@ SELECT
     'tokenFurigana', (SELECT jsonb_object_agg(c.chip, c.ruby) FROM chips c WHERE c.sentence_id = s.id)
   ),
   jsonb_build_object(
-    'primary', regexp_replace(s.text, '[。、！？]+$', ''),
-    'accepted', jsonb_build_array(regexp_replace(s.text, '[。、！？]+$', ''), s.text)
+    -- Every punctuation mark stripped, not just a trailing one.
+    --
+    -- The chips are built from tokens with punctuation removed, so a comma in
+    -- the middle of a sentence is something the input CANNOT produce. Anchoring
+    -- the strip to the end left 電話して、会社に行きます as the only accepted
+    -- answer to a puzzle whose chips join to 電話して会社に行きます — four
+    -- questions that could be ordered perfectly and still marked wrong.
+    'primary', regexp_replace(s.text, '[。、！？「」]', '', 'g'),
+    'accepted', jsonb_build_array(
+      regexp_replace(s.text, '[。、！？「」]', '', 'g'),
+      regexp_replace(s.text, '[。、！？]+$', ''),
+      s.text
+    )
   ),
   '[]'::jsonb,
   jsonb_build_object('audio', '/audio/sentences/' || s.id || '.m4a', 'sentenceId', s.id),
@@ -141,7 +152,14 @@ SELECT
     -- written わ, を is お — so accepting it would mark わたしわがくせいです
     -- correct and teach a misspelling. Only the sentence, with or without its
     -- full stop.
-    'accepted', jsonb_build_array(s.text, regexp_replace(s.text, '[。、！？]+$', ''))
+    -- Dictation is typed, so the sentence as written is the primary answer —
+    -- but punctuation is not what is being tested, and a learner who hears
+    -- 電話して、会社に行きます and types it without the comma has got it right.
+    'accepted', jsonb_build_array(
+      s.text,
+      regexp_replace(s.text, '[。、！？]+$', ''),
+      regexp_replace(s.text, '[。、！？「」]', '', 'g')
+    )
   ),
   '[]'::jsonb,
   jsonb_build_object('audio', '/audio/sentences/' || s.id || '.m4a', 'sentenceId', s.id),
@@ -170,7 +188,10 @@ SELECT
     'instruction', 'Which one is correct?',
     'character', g.title,
     'pattern', g.pattern,
-    'gloss', gm.why_wrong
+    -- `explanation`, not `gloss`: the renderer prints a gloss as the question's
+    -- subtitle, so "く-verbs take いて, but 行く is irregular" appeared above
+    -- 行くて and 行って and gave the answer away. It shows on reveal instead.
+    'explanation', gm.why_wrong
   ),
   jsonb_build_object('primary', gm."right", 'accepted', jsonb_build_array(gm."right")),
   jsonb_build_array(gm.wrong),
