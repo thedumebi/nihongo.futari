@@ -26,6 +26,7 @@ import {
 } from '@nihongo/shared/db/schema'
 import { and, asc, eq, inArray, isNull, sql } from 'drizzle-orm'
 
+import { withAssetUrls } from '../lib/assets.js'
 import { readingFor } from '../lib/token-reading.js'
 import { glossary, glossLine } from './glossary.service.js'
 import { loadExamples, loadLessons } from './grammar.service.js'
@@ -322,7 +323,13 @@ export async function getLesson(userId: string, languageCode: string, slug: stri
       lesson.mistake?.whyWrong
     ]),
     examples: examples.get(point.id) ?? [],
-    questions: ordered.map(({ firstExposureOnly: _drop, ...q }) => q),
+    // Through `withAssetUrls`, like the study queue does.
+    //
+    // The paths stored on a prompt are bucket-relative — /audio/sentences/… —
+    // and the bucket is the only place they exist. Returning them raw made the
+    // lesson's own audio a 404: the dictation question played nothing, which is
+    // the fault the play button was added to fix.
+    questions: ordered.map(({ firstExposureOnly: _drop, ...q }) => ({ ...q, assets: withAssetUrls(q.assets) })),
     status: statusOf(point),
     studyItemId: point.studyItemId
   }

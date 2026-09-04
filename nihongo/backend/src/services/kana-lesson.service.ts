@@ -22,7 +22,7 @@ import db from '@nihongo/shared/db'
 import { exercisePrompts, exerciseTemplates, kana, lessonViews, srsCards, studyItemFacets, studyItems } from '@nihongo/shared/db/schema'
 import { and, asc, eq, inArray, sql } from 'drizzle-orm'
 
-import { assetUrl } from '../lib/assets.js'
+import { assetUrl, withAssetUrls } from '../lib/assets.js'
 
 /** `kana-hiragana-base-k`, and the vowel row has no consonant to name it by. */
 export const KANA_SLUG_PREFIX = 'kana-'
@@ -201,7 +201,7 @@ export async function getKanaLesson(userId: string, languageId: string, slug: st
     mistakes: [],
     prose: {},
     examples: [],
-    questions,
+    questions: questions.map(q => ({ ...q, assets: withAssetUrls(q.assets) })),
     status: weakest(itemIds.map(id => statuses.get(id) ?? 'not-started')),
     // The first character stands for the row wherever a single id is wanted.
     studyItemId: itemIds[0]!

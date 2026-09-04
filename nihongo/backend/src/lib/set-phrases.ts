@@ -53,6 +53,25 @@ const PHRASES: Array<[form: string, reading: string, meaning: string]> = [
   ['ございます', 'ございます', 'to be — polite'],
   ['ございました', 'ございました', 'was — polite'],
 
+  // The polite tails.
+  //
+  // Listed rather than left to the pattern indexer, which reads them off the
+  // lesson titles and lost ました somewhere between extraction and the index —
+  // 246 lines went from き|ました to き|ま|した. They are too common to be
+  // subject to that: every polite sentence in the corpus ends in one.
+  ['ます', 'ます', 'makes a verb polite'],
+  ['ました', 'ました', 'polite past'],
+  ['ません', 'ません', 'polite negative'],
+  ['ませんでした', 'ませんでした', 'polite negative past'],
+  ['ましょう', 'ましょう', "let's — polite"],
+  ['でした', 'でした', 'was — polite'],
+  // The i-adjective past, with the meaning it actually has.
+  //
+  // The pattern indexer takes this off whichever topic reaches it first, and
+  // that was 〜なかった — so 楽しかった and よかった were glossed "plain negative
+  // past", the opposite of what they say.
+  ['かった', 'かった', 'past tense of an i-adjective'],
+
   // Everyday exchanges.
   ['そうですか', 'そうですか', 'I see, is that so'],
   ['そうですね', 'そうですね', "that's right, let me think"],

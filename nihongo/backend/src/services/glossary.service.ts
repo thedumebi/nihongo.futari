@@ -97,7 +97,24 @@ let cached: Promise<Glossary> | null = null
  * glossed as 件 "paragraph" — a real entry, and never what the line means.
  */
 /** Verbs whose KANA spelling conjugates too — see the note where it is used. */
-const KANA_CONJUGATING = new Set(['有る', '居る', '成る'])
+const KANA_CONJUGATING = new Set(['有る', '居る', '成る', '為る', '分かる', '掛ける'])
+
+/**
+ * Pattern forms that are right for the topic that produced them and wrong
+ * everywhere else.
+ *
+ * かった is the i-adjective past, but the first topic to claim it was 〜なかった,
+ * so every 楽しかった was glossed "plain negative past". とて, まい and がち are
+ * real N1 patterns that sit on the front of far commoner words — とても, 参ります,
+ * がちょうど.
+ *
+ * Deliberately short. Excluding a form makes it SHRED instead, which is its own
+ * harm: なさい and かけ were here and came out as な|さ|い and か|け|て, so they
+ * went back and their verbs were taught to conjugate in kana instead. いつ was
+ * here too and shredded the question-word topic's own いつ来ますか, and かった is
+ * listed in `set-phrases.ts` with the right meaning rather than excluded.
+ */
+const PATTERN_STOPLIST = new Set(['とて', 'まい', 'がち', 'の中', 'なり', 'たま', 'あり'])
 
 const JAPANESE_RUN = /[\u3040-\u309F\u30A0-\u30FF\u4E00-\u9FFF\u3005]+/g
 
@@ -254,12 +271,17 @@ async function build(languageCode: string): Promise<Glossary> {
     // inside ありがとうございます, on 342 lines. Every one of those was a real
     // word wrongly identified, which is worse than an unrecognised one.
     //
-    // These three are named because they are unavoidable: ある and いる are the
-    // existential verbs and なる is how anything becomes anything — 先生になります
-    // is the pattern an N5 topic is built on, and it was coming apart as
-    // な|り|ま|す. Naming them individually is what keeps the homographs out:
-    // なる is also 鳴る "to sound" and 生る "to bear fruit", and only 成る is
-    // listed here, so only 成る can claim なります.
+    // Named individually because each is unavoidable and each has homographs
+    // that must NOT take its spelling: ある and いる are the existential verbs,
+    // なる is how anything becomes anything, する is how a noun becomes a verb,
+    // 分かる is the commonest acknowledgment in the language, and 掛ける is
+    // everywhere. なる is also 鳴る "to sound" and 生る "to bear fruit"; only 成る
+    // is listed, so only 成る can claim なります.
+    //
+    // The first version of this rule admitted every `uk` verb and let the wrong
+    // homograph win — いってきます glossed as 要る "to be needed". The version
+    // after it was too tight and lost する on 461 lines and 分かる on 151, so
+    // わかりました was read as two particles and a stem.
     if (row.form !== row.primaryForm && !(KANA_CONJUGATING.has(row.primaryForm) && !HAS_KANJI.test(row.form)))
       continue
 
@@ -322,7 +344,7 @@ async function build(languageCode: string): Promise<Glossary> {
   //
   // Claimed LAST, after even the conjugations, so this can only ever fill a
   // gap. Anything a real word or a real inflection already holds keeps it.
-  for (const p of await patterns(languageCode)) {
+  for (const p of await patterns(languageCode, byForm)) {
     // Not if the pattern merely glues a particle onto a word that already
     // exists. The 〜が好き topic is titled with its particle attached, and
     // indexing it whole made 音楽が好きです cut as 音楽 | が好き | です — which
@@ -359,7 +381,7 @@ export async function glossary(languageCode: string): Promise<Glossary> {
  * あれ・どれ, 〜から (because) — so the Japanese runs inside it ARE the forms to
  * index. The English, the 〜 and the separators fall out on their own.
  */
-async function patterns(languageCode: string): Promise<WordGloss[]> {
+async function patterns(languageCode: string, claimed: Map<string, WordGloss>): Promise<WordGloss[]> {
   const rows = await db
     .select({ title: grammarPoints.title, pattern: grammarPoints.pattern, meaning: grammarPoints.meaningShort })
     .from(grammarPoints)
@@ -383,17 +405,43 @@ async function patterns(languageCode: string): Promise<WordGloss[]> {
       // their own right and a pattern that keeps them swallows them: the 〜つもり
       // pattern is written "つもりです" and cut 行くつもりです as 行く | つもりです,
       // and a これは pattern hid the は the reader is meant to place.
-      // Only when something substantial is left: the です topic is titled です,
-      // and trimming that leaves nothing to index — which is how the copula
-      // stopped being a word again.
-      const trimmed = raw.replace(/(?:です|ます|でした)$/, '').replace(/[はをにがでもとやへか]$/, '')
-      const form = [...trimmed].length >= 2 ? trimmed : raw
+      // Trimmed only when what remains is ALREADY A WORD.
+      //
+      // The trim exists because a pattern written with its copula or its
+      // particle attached swallows them — "つもりです" cut 行くつもりです as
+      // 行く | つもりです. But applied blindly it mangles the pattern instead:
+      // とても ends with も and became とて, もっと became もっ, and
+      // をお願いします became をお願いし — a truncated verb stem with a particle
+      // stuck on the front, which then claimed 93 lines and put the kanji 願
+      // inside answers that were supposed to be kana.
+      //
+      // Requiring the remainder to be something already claimed keeps the
+      // cases the trim was for (つもりです → つもり, これは → これ) and drops
+      // the ones it was breaking.
+      const trim = (r: RegExp): string => {
+        const cut = raw.replace(r, '')
+        return cut !== raw && [...cut].length >= 2 && claimed.has(cut) ? cut : raw
+      }
+      const copula = trim(/(?:です|ます|でした)$/)
+      const form = copula !== raw ? copula : trim(/[はをにがでもとやへか]$/)
       // Single characters are left alone. They are particles the dictionary
       // already holds, and claiming the rest — い from an adjective pattern, た
       // from the past tense — told `check:examples` that a shredded run was
       // fine, because every piece of it now had a gloss. The check exists to
       // catch exactly that, and this blinded it.
-      if ([...form].length < 2 || seen.has(form))
+      // を and へ never begin a pattern — they are the frame it attaches to.
+      //
+      // Only those two. The first version of this rule used every particle
+      // character and knocked out です, which begins with で, and とても, which
+      // begins with と: the copula stopped being a word for the second time.
+      if (/^[をへ]/.test(form))
+        continue
+      // Forms that are correct for the topic that produced them and wrong
+      // everywhere else. かった is the i-adjective past, but the FIRST topic to
+      // claim it was 〜なかった, so every 楽しかった was glossed "plain negative
+      // past"; とて, まい, かけ and なさい are real N1/N3 patterns that sit on
+      // the front of far commoner words (とても, 参ります, 掛けて, なさいます).
+      if (PATTERN_STOPLIST.has(form) || [...form].length < 2 || seen.has(form))
         continue
       seen.add(form)
       out.push({ form, reading: form, meanings: [row.meaning], pos: 'grammar' })
