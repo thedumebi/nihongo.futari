@@ -1,6 +1,7 @@
 import { relations, sql } from 'drizzle-orm'
-import { boolean, index, integer, jsonb, pgTable, smallint, text, uniqueIndex } from 'drizzle-orm/pg-core'
+import { boolean, index, integer, jsonb, pgTable, primaryKey, smallint, text, timestamp, uniqueIndex } from 'drizzle-orm/pg-core'
 
+import { users } from './auth.js'
 import { primaryId, timestamps } from './columns.js'
 import { grammarPoints } from './grammar.js'
 import { languages } from './languages.js'
@@ -108,4 +109,28 @@ export const exercisePrompts = pgTable('exercise_prompts', {
 
 export const exerciseTemplatesRelations = relations(exerciseTemplates, ({ many }) => ({
   prompts: many(exercisePrompts)
+}))
+
+/**
+ * Questions missed during a lesson, to be asked again first.
+ *
+ * The owner's ask: "if I do a lesson I can review the questions later" — not
+ * the topic in general, the specific questions he got wrong.
+ *
+ * A row here does not create a card or change any count. It only reorders
+ * which prompt a facet shows next (see `promptPick`), so the reader meets the
+ * question they missed rather than a random sibling of it. Cleared when they
+ * finally get it right in review, at which point it returns to the rotation.
+ */
+export const lessonMisses = pgTable('lesson_misses', {
+  userId: text('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  promptId: text('prompt_id').notNull().references(() => exercisePrompts.id, { onDelete: 'cascade' }),
+  missedAt: timestamp('missed_at').notNull().defaultNow(),
+  /** Null while still owed. Set when answered correctly in review. */
+  clearedAt: timestamp('cleared_at'),
+  ...timestamps
+}, t => ({
+  pk: primaryKey({ columns: [t.userId, t.promptId] }),
+  /** The lookup `promptPick` makes: what does this reader still owe? */
+  outstandingIdx: index('lesson_misses_outstanding_idx').on(t.userId).where(sql`${t.clearedAt} is null`)
 }))

@@ -14,6 +14,7 @@ import index from './routes/index/index.route.js'
 import invites from './routes/invites/invites.index.js'
 import kanjiRoutes from './routes/kanji/kanji.index.js'
 import languages from './routes/languages/languages.index.js'
+import lessons from './routes/lessons/lessons.index.js'
 import notifications from './routes/notifications/notifications.index.js'
 import phonetics from './routes/phonetics/phonetics.index.js'
 import progress from './routes/progress/progress.index.js'
@@ -54,6 +55,7 @@ const routes = [
   auth,
   dialogues,
   grammar,
+  lessons,
   invites,
   languages,
   notifications,

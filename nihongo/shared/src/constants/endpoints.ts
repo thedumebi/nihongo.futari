@@ -25,6 +25,7 @@ export const ROUTE_BASE_PATHS = {
   WRITING: '/writing',
   WORDS: '/words',
   GRAMMAR: '/grammar',
+  LESSONS: '/lessons',
   SENTENCES: '/sentences',
   DIALOGUES: '/dialogues',
   STUDY: '/study',
@@ -173,6 +174,12 @@ export const WORD_ROUTES = {
   CREATE: '/',
   UPDATE: '/:id',
   DELETE: '/:id'
+} as const
+
+export const LESSONS_ROUTES = {
+  LIST: '/',
+  GET: '/:slug',
+  COMPLETE: '/:slug/complete'
 } as const
 
 export const GRAMMAR_ROUTES = {
@@ -341,6 +348,12 @@ export const API_ENDPOINTS = {
     SENTENCES: (id: string) => `${ROUTE_BASE_PATHS.WORDS}${WORD_ROUTES.SENTENCES.replace(':id', id)}`,
     UPDATE: (id: string) => `${ROUTE_BASE_PATHS.WORDS}${WORD_ROUTES.UPDATE.replace(':id', id)}`,
     DELETE: (id: string) => `${ROUTE_BASE_PATHS.WORDS}${WORD_ROUTES.DELETE.replace(':id', id)}`
+  },
+
+  LESSONS: {
+    LIST: ROUTE_BASE_PATHS.LESSONS,
+    GET: (slug: string) => `${ROUTE_BASE_PATHS.LESSONS}/${slug}`,
+    COMPLETE: (slug: string) => `${ROUTE_BASE_PATHS.LESSONS}/${slug}/complete`
   },
 
   GRAMMAR: {

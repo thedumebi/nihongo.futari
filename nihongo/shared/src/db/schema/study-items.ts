@@ -7,6 +7,7 @@ import {
   integer,
   pgTable,
   primaryKey,
+  smallint,
   text,
   timestamp,
   uniqueIndex
@@ -118,6 +119,17 @@ export const lessonViews = pgTable('lesson_views', {
   userId: text('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
   studyItemId: text('study_item_id').notNull().references(() => studyItems.id, { onDelete: 'cascade' }),
   firstSeenAt: timestamp('first_seen_at').notNull().defaultNow(),
+  /**
+   * When the lesson's QUIZ was finished, as opposed to merely opened.
+   *
+   * Two different facts. A row existing means the reader has met this item —
+   * which is what suppresses the introduction and what admits a grammar topic
+   * to review. `completed_at` means they went through the questions as well,
+   * which is what the lesson list shows as done.
+   */
+  completedAt: timestamp('completed_at'),
+  /** Percentage right on the last run through, for the list. */
+  quizScore: smallint('quiz_score'),
   ...timestamps
 }, t => ({
   pk: primaryKey({ columns: [t.userId, t.studyItemId] }),

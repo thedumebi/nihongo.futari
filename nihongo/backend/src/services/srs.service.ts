@@ -31,6 +31,7 @@ import {
   kanji,
   languageLevels,
   languages,
+  lessonMisses,
   lessonViews,
   phoneticSeries,
   sentences,
@@ -395,6 +396,19 @@ export async function submitAnswer(userId: string, input: SubmitAnswerInput): Pr
       })
     }
 
+    // A question missed in its lesson, now answered correctly, stops being
+    // owed and returns to the normal rotation.
+    if (wasCorrect && input.promptId) {
+      await tx
+        .update(lessonMisses)
+        .set({ clearedAt: receivedAt, updatedAt: receivedAt })
+        .where(and(
+          eq(lessonMisses.userId, userId),
+          eq(lessonMisses.promptId, input.promptId),
+          isNull(lessonMisses.clearedAt)
+        ))
+    }
+
     // Answering something IS meeting it.
     //
     // The introduction is suppressed by a `lesson_views` row, and the only
@@ -657,6 +671,16 @@ function promptPick(
       and (kft.min_state is null or ${state} >= kft.min_state)
       and (kft.max_reps is null or ${reps} <= kft.max_reps)
     order by
+      -- A question missed in its lesson comes back first.
+      --
+      -- "If I do a lesson I can review the questions later" — the specific ones
+      -- got wrong, not the topic in general. An ORDERING, not a filter: it
+      -- changes which prompt a facet shows, never whether the card appears, so
+      -- no count moves and no schedule changes.
+      case when exists (
+        select 1 from lesson_misses lm
+        where lm.user_id = ${userId} and lm.prompt_id = p.id and lm.cleared_at is null
+      ) then 0 else 1 end,
       case
         when coalesce(kft.first_exposure_only, t.first_exposure_only)
         then case when ${state} = 0 then 0 else 2 end
@@ -681,6 +705,26 @@ function promptPick(
  * Reading it now means a word is met by its meaning first, and the rest follow
  * one at a time as each previous facet earns a card.
  */
+/**
+ * A topic is only offered once its lesson has been opened.
+ *
+ * Reading the lesson is what admits a grammar point to review — that is the
+ * whole shape of the app now: you learn a topic, then it comes back. Without
+ * this the queue would go on introducing topics cold, which is the thing being
+ * fixed: "everything is a quiz. Nothing teaches me stuff before quizzing me".
+ *
+ * Only grammar. Words, kanji and kana have no lesson and are unaffected.
+ */
+function lessonOpened(userId: string): SQL {
+  return sql`(
+    ${studyItems.kind} <> 'grammar'
+    or exists (
+      select 1 from lesson_views lv
+      where lv.user_id = ${userId} and lv.study_item_id = ${studyItems.id}
+    )
+  )`
+}
+
 function firstUncardedFacet(userId: string): SQL {
   return sql`not exists (
     select 1
@@ -962,6 +1006,7 @@ export async function getQueue(userId: string, query: StudyQueueQuery): Promise<
           eq(studyItemFacets.enabled, true),
           isNull(srsCards.id),
           firstUncardedFacet(userId),
+          lessonOpened(userId),
           ...withinCurriculum,
           ...kindFilter,
           ...unitFilter,
