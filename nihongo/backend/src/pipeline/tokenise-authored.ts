@@ -1,0 +1,156 @@
+/* eslint-disable no-console */
+/**
+ * Give authored sentences the tokens the quiz generators read.
+ *
+ *   pnpm -C nihongo/backend tokenise:authored
+ *   pnpm -C nihongo/backend tokenise:authored -- --emit-sql
+ *
+ * The blocker this exists for: `import-cloze` takes its blank span from
+ * `sentence_tokens.char_start/char_end` and `import-word-order` takes its chips
+ * and their ruby from the same table, but NOTHING in this repo can tokenise a
+ * sentence we wrote ourselves. Tatoeba's tokens arrive pre-made in the corpus
+ * (`import-sentences.ts` just copies them); a grep for kuromoji returns
+ * nothing. So authored sentences had 0 token rows against Tatoeba's 8,613, and
+ * every quiz derived from them would have been empty.
+ *
+ * Tokens come from `glossLine` — the same cutter the lesson deck, the study
+ * card and the conversation lines already render with. That matters more than
+ * it sounds: `check:examples` already REFUSES any authored sentence glossLine
+ * cannot cut cleanly, so the checker becomes the guarantee that these rows are
+ * right. Adding a second tokeniser (kuromoji) would have segmented differently,
+ * and the word-order chips would stop matching the words you can tap in the
+ * lesson above them.
+ *
+ * `--emit-sql` prints idempotent INSERTs for the batch, because production runs
+ * migrations and seeds only — a pipeline script's output has to travel as SQL.
+ */
+import type { GlossedToken } from '@nihongo/shared/types'
+
+import db from '@nihongo/shared/db'
+import { sentences, sentenceTokens, words } from '@nihongo/shared/db/schema'
+import { alignFurigana } from '@nihongo/shared/lib'
+import { and, eq, notExists, sql } from 'drizzle-orm'
+
+import { glossary, glossLine } from '../services/glossary.service.js'
+
+interface Row { sentenceId: string, index: number, surface: string, reading: string | null, wordId: string | null, charStart: number, charEnd: number, furigana: Array<{ t: string, r?: string }> }
+
+/**
+ * Ruby for one token.
+ *
+ * A token whose reading equals its surface (pure kana) needs none. Otherwise
+ * `alignFurigana` anchors the reading to the kanji, which is the same routine
+ * the Tatoeba import uses, so both corpora carry the same shape.
+ */
+function rubyFor(token: GlossedToken): Array<{ t: string, r?: string }> {
+  if (!token.r || token.r === token.t)
+    return [{ t: token.t }]
+  const aligned = alignFurigana(token.t, token.r)
+  return aligned.confidence > 0 ? aligned.segments : [{ t: token.t, r: token.r }]
+}
+
+/**
+ * Dictionary form -> word id.
+ *
+ * `glossLine` hands back a `WordGloss`, which carries the form, reading,
+ * meanings and part of speech but deliberately no id — it exists to be rendered
+ * in a popover, not to be joined against. `sentence_tokens.word_id` is what
+ * makes a token tappable and what the cloze generator reads to find the target
+ * word, so it has to be resolved here. Without this every token came back
+ * unlinked: 0 of 155 on the first run, which would have produced tokens that
+ * looked right and generated nothing.
+ */
+async function wordIdsByForm(): Promise<Map<string, string>> {
+  const rows = await db
+    .select({ id: words.id, form: words.primaryForm })
+    .from(words)
+    .where(and(eq(words.languageId, 'lang-ja'), eq(words.published, true)))
+
+  // First wins: `words` is ordered by nothing in particular and two entries can
+  // share a spelling, but the glossary already picked ONE gloss per form, so
+  // picking one id consistently is what keeps the two agreeing.
+  const map = new Map<string, string>()
+  for (const r of rows) {
+    if (!map.has(r.form))
+      map.set(r.form, r.id)
+  }
+  return map
+}
+
+function tokenise(id: string, text: string, reading: string | null, g: Awaited<ReturnType<typeof glossary>>, ids: Map<string, string>): Row[] {
+  const tokens = glossLine(text, g, reading ?? undefined)
+  const rows: Row[] = []
+  let cursor = 0
+
+  tokens.forEach((token, index) => {
+    // Located the same way `import-sentences` locates Tatoeba's: search from
+    // where the last token ended, so a repeated word lands on its own position
+    // rather than the first occurrence every time.
+    const charStart = text.indexOf(token.t, cursor)
+    if (charStart < 0)
+      return
+    cursor = charStart + token.t.length
+    rows.push({
+      sentenceId: id,
+      index,
+      surface: token.t,
+      reading: token.r ?? null,
+      wordId: token.w ? ids.get(token.w.form) ?? null : null,
+      charStart,
+      charEnd: cursor,
+      furigana: rubyFor(token)
+    })
+  })
+
+  return rows
+}
+
+const emitSql = process.argv.includes('--emit-sql')
+
+async function main(): Promise<void> {
+  // Only sentences with no tokens at all, so a re-run is free and a partially
+  // tokenised sentence is never half-rewritten.
+  const pending = await db
+    .select({ id: sentences.id, text: sentences.text, reading: sentences.readingKana })
+    .from(sentences)
+    .where(sql`${sentences.source} = 'authored' and ${notExists(
+      db.select({ one: sql`1` }).from(sentenceTokens).where(eq(sentenceTokens.sentenceId, sentences.id))
+    )}`)
+
+  if (pending.length === 0) {
+    console.log('Every authored sentence already has tokens.')
+    return
+  }
+
+  const g = await glossary('ja')
+  const ids = await wordIdsByForm()
+  const all = pending.flatMap(s => tokenise(s.id, s.text, s.reading, g, ids))
+
+  if (emitSql) {
+    const lit = (v: string) => `'${v.replace(/'/g, "''")}'`
+    console.log('-- Tokens for the authored sentences in this batch.')
+    console.log('-- Produced by `pnpm -C nihongo/backend tokenise:authored -- --emit-sql`.')
+    console.log('INSERT INTO sentence_tokens (id, sentence_id, index, surface, reading, word_id, char_start, char_end, furigana) VALUES')
+    console.log(all.map(r =>
+      `  (gen_random_uuid()::text, ${lit(r.sentenceId)}, ${r.index}, ${lit(r.surface)}, `
+      + `${r.reading === null ? 'NULL' : lit(r.reading)}, ${r.wordId === null ? 'NULL' : lit(r.wordId)}, `
+      + `${r.charStart}, ${r.charEnd}, ${lit(JSON.stringify(r.furigana))}::jsonb)`
+    ).join(',\n'))
+    console.log('ON CONFLICT (sentence_id, index) DO NOTHING;')
+    return
+  }
+
+  for (let i = 0; i < all.length; i += 500)
+    await db.insert(sentenceTokens).values(all.slice(i, i + 500)).onConflictDoNothing()
+
+  console.log(`${pending.length} sentences tokenised, ${all.length} tokens written.`)
+  const tappable = all.filter(r => r.wordId !== null).length
+  console.log(`  ${tappable}/${all.length} tokens link to a dictionary word (the tappable ones).`)
+}
+
+main()
+  .then(() => process.exit(0))
+  .catch((err) => {
+    console.error('Tokenising failed:', err)
+    process.exit(1)
+  })
