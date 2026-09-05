@@ -33,7 +33,8 @@
       See `.claude/rules/media.md`.
 - [ ] **Vocabulary illustrations: 59 of 8,240.** The remaining ~8,200 are the
       largest content gap left. Style and process are documented; it is volume,
-      and worth deciding how many are actually worth having before drawing.
+      and worth deciding how many are actually worth having before drawing —
+      8,240 hand-drawn SVGs is not obviously the right target.
 
 ## Asset hosting
 
@@ -404,7 +405,8 @@ Last audited: 2026-08-26
       both the before/after halves AND the complete `sentence`; the template
       rendered the complete one underneath the blank.
 
-- [ ] **N5 grammar: 50 of ~135 points.**
+- [x] **N5 grammar: 129 of 129 published points**, every one with four
+      example sentences, tokens, audio and derived questions.
 - [x] **N4 grammar: 61 points** (seeds 015–017), hand-written like N5 and
       wired into the scheduler with per-level distractors. Seven points a
       standard N4 list carries (dake, nagara, shika-nai, sugiru,
@@ -425,10 +427,12 @@ Last audited: 2026-08-26
       auditing after the new levels landed; backfilled in 023.
 - [x] **All 276 grammar points are reviewed and published.** Every
       content_review_queue row is approved; nothing sits at 'in-review'.
-- [ ] **N4 why-layer: none.** The 61 new points have no etymology entries; the
-      27 sourced notes are all N5.
-- [ ] **130 review-queue items pending.** Only a human can clear these:
-      57 Claude etymology, 23 hand-authored etymology, 50 grammar points.
+- [ ] **The why-layer covers 27 of 355 topics**, all of them N5. N4, N3, N2
+      and N1 have no etymology entries at all. The largest content gap after
+      the illustrations.
+- [x] **The review queue is clear.** All 618 rows are approved; nothing sits
+      at 'in-review'. The 130 that were pending — 57 Claude etymology, 23
+      hand-authored etymology, 50 grammar points — have been through.
 
 ## Phase 4 — depth and levels
 
