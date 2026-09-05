@@ -439,11 +439,17 @@ Last audited: 2026-08-26
       period to when the ancestor existed rather than when the change happened,
       and selling an invented image as the reason for a real usage fact. Two
       findings reached published content and were corrected there.
-- [ ] **328 why-layer entries are written but not published.** They sit at
-      'in-review' with a review-queue row each, because every entry a reader can
-      see carries a human review and these would have been the first exception.
-      Approving them is the remaining step, and it is a person's. Seed 144 fixed
-      the constraint that was making approve fail.
+- [x] **All 355 why-layer entries are published and verified.** Every one was
+      checked by a Fable subagent instructed to falsify rather than confirm:
+      328 checked across six passes, 164 corrected — half of everything
+      written. Three fault patterns accounted for nearly all of it: reading a
+      kanji spelling as the etymology (など is なにと not 等; わけ is 分け not 訳;
+      へた is 端 with 下手 fitted after), dating the period to when the ancestor
+      existed rather than when the change happened, and selling an invented
+      image as the reason for a real usage fact. Three corrections landed on
+      entries that were already published before the verification began —
+      でしょう given だろう's derivation, けれども given けり instead of the
+      adjective ending けれ, and six bodies overreaching their sources.
 - [x] **The review queue is clear.** All 618 rows are approved; nothing sits
       at 'in-review'. The 130 that were pending — 57 Claude etymology, 23
       hand-authored etymology, 50 grammar points — have been through.
