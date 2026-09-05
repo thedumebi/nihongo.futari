@@ -102,8 +102,13 @@ for (const r of rows) {
 
   // A particle glued to the end of a longer token: the gloss is then for a
   // word that is not there.
+  //
+  // Except when the token IS a grammar pattern, because a good many of them end
+  // in a particle — ところを, 〜をもとに, 〜が早いか. The gloss there is for
+  // exactly what is on the screen, which is the opposite of the fault this rule
+  // looks for, and it was failing five topics whose sentences were correct.
   for (const t of tokens) {
-    if (t.t.length > 1 && PARTICLES.has(t.t.slice(-1)) && t.w)
+    if (t.t.length > 1 && PARTICLES.has(t.t.slice(-1)) && t.w && t.w.pos !== 'grammar')
       problems.push(`particle swallowed: "${t.t}" glossed as "${t.w.meanings[0]}"`)
   }
 

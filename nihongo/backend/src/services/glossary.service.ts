@@ -97,16 +97,19 @@ let cached: Promise<Glossary> | null = null
  * glossed as 件 "paragraph" — a real entry, and never what the line means.
  */
 /** Verbs whose KANA spelling conjugates too — see the note where it is used. */
-const KANA_CONJUGATING = new Set(['有る', '居る', '成る', '為る', '分かる', '掛ける'])
+const KANA_CONJUGATING = new Set(['有る', '居る', '成る', '為る', '分かる', '掛ける', '参る'])
 
 /**
  * Pattern forms that are right for the topic that produced them and wrong
  * everywhere else.
  *
  * かった is the i-adjective past, but the first topic to claim it was 〜なかった,
- * so every 楽しかった was glossed "plain negative past". とて, まい and がち are
- * real N1 patterns that sit on the front of far commoner words — とても, 参ります,
- * がちょうど.
+ * so every 楽しかった was glossed "plain negative past". とて and がち are real N1
+ * patterns that sit on the front of far commoner words — とても, がちょうど.
+ *
+ * まい was here and came off: 参る is published, so 参ります is indexed as its
+ * own conjugation and wins on length, and excluding まい only shredded the
+ * 〜まい topic's own sentences into ま|い.
  *
  * Deliberately short. Excluding a form makes it SHRED instead, which is its own
  * harm: なさい and かけ were here and came out as な|さ|い and か|け|て, so they
@@ -114,7 +117,62 @@ const KANA_CONJUGATING = new Set(['有る', '居る', '成る', '為る', '分�
  * here too and shredded the question-word topic's own いつ来ますか, and かった is
  * listed in `set-phrases.ts` with the right meaning rather than excluded.
  */
-const PATTERN_STOPLIST = new Set(['とて', 'まい', 'がち', 'の中', 'なり', 'たま', 'あり'])
+/**
+ * The verb class of a pattern that ends in one, or null if it does not.
+ *
+ * Read off the ending rather than from JMdict, because a pattern is not a
+ * dictionary entry and has no part of speech to look up. Only the endings whose
+ * class is settled are here. る is the only ambiguous ending, so only the る
+ * endings that can only be ichidan are listed; everything else that ends in a
+ * verb vowel is godan, because an ichidan verb ends in る and nothing else.
+ * An ending that settles nothing is left alone rather than guessed — a wrong
+ * class produces confident nonsense (寒い as ichidan gives 寒ます).
+ */
+/**
+ * Whether a form can be built greedily out of entries the index already holds.
+ *
+ * The question a pattern's inflections hang on: if the pieces are all there,
+ * the reader is better served seeing them.
+ */
+function decomposable(form: string, byForm: Map<string, WordGloss>): boolean {
+  const chars = [...form]
+  let i = 0
+  while (i < chars.length) {
+    let matched = 0
+    for (let len = chars.length - i; len > 0; len--) {
+      if (byForm.has(chars.slice(i, i + len).join(''))) {
+        matched = len
+        break
+      }
+    }
+    if (matched === 0)
+      return false
+    i += matched
+  }
+  return true
+}
+
+function PATTERN_VERB_CLASS(form: string): 'ichidan' | 'suru' | 'godan' | null {
+  // A pattern already in a polite form is not a plain verb to conjugate.
+  // ことができます ends in す, and conjugating it as a godan verb produced
+  // ことができませ — which then claimed the front of ことができません and left
+  // the ん stranded as a chip of its own.
+  if (/(?:ます|ませ|ません|ました|です|でした)$/.test(form))
+    return null
+  if (form.endsWith('する'))
+    return 'suru'
+  if (/(?:れる|せる|える|ける|てる|でる|める|ねる)$/.test(form))
+    return 'ichidan'
+  // Every other verb ending is godan without exception — an ichidan verb ends
+  // in る and nothing else, so う, く, ぐ, す, つ, ぬ, ぶ and む settle it.
+  if (/[うくぐすつぬぶむ]$/.test(form))
+    return 'godan'
+  if (form.endsWith('なる'))
+    return 'godan'
+  return null
+}
+
+const PATTERN_STOPLIST = new Set(['とて', 'がち', 'の中', 'なり', 'たま', 'あり'])
 
 const JAPANESE_RUN = /[\u3040-\u309F\u30A0-\u30FF\u4E00-\u9FFF\u3005]+/g
 
@@ -354,7 +412,30 @@ async function build(languageCode: string): Promise<Glossary> {
     const tail = [...p.form].slice(1).join('')
     if (tail.length > 1 && byForm.has(tail))
       continue
+    // Asked BEFORE the claim, or the pattern would find itself and every
+    // pattern would look decomposable.
+    const builds = decomposable(p.form, byForm)
     claim(p.form, p)
+
+    // A pattern that ends in a verb conjugates like one — but only if the
+    // dictionary cannot already build it out of pieces.
+    //
+    // 〜を余儀なくされる is written in the dictionary form, and no sentence
+    // teaching it is: 中止を余儀なくされました is what the pattern is FOR. The
+    // plain form alone left every example shredding into 余 | 儀 | な | く |
+    // さ | れ | ました, which is the topic pulling its own lesson apart.
+    //
+    // The gate is decomposability, and it is doing real work. ことにする,
+    // ようになる, てくれる and 食べられる are all assembled from things already
+    // in the index, and conjugating them glued こと | に | しました into one
+    // chip — hiding the に that lesson is entirely about, which is the same
+    // mistake the が好き rule above exists to prevent. 余儀なくされる cannot be
+    // assembled from anything: 余 and 儀 are unclaimed single kanji.
+    const verbClass = builds ? null : PATTERN_VERB_CLASS(p.form)
+    if (verbClass) {
+      for (const c of conjugateAll({ surface: p.form, reading: p.form, verbClass }))
+        claim(c.surface, { ...p, form: c.surface, reading: c.surface })
+    }
   }
 
   return { index: buildTokenIndex(byForm.keys()), byForm }
@@ -429,22 +510,30 @@ async function patterns(languageCode: string, claimed: Map<string, WordGloss>): 
       // from the past tense — told `check:examples` that a shredded run was
       // fine, because every piece of it now had a gloss. The check exists to
       // catch exactly that, and this blinded it.
-      // を and へ never begin a pattern — they are the frame it attaches to.
+      // を and へ never begin a pattern — they are the frame it attaches to,
+      // so they come OFF rather than taking the pattern down with them.
       //
-      // Only those two. The first version of this rule used every particle
+      // Skipping the whole form was the first attempt, and it lost the patterns
+      // written with their particle attached: をものともせず and を余儀なくされる
+      // are how those topics state themselves, and both then shredded, taking
+      // their own lessons with them — a topic cannot teach a pattern its
+      // example sentences pull apart.
+      //
+      // Only those two particles. An earlier version used every particle
       // character and knocked out です, which begins with で, and とても, which
       // begins with と: the copula stopped being a word for the second time.
-      if (/^[をへ]/.test(form))
+      const stripped = form.replace(/^[をへ]/, '')
+      if ([...stripped].length < 2)
         continue
       // Forms that are correct for the topic that produced them and wrong
       // everywhere else. かった is the i-adjective past, but the FIRST topic to
       // claim it was 〜なかった, so every 楽しかった was glossed "plain negative
-      // past"; とて, まい, かけ and なさい are real N1/N3 patterns that sit on
-      // the front of far commoner words (とても, 参ります, 掛けて, なさいます).
-      if (PATTERN_STOPLIST.has(form) || [...form].length < 2 || seen.has(form))
+      // past"; とて and がち are real N1 patterns that sit on the front of far
+      // commoner words (とても, がちょうど).
+      if (PATTERN_STOPLIST.has(stripped) || seen.has(stripped))
         continue
-      seen.add(form)
-      out.push({ form, reading: form, meanings: [row.meaning], pos: 'grammar' })
+      seen.add(stripped)
+      out.push({ form: stripped, reading: stripped, meanings: [row.meaning], pos: 'grammar' })
     }
   }
   // Longest first, so 〜てもいい is claimed before 〜て can take the front of it.
