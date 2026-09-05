@@ -431,16 +431,19 @@ Last audited: 2026-08-26
       auditing after the new levels landed; backfilled in 023.
 - [x] **All 276 grammar points are reviewed and published.** Every
       content_review_queue row is approved; nothing sits at 'in-review'.
-- [ ] **The why-layer covers 291 of 355 topics** — N5 92/129, N4 47/61,
-      N3 44/55, N2 53/55, N1 55/55 — up from 27, all of which were N5. The 264
-      new entries are WRITTEN but sit at 'in-review' with a review-queue row
-      each: every entry a reader can see carries a human review, and adding
-      these unreviewed would have been the first exception. Approving them is
-      the remaining step, and it is a person's.
-      The 64 topics with no entry are the ones a history does not help —
-      counters covered by a sibling, forms whose parent carries the
-      explanation, word order and omission — plus 〜っぽい and 〜だらけ, whose
-      origins cannot be stated without inventing them.
+- [x] **The why-layer covers all 355 topics** — up from 27, all of which were
+      N5. Every entry was then checked by a Fable subagent instructed to
+      falsify rather than confirm: 264 checked, 136 flagged, all fixed. Three
+      fault patterns accounted for nearly all of it — reading a kanji spelling
+      as the etymology (など is なにと, not 等; わけ is 分け, not 訳), dating the
+      period to when the ancestor existed rather than when the change happened,
+      and selling an invented image as the reason for a real usage fact. Two
+      findings reached published content and were corrected there.
+- [ ] **328 why-layer entries are written but not published.** They sit at
+      'in-review' with a review-queue row each, because every entry a reader can
+      see carries a human review and these would have been the first exception.
+      Approving them is the remaining step, and it is a person's. Seed 144 fixed
+      the constraint that was making approve fail.
 - [x] **The review queue is clear.** All 618 rows are approved; nothing sits
       at 'in-review'. The 130 that were pending — 57 Claude etymology, 23
       hand-authored etymology, 50 grammar points — have been through.
