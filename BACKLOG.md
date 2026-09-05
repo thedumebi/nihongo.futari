@@ -81,8 +81,12 @@
 - [x] **DEPLOY.md documents what ships**: 33 MB of audio and 252 KB of SVG in
       the frontend, seeds/migrations/email templates in the backend, and what
       deliberately is not (the corpus, GeoLite2, fonts).
-- [ ] **The audio is 33 MB of the 31 MB context and every image build.**
-      Moving it to R2 is still open.
+- [x] **The audio is out of the build context.** `.dockerignore` excludes
+      `nihongo/frontend/public/audio` and `.../images`; R2 is the single source
+      for both trees, with no origin fallback — `R2_PUBLIC_BASE_URL` is
+      required and the backend refuses to boot in production without it,
+      because a silent miss would 404 every clip while the pages around them
+      kept working.
 
 - [x] **A gated deck reads "later", not "done".** Both report 0 due and 0
       unseen, so the picker was telling the reader they had completed 127
