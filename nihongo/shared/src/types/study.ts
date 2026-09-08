@@ -232,7 +232,17 @@ export const studyQueueItemSchema = z.object({
   inputMode: z.string(),
   graderCode: z.string(),
   prompt: z.record(z.string(), z.unknown()),
-  answer: z.object({ primary: z.string(), accepted: z.array(z.string()) }),
+  answer: z.object({
+    primary: z.string(),
+    accepted: z.array(z.string()),
+    /**
+     * Per-token alternatives, in order: each entry is the ways that one token
+     * may be written. Dictation grading walks these so ANY mix of kanji and
+     * kana passes, which the flat `accepted` list cannot express — it can only
+     * offer the sentence all in kanji or all in kana.
+     */
+    tokens: z.array(z.array(z.string())).optional()
+  }),
   distractors: z.array(z.unknown()),
   assets: z.record(z.string(), z.unknown()),
   /**

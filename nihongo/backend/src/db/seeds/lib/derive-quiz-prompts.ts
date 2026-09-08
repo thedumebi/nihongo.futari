@@ -152,7 +152,15 @@ SELECT
       k.kana,
       regexp_replace(k.kana, '[。、！？]+$', ''),
       regexp_replace(k.kana, '[。、！？「」]', '', 'g')
-    ) END
+    ) END,
+    -- Each token and the other way it may be written.
+    --
+    -- The flat list above can only hold whole sentences, so it offers all
+    -- kanji or all kana and nothing between. A learner who has met 食べる but
+    -- not 見る writes ご飯を食べてテレビをみます — correct Japanese, correctly
+    -- heard, and matching neither variant. The grader walks these instead and
+    -- accepts any mix.
+    'tokens', COALESCE(tk.tokens, '[]'::jsonb)
   ),
   '[]'::jsonb,
   jsonb_build_object('audio', '/audio/sentences/' || s.id || '.m4a', 'sentenceId', s.id),
@@ -162,6 +170,17 @@ JOIN sentences s ON s.id = gps.sentence_id AND s.published AND s.source = 'autho
 JOIN study_items si ON si.grammar_point_id = gps.grammar_point_id
 JOIN study_item_facets f ON f.study_item_id = si.id AND f.facet = 'usage'
 LEFT JOIN sentence_translations tr ON tr.sentence_id = s.id AND tr.lang = 'en'
+-- Per token: its surface, and its reading where the two differ.
+LEFT JOIN LATERAL (
+  SELECT jsonb_agg(
+           CASE WHEN t.reading IS NULL OR t.reading = t.surface
+                THEN jsonb_build_array(t.surface)
+                ELSE jsonb_build_array(t.surface, t.reading) END
+           ORDER BY t.index
+         ) AS tokens
+  FROM sentence_tokens t
+  WHERE t.sentence_id = s.id
+) tk ON true
 -- The sentence spelled in kana, assembled from its tokens' ruby.
 LEFT JOIN LATERAL (
   SELECT string_agg(COALESCE(e.seg ->> 'r', e.seg ->> 't'), '' ORDER BY st.index, e.ord) AS kana

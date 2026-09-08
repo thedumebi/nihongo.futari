@@ -80,6 +80,44 @@ export function normaliseJapanese(value: string): string {
     : romajiToHiragana(folded)
 }
 
+/**
+ * Punctuation a listener cannot hear.
+ *
+ * Dictation is "type what you hear", and 、 and 。 make no sound. The prompt
+ * derivation already offers each answer with and without them, so this is the
+ * belt to that braces — it also covers the token walk below, where offering
+ * every punctuated variant of every token combination would be absurd.
+ */
+const UNHEARD = /[。、，．！？「」『』・…]/g
+
+/**
+ * Does the answer spell the sentence, allowing each token to be written either
+ * way round?
+ *
+ * The flat `accepted` list can only hold whole sentences, so it offers all
+ * kanji or all kana and nothing between. A learner who has met 食べる but not
+ * 見る writes ご飯を食べてテレビをみます — correct Japanese, correct hearing, and
+ * matched by neither variant. Walking the tokens accepts every mix, which is
+ * the set of answers that actually demonstrate having heard the sentence.
+ */
+function matchesTokens(given: string, tokens: string[][]): boolean {
+  let rest = given
+  for (const alternatives of tokens) {
+    const hit = alternatives
+      .map(a => normaliseJapanese(a).replace(UNHEARD, ''))
+      .filter(Boolean)
+      .find(a => rest.startsWith(a))
+    if (hit === undefined) {
+      // A token that is pure punctuation contributes nothing to match against.
+      if (alternatives.every(a => !normaliseJapanese(a).replace(UNHEARD, '')))
+        continue
+      return false
+    }
+    rest = rest.slice(hit.length)
+  }
+  return rest.length === 0
+}
+
 export interface GradeResult {
   correct: boolean
   /** The canonical answer, for the "the answer was…" line. */
@@ -89,7 +127,7 @@ export interface GradeResult {
 export function gradeAnswer(
   graderCode: string,
   given: string,
-  answer: { primary: string, accepted: string[] }
+  answer: { primary: string, accepted: string[], tokens?: string[][] }
 ): GradeResult {
   const candidates = [answer.primary, ...answer.accepted]
   const expected = answer.primary
@@ -102,7 +140,17 @@ export function gradeAnswer(
     case 'exact-kana':
     case 'normalised-jp': {
       const g = normaliseJapanese(given)
-      return { correct: candidates.some(c => normaliseJapanese(c) === g), expected }
+      if (candidates.some(c => normaliseJapanese(c) === g))
+        return { correct: true, expected }
+      // Then the same comparison with unheard punctuation dropped from both
+      // sides, and finally token by token.
+      const bare = g.replace(UNHEARD, '')
+      if (candidates.some(c => normaliseJapanese(c).replace(UNHEARD, '') === bare))
+        return { correct: true, expected }
+      return {
+        correct: answer.tokens ? matchesTokens(bare, answer.tokens) : false,
+        expected
+      }
     }
     case 'sequence': {
       // Word order: the client sends the arranged tokens joined together, so
