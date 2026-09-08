@@ -1,3 +1,4 @@
+import db from '@nihongo/shared/db'
 /**
  * Re-derive the quiz prompts so dictation answers carry their tokens.
  *
@@ -14,8 +15,6 @@
  * cascades on prompt delete, is untouched.
  */
 import { sql } from 'drizzle-orm'
-
-import db from '@nihongo/shared/db'
 
 import { deriveQuizPrompts } from './lib/derive-quiz-prompts.js'
 
