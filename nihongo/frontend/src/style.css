@@ -104,6 +104,20 @@
     scroll-behavior: smooth;
   }
 
+  /* iOS Safari zooms the whole page when a field takes focus with a computed
+   * font-size under 16px, and there is no way to decline it except to be big
+   * enough. 16px is the floor.
+   *
+   * In `base` on purpose: a field that genuinely wants to be larger says so
+   * with a utility — the study answer box is text-xl — and utilities outrank
+   * this layer. What it catches is every field that never named a size and so
+   * inherited one from a wrapper. */
+  input,
+  textarea,
+  select {
+    font-size: 1rem;
+  }
+
   html,
   body {
     background-color: var(--color-bg);
@@ -142,12 +156,18 @@ select.neu-input {
   height: 46px;
   padding: 0 14px;
   border-radius: 0.625rem;
+  /* Stated here rather than left to inherit: `ui/input.vue` wraps the field in
+   * a `text-sm` label so the caption reads small, and 14px cascades straight
+   * into the input — which is every email, password and invite-code field on
+   * login and sign-up. */
+  font-size: 1rem;
 }
 
 textarea.neu-input {
   padding: 12px 14px;
   border-radius: 0.625rem;
   resize: vertical;
+  font-size: 1rem;
 }
 
 .neu-input:focus-visible,

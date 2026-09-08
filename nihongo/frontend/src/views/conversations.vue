@@ -98,7 +98,7 @@ onMounted(load)
           v-model="query"
           type="search"
           placeholder="Search conversations"
-          class="w-full rounded-lg border border-[var(--color-border)] bg-transparent py-2 pl-9 pr-3 text-sm outline-none transition focus:border-[var(--color-text)]"
+          class="w-full rounded-lg border border-[var(--color-border)] bg-transparent py-2 pl-9 pr-3 text-base sm:text-sm outline-none transition focus:border-[var(--color-text)]"
           autocomplete="off"
           autocapitalize="off"
           spellcheck="false"
