@@ -101,6 +101,16 @@ function statusOf(row: { seen: boolean, completedAt: Date | null, cardState: num
   return row.seen ? 'seen' : 'not-started'
 }
 
+/** `grammar_points.category` in the words a reader would use for a heading. */
+const CATEGORY_TITLES: Record<string, string> = {
+  particle: 'Particles',
+  expression: 'Expressions',
+  conjunction: 'Joining clauses',
+  auxiliary: 'Verb and adjective endings',
+  construction: 'Sentence patterns',
+  adverb: 'Adverbs'
+}
+
 export async function listLessons(userId: string, languageCode: string): Promise<LessonListResponse> {
   const [language] = await db
     .select({ id: languages.id })
@@ -119,6 +129,7 @@ export async function listLessons(userId: string, languageCode: string): Promise
       meaningShort: grammarPoints.meaningShort,
       sortIndex: grammarPoints.sortIndex,
       studyItemId: studyItems.id,
+      category: grammarPoints.category,
       unitCode: curriculumUnits.code,
       unitTitle: curriculumUnits.title,
       unitImage: curriculumUnits.imageUrl,
@@ -160,6 +171,7 @@ export async function listLessons(userId: string, languageCode: string): Promise
       grammarPoints.title,
       grammarPoints.meaningShort,
       grammarPoints.sortIndex,
+      grammarPoints.category,
       studyItems.id,
       curriculumUnits.code,
       curriculumUnits.title,
@@ -184,9 +196,20 @@ export async function listLessons(userId: string, languageCode: string): Promise
   for (const r of rows) {
     const status = statusOf(r)
     const level = levels.get(r.level) ?? { level: r.level, sort: r.levelSort ?? 0, groups: new Map() }
-    const key = r.unitCode ?? ''
+    // A unit names the group where one maps. None of the 355 grammar topics is
+    // mapped to one, so every lesson below the writing system arrived under a
+    // blank heading and the page read as one undifferentiated scroll. The
+    // topic's own `category` names it instead — particle, expression,
+    // conjunction, auxiliary, construction, adverb — which is a real division
+    // of the material and one the data already carried.
+    const key = r.unitCode ?? r.category ?? ''
     const group = level.groups.get(key)
-      ?? { code: r.unitCode, title: r.unitTitle, imageUrl: r.unitImage, lessons: [] }
+      ?? {
+        code: r.unitCode ?? r.category,
+        title: r.unitTitle ?? CATEGORY_TITLES[r.category ?? ''] ?? null,
+        imageUrl: r.unitImage,
+        lessons: []
+      }
 
     group.lessons.push({
       slug: r.slug,

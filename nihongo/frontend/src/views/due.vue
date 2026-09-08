@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { DueItem } from '@nihongo/shared/types'
 
-import { computed, onMounted, ref, watch } from 'vue'
+import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 
 import { getDue } from '@/api/due'
 import AppShell from '@/components/layout/app-shell.vue'
@@ -23,6 +23,34 @@ const byKind = ref<Array<{ kind: string, count: number }>>([])
 const total = ref(0)
 const totalCards = ref(0)
 const serverTime = ref('')
+const nextDueAt = ref<string | null>(null)
+
+/**
+ * A ticking clock, so the countdown below counts down.
+ *
+ * Without it the phrase would be right when the page loaded and quietly wrong
+ * for as long as the tab stayed open, which is the failure mode of every "in 2
+ * hours" that never moves.
+ */
+const nowTick = ref(Date.now())
+let ticker: ReturnType<typeof setInterval> | undefined
+
+/** "3 hours", "12 minutes", "2 days" — the wait, in the largest useful unit. */
+const nextDue = computed(() => {
+  if (!nextDueAt.value)
+    return ''
+  const ms = new Date(nextDueAt.value).getTime() - nowTick.value
+  if (ms <= 0)
+    return 'less than a minute'
+  const minutes = Math.round(ms / 60000)
+  if (minutes < 60)
+    return `${minutes} minute${minutes === 1 ? '' : 's'}`
+  const hours = Math.round(minutes / 60)
+  if (hours < 24)
+    return `${hours} hour${hours === 1 ? '' : 's'}`
+  const days = Math.round(hours / 24)
+  return `${days} day${days === 1 ? '' : 's'}`
+})
 const kind = ref('')
 const offset = ref(0)
 const loading = ref(true)
@@ -99,6 +127,7 @@ async function load() {
     total.value = data.total
     totalCards.value = data.totalCards
     serverTime.value = data.serverTime
+    nextDueAt.value = data.nextDueAt
   } catch {
     errorMsg.value = "Couldn't load what's due."
     items.value = []
@@ -123,7 +152,19 @@ watch(() => lang.code, () => {
   void load()
 })
 
-onMounted(load)
+onMounted(() => {
+  void load()
+  // A minute is the finest unit the phrase shows, so a minute is how often it
+  // needs to change.
+  ticker = setInterval(() => {
+    nowTick.value = Date.now()
+  }, 60_000)
+})
+
+onUnmounted(() => {
+  if (ticker)
+    clearInterval(ticker)
+})
 </script>
 
 <template>
@@ -175,6 +216,9 @@ onMounted(load)
       <div v-else-if="items.length === 0" class="mt-10 rounded-xl border border-[var(--color-border)] p-10 text-center">
         <p class="text-xl font-semibold">
           Nothing is due.
+        </p>
+        <p v-if="nextDue" class="mt-3 text-sm text-[var(--color-muted)]">
+          The next card is due in <span class="font-medium text-[var(--color-text)]">{{ nextDue }}</span>.
         </p>
         <p class="mt-3 text-sm text-[var(--color-muted)]">
           Everything you've learned is still resting. New cards are available whenever you want them.

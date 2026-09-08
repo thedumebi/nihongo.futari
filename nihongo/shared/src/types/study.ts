@@ -79,7 +79,15 @@ export const dueListResponseSchema = z.object({
   totalCards: z.number().int(),
   /** How many ITEMS are due per kind, for the filter chips. */
   byKind: z.array(z.object({ kind: z.string(), count: z.number().int() })),
-  serverTime: z.string()
+  serverTime: z.string(),
+  /**
+   * When the next card falls due, if none is due now.
+   *
+   * An empty due list said only "nothing due" and left the reader with no idea
+   * whether that meant an hour or a week. Null when something IS due, or when
+   * there is no scheduled card ahead at all.
+   */
+  nextDueAt: z.string().nullable().default(null)
 }).openapi('DueList')
 
 export type DueListResponse = z.infer<typeof dueListResponseSchema>

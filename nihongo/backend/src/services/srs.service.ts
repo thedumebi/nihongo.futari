@@ -53,7 +53,7 @@ import {
   replay
 } from '@nihongo/shared/lib'
 import { ghostPolicySchema } from '@nihongo/shared/types'
-import { and, asc, eq, inArray, isNull, lt, lte, or, sql } from 'drizzle-orm'
+import { and, asc, eq, gt, inArray, isNull, lt, lte, or, sql } from 'drizzle-orm'
 
 import { assetUrl, withAssetUrls, withDialogueAudio } from '@/lib/assets.js'
 
@@ -1593,7 +1593,7 @@ export async function getDueList(userId: string, query: DueListQuery): Promise<D
     .where(eq(languages.code, query.languageCode))
     .limit(1)
   if (!language)
-    return { items: [], total: 0, totalCards: 0, byKind: [], serverTime: now.toISOString() }
+    return { items: [], total: 0, totalCards: 0, byKind: [], serverTime: now.toISOString(), nextDueAt: null }
 
   const kindFilter = query.kind ? [eq(studyItems.kind, query.kind)] : []
 
@@ -1728,12 +1728,41 @@ export async function getDueList(userId: string, query: DueListQuery): Promise<D
     }]
   })
 
+  // When nothing is due, when the next thing will be.
+  //
+  // "Nothing is due" on its own leaves the reader guessing whether that means
+  // an hour or a week, and the only way to find out was to keep opening the
+  // page. Asked for only when the list is empty, so the common path pays
+  // nothing for it.
+  let nextDueAt: string | null = null
+  if ((totals?.total ?? 0) === 0) {
+    const [soonest] = await db
+      .select({ due: srsCards.due })
+      .from(srsCards)
+      .innerJoin(studyItemFacets, eq(studyItemFacets.id, srsCards.facetId))
+      .innerJoin(studyItems, eq(studyItems.id, studyItemFacets.studyItemId))
+      .where(and(
+        eq(srsCards.userId, userId),
+        eq(srsCards.languageId, language.id),
+        eq(srsCards.suspended, false),
+        gt(srsCards.due, now),
+        inArray(srsCards.state, [1, 2, 3]),
+        eq(studyItemFacets.enabled, true),
+        eq(studyItems.published, true),
+        eq(studyItems.active, true)
+      ))
+      .orderBy(asc(srsCards.due))
+      .limit(1)
+    nextDueAt = soonest?.due?.toISOString() ?? null
+  }
+
   return {
     items,
     total: totals?.total ?? 0,
     totalCards: totals?.totalCards ?? 0,
     byKind,
-    serverTime: now.toISOString()
+    serverTime: now.toISOString(),
+    nextDueAt
   }
 }
 
