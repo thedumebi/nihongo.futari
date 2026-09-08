@@ -9,8 +9,6 @@ import type {
 } from '@nihongo/shared/types'
 
 import db from '@nihongo/shared/db'
-import { DateTime } from 'luxon'
-
 import {
   curriculumUnitItems,
   curriculumUnits,
@@ -25,10 +23,11 @@ import {
   srsCards,
   studyItemFacets,
   studyItems,
-  userSettings,
-  users
+  users,
+  userSettings
 } from '@nihongo/shared/db/schema'
 import { and, asc, eq, inArray, isNull, sql } from 'drizzle-orm'
+import { DateTime } from 'luxon'
 
 import { withAssetUrls } from '../lib/assets.js'
 import { readingFor } from '../lib/token-reading.js'
