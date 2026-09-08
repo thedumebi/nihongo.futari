@@ -9,6 +9,8 @@ import type {
 } from '@nihongo/shared/types'
 
 import db from '@nihongo/shared/db'
+import { DateTime } from 'luxon'
+
 import {
   curriculumUnitItems,
   curriculumUnits,
@@ -22,7 +24,9 @@ import {
   lessonViews,
   srsCards,
   studyItemFacets,
-  studyItems
+  studyItems,
+  userSettings,
+  users
 } from '@nihongo/shared/db/schema'
 import { and, asc, eq, inArray, isNull, sql } from 'drizzle-orm'
 
@@ -400,12 +404,6 @@ export async function completeLesson(
   if (!point)
     return null
 
-  const [existing] = await db
-    .select({ completedAt: lessonViews.completedAt })
-    .from(lessonViews)
-    .where(and(eq(lessonViews.userId, userId), eq(lessonViews.studyItemId, point.studyItemId)))
-    .limit(1)
-
   const now = new Date()
   const [row] = await db
     .insert(lessonViews)
@@ -429,12 +427,96 @@ export async function completeLesson(
       })
   }
 
+  const addedToReview = await enterReview(userId, point.studyItemId, input, now)
+
   return {
     studyItemId: row!.studyItemId,
     completedAt: row!.completedAt!.toISOString(),
     score: input.score,
-    addedToReview: existing === undefined
+    addedToReview
   }
+}
+
+/**
+ * Finishing a lesson is what puts the topic into Review.
+ *
+ * This was the whole point of the lesson flow and it was never wired up. The
+ * function recorded the view, recorded the questions missed, and then returned
+ * `addedToReview: true` without creating anything — so a finished lesson
+ * produced a topic with no card, which no queue can serve. The missed questions
+ * were stored faithfully and could never come back, because `promptPick` only
+ * chooses a prompt for a card that is already in the queue.
+ *
+ * `state = 1` (Learning) rather than 0, so it counts as due under the canonical
+ * predicate immediately instead of waiting behind the new-card limit.
+ *
+ * No `srs_review_logs` row is written. Answers given thirty seconds after
+ * reading the explanation are not evidence of retention, and `srs_cards` is a
+ * fold over those logs — fabricating history would inflate every future
+ * interval permanently.
+ */
+async function enterReview(
+  userId: string,
+  studyItemId: string,
+  input: CompleteLessonInput,
+  now: Date
+): Promise<boolean> {
+  const [facet] = await db
+    .select({ id: studyItemFacets.id, languageId: studyItems.languageId })
+    .from(studyItemFacets)
+    .innerJoin(studyItems, eq(studyItems.id, studyItemFacets.studyItemId))
+    .where(and(
+      eq(studyItemFacets.studyItemId, studyItemId),
+      eq(studyItemFacets.facet, 'usage'),
+      eq(studyItemFacets.enabled, true)
+    ))
+    .limit(1)
+
+  if (!facet)
+    return false
+
+  // Anything missed and the topic comes back today; a clean run waits for the
+  // next study day. The score sets the first interval and nothing else.
+  const due = input.missedPromptIds.length > 0 || input.score < 100
+    ? now
+    : await nextDayBoundary(userId, now)
+
+  const created = await db
+    .insert(srsCards)
+    .values({
+      userId,
+      facetId: facet.id,
+      languageId: facet.languageId,
+      due,
+      state: 1,
+      firstSeenAt: now
+    })
+    // Re-taking a lesson must never reset a schedule the reader has earned.
+    .onConflictDoNothing()
+    .returning({ id: srsCards.id })
+
+  return created.length > 0
+}
+
+/** The start of the reader's next study day, in their own timezone. */
+async function nextDayBoundary(userId: string, now: Date): Promise<Date> {
+  const [row] = await db
+    .select({ timezone: users.timezone, hour: userSettings.dayBoundaryHour })
+    .from(users)
+    .leftJoin(userSettings, eq(userSettings.userId, users.id))
+    .where(eq(users.id, userId))
+    .limit(1)
+
+  const zone = row?.timezone ?? 'UTC'
+  const hour = row?.hour ?? 4
+  const local = DateTime.fromJSDate(now, { zone })
+  if (!local.isValid)
+    return new Date(now.getTime() + 20 * 60 * 60 * 1000)
+
+  // Before the boundary the "next" day starts later today; after it, tomorrow.
+  const todayBoundary = local.startOf('day').plus({ hours: hour })
+  const next = local < todayBoundary ? todayBoundary : todayBoundary.plus({ days: 1 })
+  return next.toJSDate()
 }
 
 /** Clear a miss once it has been answered correctly in review. */
