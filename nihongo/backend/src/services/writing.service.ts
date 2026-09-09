@@ -145,7 +145,7 @@ export interface WritingQueueFilters {
   variant?: string
   /** The consonant line — k, s, g, z — or '' for the vowel line. Kana only. */
   row?: string
-  /** Kanji only: restrict to a JLPT level code such as N5. */
+  /** Kanji only: a JLPT level code, or several comma-separated — 'N5,N4'. */
   levelCode?: string
   limit: number
 }
@@ -203,6 +203,11 @@ export async function getQueue(filters: WritingQueueFilters): Promise<WritingQue
     }
   }
 
+  const levelCodes = (filters.levelCode ?? '')
+    .split(',')
+    .map(c => c.trim())
+    .filter(Boolean)
+
   const rows = await db
     .select({
       id: kanji.id,
@@ -219,10 +224,11 @@ export async function getQueue(filters: WritingQueueFilters): Promise<WritingQue
       isNotNull(kanji.strokeCount),
       // The level picker the page never offered. 430 kanji at N5 down to 307 at
       // N1, and practising all 2,004 in stroke-count order was the only option.
-      filters.levelCode
+      levelCodes.length > 0
         ? sql`exists (
             select 1 from language_levels l
-            where l.id = ${kanji.levelId} and l.code = ${filters.levelCode}
+            where l.id = ${kanji.levelId}
+              and l.code in (${sql.join(levelCodes.map(c => sql`${c}`), sql`, `)})
           )`
         : undefined,
       sql`exists (select 1 from character_strokes cs where cs.kanji_id = ${kanji.id})`

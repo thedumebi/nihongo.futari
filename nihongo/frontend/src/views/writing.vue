@@ -34,8 +34,8 @@ const deck = ref('hiragana')
  * means every line, which is also what it starts as.
  */
 const chosen = ref<string[]>([])
-/** Kanji only. '' is every level. */
-const level = ref('')
+/** Kanji only. Empty is every level; otherwise the codes chosen. */
+const levels = ref<string[]>([])
 /** Off by default: stroke order is taught in order, so that is how it starts. */
 const shuffle = ref(false)
 
@@ -68,8 +68,13 @@ async function load() {
     const queue = await getQueue({
       kind: config.kind,
       script: config.script,
-      levelCode: config.kind === 'kanji' && level.value ? level.value : undefined,
-      limit: 200
+      levelCode: config.kind === 'kanji' && levels.value.length > 0
+        ? levels.value.join(',')
+        : undefined,
+      // Enough to hold every level at once: N5 through N1 with stroke data is
+      // 1,832 characters, and a deck that quietly stopped at 200 would be
+      // wrong in a way nothing on screen would show.
+      limit: 2000
     })
     all.value = queue.items
     applyLine()
@@ -137,6 +142,12 @@ function toggleLine(value: string): void {
   chosen.value = chosen.value.includes(value)
     ? chosen.value.filter(v => v !== value)
     : [...chosen.value, value]
+}
+
+function toggleLevel(value: string): void {
+  levels.value = levels.value.includes(value)
+    ? levels.value.filter(v => v !== value)
+    : [...levels.value, value]
 }
 
 function reset() {
@@ -210,14 +221,15 @@ function onKey(event: KeyboardEvent) {
 
 watch(deck, () => {
   chosen.value = []
+  levels.value = []
   void load()
 })
 watch(chosen, applyLine, { deep: true })
 watch(shuffle, applyLine)
-watch(level, () => {
+watch(levels, () => {
   if (deck.value === 'kanji')
     void load()
-})
+}, { deep: true })
 onMounted(() => {
   load()
   window.addEventListener('keydown', onKey)
@@ -246,19 +258,38 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
             header="Deck"
             width-class="w-44"
           />
-          <Dropdown
-            v-if="deck === 'kanji'"
-            v-model="level"
-            :options="[{ value: '', label: 'Every level' }, ...LEVELS.map(l => ({ value: l, label: l }))]"
-            header="Level"
-            width-class="w-44"
-          />
           <label class="flex items-center gap-2 rounded-lg border border-[var(--color-border)] px-3 text-sm text-muted">
             <input v-model="shuffle" type="checkbox" class="accent-[var(--color-primary)]">
             Shuffle
           </label>
         </div>
       </header>
+
+      <!-- Levels, chosen the same way the lines are: several at once. -->
+      <div v-if="deck === 'kanji'" class="mt-4 flex flex-wrap gap-2">
+        <button
+          type="button"
+          class="rounded-lg border px-3 py-1.5 text-sm transition"
+          :class="levels.length === 0
+            ? 'border-[var(--color-text)] font-medium'
+            : 'border-[var(--color-border)] text-muted hover:border-[var(--color-text)]'"
+          @click="levels = []"
+        >
+          All
+        </button>
+        <button
+          v-for="l in LEVELS"
+          :key="l"
+          type="button"
+          class="rounded-lg border px-3 py-1.5 text-sm transition"
+          :class="levels.includes(l)
+            ? 'border-[var(--color-text)] font-medium'
+            : 'border-[var(--color-border)] text-muted hover:border-[var(--color-text)]'"
+          @click="toggleLevel(l)"
+        >
+          {{ l }}
+        </button>
+      </div>
 
       <!-- One chip per line of the syllabary. Named in romaji with the kana
            underneath, so the label is readable before the kana are. -->
@@ -362,7 +393,7 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
             <Eraser class="size-4" /> Clear
           </button>
 
-          <div class="ml-auto flex gap-2">
+          <div class="ml-auto">
             <button
               v-if="!grade"
               type="button"
@@ -372,17 +403,9 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
             >
               Check
             </button>
-            <button
-              v-else
-              type="button"
-              class="flex items-center gap-1.5 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-bg"
-              @click="next"
-            >
-              Next <ChevronRight class="size-4" />
-            </button>
           </div>
 
-          <div class="mt-3 flex items-center justify-between">
+          <div class="mt-3 flex items-center justify-center gap-3">
             <button
               type="button"
               class="rounded-lg px-2 py-1 text-sm text-[var(--color-muted)] transition hover:text-[var(--color-text)] disabled:opacity-40"
@@ -391,7 +414,13 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
             >
               &larr; Back
             </button>
-            <span class="text-xs text-[var(--color-muted)]">{{ index + 1 }} / {{ items.length }}</span>
+            <button
+              type="button"
+              class="flex items-center gap-1.5 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-bg"
+              @click="next"
+            >
+              Next <ChevronRight class="size-4" />
+            </button>
             <button
               type="button"
               class="rounded-lg px-2 py-1 text-sm text-[var(--color-muted)] transition hover:text-[var(--color-text)] disabled:opacity-40"
@@ -401,6 +430,9 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
               Skip &rarr;
             </button>
           </div>
+          <p class="mt-2 text-center text-xs text-[var(--color-muted)]">
+            {{ index + 1 }} / {{ items.length }}
+          </p>
         </div>
 
         <div
