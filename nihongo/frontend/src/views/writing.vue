@@ -26,8 +26,14 @@ const DECKS = [
 ]
 
 const deck = ref('hiragana')
-/** '' is every line; otherwise `${variant}:${row}` — 'base:k', 'dakuten:g'. */
-const line = ref('')
+/**
+ * The lines chosen, as `${variant}:${row}` keys — 'base:k', 'dakuten:g'.
+ *
+ * A set rather than one value, because the useful session is "a, k and s, then
+ * shuffle through them" and a single-choice dropdown could not say that. Empty
+ * means every line, which is also what it starts as.
+ */
+const chosen = ref<string[]>([])
 /** Kanji only. '' is every level. */
 const level = ref('')
 /** Off by default: stroke order is taught in order, so that is how it starts. */
@@ -81,7 +87,7 @@ async function load() {
  * with no dakuten simply offers none. Kanji have no rows and get no picker.
  */
 const lines = computed(() => {
-  const seen = new Map<string, { value: string, label: string }>()
+  const seen = new Map<string, { value: string, label: string, glyphs: string }>()
   for (const c of all.value) {
     if (c.variant === null)
       continue
@@ -93,10 +99,10 @@ const lines = computed(() => {
       // romaji says it plainly: "ka — かきくけこ".
       const members = all.value.filter(m => `${m.variant}:${m.row ?? ''}` === key)
       const romaji = members[0]?.label ?? ''
-      const glyphs = members.map(m => m.character).join('')
       seen.set(key, {
         value: key,
-        label: c.row ? `${romaji} — ${glyphs}` : `vowels — ${glyphs}`
+        label: c.row ? romaji : 'a i u e o',
+        glyphs: members.map(m => m.character).join('')
       })
     }
   }
@@ -119,12 +125,18 @@ function shuffled<T>(list: T[]): T[] {
 }
 
 function applyLine() {
-  const chosen = line.value === ''
+  const picked = chosen.value.length === 0
     ? all.value
-    : all.value.filter(c => `${c.variant}:${c.row ?? ''}` === line.value)
-  items.value = shuffle.value ? shuffled(chosen) : chosen
+    : all.value.filter(c => chosen.value.includes(`${c.variant}:${c.row ?? ''}`))
+  items.value = shuffle.value ? shuffled(picked) : picked
   index.value = 0
   reset()
+}
+
+function toggleLine(value: string): void {
+  chosen.value = chosen.value.includes(value)
+    ? chosen.value.filter(v => v !== value)
+    : [...chosen.value, value]
 }
 
 function reset() {
@@ -197,10 +209,10 @@ function onKey(event: KeyboardEvent) {
 }
 
 watch(deck, () => {
-  line.value = ''
+  chosen.value = []
   void load()
 })
-watch(line, applyLine)
+watch(chosen, applyLine, { deep: true })
 watch(shuffle, applyLine)
 watch(level, () => {
   if (deck.value === 'kanji')
@@ -235,13 +247,6 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
             width-class="w-44"
           />
           <Dropdown
-            v-if="lines.length > 1"
-            v-model="line"
-            :options="[{ value: '', label: 'Every line' }, ...lines]"
-            header="Line"
-            width-class="w-56"
-          />
-          <Dropdown
             v-if="deck === 'kanji'"
             v-model="level"
             :options="[{ value: '', label: 'Every level' }, ...LEVELS.map(l => ({ value: l, label: l }))]"
@@ -254,6 +259,34 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
           </label>
         </div>
       </header>
+
+      <!-- One chip per line of the syllabary. Named in romaji with the kana
+           underneath, so the label is readable before the kana are. -->
+      <div v-if="lines.length > 1" class="mt-4 flex flex-wrap gap-2">
+        <button
+          type="button"
+          class="rounded-lg border px-3 py-1.5 text-sm transition"
+          :class="chosen.length === 0
+            ? 'border-[var(--color-text)] font-medium'
+            : 'border-[var(--color-border)] text-muted hover:border-[var(--color-text)]'"
+          @click="chosen = []"
+        >
+          All
+        </button>
+        <button
+          v-for="l in lines"
+          :key="l.value"
+          type="button"
+          class="rounded-lg border px-3 py-1.5 text-left text-sm transition"
+          :class="chosen.includes(l.value)
+            ? 'border-[var(--color-text)] font-medium'
+            : 'border-[var(--color-border)] text-muted hover:border-[var(--color-text)]'"
+          @click="toggleLine(l.value)"
+        >
+          {{ l.label }}
+          <span class="ml-1.5 opacity-60" style="font-family: var(--font-jp)">{{ l.glyphs }}</span>
+        </button>
+      </div>
 
       <p v-if="loading" class="py-16 text-center text-muted">
         Loading…
