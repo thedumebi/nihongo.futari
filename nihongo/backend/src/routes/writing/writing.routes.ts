@@ -16,6 +16,10 @@ export const queue = createPublicRoute({
       languageCode: z.string().min(2).default('ja'),
       kind: z.enum(['kana', 'kanji']).default('kana'),
       script: z.enum(['hiragana', 'katakana']).optional(),
+      variant: z.enum(['base', 'dakuten', 'handakuten']).optional(),
+      // Empty string is the vowel line and a meaningful value, so this is
+      // `optional` rather than defaulted — absent means every line.
+      row: z.string().optional(),
       limit: z.coerce.number().int().min(1).max(200).default(50)
     })
   },

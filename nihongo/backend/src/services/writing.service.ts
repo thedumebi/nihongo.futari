@@ -90,12 +90,22 @@ export async function getCharacter(languageCode: string, character: string): Pro
       // KanjiVG is authoritative for drawing: it is what the grader compares
       // against, so a KANJIDIC count that disagrees would be a wrong target.
       strokeCount: strokes.length || (kanjiRow.strokeCount ?? 0),
-      strokes
+      strokes,
+      // Kanji belong to no syllabary line.
+      row: null,
+      variant: null
     }
   }
 
   const [kanaRow] = await db
-    .select({ id: kana.id, character: kana.character, romaji: kana.romaji, script: kana.script })
+    .select({
+      id: kana.id,
+      character: kana.character,
+      romaji: kana.romaji,
+      script: kana.script,
+      row: kana.row,
+      variant: kana.variant
+    })
     .from(kana)
     .where(and(eq(kana.languageId, langId), eq(kana.character, character)))
     .limit(1)
@@ -111,7 +121,9 @@ export async function getCharacter(languageCode: string, character: string): Pro
     label: kanaRow.romaji,
     readings: [kanaRow.romaji],
     strokeCount: strokes.length,
-    strokes
+    strokes,
+    row: kanaRow.row,
+    variant: kanaRow.variant
   }
 }
 
@@ -120,6 +132,10 @@ export interface WritingQueueFilters {
   kind: 'kana' | 'kanji'
   /** hiragana | katakana, kana only. */
   script?: string
+  /** base | dakuten | handakuten, kana only. */
+  variant?: string
+  /** The consonant line — k, s, g, z — or '' for the vowel line. Kana only. */
+  row?: string
   /** Kanji only: restrict to a JLPT level code such as N5. */
   levelCode?: string
   limit: number
@@ -139,13 +155,23 @@ export async function getQueue(filters: WritingQueueFilters): Promise<WritingQue
 
   if (filters.kind === 'kana') {
     const rows = await db
-      .select({ id: kana.id, character: kana.character, romaji: kana.romaji })
+      .select({
+        id: kana.id,
+        character: kana.character,
+        romaji: kana.romaji,
+        row: kana.row,
+        variant: kana.variant
+      })
       .from(kana)
       .where(and(
         eq(kana.languageId, langId),
         filters.script ? eq(kana.script, filters.script) : undefined,
-        // Only base kana: the drill teaches strokes, and だ adds no strokes to た.
-        eq(kana.variant, 'base'),
+        // Dakuten rows used to be excluded here, on the grounds that だ adds no
+        // strokes to た. It adds two, and asking to practise the が line is a
+        // reasonable thing to want — every one of the 142 kana has stroke data,
+        // so there was nothing to protect against.
+        filters.variant ? eq(kana.variant, filters.variant) : undefined,
+        filters.row === undefined ? undefined : eq(kana.row, filters.row),
         sql`exists (select 1 from character_strokes cs where cs.kana_id = ${kana.id})`
       ))
       .orderBy(asc(kana.orderIndex))
@@ -160,7 +186,9 @@ export async function getQueue(filters: WritingQueueFilters): Promise<WritingQue
         label: row.romaji,
         readings: [row.romaji],
         strokeCount: strokes.get(row.id)?.length ?? 0,
-        strokes: strokes.get(row.id) ?? []
+        strokes: strokes.get(row.id) ?? [],
+        row: row.row,
+        variant: row.variant
       })),
       total: rows.length
     }
@@ -194,7 +222,9 @@ export async function getQueue(filters: WritingQueueFilters): Promise<WritingQue
       label: meaningOf(row.meanings),
       readings: [],
       strokeCount: strokes.get(row.id)?.length ?? row.strokeCount ?? 0,
-      strokes: strokes.get(row.id) ?? []
+      strokes: strokes.get(row.id) ?? [],
+      row: null,
+      variant: null
     })),
     total: rows.length
   }

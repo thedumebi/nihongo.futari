@@ -100,7 +100,16 @@ export const writingCharacterSchema = z.object({
   label: z.string().nullable(),
   readings: z.array(z.string()),
   strokeCount: z.number().int().nonnegative(),
-  strokes: z.array(referenceStrokeSchema)
+  strokes: z.array(referenceStrokeSchema),
+  /**
+   * Which line of the syllabary this belongs to, kana only.
+   *
+   * `row` is the consonant — k, s, g, z — and empty for the vowel line; `variant`
+   * is base, dakuten or handakuten. Together they name a line the way a learner
+   * does, which is what the practice picker offers.
+   */
+  row: z.string().nullable().default(null),
+  variant: z.string().nullable().default(null)
 }).openapi('WritingCharacter')
 
 export const writingQueueSchema = z.object({

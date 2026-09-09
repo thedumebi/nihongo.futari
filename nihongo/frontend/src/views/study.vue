@@ -730,6 +730,14 @@ const referenceStrokes = computed<ReferenceStroke[]>(() => {
 const canvas = ref<InstanceType<typeof WritingCanvas> | null>(null)
 const drawnStrokes = ref<Stroke[]>([])
 const handwriting = ref<HandwritingGrade | null>(null)
+
+/**
+ * What the stroke grader would have chosen, highlighted as the default.
+ *
+ * Only ever set for handwriting; every other card type leaves it null and falls
+ * back to Good, which is what Enter has always meant.
+ */
+const suggested = ref<1 | 2 | 3 | 4 | null>(null)
 /**
  * The stroke guide, on unless it is turned off.
  *
@@ -1014,9 +1022,16 @@ function check() {
   if (isDialogue.value)
     return
 
-  // Handwriting is the one exercise with a real continuous score, so its
-  // rating is derived rather than self-reported — judging your own handwriting
-  // is exactly what the grader exists to replace.
+  // Handwriting has a real continuous score, so the grader proposes the rating
+  // rather than leaving it blank — but it no longer decides it alone.
+  //
+  // It used to submit `ratingFromGrade` immediately, which is why this was the
+  // one card type with no Hard/Good/Easy row: the reader was never asked. The
+  // trouble is that the two things are not the same measure. Stroke accuracy
+  // says how close the shape was; an FSRS rating says how hard it was to
+  // recall — and you can draw a character perfectly after ten seconds of
+  // hesitation, which is Hard by any honest reckoning and invisible to the
+  // grader. The score sets the default, the reader can say otherwise.
   if (isCanvas.value) {
     if (drawnStrokes.value.length === 0)
       return
@@ -1029,7 +1044,13 @@ function check() {
     if (grade.passed)
       sessionCorrect.value += 1
     play()
-    void submitRating(ratingFromGrade(grade))
+    // A failed attempt is Again with nothing to weigh up, exactly as a wrong
+    // typed answer is.
+    if (!grade.passed) {
+      void submitRating(1)
+      return
+    }
+    suggested.value = ratingFromGrade(grade)
     return
   }
 
@@ -1123,6 +1144,7 @@ function resetCard() {
   revealed.value = false
   rated.value = false
   handwriting.value = null
+  suggested.value = null
   drawnStrokes.value = []
   placed.value = []
   canvas.value?.clear()
@@ -1174,9 +1196,11 @@ async function skip() {
 
 async function next() {
   // A revealed-but-unrated correct answer still counts as Good, so skipping
-  // ahead never silently loses a review.
+  // ahead never silently loses a review. For handwriting the default is what
+  // the stroke grader proposed rather than a flat Good — it has actually
+  // measured something.
   if (revealed.value && wasCorrect.value && !rated.value)
-    void submitRating(3)
+    void submitRating(suggested.value ?? 3)
   resetCard()
   index.value += 1
   if (index.value >= items.value.length) {
@@ -1862,20 +1886,29 @@ watch(() => lang.code, async () => {
                 </p>
               </div>
 
-              <template v-if="revealed && wasCorrect && !isCanvas">
+              <template v-if="revealed && wasCorrect">
                 <div class="flex gap-2">
                   <button
                     v-for="r in RATINGS"
                     :key="r.value"
                     type="button"
-                    class="flex-1 rounded-lg border border-[var(--color-border)] px-3 py-2.5 text-sm transition hover:border-[var(--color-text)]"
+                    class="flex-1 rounded-lg border px-3 py-2.5 text-sm transition hover:border-[var(--color-text)]"
+                    :class="r.value === suggested
+                      ? 'border-[var(--color-text)] font-medium'
+                      : 'border-[var(--color-border)]'"
                     @click="submitRating(r.value); next()"
                   >
                     {{ r.label }} <span class="text-[var(--color-muted)]">{{ r.key }}</span>
                   </button>
                 </div>
                 <p class="text-center text-xs text-[var(--color-muted)]">
-                  Enter for Good &middot; space to replay
+                  <template v-if="suggested">
+                    Enter for {{ RATINGS.find(r => r.value === suggested)?.label }}, from the stroke score
+                  </template>
+                  <template v-else>
+                    Enter for Good
+                  </template>
+                  &middot; space to replay
                 </p>
               </template>
               <Button

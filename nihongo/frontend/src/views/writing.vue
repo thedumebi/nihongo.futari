@@ -2,7 +2,7 @@
 import type { HandwritingGrade, Stroke, WritingCharacter } from '@nihongo/shared/types'
 
 import { gradeHandwriting, samplePath } from '@nihongo/shared/lib'
-import { Check, ChevronRight, Eraser, Eye, Lightbulb, RotateCcw, X } from 'lucide-vue-next'
+import { Check, ChevronLeft, ChevronRight, Eraser, Eye, Lightbulb, RotateCcw, X } from 'lucide-vue-next'
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 
 import { getQueue } from '@/api/writing'
@@ -26,6 +26,9 @@ const DECKS = [
 ]
 
 const deck = ref('hiragana')
+/** '' is every line; otherwise `${variant}:${row}` — 'base:k', 'dakuten:g'. */
+const line = ref('')
+const all = ref<WritingCharacter[]>([])
 const items = ref<WritingCharacter[]>([])
 const index = ref(0)
 const loading = ref(true)
@@ -48,15 +51,45 @@ async function load() {
   error.value = null
   try {
     const config = DECKS.find(d => d.value === deck.value)!
-    const queue = await getQueue({ kind: config.kind, script: config.script, limit: 50 })
-    items.value = queue.items
-    index.value = 0
-    reset()
+    // Everything for the deck in one request, so switching line is instant and
+    // does not cost a round trip.
+    const queue = await getQueue({ kind: config.kind, script: config.script, limit: 200 })
+    all.value = queue.items
+    applyLine()
   } catch {
     error.value = 'Could not load characters to practise.'
   } finally {
     loading.value = false
   }
+}
+
+/**
+ * The lines a learner would name: あ行, か行, が行.
+ *
+ * Built from what actually loaded rather than from a fixed table, so a deck
+ * with no dakuten simply offers none. Kanji have no rows and get no picker.
+ */
+const lines = computed(() => {
+  const seen = new Map<string, { value: string, label: string }>()
+  for (const c of all.value) {
+    if (c.variant === null)
+      continue
+    const key = `${c.variant}:${c.row ?? ''}`
+    if (!seen.has(key)) {
+      const name = c.row ? `${c.character}行` : '母音'
+      const mark = c.variant === 'dakuten' ? ' ゛' : c.variant === 'handakuten' ? ' ゜' : ''
+      seen.set(key, { value: key, label: `${name}${mark}` })
+    }
+  }
+  return [...seen.values()]
+})
+
+function applyLine() {
+  items.value = line.value === ''
+    ? all.value
+    : all.value.filter(c => `${c.variant}:${c.row ?? ''}` === line.value)
+  index.value = 0
+  reset()
 }
 
 function reset() {
@@ -89,6 +122,20 @@ function next() {
   reset()
 }
 
+/**
+ * Back a character.
+ *
+ * "If I want to write something I have done" — the drill only ever went
+ * forwards, so a character you wanted another go at was gone until you had
+ * cycled the whole deck. Wraps the same way `next` does.
+ */
+function prev() {
+  if (items.value.length === 0)
+    return
+  index.value = (index.value - 1 + items.value.length) % items.value.length
+  reset()
+}
+
 function hint() {
   revealStrokes.value = Math.min(revealStrokes.value + 1, current.value?.strokeCount ?? 0)
 }
@@ -102,7 +149,11 @@ const ISSUE_TEXT: Record<string, string> = {
 }
 
 function onKey(event: KeyboardEvent) {
-  if (event.key === 'Enter') {
+  if (event.key === 'ArrowLeft') {
+    prev()
+  } else if (event.key === 'ArrowRight') {
+    next()
+  } else if (event.key === 'Enter') {
     grade.value ? next() : check()
   } else if (event.key === 'Backspace') {
     event.preventDefault()
@@ -110,7 +161,11 @@ function onKey(event: KeyboardEvent) {
   }
 }
 
-watch(deck, load)
+watch(deck, () => {
+  line.value = ''
+  void load()
+})
+watch(line, applyLine)
 onMounted(() => {
   load()
   window.addEventListener('keydown', onKey)
@@ -132,12 +187,21 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
             Trace it, then write it from memory.
           </p>
         </div>
-        <Dropdown
-          v-model="deck"
-          :options="DECKS.map(d => ({ value: d.value, label: d.label }))"
-          header="Deck"
-          width-class="w-44"
-        />
+        <div class="flex flex-wrap gap-2">
+          <Dropdown
+            v-model="deck"
+            :options="DECKS.map(d => ({ value: d.value, label: d.label }))"
+            header="Deck"
+            width-class="w-44"
+          />
+          <Dropdown
+            v-if="lines.length > 1"
+            v-model="line"
+            :options="[{ value: '', label: 'Every line' }, ...lines]"
+            header="Line"
+            width-class="w-44"
+          />
+        </div>
       </header>
 
       <p v-if="loading" class="py-16 text-center text-muted">
@@ -228,6 +292,26 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
               @click="next"
             >
               Next <ChevronRight class="size-4" />
+            </button>
+          </div>
+
+          <div class="mt-3 flex items-center justify-between text-sm">
+            <button
+              type="button"
+              class="flex items-center gap-1 rounded-lg px-2 py-1 text-muted hover:text-[var(--color-text)] disabled:opacity-40"
+              :disabled="items.length < 2"
+              @click="prev"
+            >
+              <ChevronLeft class="size-4" /> Back
+            </button>
+            <span class="text-xs text-muted">{{ index + 1 }} / {{ items.length }}</span>
+            <button
+              type="button"
+              class="flex items-center gap-1 rounded-lg px-2 py-1 text-muted hover:text-[var(--color-text)] disabled:opacity-40"
+              :disabled="items.length < 2"
+              @click="next"
+            >
+              Skip <ChevronRight class="size-4" />
             </button>
           </div>
         </div>
