@@ -7,6 +7,8 @@ import client from './client'
 export interface WritingQueueParams {
   kind: 'kana' | 'kanji'
   script?: 'hiragana' | 'katakana'
+  /** Kanji only: N5 … N1. */
+  levelCode?: string
   limit?: number
   languageCode?: string
 }

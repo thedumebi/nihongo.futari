@@ -2,7 +2,7 @@
 import type { HandwritingGrade, Stroke, WritingCharacter } from '@nihongo/shared/types'
 
 import { gradeHandwriting, samplePath } from '@nihongo/shared/lib'
-import { Check, ChevronLeft, ChevronRight, Eraser, Eye, Lightbulb, RotateCcw, X } from 'lucide-vue-next'
+import { Check, ChevronRight, Eraser, Eye, Lightbulb, RotateCcw, X } from 'lucide-vue-next'
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 
 import { getQueue } from '@/api/writing'
@@ -28,6 +28,12 @@ const DECKS = [
 const deck = ref('hiragana')
 /** '' is every line; otherwise `${variant}:${row}` — 'base:k', 'dakuten:g'. */
 const line = ref('')
+/** Kanji only. '' is every level. */
+const level = ref('')
+/** Off by default: stroke order is taught in order, so that is how it starts. */
+const shuffle = ref(false)
+
+const LEVELS = ['N5', 'N4', 'N3', 'N2', 'N1']
 const all = ref<WritingCharacter[]>([])
 const items = ref<WritingCharacter[]>([])
 const index = ref(0)
@@ -53,7 +59,12 @@ async function load() {
     const config = DECKS.find(d => d.value === deck.value)!
     // Everything for the deck in one request, so switching line is instant and
     // does not cost a round trip.
-    const queue = await getQueue({ kind: config.kind, script: config.script, limit: 200 })
+    const queue = await getQueue({
+      kind: config.kind,
+      script: config.script,
+      levelCode: config.kind === 'kanji' && level.value ? level.value : undefined,
+      limit: 200
+    })
     all.value = queue.items
     applyLine()
   } catch {
@@ -76,18 +87,42 @@ const lines = computed(() => {
       continue
     const key = `${c.variant}:${c.row ?? ''}`
     if (!seen.has(key)) {
-      const name = c.row ? `${c.character}行` : '母音'
-      const mark = c.variant === 'dakuten' ? ' ゛' : c.variant === 'handakuten' ? ' ゜' : ''
-      seen.set(key, { value: key, label: `${name}${mark}` })
+      // Named in romaji, not in kana. か行 asks a beginner to read both the
+      // kana they came here to learn and the kanji 行 — which is the one thing
+      // this page can safely assume they cannot do. The first character's
+      // romaji says it plainly: "ka — かきくけこ".
+      const members = all.value.filter(m => `${m.variant}:${m.row ?? ''}` === key)
+      const romaji = members[0]?.label ?? ''
+      const glyphs = members.map(m => m.character).join('')
+      seen.set(key, {
+        value: key,
+        label: c.row ? `${romaji} — ${glyphs}` : `vowels — ${glyphs}`
+      })
     }
   }
   return [...seen.values()]
 })
 
+/**
+ * Fisher-Yates, on a copy.
+ *
+ * Not seeded and not stable: re-ticking the toggle deals a fresh order, which
+ * is the point of asking for one.
+ */
+function shuffled<T>(list: T[]): T[] {
+  const out = [...list]
+  for (let i = out.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1))
+    ;[out[i], out[j]] = [out[j]!, out[i]!]
+  }
+  return out
+}
+
 function applyLine() {
-  items.value = line.value === ''
+  const chosen = line.value === ''
     ? all.value
     : all.value.filter(c => `${c.variant}:${c.row ?? ''}` === line.value)
+  items.value = shuffle.value ? shuffled(chosen) : chosen
   index.value = 0
   reset()
 }
@@ -166,6 +201,11 @@ watch(deck, () => {
   void load()
 })
 watch(line, applyLine)
+watch(shuffle, applyLine)
+watch(level, () => {
+  if (deck.value === 'kanji')
+    void load()
+})
 onMounted(() => {
   load()
   window.addEventListener('keydown', onKey)
@@ -199,8 +239,19 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
             v-model="line"
             :options="[{ value: '', label: 'Every line' }, ...lines]"
             header="Line"
+            width-class="w-56"
+          />
+          <Dropdown
+            v-if="deck === 'kanji'"
+            v-model="level"
+            :options="[{ value: '', label: 'Every level' }, ...LEVELS.map(l => ({ value: l, label: l }))]"
+            header="Level"
             width-class="w-44"
           />
+          <label class="flex items-center gap-2 rounded-lg border border-[var(--color-border)] px-3 text-sm text-muted">
+            <input v-model="shuffle" type="checkbox" class="accent-[var(--color-primary)]">
+            Shuffle
+          </label>
         </div>
       </header>
 
@@ -216,11 +267,14 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
 
       <div v-else class="space-y-4">
         <div class="flex items-baseline justify-between">
-          <div>
+          <div class="min-w-0">
             <span class="text-4xl font-medium text-heading">{{ current.character }}</span>
-            <span v-if="current.label" class="ml-3 text-muted">{{ current.label }}</span>
+            <span v-if="current.label && current.kind === 'kana'" class="ml-3 text-muted">{{ current.label }}</span>
+            <p v-if="current.label && current.kind === 'kanji'" class="mt-1 text-base text-[var(--color-text)]">
+              {{ current.label }}
+            </p>
           </div>
-          <div class="text-right text-sm text-muted">
+          <div class="shrink-0 text-right text-sm text-muted">
             <div>{{ current.strokeCount }} strokes</div>
             <div>{{ index + 1 }} / {{ items.length }}</div>
           </div>
@@ -295,23 +349,23 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
             </button>
           </div>
 
-          <div class="mt-3 flex items-center justify-between text-sm">
+          <div class="mt-3 flex items-center justify-between">
             <button
               type="button"
-              class="flex items-center gap-1 rounded-lg px-2 py-1 text-muted hover:text-[var(--color-text)] disabled:opacity-40"
+              class="rounded-lg px-2 py-1 text-sm text-[var(--color-muted)] transition hover:text-[var(--color-text)] disabled:opacity-40"
               :disabled="items.length < 2"
               @click="prev"
             >
-              <ChevronLeft class="size-4" /> Back
+              &larr; Back
             </button>
-            <span class="text-xs text-muted">{{ index + 1 }} / {{ items.length }}</span>
+            <span class="text-xs text-[var(--color-muted)]">{{ index + 1 }} / {{ items.length }}</span>
             <button
               type="button"
-              class="flex items-center gap-1 rounded-lg px-2 py-1 text-muted hover:text-[var(--color-text)] disabled:opacity-40"
+              class="rounded-lg px-2 py-1 text-sm text-[var(--color-muted)] transition hover:text-[var(--color-text)] disabled:opacity-40"
               :disabled="items.length < 2"
               @click="next"
             >
-              Skip <ChevronRight class="size-4" />
+              Skip &rarr;
             </button>
           </div>
         </div>

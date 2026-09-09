@@ -20,6 +20,8 @@ export const queue = createPublicRoute({
       // Empty string is the vowel line and a meaningful value, so this is
       // `optional` rather than defaulted — absent means every line.
       row: z.string().optional(),
+      /** Kanji only: N5 … N1. */
+      levelCode: z.string().optional(),
       limit: z.coerce.number().int().min(1).max(200).default(50)
     })
   },

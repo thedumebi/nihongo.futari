@@ -18,8 +18,17 @@ import { and, asc, eq, inArray, isNotNull, sql } from 'drizzle-orm'
 /** KanjiVG draws every glyph in a 109x109 box. */
 const VIEW_BOX = 109
 
+/**
+ * What the character means, in a few words rather than one.
+ *
+ * A single gloss was all the practice card showed, and for a kanji that is
+ * often the least useful one — 生 as "life" says nothing about 生きる, 生まれる
+ * or 先生. Three is enough to place it without becoming a dictionary entry.
+ */
 function meaningOf(meanings: Array<{ gloss: string, lang: string }> | null): string | null {
-  return meanings?.find(m => m.lang === 'en')?.gloss ?? meanings?.[0]?.gloss ?? null
+  const english = meanings?.filter(m => m.lang === 'en') ?? []
+  const chosen = (english.length > 0 ? english : meanings ?? []).slice(0, 3)
+  return chosen.length > 0 ? chosen.map(m => m.gloss).join(', ') : null
 }
 
 async function languageId(languageCode: string): Promise<string | null> {
@@ -208,6 +217,14 @@ export async function getQueue(filters: WritingQueueFilters): Promise<WritingQue
       // the dictionary and sound series, not a practice list.
       eq(kanji.published, true),
       isNotNull(kanji.strokeCount),
+      // The level picker the page never offered. 430 kanji at N5 down to 307 at
+      // N1, and practising all 2,004 in stroke-count order was the only option.
+      filters.levelCode
+        ? sql`exists (
+            select 1 from language_levels l
+            where l.id = ${kanji.levelId} and l.code = ${filters.levelCode}
+          )`
+        : undefined,
       sql`exists (select 1 from character_strokes cs where cs.kanji_id = ${kanji.id})`
     ))
     .orderBy(asc(kanji.strokeCount), asc(kanji.frequencyRank))
