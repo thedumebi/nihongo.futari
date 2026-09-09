@@ -392,46 +392,52 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
           >
             <Eraser class="size-4" /> Clear
           </button>
+        </div>
 
-          <!-- Back, then whichever of Check and Next applies, then Skip.
-               Never both: before a verdict the middle slot asks for one, after
-               it the same slot moves on. The position count lives at the top of
-               the card and does not need repeating here. -->
-          <div class="mt-3 flex items-center justify-center gap-3">
-            <button
-              type="button"
-              class="rounded-lg px-2 py-1 text-sm text-[var(--color-muted)] transition hover:text-[var(--color-text)] disabled:opacity-40"
-              :disabled="items.length < 2"
-              @click="prev"
-            >
-              &larr; Back
-            </button>
-            <button
-              v-if="!grade"
-              type="button"
-              class="rounded-lg bg-primary px-4 py-2 text-sm font-medium text-bg disabled:opacity-40"
-              :disabled="drawn.length === 0"
-              @click="check"
-            >
-              Check
-            </button>
-            <button
-              v-else
-              type="button"
-              class="flex items-center gap-1.5 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-bg"
-              @click="next"
-            >
-              Next <ChevronRight class="size-4" />
-            </button>
-            <button
-              type="button"
-              class="rounded-lg px-2 py-1 text-sm text-[var(--color-muted)] transition hover:text-[var(--color-text)] disabled:opacity-40"
-              :disabled="items.length < 2"
-              @click="next"
-            >
-              Skip &rarr;
-            </button>
-          </div>
+        <!-- Back, then whichever of Check and Next applies, then Skip. Never
+             both: before a verdict the middle slot asks for one, after it the
+             same slot moves on. The position count lives at the top of the card
+             and does not need repeating here.
+             -
+             A SIBLING of the tool row above, not a child of it: inside that
+             wrapping flex container this was just another item, so centring it
+             only centred its own contents inside whatever width it had landed
+             in. On a phone the three spread to the full width; from `sm` up
+             they sit together in the middle. -->
+        <div class="flex w-full items-center justify-between gap-3 sm:justify-center">
+          <button
+            type="button"
+            class="rounded-lg px-2 py-1 text-sm text-[var(--color-muted)] transition hover:text-[var(--color-text)] disabled:opacity-40"
+            :disabled="items.length < 2"
+            @click="prev"
+          >
+            &larr; Back
+          </button>
+          <button
+            v-if="!grade"
+            type="button"
+            class="rounded-lg bg-primary px-4 py-2 text-sm font-medium text-bg disabled:opacity-40"
+            :disabled="drawn.length === 0"
+            @click="check"
+          >
+            Check
+          </button>
+          <button
+            v-else
+            type="button"
+            class="flex items-center gap-1.5 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-bg"
+            @click="next"
+          >
+            Next <ChevronRight class="size-4" />
+          </button>
+          <button
+            type="button"
+            class="rounded-lg px-2 py-1 text-sm text-[var(--color-muted)] transition hover:text-[var(--color-text)] disabled:opacity-40"
+            :disabled="items.length < 2"
+            @click="next"
+          >
+            Skip &rarr;
+          </button>
         </div>
 
         <div
