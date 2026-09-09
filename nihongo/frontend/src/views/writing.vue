@@ -393,18 +393,10 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
             <Eraser class="size-4" /> Clear
           </button>
 
-          <div class="ml-auto">
-            <button
-              v-if="!grade"
-              type="button"
-              class="rounded-lg bg-primary px-4 py-2 text-sm font-medium text-bg disabled:opacity-40"
-              :disabled="drawn.length === 0"
-              @click="check"
-            >
-              Check
-            </button>
-          </div>
-
+          <!-- Back, then whichever of Check and Next applies, then Skip.
+               Never both: before a verdict the middle slot asks for one, after
+               it the same slot moves on. The position count lives at the top of
+               the card and does not need repeating here. -->
           <div class="mt-3 flex items-center justify-center gap-3">
             <button
               type="button"
@@ -415,6 +407,16 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
               &larr; Back
             </button>
             <button
+              v-if="!grade"
+              type="button"
+              class="rounded-lg bg-primary px-4 py-2 text-sm font-medium text-bg disabled:opacity-40"
+              :disabled="drawn.length === 0"
+              @click="check"
+            >
+              Check
+            </button>
+            <button
+              v-else
               type="button"
               class="flex items-center gap-1.5 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-bg"
               @click="next"
@@ -430,9 +432,6 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
               Skip &rarr;
             </button>
           </div>
-          <p class="mt-2 text-center text-xs text-[var(--color-muted)]">
-            {{ index + 1 }} / {{ items.length }}
-          </p>
         </div>
 
         <div
