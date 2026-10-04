@@ -4,6 +4,7 @@
 **/*.log
 **/.env
 **/.env.*
+!nihongo/backend/.env.production
 .git
 .husky
 

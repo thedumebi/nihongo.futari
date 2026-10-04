@@ -41,5 +41,6 @@ COPY --from=build /app/nihongo/shared/src/db/migrations ./nihongo/shared/src/db/
 # relative to dist/db/seed.js.
 COPY --from=build /app/nihongo/backend/src/db/seeds ./nihongo/backend/src/db/seeds
 WORKDIR /app/nihongo/backend
+COPY nihongo/backend/.env.production ./.env.production
 EXPOSE 3008
 CMD ["node", "dist/index.js"]
