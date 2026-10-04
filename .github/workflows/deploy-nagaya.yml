@@ -3,20 +3,19 @@
 # Builds the nihongo images in CI, pushes them to GHCR, then asks the nagaya box
 # to run them. Nothing is built on the box.
 #
-# Until this site is cut over (RUNBOOK.md §6), keep the `push:` trigger
-# commented out: the old deploy-vps.yaml still deploys to Hetzner on push,
-# and this workflow is run by hand to build images for the new box.
+# nihongo runs on nagaya since its cutover (RUNBOOK.md §6.1): every push to
+# master builds and deploys. Run it by hand to rebuild or redeploy a commit.
 name: Deploy (nagaya)
 
 on:
-  # push:
-  #   branches: [master]
+  push:
+    branches: [master]
   workflow_dispatch:
     inputs:
       deploy:
         description: Deploy after building (untick to only build and push images)
         type: boolean
-        default: false
+        default: true
 
 concurrency:
   group: deploy-nagaya
