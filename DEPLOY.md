@@ -1,3 +1,5 @@
+> **Historical.** This describes the old Hetzner deployment, retired in October 2026. These sites now run on the nagaya box: see the [nagaya repo](https://github.com/thedumebi/nagaya) (`RUNBOOK.md`, `sites.yaml`). Deploys go through `.github/workflows/deploy-nagaya.yml`.
+
 # Deployment runbook
 
 Everything needed to put `nihongo.futari.live` on the internet, in order.
