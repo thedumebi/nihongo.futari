@@ -1,6 +1,7 @@
 /* eslint-disable no-console */
 import db, { connection } from '@nihongo/shared/db'
 import { dialogueReplies, dialogues, dialogueTurns, kana, sentences, words } from '@nihongo/shared/db/schema'
+import { speakSegments } from '@nihongo/shared/lib'
 import { asc, eq } from 'drizzle-orm'
 import { execFile } from 'node:child_process'
 import { readFile, unlink } from 'node:fs/promises'
@@ -8,7 +9,8 @@ import { tmpdir } from 'node:os'
 import path, { basename } from 'node:path'
 import { promisify } from 'node:util'
 
-import { audioKeyFor, VOICE_LEARNER as LEARNER_VOICE, VOICE_OTHER } from '../lib/audio-key.js'
+import { audioKeyFor, VOICE_LEARNER as LEARNER_VOICE, VOICE_ENGLISH, VOICE_OTHER } from '../lib/audio-key.js'
+import { SPEAK } from './data/speak/index.js'
 import { CONTENT_TYPES, listKeys, putAsset } from './lib/bucket.js'
 
 const run = promisify(execFile)
@@ -29,6 +31,7 @@ const run = promisify(execFile)
  *   pnpm -C nihongo/backend audio:words
  *   pnpm -C nihongo/backend audio:sentences
  *   pnpm -C nihongo/backend audio:dialogues
+ *   pnpm -C nihongo/backend audio:speak
  *   pnpm -C nihongo/backend audio:all
  *
  * Clips go straight to the bucket. They used to be written into
@@ -100,7 +103,7 @@ if (process.argv.some(a => a === '--redo' || a.startsWith('--redo=')) && redo.si
   process.exit(1)
 }
 
-type AudioKind = 'kana' | 'words' | 'sentences' | 'dialogues'
+type AudioKind = 'kana' | 'words' | 'sentences' | 'dialogues' | 'speak'
 
 async function generate(kind: AudioKind) {
   // One listing for the run rather than a HEAD per clip: at eleven thousand
@@ -128,6 +131,23 @@ async function generate(kind: AudioKind) {
       .from(sentences)
       .where(eq(sentences.published, true)))
       .map(r => ({ name: r.id, text: r.text }))
+  } else if (kind === 'speak') {
+    // From the authored data, not the database: a session is unpublished until
+    // it is approved, and its clips have to exist BEFORE that, so the reviewer
+    // hears what learners will. Every teacher line is recorded run by run —
+    // English in the English voice, each {Japanese} run in Kyoko — and every
+    // answer in Kyoko.
+    const lines = new Map<string, { text: string, voice: string }>()
+    const add = (text: string, voice: string) => lines.set(audioKeyFor(text, voice), { text, voice })
+    for (const session of SPEAK) {
+      for (const step of session.steps) {
+        for (const segment of speakSegments('x' in step ? step.x : step.q))
+          add(segment.text, segment.lang === 'ja' ? VOICE : VOICE_ENGLISH)
+        if ('t' in step)
+          add(step.t, VOICE)
+      }
+    }
+    targets = [...lines].map(([name, line]) => ({ name, ...line }))
   } else {
     // Every line of every conversation, plus every reply you can pick — a wrong
     // one is worth hearing too, since hearing why it sounds off is half the
@@ -171,8 +191,8 @@ async function generate(kind: AudioKind) {
     // different file instead of inheriting one recorded for the sentence that
     // used to sit at this index. Everything else is keyed by a stable id whose
     // content genuinely never changes.
-    const key = kind === 'dialogues'
-      ? `audio/dialogues/${audioKeyFor(t.text, t.voice ?? VOICE)}.m4a`
+    const key = kind === 'dialogues' || kind === 'speak'
+      ? `audio/${kind}/${audioKeyFor(t.text, t.voice ?? VOICE)}.m4a`
       : `audio/${kind}/${t.name}.m4a`
     // `--redo` re-records a clip that is already in the bucket.
     //
@@ -199,7 +219,7 @@ async function generate(kind: AudioKind) {
   }
 }
 
-const KINDS: AudioKind[] = ['kana', 'words', 'sentences', 'dialogues']
+const KINDS: AudioKind[] = ['kana', 'words', 'sentences', 'dialogues', 'speak']
 
 // The first argument that is not a flag. `--redo` takes a value, so reading
 // argv[2] positionally let `--redo sent-ex-desu-3` occupy the kind slot and the

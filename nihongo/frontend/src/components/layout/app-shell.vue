@@ -58,6 +58,7 @@ const links = computed(() => {
     { label: 'Review', to: ROUTES.STUDY },
     { label: 'Conversations', to: ROUTES.CONVERSATIONS },
     { label: 'Read', to: ROUTES.READ },
+    { label: 'Speak', to: ROUTES.SPEAK },
     { label: 'Progress', to: ROUTES.PROGRESS },
     { label: 'Dictionary', to: ROUTES.DICTIONARY }
   ]

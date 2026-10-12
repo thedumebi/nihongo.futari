@@ -29,6 +29,7 @@ export const ROUTE_BASE_PATHS = {
   SENTENCES: '/sentences',
   DIALOGUES: '/dialogues',
   READINGS: '/readings',
+  SPEAK: '/speak',
   STUDY: '/study',
   SYNC: '/sync',
   PROGRESS: '/progress',
@@ -112,14 +113,15 @@ export const CONTENT_STATUSES = ['draft', 'ai-drafted', 'in-review', 'published'
 export type ContentStatus = typeof CONTENT_STATUSES[number]
 
 /** What the admin review queue can hold — each kind shows different fields. */
-export const REVIEW_KINDS = ['grammar', 'etymology', 'reading'] as const
+export const REVIEW_KINDS = ['grammar', 'etymology', 'reading', 'speak'] as const
 export type ReviewKind = typeof REVIEW_KINDS[number]
 
 /** The table each review kind's queue rows point at. */
 export const REVIEW_KIND_TABLES: Record<ReviewKind, string> = {
   grammar: 'grammar_points',
   etymology: 'etymology_entries',
-  reading: 'readings'
+  reading: 'readings',
+  speak: 'speak_sessions'
 }
 
 /** Native / Sino-Japanese / loan / hybrid — drives the word-origin explanation. */
@@ -222,6 +224,16 @@ export const READING_ROUTES = {
   LIST: '/',
   GET_BY_CODE: '/:code'
 } as const
+
+export const SPEAK_ROUTES = {
+  LIST: '/',
+  GET_BY_CODE: '/:code',
+  COMPLETE: '/:code/complete'
+} as const
+
+/** A Speak step: the teacher explaining, or a prompt to answer aloud. */
+export const SPEAK_STEP_KINDS = ['explain', 'prompt'] as const
+export type SpeakStepKind = typeof SPEAK_STEP_KINDS[number]
 
 export const STUDY_ROUTES = {
   COURSE: '/course',
@@ -400,6 +412,11 @@ export const API_ENDPOINTS = {
   READINGS: {
     LIST: ROUTE_BASE_PATHS.READINGS,
     GET_BY_CODE: (code: string) => `${ROUTE_BASE_PATHS.READINGS}/${encodeURIComponent(code)}`
+  },
+  SPEAK: {
+    LIST: ROUTE_BASE_PATHS.SPEAK,
+    GET_BY_CODE: (code: string) => `${ROUTE_BASE_PATHS.SPEAK}/${encodeURIComponent(code)}`,
+    COMPLETE: (code: string) => `${ROUTE_BASE_PATHS.SPEAK}/${encodeURIComponent(code)}/complete`
   },
   STUDY: {
     DECKS: `${ROUTE_BASE_PATHS.STUDY}${STUDY_ROUTES.DECKS}`,

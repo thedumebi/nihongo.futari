@@ -11,6 +11,9 @@ export const ROUTES = {
   /** Short speeches to read aloud, scrolling like a teleprompter. */
   READ: '/read',
   READING_DETAIL: (code: string) => `/read/${encodeURIComponent(code)}`,
+  /** The build-up course: hear the English, say the Japanese. */
+  SPEAK: '/speak',
+  SPEAK_SESSION: (code: string) => `/speak/${encodeURIComponent(code)}`,
   STUDY_SESSION: '/study/session',
   /** The list of what is due, as opposed to a session that hands it over one card at a time. */
   DUE: '/due',

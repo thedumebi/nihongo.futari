@@ -57,10 +57,10 @@ describe('regroupKana', () => {
     expect(regroupKana([
       { t: 'こ', r: 'こ' },
       { t: 'ない', r: 'ない', w: gloss('ない', 'not') },
-      { t: 'んです', r: ' ん です', w: gloss('んです', 'explaining') }
+      { t: 'んです', r: ' ん です', w: { ...gloss('んです', 'explaining'), pos: 'grammar' } }
     ], kana => kana === 'こない' ? gloss('来る', 'to come') : undefined)).toEqual([
       { t: 'こない', r: 'こない', w: gloss('来る', 'to come') },
-      { t: 'んです', r: ' ん です', w: gloss('んです', 'explaining') }
+      { t: 'んです', r: ' ん です', w: { ...gloss('んです', 'explaining'), pos: 'grammar' } }
     ])
   })
 
@@ -75,9 +75,21 @@ describe('regroupKana', () => {
     ])
   })
 
-  it('keeps the tokens of a multi-word cluster unless every word is found', () => {
-    const tokens = [{ t: 'とく', r: 'と く' }, { t: 'ふわ', r: 'ふわ' }]
-    expect(regroupKana(tokens, lookup)).toEqual(tokens)
+  it('re-cuts a multi-word cluster on the author\'s breaks, leaving unknown words plain', () => {
+    expect(regroupKana([{ t: 'とく', r: 'と く' }, { t: 'ふわ', r: 'ふわ' }], lookup))
+      .toEqual([{ t: 'と', r: 'と', w: WORDS.と }, { t: 'くふわ', r: ' くふわ' }])
+  })
+
+  it('re-cuts two particles the dictionary glued into a word across a break', () => {
+    const lookupParticles = (kana: string) => ({ で: gloss('で', 'at'), は: gloss('は', 'topic') } as Record<string, ReturnType<typeof gloss>>)[kana]
+    expect(regroupKana([
+      { t: 'では', r: ' で わ', w: gloss('では', 'then') },
+      { t: 'ありません', r: ' ありません', w: gloss('ありません', 'is not') }
+    ], lookupParticles)).toEqual([
+      { t: 'で', r: ' で', w: gloss('で', 'at') },
+      { t: 'は', r: ' わ', w: gloss('は', 'topic') },
+      { t: 'ありません', r: ' ありません', w: gloss('ありません', 'is not') }
+    ])
   })
 
   it('leaves a run alone when no token starts mid-word', () => {

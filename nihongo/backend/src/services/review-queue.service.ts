@@ -13,12 +13,16 @@ import {
   readingLines,
   readings,
   sources,
+  speakSessions,
+  speakSteps,
   words
 } from '@nihongo/shared/db/schema'
 import { aliasedTable, and, asc, eq, inArray, sql } from 'drizzle-orm'
 
 /** Second alias: a queue row can point straight at a grammar point. */
 const directPoint = aliasedTable(grammarPoints, 'direct_point')
+/** A Speak session's level, joined beside a speech's. */
+const speakLevel = aliasedTable(languageLevels, 'speak_level')
 
 /**
  * The content review queue.
@@ -69,7 +73,12 @@ export async function listPending(
       readingCode: readings.code,
       readingTitle: readings.title,
       readingTitleEn: readings.titleEn,
-      readingLevel: languageLevels.code
+      readingLevel: languageLevels.code,
+      speakCode: speakSessions.code,
+      speakNumber: speakSessions.number,
+      speakTitle: speakSessions.title,
+      speakTitleEn: speakSessions.titleEn,
+      speakLevel: speakLevel.code
     })
     .from(contentReviewQueue)
     .leftJoin(etymologyEntries, eq(etymologyEntries.id, contentReviewQueue.targetId))
@@ -79,6 +88,8 @@ export async function listPending(
     .leftJoin(directPoint, eq(directPoint.id, contentReviewQueue.targetId))
     .leftJoin(readings, and(eq(contentReviewQueue.targetTable, 'readings'), eq(readings.id, contentReviewQueue.targetId)))
     .leftJoin(languageLevels, eq(languageLevels.id, readings.levelId))
+    .leftJoin(speakSessions, and(eq(contentReviewQueue.targetTable, 'speak_sessions'), eq(speakSessions.id, contentReviewQueue.targetId)))
+    .leftJoin(speakLevel, eq(speakLevel.id, speakSessions.levelId))
     .where(and(eq(contentReviewQueue.status, 'pending'), kindFilter))
     .orderBy(asc(contentReviewQueue.priority), asc(contentReviewQueue.createdAt))
     .limit(limit)
@@ -133,6 +144,38 @@ export async function listPending(
     return { code: r.readingCode, title: r.readingTitle!, titleEn: r.readingTitleEn!, level: r.readingLevel ?? '', stanzas }
   }
 
+  // Every step of each Speak session on the page, to read through in place.
+  const speakIds = rows.filter(r => r.targetTable === 'speak_sessions').map(r => r.targetId)
+  const steps = speakIds.length === 0
+    ? []
+    : await db
+        .select({
+          sessionId: speakSteps.sessionId,
+          kind: speakSteps.kind,
+          en: speakSteps.en,
+          text: speakSteps.text,
+          reading: speakSteps.readingKana,
+          note: speakSteps.note
+        })
+        .from(speakSteps)
+        .where(inArray(speakSteps.sessionId, speakIds))
+        .orderBy(asc(speakSteps.sessionId), asc(speakSteps.index))
+
+  function speakSession(r: typeof rows[number]): ReviewItem['speak'] {
+    if (r.targetTable !== 'speak_sessions' || !r.speakCode)
+      return null
+    return {
+      code: r.speakCode,
+      number: r.speakNumber!,
+      title: r.speakTitle!,
+      titleEn: r.speakTitleEn!,
+      level: r.speakLevel ?? '',
+      steps: steps
+        .filter(s => s.sessionId === r.targetId)
+        .map(({ sessionId: _drop, kind, ...rest }) => ({ kind: kind === 'prompt' ? 'prompt' as const : 'explain' as const, ...rest }))
+    }
+  }
+
   const [count] = await db
     .select({ total: sql<number>`count(*)`.mapWith(Number) })
     .from(contentReviewQueue)
@@ -147,7 +190,7 @@ export async function listPending(
       status: r.status,
       createdAt: r.createdAt.toISOString(),
       kind: kindOf(r.targetTable),
-      subject: r.etySubject ?? r.gpTitle ?? r.readingTitle,
+      subject: r.etySubject ?? r.gpTitle ?? r.readingTitle ?? r.speakTitle,
       claim: r.claim,
       body: r.body,
       confidence: r.confidence,
@@ -159,7 +202,8 @@ export async function listPending(
       citations: citations
         .filter(c => c.etymologyId === r.targetId)
         .map(({ etymologyId: _drop, ...rest }) => rest),
-      reading: speech(r)
+      reading: speech(r),
+      speak: speakSession(r)
     })),
     pending: count?.total ?? 0
   }
@@ -202,6 +246,13 @@ export async function approve(id: string, reviewerId: string, note?: string): Pr
         .update(readings)
         .set({ published: true, updatedAt: now })
         .where(eq(readings.id, row.targetId))
+    } else if (row.targetTable === 'speak_sessions') {
+      // Same rule as a speech: the seed brings a session in unpublished, and
+      // approval is the only thing that publishes it.
+      await tx
+        .update(speakSessions)
+        .set({ published: true, updatedAt: now })
+        .where(eq(speakSessions.id, row.targetId))
     }
 
     await tx

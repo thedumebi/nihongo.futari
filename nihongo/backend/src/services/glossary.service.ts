@@ -138,7 +138,9 @@ const KANA_SPELLED = new Set([
   '寂しい:さびしい',
   '嫌:いや',
   '初めに:はじめに',
-  '歳:さい'
+  '歳:さい',
+  '静か:しずか',
+  '寿司:すし'
 ])
 
 /** Verbs whose KANA spelling conjugates too — see the note where it is used. */

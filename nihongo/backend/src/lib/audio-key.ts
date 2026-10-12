@@ -42,6 +42,16 @@ import { createHash } from 'node:crypto'
 export const VOICE_OTHER = 'Kyoko (Enhanced)'
 export const VOICE_LEARNER = 'Otoya (Enhanced)'
 
+/**
+ * The Speak teacher: explanations and the English prompts.
+ *
+ * Samantha because she ships with every Mac. A Premium voice (Ava, Zoe) sounds
+ * far more natural; to switch, download it under Spoken Content → Manage Voices,
+ * change this name and run `audio:speak` — the voice is part of every key, so
+ * the URLs move to the new clips by themselves.
+ */
+export const VOICE_ENGLISH = 'Samantha'
+
 export function audioKeyFor(text: string, voice: string): string {
   const digest = createHash('sha256').update(`${voice} ${text}`, 'utf8').digest('base64url')
   // 16 base64url characters is 96 bits — far past collision risk for a few
@@ -52,4 +62,9 @@ export function audioKeyFor(text: string, voice: string): string {
 /** The full stored path, so no caller has to remember the prefix. */
 export function dialogueAudioPath(text: string, voice: string): string {
   return `/audio/dialogues/${audioKeyFor(text, voice)}.m4a`
+}
+
+/** A Speak clip: the teacher's English, or a Japanese answer. Content-named, as above. */
+export function speakAudioPath(text: string, voice: string): string {
+  return `/audio/speak/${audioKeyFor(text, voice)}.m4a`
 }

@@ -62,6 +62,19 @@ const router = createRouter({
       meta: { requiresAuth: true }
     },
     {
+      path: ROUTES.SPEAK,
+      name: 'speak',
+      component: () => import('@/views/speak.vue'),
+      meta: { requiresAuth: true }
+    },
+    {
+      // Literal for the same reason as the routes above.
+      path: '/speak/:code',
+      name: 'speak-session',
+      component: () => import('@/views/speak-session.vue'),
+      meta: { requiresAuth: true }
+    },
+    {
       path: ROUTES.COURSE,
       name: 'course',
       component: () => import('@/views/course.vue'),

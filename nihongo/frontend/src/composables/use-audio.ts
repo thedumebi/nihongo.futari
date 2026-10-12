@@ -168,22 +168,62 @@ export function playAudio(src: string | null | undefined): void {
   audio.play().catch((err: unknown) => record(`play ${src}`, err))
 }
 
+/** A gap in a queue: silence for this long before the next clip. */
+export interface AudioPause { pauseMs: number }
+
+/** One second of silence, played as a clip — see `silentPauses` below. */
+const SILENCE_SECOND = '/silence-1s.m4a'
+
+/** Wait, waking often enough to notice the run was superseded. */
+async function wait(ms: number, run: number): Promise<void> {
+  const until = Date.now() + ms
+  // `token` is bumped by whatever supersedes this run, from outside the loop.
+  for (;;) {
+    const left = until - Date.now()
+    if (run !== token || left <= 0)
+      return
+    await new Promise(resolve => setTimeout(resolve, Math.min(100, left)))
+  }
+}
+
 /**
- * Play several clips back to back.
+ * Play several clips back to back, with optional pauses between them.
  *
  * Returns when the run finishes or is superseded. Each clip waits for the one
  * before it; a clip that will not load is stepped over rather than stalling
  * the queue, and the whole run is abandoned if something else starts playing.
+ *
+ * `silentPauses` plays each pause as real silence, a second at a time, instead
+ * of waiting on a timer. Hands-free Speak needs it: with the screen locked iOS
+ * suspends JavaScript timers but keeps a page alive for as long as its audio is
+ * playing, so a timer-based pause never wakes up and the session stops dead in
+ * the first gap.
  */
-export async function playAudioQueue(sources: Array<string | null | undefined>): Promise<void> {
+export async function playAudioQueue(
+  items: Array<string | AudioPause | null | undefined>,
+  { silentPauses = false }: { silentPauses?: boolean } = {}
+): Promise<void> {
   const audio = el()
   // Any newer call to playAudio/playAudioQueue changes this, which is how a
   // superseded run notices it should stop.
   const run = ++token
 
+  // Pauses become clips up front when they must be audible silence.
+  const sources: Array<string | AudioPause | null | undefined> = silentPauses
+    ? items.flatMap(item => typeof item === 'object' && item !== null
+        ? Array.from({ length: Math.max(1, Math.round(item.pauseMs / 1000)) }, () => SILENCE_SECOND)
+        : [item])
+    : items
+
   for (const src of sources) {
-    if (!src || run !== token)
+    if (run !== token)
       return
+    if (!src)
+      continue
+    if (typeof src === 'object') {
+      await wait(src.pauseMs, run)
+      continue
+    }
 
     audio.pause()
     audio.src = src

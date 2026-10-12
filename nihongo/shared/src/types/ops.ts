@@ -9,9 +9,10 @@ import type {
   importSources
 } from '@/db/schema/ops.js'
 
-import { REVIEW_KINDS } from '@/constants/endpoints.js'
+import { REVIEW_KINDS, SPEAK_STEP_KINDS } from '@/constants/endpoints.js'
 
 import { readingLineViewSchema, readingSummarySchema } from './readings.js'
+import { speakSessionSummarySchema } from './speak.js'
 
 /**
  * Import pipeline and AI-enrichment provenance.
@@ -68,6 +69,17 @@ export const reviewItemSchema = z.object({
   /** A read-aloud speech: every line with its reading and English, to read through. */
   reading: readingSummarySchema.pick({ code: true, title: true, titleEn: true, level: true }).extend({
     stanzas: z.array(z.array(readingLineViewSchema.pick({ text: true, reading: true, translation: true })))
+  }).nullable(),
+
+  /** A Speak session: every step, teacher lines and answers, to read through. */
+  speak: speakSessionSummarySchema.pick({ code: true, number: true, title: true, titleEn: true, level: true }).extend({
+    steps: z.array(z.object({
+      kind: z.enum(SPEAK_STEP_KINDS),
+      en: z.string(),
+      text: z.string().nullable(),
+      reading: z.string().nullable(),
+      note: z.string().nullable()
+    }))
   }).nullable()
 }).openapi('ReviewItem')
 

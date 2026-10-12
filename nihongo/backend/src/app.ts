@@ -20,6 +20,7 @@ import phonetics from './routes/phonetics/phonetics.index.js'
 import progress from './routes/progress/progress.index.js'
 import readings from './routes/readings/readings.index.js'
 import reviewQueue from './routes/review-queue/review-queue.index.js'
+import speak from './routes/speak/speak.index.js'
 import study from './routes/study/study.index.js'
 import sync from './routes/sync/sync.index.js'
 import usersRoutes from './routes/users/users.index.js'
@@ -56,6 +57,7 @@ const routes = [
   auth,
   dialogues,
   readings,
+  speak,
   grammar,
   lessons,
   invites,

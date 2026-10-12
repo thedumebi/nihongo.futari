@@ -167,6 +167,14 @@ async function decide(action: 'approve' | 'reject') {
           >
             Speeches
           </button>
+          <button
+            type="button"
+            class="rounded-full border px-3 py-1 text-sm transition"
+            :class="kindFilter === 'speak' ? 'border-[var(--color-text)] text-[var(--color-text)]' : 'border-[var(--color-border)] text-[var(--color-muted)]'"
+            @click="selectKind('speak')"
+          >
+            Speak
+          </button>
 
           <div class="ml-auto flex items-center gap-3">
             <span class="text-sm text-[var(--color-muted)]">{{ selectedCount }} selected</span>
@@ -195,6 +203,9 @@ async function decide(action: 'approve' | 'reject') {
                   <template v-if="item.kind === 'reading' && item.reading">
                     <span>&middot; {{ item.reading.level }}</span>
                   </template>
+                  <template v-if="item.kind === 'speak' && item.speak">
+                    <span>&middot; {{ item.speak.level }} &middot; session {{ item.speak.number }}</span>
+                  </template>
                   <template v-if="item.kind === 'etymology'">
                     <span>&middot; {{ item.aspect }}</span>
                     <span>&middot; {{ item.confidence }}</span>
@@ -206,7 +217,7 @@ async function decide(action: 'approve' | 'reject') {
                 </div>
 
                 <p class="mt-2 font-medium">
-                  {{ item.kind === 'etymology' ? item.claim : item.kind === 'reading' ? item.reading?.titleEn : item.meaningShort }}
+                  {{ item.kind === 'etymology' ? item.claim : item.kind === 'reading' ? item.reading?.titleEn : item.kind === 'speak' ? item.speak?.titleEn : item.meaningShort }}
                 </p>
                 <!-- Read it the way a learner will: scrolling, tappable, with the reading aid. -->
                 <router-link
@@ -215,6 +226,14 @@ async function decide(action: 'approve' | 'reject') {
                   class="mt-2 mr-4 inline-block text-sm underline underline-offset-4"
                 >
                   Open in the reader
+                </router-link>
+                <!-- Hear it the way a learner will, prompts, pauses and all. -->
+                <router-link
+                  v-if="item.kind === 'speak' && item.speak"
+                  :to="ROUTES.SPEAK_SESSION(item.speak.code)"
+                  class="mt-2 mr-4 inline-block text-sm underline underline-offset-4"
+                >
+                  Open the session
                 </router-link>
 
                 <button
@@ -241,7 +260,26 @@ async function decide(action: 'approve' | 'reject') {
                   </div>
                 </div>
 
-                <div v-if="expanded.has(item.id) && item.kind !== 'reading'" class="mt-3 space-y-4">
+                <ol v-if="expanded.has(item.id) && item.kind === 'speak' && item.speak" class="mt-3 space-y-3">
+                  <li v-for="(step, s) in item.speak.steps" :key="s">
+                    <p :class="step.kind === 'explain' ? 'text-sm text-[var(--color-muted)]' : 'text-sm font-medium'">
+                      {{ step.en }}
+                    </p>
+                    <template v-if="step.kind === 'prompt'">
+                      <p style="font-family: var(--font-jp)">
+                        {{ step.text }}
+                      </p>
+                      <p class="text-xs text-[var(--color-muted)]" style="font-family: var(--font-jp)">
+                        {{ step.reading }}
+                      </p>
+                      <p v-if="step.note" class="text-xs text-[var(--color-muted)]">
+                        {{ step.note }}
+                      </p>
+                    </template>
+                  </li>
+                </ol>
+
+                <div v-if="expanded.has(item.id) && item.kind !== 'reading' && item.kind !== 'speak'" class="mt-3 space-y-4">
                   <p v-if="item.kind === 'grammar' && item.pattern" class="text-sm text-[var(--color-muted)]" style="font-family: var(--font-jp)">
                     {{ item.pattern }}
                   </p>

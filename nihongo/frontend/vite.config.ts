@@ -31,7 +31,10 @@ export default defineConfig(({ mode }) => {
           // is where `audio:all` writes and where the SVGs are authored — so
           // without these ignores a local build would precache files the
           // deployed one cannot, and the two service workers would differ.
-          globPatterns: ['**/*.{js,css,html,svg,png,woff2}', 'manifest.json'],
+          // The two silent clips ARE precached: the unlock clip, and the
+          // one-second silence hands-free Speak plays as its pauses — offline,
+          // a pause that cannot load would end the session in its first gap.
+          globPatterns: ['**/*.{js,css,html,svg,png,woff2}', 'manifest.json', 'silence*.m4a'],
           globIgnores: ['**/audio/**', '**/images/**']
         },
         manifest: false, // public/manifest.json is the source of truth

@@ -4,6 +4,8 @@ import { alignFurigana, hasKanji, toHiragana } from '@nihongo/shared/lib'
 
 import type { AuthoredReading } from '@/pipeline/data/readings/types.js'
 
+import { isPhrase } from './author-segments.js'
+
 /**
  * The mechanical gate every read-aloud speech passes before a model or a person
  * reviews it.
@@ -281,6 +283,32 @@ export function unspacedParticles(tokens: GlossedToken[]): string[] {
     if (PARTICLE_ENDED_WORDS.has(word))
       continue
     problems.push(`"${word}": put a space before 「${token.t}」 in the reading`)
+  }
+  return problems
+}
+
+/**
+ * A kana token that still runs across one of the author's word breaks.
+ *
+ * The cut that produced 学校|はし|ず|か: the は that ends one word and the し
+ * that starts しずか glued into はし and glossed as 嘴 "beak". Regrouping
+ * repairs such a cut when it knows every word involved; one it could not
+ * repair is left here, glossed confidently and wrongly, so it fails the check.
+ * The fix is a KANA_SPELLED entry for the word, or writing it differently.
+ *
+ * Run AFTER regrouping. Long grammar patterns span breaks on purpose — ん です,
+ * ありがとう ございました — and are left alone.
+ */
+export function spansWordBreak(tokens: GlossedToken[]): string[] {
+  const problems: string[] = []
+  for (const token of tokens) {
+    if (!KANA_ONLY.test(token.t) || token.r === undefined)
+      continue
+    if (!/\s/u.test(token.r.trim()))
+      continue
+    if (isPhrase(token))
+      continue
+    problems.push(`"${token.t}" straddles a word break ("${token.r.trim()}")${token.w ? ` and is glossed as "${token.w.meanings[0]}"` : ''}`)
   }
   return problems
 }

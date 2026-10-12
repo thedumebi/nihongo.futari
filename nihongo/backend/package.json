@@ -32,6 +32,7 @@
     "audio:words": "tsx src/pipeline/generate-audio.ts words",
     "audio:sentences": "tsx src/pipeline/generate-audio.ts sentences",
     "audio:dialogues": "tsx src/pipeline/generate-audio.ts dialogues",
+    "audio:speak": "tsx src/pipeline/generate-audio.ts speak",
     "audio:all": "tsx src/pipeline/generate-audio.ts all",
     "check:examples": "tsx src/pipeline/check-examples.ts",
     "tokenise:authored": "tsx src/pipeline/tokenise-authored.ts",
@@ -50,6 +51,8 @@
     "import:dialogues": "tsx src/pipeline/import-dialogues.ts",
     "seed:readings": "tsx src/pipeline/make-readings-seed.ts",
     "seed:words": "tsx src/pipeline/make-words-seed.ts",
+    "seed:speak": "tsx src/pipeline/make-speak-seed.ts",
+    "check:speak": "tsx src/pipeline/check-speak.ts",
     "check:readings": "tsx src/pipeline/check-readings.ts"
   },
   "dependencies": {

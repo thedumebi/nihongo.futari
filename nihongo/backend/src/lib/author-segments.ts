@@ -24,8 +24,8 @@ import { hasKanji } from '@nihongo/shared/lib'
  *   - a single author word the dictionary does not hold becomes ONE plain,
  *     untappable token. Its pieces glossed — わた "cotton" | し "and" — but as
  *     the wrong words, and a gloss that is wrong is worse than none;
- *   - a cluster spanning several author words is only re-cut if every word in
- *     it is found whole, otherwise it keeps its original tokens.
+ *   - a cluster spanning several author words is re-cut on the author's
+ *     breaks, each word glossed if the dictionary has it and plain if not.
  */
 
 const KANA_ONLY = /^[\u3041-\u309F\u30A0-\u30FF]+$/
@@ -63,7 +63,18 @@ function authorWords(run: GlossedToken[]): Array<{ t: string, r: string } & Span
   return cursor === surface.length ? words : null
 }
 
-const overlaps = (a: Span, b: Span) => a.start < b.end && b.start < a.end
+/**
+ * A match that is a fixed phrase on purpose, even across the author's spaces:
+ * a whole dictionary word of four kana or more, or a grammar pattern of three.
+ */
+export function isPhrase(token: GlossedToken): boolean {
+  const length = [...token.t].length
+  if (!token.w)
+    return length >= 3
+  if (token.w.pos === 'grammar')
+    return length >= 3
+  return token.w.form === token.t && length >= 4
+}
 
 function regroupRun(run: GlossedToken[], lookup: KanaLookup): GlossedToken[] {
   const words = authorWords(run)
@@ -101,8 +112,12 @@ function regroupRun(run: GlossedToken[], lookup: KanaLookup): GlossedToken[] {
 
     const tokens = run.slice(firstToken, k)
     const cluster = words.slice(firstWord, w)
-    // One token over one or more words: aligned, or a phrase kept on purpose.
-    if (tokens.length === 1) {
+    // One token over one word: aligned. One token over several is a phrase
+    // kept whole only when it really is one — ありがとうございました, ですから,
+    // ん です. A short match across a break is the dictionary gluing two
+    // particles into a word: で わ read as では "then", に も as a grammar
+    // pattern. Those are re-cut below when every piece is known.
+    if (tokens.length === 1 && (cluster.length === 1 || isPhrase(tokens[0]!))) {
       out.push(...tokens)
       continue
     }
@@ -110,10 +125,12 @@ function regroupRun(run: GlossedToken[], lookup: KanaLookup): GlossedToken[] {
     if (cluster.length === 1) {
       const [word] = cluster
       out.push(found[0] ? { t: word!.t, r: word!.r, w: found[0] } : { t: word!.t, r: word!.r })
-    } else if (found.every(Boolean) && cluster.every(word => tokens.some(t => overlaps(word, spans[run.indexOf(t)]!)))) {
-      out.push(...cluster.map((word, i) => ({ t: word.t, r: word.r, w: found[i]! })))
     } else {
-      out.push(...tokens)
+      // Several words the dictionary cut differently: the author's breaks win.
+      // Each word gets its gloss if the dictionary has it and none if not — a
+      // particle such as も is not in a dictionary of words, and plain is
+      // honest where the old cut glossed に も as a grammar pattern.
+      out.push(...cluster.map((word, i) => found[i] ? { t: word.t, r: word.r, w: found[i] } : { t: word.t, r: word.r }))
     }
   }
 

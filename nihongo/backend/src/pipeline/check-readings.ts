@@ -25,7 +25,7 @@ import { eq } from 'drizzle-orm'
 
 import type { AuthoredReading } from './data/readings/types.js'
 
-import { kanjiAboveLevel, lineFurigana, recycledText, unspacedParticles, wellFormed } from '../lib/reading-checks.js'
+import { kanjiAboveLevel, lineFurigana, recycledText, spansWordBreak, unspacedParticles, wellFormed } from '../lib/reading-checks.js'
 import { tokenProblems } from '../lib/token-checks.js'
 import { glossary, glossLine } from '../services/glossary.service.js'
 import { READINGS } from './data/readings/index.js'
@@ -87,7 +87,7 @@ export async function checkReadings(all: AuthoredReading[]): Promise<{
       const spacing = unspacedParticles(glossLine(line.t, g, line.r))
       const report = tokenProblems(tokens, true)
       const ruby = lineFurigana(tokens)
-      for (const p of [...report.problems, ...ruby.problems, ...spacing])
+      for (const p of [...report.problems, ...ruby.problems, ...spacing, ...spansWordBreak(tokens)])
         problems.push(`${where}: ${p}\n     ${tokens.map(t => t.t).join(' | ')}`)
       for (const w of report.warnings)
         warnings.push(`${where}: ${w}`)

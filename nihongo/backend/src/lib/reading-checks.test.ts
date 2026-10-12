@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 
 import type { AuthoredReading } from '@/pipeline/data/readings/types.js'
 
-import { kanjiAboveLevel, lineFurigana, recycledText, unspacedParticles, wellFormed } from './reading-checks.js'
+import { kanjiAboveLevel, lineFurigana, recycledText, spansWordBreak, unspacedParticles, wellFormed } from './reading-checks.js'
 
 const RANKS = new Map<string, number | null>([
   ['日', 1],
@@ -185,5 +185,22 @@ describe('unspacedParticles', () => {
 
   it('does not mistake the middle of a kana word for a particle', () => {
     expect(unspacedParticles([{ t: 'やっ', r: 'やっ' }, { t: 'と', r: 'と' }])).toEqual([])
+  })
+})
+
+describe('spansWordBreak', () => {
+  it('reports a short kana token glued across the author\'s break', () => {
+    expect(spansWordBreak([
+      { t: '学校', r: 'がっこう' },
+      { t: 'はし', r: ' わ し', w: { form: '嘴', reading: 'はし', meanings: ['beak'], pos: 'noun' } }
+    ])).toEqual(['"はし" straddles a word break ("わ し") and is glossed as "beak"'])
+  })
+
+  it('leaves a grammar pattern the author spaced', () => {
+    expect(spansWordBreak([{ t: 'んです', r: ' ん です', w: { form: 'んです', reading: 'んです', meanings: ['explaining'], pos: 'grammar' } }])).toEqual([])
+  })
+
+  it('accepts tokens that sit inside one word', () => {
+    expect(spansWordBreak([{ t: 'しずか', r: ' しずか' }])).toEqual([])
   })
 })
