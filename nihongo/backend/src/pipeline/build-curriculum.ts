@@ -93,6 +93,9 @@ async function main() {
         left join words w on w.id = si.word_id
         left join grammar_points g on g.id = si.grammar_point_id
         where si.level_id = ${levelId}
+          -- Speak prompts are not curriculum: they become cards only when missed
+          -- in a session, so they have no place in a stage.
+          and si.kind <> 'speak'
       ),
       placed as (
         select

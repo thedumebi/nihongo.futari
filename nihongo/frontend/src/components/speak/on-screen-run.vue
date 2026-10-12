@@ -32,6 +32,8 @@ const props = defineProps<Props>()
 
 const emit = defineEmits<{
   finished: [result: { gotIt: number, total: number }]
+  /** A prompt answered "Not quite", by its step index — on a retry too. */
+  missed: [index: number]
 }>()
 
 type Phase = 'explain' | 'asking' | 'thinking' | 'answer' | 'done'
@@ -175,6 +177,8 @@ function next() {
 
 function answer(gotIt: boolean) {
   const index = order.value[position.value]!
+  if (!gotIt)
+    emit('missed', props.steps[index]!.index)
   if (!isRetry.value)
     firstTry.value = new Map(firstTry.value).set(index, gotIt)
   // A miss comes round once more at the end — not forever.

@@ -13,9 +13,11 @@ import { provenance } from './ops.js'
  * say…?"; the learner says it out loud and hears the answer. Each prompt adds
  * a piece to the last, so the sentence grows rather than being memorised.
  *
- * Linear and self-paced on purpose, so it is NOT a study item: the method's
- * whole claim is that the sequence does the remembering. A session is done when
- * the learner has worked through it, not when a scheduler says so.
+ * Linear and self-paced on purpose: the method's whole claim is that the
+ * sequence does the remembering, so a session is done when the learner has
+ * worked through it, not when a scheduler says so. The one way in to the SRS is
+ * a miss — a prompt answered "Not quite" becomes a study item card for that
+ * learner (`study_items.speak_step_id`).
  */
 export const speakSessions = pgTable('speak_sessions', {
   id: primaryId(),

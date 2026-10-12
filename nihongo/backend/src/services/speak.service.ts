@@ -1,13 +1,12 @@
-import type { SpeakCompleteInput, SpeakListResponse, SpeakSessionView, SpeakStepView } from '@nihongo/shared/types'
+import type { SaveWordResult, SpeakCompleteInput, SpeakListResponse, SpeakSessionView, SpeakStepView } from '@nihongo/shared/types'
 
 import db from '@nihongo/shared/db'
 import { languageLevels, languages, speakProgress, speakSessions, speakSteps } from '@nihongo/shared/db/schema'
-import { speakSegments } from '@nihongo/shared/lib'
 import { and, asc, count, eq, sql } from 'drizzle-orm'
 
-import { assetUrl } from '../lib/assets.js'
-import { speakAudioPath, VOICE_ENGLISH, VOICE_OTHER } from '../lib/audio-key.js'
+import { speakAnswerAudio, speakSay } from '../lib/assets.js'
 import { glossary, glossLine } from './glossary.service.js'
+import { saveSpeakStep } from './srs.service.js'
 
 /**
  * Speak: the build-up course.
@@ -91,15 +90,12 @@ export async function getSpeakSession(
     index: s.index,
     kind: s.kind === 'prompt' ? 'prompt' : 'explain',
     // Each run in its own voice, exactly as `audio:speak` recorded it.
-    say: speakSegments(s.en).map(segment => ({
-      ...segment,
-      audio: assetUrl(speakAudioPath(segment.text, segment.lang === 'ja' ? VOICE_OTHER : VOICE_ENGLISH))
-    })),
+    say: speakSay(s.en, row.number),
     text: s.text,
     reading: s.reading,
     note: s.note,
     tokens: s.text && s.reading ? glossLine(s.text, g, s.reading, { regroupKana: true }) : [],
-    answerAudio: s.text ? assetUrl(speakAudioPath(s.text, VOICE_OTHER)) : null
+    answerAudio: s.text ? speakAnswerAudio(s.text) : null
   }))
 
   const { id: _id, ...rest } = row
@@ -131,4 +127,30 @@ export async function completeSpeakSession(userId: string, languageCode: string,
       set: { completedAt: now, gotIt: input.gotIt, total: input.total, updatedAt: sql`now()` }
     })
   return true
+}
+
+/**
+ * A prompt answered "Not quite": put it in the learner's reviews.
+ *
+ * Only from a published session, and only a prompt — a draft previewed from
+ * the review queue must not leave cards behind. Null when there is no such
+ * prompt to save; `added: false` when it is already in review.
+ */
+export async function missSpeakStep(userId: string, languageCode: string, code: string, index: number): Promise<SaveWordResult | null> {
+  const [step] = await db
+    .select({ id: speakSteps.id })
+    .from(speakSteps)
+    .innerJoin(speakSessions, eq(speakSessions.id, speakSteps.sessionId))
+    .innerJoin(languages, eq(languages.id, speakSessions.languageId))
+    .where(and(
+      eq(languages.code, languageCode),
+      eq(speakSessions.code, code),
+      eq(speakSessions.published, true),
+      eq(speakSteps.index, index),
+      eq(speakSteps.kind, 'prompt')
+    ))
+    .limit(1)
+  if (!step)
+    return null
+  return saveSpeakStep(userId, step.id)
 }

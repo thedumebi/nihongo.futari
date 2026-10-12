@@ -51,7 +51,7 @@ export type UserRole = typeof USER_ROLES[number]
 // ---------------------------------------------------------------------------
 
 /** Content kinds a `study_items` row can point at (one arc arm each). */
-export const STUDY_ITEM_KINDS = ['kana', 'kanji', 'word', 'grammar', 'sentence', 'phonetic-series', 'dialogue'] as const
+export const STUDY_ITEM_KINDS = ['kana', 'kanji', 'word', 'grammar', 'sentence', 'phonetic-series', 'dialogue', 'speak'] as const
 export type StudyItemKind = typeof STUDY_ITEM_KINDS[number]
 
 /** The SRS unit. One study item is drilled along several independent facets. */
@@ -229,7 +229,9 @@ export const READING_ROUTES = {
 export const SPEAK_ROUTES = {
   LIST: '/',
   GET_BY_CODE: '/:code',
-  COMPLETE: '/:code/complete'
+  COMPLETE: '/:code/complete',
+  /** A prompt answered "Not quite": it goes into the learner's reviews. */
+  MISS: '/:code/steps/:index/miss'
 } as const
 
 /** A Speak step: the teacher explaining, or a prompt to answer aloud. */
@@ -417,7 +419,8 @@ export const API_ENDPOINTS = {
   SPEAK: {
     LIST: ROUTE_BASE_PATHS.SPEAK,
     GET_BY_CODE: (code: string) => `${ROUTE_BASE_PATHS.SPEAK}/${encodeURIComponent(code)}`,
-    COMPLETE: (code: string) => `${ROUTE_BASE_PATHS.SPEAK}/${encodeURIComponent(code)}/complete`
+    COMPLETE: (code: string) => `${ROUTE_BASE_PATHS.SPEAK}/${encodeURIComponent(code)}/complete`,
+    MISS: (code: string, index: number) => `${ROUTE_BASE_PATHS.SPEAK}/${encodeURIComponent(code)}/steps/${index}/miss`
   },
   STUDY: {
     DECKS: `${ROUTE_BASE_PATHS.STUDY}${STUDY_ROUTES.DECKS}`,

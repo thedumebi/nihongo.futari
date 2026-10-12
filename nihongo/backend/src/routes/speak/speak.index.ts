@@ -7,9 +7,10 @@ import * as routes from './speak.routes.js'
 
 const router = createRouter().basePath(ROUTE_BASE_PATHS.SPEAK)
 
-// Literal paths first; `/:code/complete` before `/:code`.
+// Literal paths first; the longer `/:code/…` paths before `/:code`.
 router.openapi(routes.list, handlers.list)
 router.openapi(routes.complete, handlers.complete)
+router.openapi(routes.miss, handlers.miss)
 router.openapi(routes.getByCode, handlers.getByCode)
 
 export default router

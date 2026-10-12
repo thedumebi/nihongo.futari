@@ -36,6 +36,8 @@ import {
   lessonViews,
   phoneticSeries,
   sentences,
+  speakSessions,
+  speakSteps,
   srsCards,
   srsGhostEvents,
   srsReviewLogs,
@@ -54,9 +56,9 @@ import {
   replay
 } from '@nihongo/shared/lib'
 import { ghostPolicySchema } from '@nihongo/shared/types'
-import { and, asc, eq, gt, inArray, isNull, lt, lte, or, sql } from 'drizzle-orm'
+import { and, asc, eq, gt, inArray, isNotNull, isNull, lt, lte, or, sql } from 'drizzle-orm'
 
-import { assetUrl, withAssetUrls, withDialogueAudio } from '@/lib/assets.js'
+import { assetUrl, withAssetUrls, withDialogueAudio, withSpeakAudio } from '@/lib/assets.js'
 
 import { glossary, withDialogueTokens, withPromptTokens } from './glossary.service.js'
 import { hintFromLesson, loadLessons } from './grammar.service.js'
@@ -505,6 +507,23 @@ export async function markLessonSeen(userId: string, studyItemId: string): Promi
  * to review it with.
  */
 export async function saveWord(userId: string, wordId: string): Promise<SaveWordResult | null> {
+  return cardFirstFacet(userId, eq(studyItems.wordId, wordId))
+}
+
+/**
+ * Put a Speak prompt the learner missed into review.
+ *
+ * The only way a Speak item becomes a card — the queue never introduces them
+ * (see `introducedByQueue`). Same entry as a saved word, and for the same
+ * reason no review log: answering "Not quite" in a session is the session's
+ * business, and the SRS starts counting from the first review.
+ */
+export async function saveSpeakStep(userId: string, speakStepId: string): Promise<SaveWordResult | null> {
+  return cardFirstFacet(userId, eq(studyItems.speakStepId, speakStepId))
+}
+
+/** One card, at state 1 and due now, on the first facet of the one published item `target` picks. */
+async function cardFirstFacet(userId: string, target: SQL): Promise<SaveWordResult | null> {
   const facets = await db
     .select({
       facetId: studyItemFacets.id,
@@ -514,7 +533,7 @@ export async function saveWord(userId: string, wordId: string): Promise<SaveWord
     .from(studyItems)
     .innerJoin(studyItemFacets, and(eq(studyItemFacets.studyItemId, studyItems.id), eq(studyItemFacets.enabled, true)))
     .leftJoin(srsCards, and(eq(srsCards.facetId, studyItemFacets.id), eq(srsCards.userId, userId)))
-    .where(and(eq(studyItems.wordId, wordId), eq(studyItems.published, true), eq(studyItems.active, true)))
+    .where(and(target, eq(studyItems.published, true), eq(studyItems.active, true)))
     .orderBy(asc(studyItemFacets.introOrder), asc(studyItemFacets.id))
 
   const first = facets[0]
@@ -604,7 +623,10 @@ function stageRollup(userId: string, languageId: string) {
       -- curriculum and barred by the lesson, or the reverse; and it made the
       -- stage a reader is on depend on how much grammar they happened to have
       -- read, which is not what a stage is for.
-      and si.kind <> 'grammar'
+      --
+      -- Speak prompts neither: they become cards only by being missed in a
+      -- session, so they are never material a stage is waiting on.
+      and si.kind not in ('grammar', 'speak')
     group by 1, 2, 3
   `
 }
@@ -791,6 +813,19 @@ function lessonOpened(userId: string): SQL {
       where lv.user_id = ${userId} and lv.study_item_id = ${studyItems.id}
     )
   )`
+}
+
+/**
+ * Whether the queue may introduce an item as new.
+ *
+ * Not Speak prompts: one becomes a card only when the learner misses it in a
+ * session (`saveSpeakStep`). Offered cold, a prompt out of its build-up is just
+ * a hard sentence — the session is what teaches it. Every surface that counts
+ * or serves NEW material applies this, so none of them advertises a Speak card
+ * the queue would never give.
+ */
+function introducedByQueue(): SQL {
+  return sql`${studyItems.kind} <> 'speak'`
 }
 
 function firstUncardedFacet(userId: string): SQL {
@@ -1092,6 +1127,7 @@ export async function getQueue(userId: string, query: StudyQueueQuery): Promise<
           isNull(srsCards.id),
           firstUncardedFacet(userId),
           lessonOpened(userId),
+          introducedByQueue(),
           ...withinCurriculum,
           ...kindFilter,
           ...unitFilter,
@@ -1154,6 +1190,8 @@ export async function getQueue(userId: string, query: StudyQueueQuery): Promise<
         eq(studyItems.published, true),
         eq(studyItems.active, true),
         sql.raw(currentStagePredicate(ceilings, STAGE_SIZE)),
+        // A missed Speak prompt is the reader's review, not this stage's material.
+        introducedByQueue(),
         ...kindFilter,
         ...unitFilter,
         ...levelFilter
@@ -1209,7 +1247,7 @@ export async function getQueue(userId: string, query: StudyQueueQuery): Promise<
       templateCode: r.templateCode as StudyQueueItem['templateCode'],
       inputMode: r.inputMode,
       graderCode: r.graderCode,
-      prompt: withPromptTokens(withDialogueTokens(withDialogueAudio(r.prompt), gloss), gloss),
+      prompt: withPromptTokens(withDialogueTokens(withDialogueAudio(withSpeakAudio(r.prompt)), gloss), gloss),
       answer: r.answer,
       distractors: r.distractors,
       assets: withAssetUrls(r.assets)
@@ -1228,7 +1266,7 @@ export async function getQueue(userId: string, query: StudyQueueQuery): Promise<
       templateCode: r.templateCode as StudyQueueItem['templateCode'],
       inputMode: r.inputMode,
       graderCode: r.graderCode,
-      prompt: withPromptTokens(withDialogueTokens(withDialogueAudio(r.prompt), gloss), gloss),
+      prompt: withPromptTokens(withDialogueTokens(withDialogueAudio(withSpeakAudio(r.prompt)), gloss), gloss),
       answer: r.answer,
       distractors: r.distractors,
       assets: withAssetUrls(r.assets)
@@ -1419,6 +1457,7 @@ export async function getQueue(userId: string, query: StudyQueueQuery): Promise<
       eq(studyItems.active, true),
       eq(studyItemFacets.enabled, true),
       isNull(srsCards.id),
+      introducedByQueue(),
       ...withinCurriculum,
       ...kindFilter,
       ...unitFilter,
@@ -1518,6 +1557,8 @@ export async function getDecks(userId: string, languageCode: string, level?: str
       eq(studyItems.published, true),
       eq(studyItems.active, true),
       eq(studyItemFacets.enabled, true),
+      // A Speak prompt is in a deck only once it is the reader's own card.
+      or(introducedByQueue(), isNotNull(srsCards.id)),
       ...levelFilter
     ))
     .groupBy(studyItems.kind)
@@ -1565,7 +1606,8 @@ export async function getDecks(userId: string, languageCode: string, level?: str
     'kanji': { label: 'Kanji', description: 'Stroke order and handwriting' },
     'grammar': { label: 'Grammar', description: 'Patterns, and why they work that way' },
     'sentence': { label: 'Sentences', description: 'Word order: rebuild a sentence from its parts' },
-    'phonetic-series': { label: 'Sound series', description: 'Learn 青 = セイ, then watch 晴・清・静 fall into place' }
+    'phonetic-series': { label: 'Sound series', description: 'Learn 青 = セイ, then watch 晴・清・静 fall into place' },
+    'speak': { label: 'Speak', description: 'Prompts you missed in Speak, to say out loud again' }
   }
 
   const decks: StudyDecksResponse['decks'] = [
@@ -1699,7 +1741,10 @@ export async function getDueList(userId: string, query: DueListQuery): Promise<D
           sentenceText: sentences.text,
           sentenceReading: sentences.readingKana,
           seriesCharacter: phoneticSeries.componentCharacter,
-          seriesReading: phoneticSeries.primaryReading
+          seriesReading: phoneticSeries.primaryReading,
+          speakText: speakSteps.text,
+          speakReading: speakSteps.readingKana,
+          speakCode: speakSessions.code
         })
         .from(srsCards)
         .innerJoin(studyItemFacets, eq(studyItemFacets.id, srsCards.facetId))
@@ -1710,6 +1755,8 @@ export async function getDueList(userId: string, query: DueListQuery): Promise<D
         .leftJoin(grammarPoints, eq(grammarPoints.id, studyItems.grammarPointId))
         .leftJoin(sentences, eq(sentences.id, studyItems.sentenceId))
         .leftJoin(phoneticSeries, eq(phoneticSeries.id, studyItems.phoneticSeriesId))
+        .leftJoin(speakSteps, eq(speakSteps.id, studyItems.speakStepId))
+        .leftJoin(speakSessions, eq(speakSessions.id, speakSteps.sessionId))
         .where(and(isDue, inArray(studyItems.id, pageIds)))
         .orderBy(asc(srsCards.due))
 
@@ -1758,7 +1805,9 @@ export async function getDueList(userId: string, query: DueListQuery): Promise<D
               ? [r.sentenceText, r.sentenceReading, null]
               : r.seriesCharacter
                 ? [r.seriesCharacter, r.seriesReading, null]
-                : ['(untitled)', null, null]
+                : r.speakText
+                  ? [r.speakText, r.speakReading, r.speakCode ? `${ROUTE_BASE_PATHS.SPEAK}/${encodeURIComponent(r.speakCode)}` : null]
+                  : ['(untitled)', null, null]
 
     return [{
       studyItemId: id,
@@ -1902,6 +1951,7 @@ async function deckGate(
       eq(studyItems.active, true),
       eq(studyItemFacets.enabled, true),
       isNull(srsCards.id),
+      introducedByQueue(),
       ...filters
     ))
 
@@ -2010,8 +2060,8 @@ async function stageSamples(languageId: string): Promise<Map<string, string[]>> 
       left join grammar_points g on g.id = si.grammar_point_id
       where si.published and si.active and si.language_id = ${languageId}
         -- Same reason as the rollup: grammar is not in a stage any more, so it
-        -- cannot be what a stage is about.
-        and si.kind <> 'grammar'
+        -- cannot be what a stage is about. Speak prompts, likewise.
+        and si.kind not in ('grammar', 'speak')
     )
     select level, stage, subject from numbered
     where n <= 4 and subject <> ''

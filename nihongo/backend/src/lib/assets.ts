@@ -1,4 +1,10 @@
+import type { SpeakStepView } from '@nihongo/shared/types'
+
 import env from '@nihongo/shared/env'
+import { speakSegments } from '@nihongo/shared/lib'
+import { speakStoredPromptSchema } from '@nihongo/shared/types'
+
+import { englishVoiceFor, speakAudioPath, VOICE_OTHER } from './audio-key.js'
 
 /**
  * Where media is served from.
@@ -90,4 +96,38 @@ export function withDialogueAudio(prompt: Record<string, unknown>): Record<strin
   })
 
   return { ...prompt, turns }
+}
+
+/**
+ * A Speak teacher line, cut into runs, each with the clip `audio:speak` made
+ * for it: English in the session's teacher voice, {Japanese} in Kyoko. Shared
+ * by sessions and by review cards so the two can never name different clips.
+ */
+export function speakSay(en: string, sessionNumber: number): SpeakStepView['say'] {
+  return speakSegments(en).map(segment => ({
+    ...segment,
+    audio: assetUrl(speakAudioPath(segment.text, segment.lang === 'ja' ? VOICE_OTHER : englishVoiceFor(sessionNumber)))
+  }))
+}
+
+/** Where a Speak answer is heard. */
+export function speakAnswerAudio(text: string): string {
+  return assetUrl(speakAudioPath(text, VOICE_OTHER))
+}
+
+/**
+ * A missed Speak prompt, made playable as a review card.
+ *
+ * The prompt row stores content only (see `speakStoredPromptSchema`); the clips
+ * are worked out here, as they are for a session. The word cuts are added by
+ * `withPromptTokens`, as a cloze's are.
+ */
+export function withSpeakAudio(prompt: Record<string, unknown>): Record<string, unknown> {
+  if (prompt.kind !== 'speak')
+    return prompt
+  const parsed = speakStoredPromptSchema.safeParse(prompt)
+  if (!parsed.success)
+    return prompt
+  const { en, ...rest } = parsed.data
+  return { ...rest, say: speakSay(en, rest.session.number), answerAudio: speakAnswerAudio(rest.text) }
 }

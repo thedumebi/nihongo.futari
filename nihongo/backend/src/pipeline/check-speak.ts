@@ -20,7 +20,7 @@ import { eq } from 'drizzle-orm'
 
 import type { AuthoredSpeakSession } from './data/speak/types.js'
 
-import { audioKeyFor, VOICE_ENGLISH, VOICE_OTHER } from '../lib/audio-key.js'
+import { audioKeyFor, englishVoiceFor, VOICE_OTHER } from '../lib/audio-key.js'
 import { kanjiAboveLevel, lineFurigana, spansWordBreak, unspacedParticles } from '../lib/reading-checks.js'
 import { patternsBeforeTaught, speakWellFormed, tooManyNewWords } from '../lib/speak-checks.js'
 import { tokenProblems } from '../lib/token-checks.js'
@@ -36,7 +36,7 @@ export function speakClipKeys(all: AuthoredSpeakSession[]): Set<string> {
   for (const session of all) {
     for (const step of session.steps) {
       for (const segment of speakSegments('x' in step ? step.x : step.q))
-        keys.add(`audio/speak/${audioKeyFor(segment.text, segment.lang === 'ja' ? VOICE_OTHER : VOICE_ENGLISH)}.m4a`)
+        keys.add(`audio/speak/${audioKeyFor(segment.text, segment.lang === 'ja' ? VOICE_OTHER : englishVoiceFor(session.number))}.m4a`)
       if ('t' in step)
         keys.add(`audio/speak/${audioKeyFor(step.t, VOICE_OTHER)}.m4a`)
     }

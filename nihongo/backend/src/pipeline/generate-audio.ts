@@ -9,7 +9,7 @@ import { tmpdir } from 'node:os'
 import path, { basename } from 'node:path'
 import { promisify } from 'node:util'
 
-import { audioKeyFor, VOICE_LEARNER as LEARNER_VOICE, VOICE_ENGLISH, VOICE_OTHER } from '../lib/audio-key.js'
+import { audioKeyFor, englishVoiceFor, VOICE_LEARNER as LEARNER_VOICE, VOICE_OTHER } from '../lib/audio-key.js'
 import { SPEAK } from './data/speak/index.js'
 import { CONTENT_TYPES, listKeys, putAsset } from './lib/bucket.js'
 
@@ -135,14 +135,14 @@ async function generate(kind: AudioKind) {
     // From the authored data, not the database: a session is unpublished until
     // it is approved, and its clips have to exist BEFORE that, so the reviewer
     // hears what learners will. Every teacher line is recorded run by run —
-    // English in the English voice, each {Japanese} run in Kyoko — and every
+    // English in the session's teacher voice, each {Japanese} run in Kyoko — and every
     // answer in Kyoko.
     const lines = new Map<string, { text: string, voice: string }>()
     const add = (text: string, voice: string) => lines.set(audioKeyFor(text, voice), { text, voice })
     for (const session of SPEAK) {
       for (const step of session.steps) {
         for (const segment of speakSegments('x' in step ? step.x : step.q))
-          add(segment.text, segment.lang === 'ja' ? VOICE : VOICE_ENGLISH)
+          add(segment.text, segment.lang === 'ja' ? VOICE : englishVoiceFor(session.number))
         if ('t' in step)
           add(step.t, VOICE)
       }

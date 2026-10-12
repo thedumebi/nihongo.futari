@@ -43,14 +43,23 @@ export const VOICE_OTHER = 'Kyoko (Enhanced)'
 export const VOICE_LEARNER = 'Otoya (Enhanced)'
 
 /**
- * The Speak teacher: explanations and the English prompts.
+ * The Speak teachers: explanations and the English prompts.
  *
- * Samantha because she ships with every Mac. A Premium voice (Ava, Zoe) sounds
- * far more natural; to switch, download it under Spoken Content → Manage Voices,
- * change this name and run `audio:speak` — the voice is part of every key, so
- * the URLs move to the new clips by themselves.
+ * Two, a woman and a man, so the course does not sound like one recording on
+ * repeat. Both are the downloaded high-quality variants — Samantha, the
+ * built-in voice used at first, sounded flat beside Kyoko. A teacher is a
+ * session's, never a line's: switching voice mid-explanation would sound like
+ * an interruption, so sessions alternate instead.
+ *
+ * The voice is part of every key, so changing these and running `audio:speak`
+ * moves the URLs to the new clips by themselves.
  */
-export const VOICE_ENGLISH = 'Samantha'
+export const VOICES_ENGLISH = ['Zoe (Premium)', 'Nathan (Enhanced)'] as const
+
+/** The teacher for a session: odd sessions Zoe, even sessions Nathan. */
+export function englishVoiceFor(sessionNumber: number): string {
+  return VOICES_ENGLISH[(Math.max(1, sessionNumber) - 1) % VOICES_ENGLISH.length]!
+}
 
 export function audioKeyFor(text: string, voice: string): string {
   const digest = createHash('sha256').update(`${voice} ${text}`, 'utf8').digest('base64url')

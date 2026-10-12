@@ -21,6 +21,7 @@ import { kana } from './kana.js'
 import { kanji, phoneticSeries } from './kanji.js'
 import { languageLevels, languages } from './languages.js'
 import { sentences } from './sentences.js'
+import { speakSteps } from './speak.js'
 import { words } from './words.js'
 
 /**
@@ -37,7 +38,7 @@ import { words } from './words.js'
 export const studyItems = pgTable('study_items', {
   id: primaryId(),
   languageId: text('language_id').notNull().references(() => languages.id, { onDelete: 'cascade' }),
-  kind: text('kind').notNull(), // kana | kanji | word | grammar | sentence | phonetic-series | dialogue
+  kind: text('kind').notNull(), // kana | kanji | word | grammar | sentence | phonetic-series | dialogue | speak
 
   kanaId: text('kana_id').references(() => kana.id, { onDelete: 'cascade' }),
   kanjiId: text('kanji_id').references(() => kanji.id, { onDelete: 'cascade' }),
@@ -46,6 +47,12 @@ export const studyItems = pgTable('study_items', {
   sentenceId: text('sentence_id').references(() => sentences.id, { onDelete: 'cascade' }),
   phoneticSeriesId: text('phonetic_series_id').references(() => phoneticSeries.id, { onDelete: 'cascade' }),
   dialogueId: text('dialogue_id').references(() => dialogues.id, { onDelete: 'cascade' }),
+  /**
+   * A Speak prompt. Never introduced by the queue: one becomes a card only when
+   * a learner answers it "Not quite" in a session, so what comes back is what
+   * they actually could not say.
+   */
+  speakStepId: text('speak_step_id').references(() => speakSteps.id, { onDelete: 'cascade' }),
 
   levelId: text('level_id').references(() => languageLevels.id, { onDelete: 'set null' }),
   frequencyRank: integer('frequency_rank'),
@@ -57,7 +64,7 @@ export const studyItems = pgTable('study_items', {
 }, t => ({
   exactlyOneTarget: check(
     'study_items_exactly_one_target',
-    sql`num_nonnulls(${t.kanaId}, ${t.kanjiId}, ${t.wordId}, ${t.grammarPointId}, ${t.sentenceId}, ${t.phoneticSeriesId}, ${t.dialogueId}) = 1`
+    sql`num_nonnulls(${t.kanaId}, ${t.kanjiId}, ${t.wordId}, ${t.grammarPointId}, ${t.sentenceId}, ${t.phoneticSeriesId}, ${t.dialogueId}, ${t.speakStepId}) = 1`
   ),
   queueIdx: index('study_items_queue_idx')
     .on(t.languageId, t.levelId, t.sortIndex)
@@ -68,7 +75,8 @@ export const studyItems = pgTable('study_items', {
   grammarUnique: uniqueIndex('study_items_grammar_unique').on(t.grammarPointId).where(sql`${t.grammarPointId} is not null`),
   sentenceUnique: uniqueIndex('study_items_sentence_unique').on(t.sentenceId).where(sql`${t.sentenceId} is not null`),
   seriesUnique: uniqueIndex('study_items_series_unique').on(t.phoneticSeriesId).where(sql`${t.phoneticSeriesId} is not null`),
-  dialogueUnique: uniqueIndex('study_items_dialogue_unique').on(t.dialogueId).where(sql`${t.dialogueId} is not null`)
+  dialogueUnique: uniqueIndex('study_items_dialogue_unique').on(t.dialogueId).where(sql`${t.dialogueId} is not null`),
+  speakStepUnique: uniqueIndex('study_items_speak_step_unique').on(t.speakStepId).where(sql`${t.speakStepId} is not null`)
 }))
 
 /**

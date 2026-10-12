@@ -1,7 +1,7 @@
 import { z } from '@hono/zod-openapi'
 import { HttpStatusCodes, SPEAK_ROUTES } from '@nihongo/shared/constants'
 import { createSecuredRoute, ErrorSchema, jsonContent, jsonContentRequired } from '@nihongo/shared/openapi'
-import { MessageResponseSchema, speakCompleteSchema, speakListResponseSchema, speakQuerySchema, speakSessionViewSchema } from '@nihongo/shared/types'
+import { MessageResponseSchema, saveWordResultSchema, speakCompleteSchema, speakListResponseSchema, speakMissParamsSchema, speakQuerySchema, speakSessionViewSchema } from '@nihongo/shared/types'
 
 import authMiddleware from '@/middlewares/auth.js'
 import { writeLimiter } from '@/middlewares/rate-limit.js'
@@ -39,6 +39,24 @@ export const complete = createSecuredRoute({
   }
 })
 export type CompleteRoute = typeof complete
+
+export const miss = createSecuredRoute({
+  tags,
+  path: SPEAK_ROUTES.MISS,
+  method: 'post',
+  summary: 'A prompt answered "Not quite" — add it to this learner\'s reviews',
+  description: 'Creates one card for the prompt, due now. A prompt already in review is left alone, so retrying changes nothing.',
+  middleware: [authMiddleware, writeLimiter],
+  request: {
+    params: speakMissParamsSchema,
+    query: speakQuerySchema
+  },
+  responses: {
+    [HttpStatusCodes.OK]: jsonContent(saveWordResultSchema, 'Whether a card was added'),
+    [HttpStatusCodes.NOT_FOUND]: jsonContent(ErrorSchema, 'No such prompt in a published session')
+  }
+})
+export type MissRoute = typeof miss
 
 export const getByCode = createSecuredRoute({
   tags,

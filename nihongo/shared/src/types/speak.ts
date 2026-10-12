@@ -78,6 +78,50 @@ export const speakSessionViewSchema = speakSessionSummarySchema.omit({ progress:
 
 export type SpeakSessionView = z.infer<typeof speakSessionViewSchema>
 
+/** Which session a review card came from, so the card can say so. */
+const speakPromptSessionSchema = z.object({
+  code: z.string(),
+  number: z.number().int(),
+  titleEn: z.string()
+})
+
+/**
+ * A Speak prompt as stored on its exercise prompt — the content only.
+ *
+ * No audio URLs and no word cuts: those are derived when the card is served,
+ * the same way a session's are, so a change of teacher voice or a dictionary
+ * fix reaches cards already in someone's reviews.
+ */
+export const speakStoredPromptSchema = z.object({
+  kind: z.literal('speak'),
+  /** The English prompt, {braced} Japanese and all. */
+  en: z.string(),
+  text: z.string(),
+  reading: z.string(),
+  note: z.string().nullable(),
+  session: speakPromptSessionSchema
+})
+
+export type SpeakStoredPrompt = z.infer<typeof speakStoredPromptSchema>
+
+/** A Speak prompt as a review card receives it: the stored content, made playable and tappable. */
+export const speakPromptSchema = speakStepViewSchema
+  .pick({ say: true, tokens: true, note: true })
+  .extend({
+    kind: z.literal('speak'),
+    text: z.string(),
+    reading: z.string(),
+    answerAudio: z.string(),
+    session: speakPromptSessionSchema
+  })
+
+export type SpeakPrompt = z.infer<typeof speakPromptSchema>
+
+export const speakMissParamsSchema = z.object({
+  code: z.string().min(1),
+  index: z.coerce.number().int().min(0)
+})
+
 export const speakQuerySchema = z.object({
   languageCode: z.string().min(2).default('ja')
 })

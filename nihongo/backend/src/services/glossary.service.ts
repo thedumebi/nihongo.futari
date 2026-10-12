@@ -899,6 +899,8 @@ function readingOf(segments: unknown): string | undefined {
 /**
  * Attach tappable words to a study prompt.
  *
+ * And to a Speak answer, which is only shown once it has been said aloud.
+ *
  * Only to the CONTEXT around a cloze blank. The word under test is deliberately
  * left alone: on a reading or meaning card the answer is exactly what a gloss
  * would reveal, so making it tappable would hand the card away. The sentence it
@@ -909,6 +911,10 @@ function readingOf(segments: unknown): string | undefined {
  * alignment pass is needed and the two can never disagree.
  */
 export function withPromptTokens(prompt: Record<string, unknown>, g: Glossary): Record<string, unknown> {
+  // A Speak answer, cut exactly as the session cuts it — the author's reading
+  // guides the kana — so a word reads the same in both places.
+  if (prompt.kind === 'speak' && typeof prompt.text === 'string' && typeof prompt.reading === 'string')
+    return { ...prompt, tokens: glossLine(prompt.text, g, prompt.reading, { regroupKana: true }) }
   if (prompt.kind !== 'cloze')
     return prompt
 

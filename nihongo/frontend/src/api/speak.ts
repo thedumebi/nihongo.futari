@@ -1,4 +1,4 @@
-import type { SpeakCompleteInput, SpeakListResponse, SpeakSessionView } from '@nihongo/shared/types'
+import type { SaveWordResult, SpeakCompleteInput, SpeakListResponse, SpeakSessionView } from '@nihongo/shared/types'
 
 import { API_ENDPOINTS } from '@nihongo/shared/constants'
 
@@ -16,4 +16,10 @@ export async function getSpeakSession(code: string, languageCode = 'ja'): Promis
 
 export async function completeSpeakSession(code: string, input: SpeakCompleteInput, languageCode = 'ja'): Promise<void> {
   await client.post(API_ENDPOINTS.SPEAK.COMPLETE(code), input, { params: { languageCode } })
+}
+
+/** A prompt answered "Not quite": into this learner's reviews. */
+export async function missSpeakStep(code: string, index: number, languageCode = 'ja'): Promise<SaveWordResult> {
+  const { data } = await client.post<SaveWordResult>(API_ENDPOINTS.SPEAK.MISS(code, index), undefined, { params: { languageCode } })
+  return data
 }

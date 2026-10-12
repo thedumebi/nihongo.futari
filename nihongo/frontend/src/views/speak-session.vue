@@ -5,7 +5,7 @@ import { useLocalStorage } from '@vueuse/core'
 import { computed, onMounted, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 
-import { completeSpeakSession, getSpeakSession } from '@/api/speak'
+import { completeSpeakSession, getSpeakSession, missSpeakStep } from '@/api/speak'
 import AppShell from '@/components/layout/app-shell.vue'
 import HandsFreeRun from '@/components/speak/hands-free-run.vue'
 import OnScreenRun from '@/components/speak/on-screen-run.vue'
@@ -109,6 +109,28 @@ async function onFinished(run: { gotIt: number, total: number }) {
   }
 }
 
+/**
+ * A miss goes into reviews, so the prompts you could not say come back later.
+ * Said once per run rather than on every miss — the point is to know it
+ * happens, not to be interrupted each time.
+ */
+let toldAboutReviews = false
+async function onMissed(index: number) {
+  const s = session.value
+  // A draft previewed from the review queue leaves nothing behind.
+  if (!s?.published)
+    return
+  try {
+    const { added } = await missSpeakStep(s.code, index, lang.code)
+    if (added && !toldAboutReviews) {
+      toldAboutReviews = true
+      toast.success('Added to your reviews — prompts you miss will come back.')
+    }
+  } catch {
+    // Not worth interrupting the session for; the next miss tries again.
+  }
+}
+
 function again() {
   result.value = null
   attempt.value++
@@ -186,6 +208,7 @@ function again() {
               :known-kanji="knownKanji"
               :think-scale="thinkScale"
               @finished="onFinished"
+              @missed="onMissed"
             />
           </template>
           <HandsFreeRun

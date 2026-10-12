@@ -5,6 +5,7 @@ import type {
   GlossedToken,
   HandwritingGrade,
   ReferenceStroke,
+  SpeakPrompt,
   StageCelebration,
   StageProgress,
   Stroke,
@@ -33,6 +34,7 @@ import ClozePrompt from '@/components/study/cloze-prompt.vue'
 import DialogueCard from '@/components/study/dialogue-card.vue'
 import GrammarLesson from '@/components/study/grammar-lesson.vue'
 import OrderInput from '@/components/study/order-input.vue'
+import SpeakCard from '@/components/study/speak-card.vue'
 import Button from '@/components/ui/button.vue'
 import Dropdown from '@/components/ui/dropdown.vue'
 import Tooltip from '@/components/ui/tooltip.vue'
@@ -638,6 +640,17 @@ const isSeries = computed(() => current.value?.prompt?.kind === 'sound-series')
  */
 const isDialogue = computed(() => current.value?.prompt?.kind === 'dialogue')
 
+/**
+ * A Speak prompt missed in a session, back for review. Like a dialogue it owns
+ * the whole card and grades itself — the learner's own "Got it" or "Not
+ * quite" — so it bypasses `gradeAnswer` too.
+ */
+const speakPrompt = computed(() => {
+  const prompt = current.value?.prompt
+  return prompt?.kind === 'speak' ? prompt as unknown as SpeakPrompt : null
+})
+const isSpeak = computed(() => speakPrompt.value !== null)
+
 const dialogueTurns = computed(() => {
   const turns = current.value?.prompt?.turns
   return Array.isArray(turns) ? turns as DialogueTurn[] : []
@@ -1019,7 +1032,7 @@ function check() {
   // A dialogue grades itself as it goes — see onDialogueFinished. Nothing to
   // submit here, and falling through would grade the dialogue's code string
   // against an empty input.
-  if (isDialogue.value)
+  if (isDialogue.value || isSpeak.value)
     return
 
   // Handwriting has a real continuous score, so the grader proposes the rating
@@ -1090,6 +1103,18 @@ function onDialogueFinished(result: { correct: number, total: number }) {
   // Same bands the handwriting grade uses, for the same reason: a near-miss
   // and a shambles should not schedule identically.
   void submitRating(share >= 0.95 ? 4 : share >= 0.8 ? 3 : share >= 0.5 ? 2 : 1)
+}
+
+/** A Speak card, self-checked: Got it is Good, Not quite is Again. Then straight on. */
+async function onSpeakFinished(gotIt: boolean) {
+  wasCorrect.value = gotIt
+  expected.value = ''
+  revealed.value = true
+  sessionSeen.value += 1
+  if (gotIt)
+    sessionCorrect.value += 1
+  await submitRating(gotIt ? 3 : 1)
+  await next()
 }
 
 async function submitRating(rating: 1 | 2 | 3 | 4) {
@@ -1607,8 +1632,16 @@ watch(() => lang.code, async () => {
           <template v-else>
             <!-- A conversation owns the whole card: the prompt, the choices and
                the verdict are one flow, not a question with an answer box. -->
+            <SpeakCard
+              v-if="speakPrompt"
+              :prompt="speakPrompt"
+              :mode="furiganaMode"
+              :known-kanji="knownKanji"
+              @finished="onSpeakFinished"
+            />
+
             <DialogueCard
-              v-if="isDialogue"
+              v-else-if="isDialogue"
               :title="String(current.prompt?.title ?? '')"
               :situation="String(current.prompt?.situation ?? '')"
               :turns="dialogueTurns"
@@ -1780,7 +1813,7 @@ watch(() => lang.code, async () => {
               </div>
             </div>
 
-            <form v-if="!isDialogue" class="flex flex-col gap-4" @submit.prevent="onEnter">
+            <form v-if="!isDialogue && !isSpeak" class="flex flex-col gap-4" @submit.prevent="onEnter">
               <ChoiceInput
                 v-if="isChoice"
                 :options="choices"

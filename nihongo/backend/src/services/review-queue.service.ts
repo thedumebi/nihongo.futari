@@ -15,6 +15,7 @@ import {
   sources,
   speakSessions,
   speakSteps,
+  studyItems,
   words
 } from '@nihongo/shared/db/schema'
 import { aliasedTable, and, asc, eq, inArray, sql } from 'drizzle-orm'
@@ -253,6 +254,15 @@ export async function approve(id: string, reviewerId: string, note?: string): Pr
         .update(speakSessions)
         .set({ published: true, updatedAt: now })
         .where(eq(speakSessions.id, row.targetId))
+      // And its prompts' study items, so a miss in the session can become a
+      // review card. They follow the session — never published ahead of it.
+      await tx
+        .update(studyItems)
+        .set({ published: true, updatedAt: now })
+        .where(inArray(studyItems.speakStepId, tx
+          .select({ id: speakSteps.id })
+          .from(speakSteps)
+          .where(eq(speakSteps.sessionId, row.targetId))))
     }
 
     await tx

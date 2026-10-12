@@ -34,7 +34,8 @@ const KIND_LABELS: Record<string, string> = {
   'word': 'words',
   'grammar': 'grammar',
   'sentence': 'sentences',
-  'phonetic-series': 'sound series'
+  'phonetic-series': 'sound series',
+  'speak': 'speak prompts'
 }
 
 /**

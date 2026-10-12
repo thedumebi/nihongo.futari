@@ -64,7 +64,8 @@ const KIND_LABELS: Record<string, string> = {
   'word': 'Vocabulary',
   'grammar': 'Grammar',
   'sentence': 'Sentences',
-  'phonetic-series': 'Sound series'
+  'phonetic-series': 'Sound series',
+  'speak': 'Speak'
 }
 
 const FACET_LABELS: Record<string, string> = {
