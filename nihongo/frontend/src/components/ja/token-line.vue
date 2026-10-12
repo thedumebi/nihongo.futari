@@ -2,7 +2,7 @@
 import type { FuriganaMode } from '@nihongo/shared/constants'
 import type { GlossedToken } from '@nihongo/shared/types'
 
-import { kanaLineToRomaji, kanaTokenToRomaji } from '@nihongo/shared/lib'
+import { hasKanji, kanaLineToRomaji, kanaTokenToRomaji } from '@nihongo/shared/lib'
 import { computed } from 'vue'
 
 import FuriganaText from '@/components/ja/furigana-text.vue'
@@ -59,9 +59,30 @@ const perToken = computed(() => {
   return romaji.value ? props.tokens.some(t => t.r) : true
 })
 
-/** Whether to draw ruby: a real furigana mode, and something to align against. */
+/**
+ * Whether to hand the token to FuriganaText: a real furigana mode and
+ * something to align against. In kana mode only a token WITH kanji goes there,
+ * to have them spelled out; a kana token is already what it should be. Its
+ * reading is phonetic — は is written わ there — so using it would teach the
+ * wrong spelling.
+ */
 function ruby(token: GlossedToken): boolean {
+  if (props.mode === 'kana')
+    return Boolean(token.r) && hasKanji(token.t)
   return !romaji.value && props.mode !== 'off' && Boolean(token.r)
+}
+
+/**
+ * The author's word break, kept in kana mode only.
+ *
+ * Hiragana with no kanji has nothing to show where a word ends, which is why
+ * children's books in kana leave spaces. The breaks come from the reading,
+ * the same place romaji gets them.
+ */
+function gap(token: GlossedToken, i: number): boolean {
+  // Not after 、 or 。 — the punctuation already marks the break.
+  return props.mode === 'kana' && i > 0 && /^\s/.test(token.r ?? '')
+    && !/[、。！？「」]$/.test(props.tokens[i - 1]?.t ?? '')
 }
 
 const wholeLine = computed(() => romaji.value ? kanaLineToRomaji(props.reading) : props.text)
@@ -98,27 +119,25 @@ function pick(index: number, token: GlossedToken) {
   <span v-else :style="romaji ? undefined : { fontFamily: 'var(--font-jp)' }"><template
     v-for="(token, i) in tokens"
     :key="i"
-  ><button
+  ><span v-if="gap(token, i)" class="whitespace-pre">{{ " " }}</span><button
     v-if="token.w"
     type="button"
     class="whitespace-pre rounded underline decoration-dotted decoration-[var(--color-border)] underline-offset-4 transition hover:decoration-[var(--color-text)]"
     :class="selected === i ? 'bg-[var(--color-card)] decoration-[var(--color-text)]' : ''"
     :aria-label="`What does ${token.t} mean?`"
     @click.stop="pick(i, token)"
-  ><FuriganaText
-    v-if="ruby(token)"
+  ><template v-if="ruby(token)"><FuriganaText
     :text="token.t"
     :reading="token.r"
     :mode="mode"
     :known-kanji="knownKanji"
-  /><template v-else>{{ label(token) }}</template></button><span
+  /></template><template v-else>{{ label(token) }}</template></button><span
     v-else
     class="whitespace-pre-wrap"
-  ><FuriganaText
-    v-if="ruby(token)"
+  ><template v-if="ruby(token)"><FuriganaText
     :text="token.t"
     :reading="token.r"
     :mode="mode"
     :known-kanji="knownKanji"
-  /><template v-else>{{ label(token) }}</template></span></template></span>
+  /></template><template v-else>{{ label(token) }}</template></span></template></span>
 </template>

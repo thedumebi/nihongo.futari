@@ -11,6 +11,7 @@ import HandsFreeRun from '@/components/speak/hands-free-run.vue'
 import OnScreenRun from '@/components/speak/on-screen-run.vue'
 import Button from '@/components/ui/button.vue'
 import Segmented from '@/components/ui/segmented.vue'
+import Slider from '@/components/ui/slider.vue'
 import { useFurigana } from '@/composables/use-furigana'
 import { useToast } from '@/composables/use-toast'
 import { ROUTES } from '@/constants'
@@ -32,13 +33,31 @@ const lang = useLanguageStore()
 const { mode, knownKanji, loadKnownKanji, loadSettings } = useFurigana()
 const toast = useToast()
 
+// ============ Constants ============
+/**
+ * The pace of a session, slowest first: a slider reads as speed, so slower —
+ * more time to answer — sits on the left. Each step scales the thinking pause.
+ * Words, not multipliers: "3×" beside a speed slider reads as the fastest.
+ */
+const PACES = [
+  { scale: 3, label: 'Slowest' },
+  { scale: 2.5, label: 'Very slow' },
+  { scale: 2, label: 'Slower' },
+  { scale: 1.5, label: 'Slow' },
+  { scale: 1.25, label: 'A little slow' },
+  { scale: 1, label: 'Normal' },
+  { scale: 0.75, label: 'Fast' },
+  { scale: 0.5, label: 'Fastest' }
+] as const
+const NORMAL_STEP = PACES.findIndex(p => p.scale === 1)
+
 // ============ Reactive State ============
 const session = ref<SpeakSessionView | null>(null)
 const loading = ref(true)
 const notFound = ref(false)
 const view = ref<'screen' | 'hands-free'>('screen')
-/** How long to leave for an answer. A per-device convenience, so localStorage. */
-const thinking = useLocalStorage<'short' | 'normal' | 'long'>('go-speak-thinking', 'normal')
+/** The pace, as a step on PACES. A per-device convenience, so localStorage. */
+const paceStep = useLocalStorage('go-speak-pace', NORMAL_STEP)
 const result = ref<{ gotIt: number, total: number } | null>(null)
 /** Bumped to remount the on-screen run, which is how "go again" restarts it. */
 const attempt = ref(0)
@@ -47,15 +66,10 @@ const VIEWS = [
   { value: 'screen' as const, label: 'On screen' },
   { value: 'hands-free' as const, label: 'Hands-free' }
 ]
-const THINKING = [
-  { value: 'short' as const, label: 'Short', title: 'Less time to answer' },
-  { value: 'normal' as const, label: 'Normal' },
-  { value: 'long' as const, label: 'Long', title: 'More time to answer' }
-]
-const SCALE = { short: 0.7, normal: 1, long: 1.5 } as const
 
 // ============ Computed Properties ============
-const thinkScale = computed(() => SCALE[thinking.value] ?? 1)
+const pace = computed(() => PACES[paceStep.value] ?? PACES[NORMAL_STEP]!)
+const thinkScale = computed(() => pace.value.scale)
 
 // ============ Watchers ============
 watch(() => route.params.code, load)
@@ -134,7 +148,13 @@ function again() {
 
         <div class="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2">
           <Segmented v-model="view" label="How" :options="VIEWS" />
-          <Segmented v-model="thinking" label="Time to answer" :options="THINKING" />
+          <Slider
+            v-model="paceStep"
+            label="Pace — slower gives more time to answer"
+            :min="0"
+            :max="PACES.length - 1"
+            :value-text="pace.label"
+          />
         </div>
 
         <div class="mt-6">

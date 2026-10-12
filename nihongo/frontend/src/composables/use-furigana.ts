@@ -24,6 +24,7 @@ export const FURIGANA_MODE_LABELS: Record<FuriganaMode, { label: string, descrip
   'always': { label: 'Always', description: 'Readings over every kanji.' },
   'unknown-only': { label: 'Unknown', description: 'Readings only over kanji you have not learned yet.' },
   'off': { label: 'Never', description: 'No readings. What reading practice actually needs.' },
+  'kana': { label: 'Hiragana', description: 'Kanji written out in kana, so every line is hiragana reading practice.' },
   'romaji': { label: 'Romaji', description: 'Readings in latin letters, over every kanji and every kana.' }
 }
 

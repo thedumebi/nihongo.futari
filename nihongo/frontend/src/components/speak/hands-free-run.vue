@@ -37,6 +37,13 @@ const playing = ref(false)
 /** Whether the current prompt's answer has been heard yet, so the text can show it. */
 const answered = ref(false)
 const finished = ref(false)
+/**
+ * Paused in the silence after a prompt. Resuming then goes on to the answer
+ * instead of asking again — pausing there is how you take as long as you like.
+ */
+const heldInThinking = ref(false)
+/** In the silence for the current prompt right now. */
+let thinking = false
 
 let run = 0
 
@@ -84,7 +91,18 @@ async function start() {
     if (s.kind === 'explain') {
       await playAudioQueue([...ask, { pauseMs: AFTER_EXPLAIN_MS }], { silentPauses: true })
     } else {
-      await playAudioQueue([...ask, { pauseMs: thinkingTimeMs(s.reading ?? '', props.thinkScale) }], { silentPauses: true })
+      // Back from a pause in the silence: play means "ready", so straight to the answer.
+      if (heldInThinking.value) {
+        heldInThinking.value = false
+      } else {
+        await playAudioQueue(ask)
+        if (mine !== run)
+          return
+        thinking = true
+        // A getter, so changing the time to answer mid-pause stretches or cuts the silence already playing.
+        await playAudioQueue([{ pauseMs: () => thinkingTimeMs(s.reading ?? '', props.thinkScale) }], { silentPauses: true })
+        thinking = false
+      }
       if (mine !== run)
         return
       answered.value = true
@@ -101,6 +119,8 @@ async function start() {
 }
 
 function pause() {
+  heldInThinking.value = thinking
+  thinking = false
   run++
   stopAudio()
   playing.value = false
@@ -114,6 +134,8 @@ function skip(by: number) {
   current.value = Math.min(props.steps.length - 1, Math.max(0, current.value + by))
   answered.value = false
   finished.value = false
+  heldInThinking.value = false
+  thinking = false
   if (wasPlaying)
     void start()
 }
@@ -128,12 +150,15 @@ function setState(state: MediaSessionPlaybackState) {
   <div>
     <p class="text-sm text-[var(--color-muted)]">
       Plays straight through: the English, a pause for you to say it, then the answer. Works with the
-      screen off. Listening does not mark the session done — run it on screen to check yourself.
+      screen off. Pause during the silence to take as long as you need — play again gives the answer. Listening does not mark the session done — run it on screen to check yourself.
     </p>
 
     <div class="mt-6 min-h-[12rem] rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] p-6">
       <p class="text-xs uppercase tracking-wide text-[var(--color-muted)]">
         {{ finished ? 'Finished' : `${current + 1} of ${steps.length}` }}
+      </p>
+      <p v-if="heldInThinking && !playing" class="mt-1 text-sm text-[var(--color-muted)]">
+        Paused — take as long as you need. Play gives the answer.
       </p>
       <template v-if="step && !finished">
         <TeacherLine :say="step.say" class="mt-2 text-lg" />

@@ -207,7 +207,7 @@ defineExpose({ restart, clearPick })
           @click.capture="guardClick"
           @contextmenu.prevent
         >
-          <p class="text-2xl sm:text-3xl" :class="mode === 'romaji' ? 'leading-relaxed' : 'leading-[2.3]'">
+          <p class="text-2xl sm:text-3xl" :class="mode === 'romaji' || mode === 'kana' ? 'leading-relaxed' : 'leading-[2.3]'">
             <TokenLine
               :tokens="line.tokens"
               :text="line.text"

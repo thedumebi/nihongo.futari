@@ -130,8 +130,9 @@ export type WordOrigin = typeof WORD_ORIGINS[number]
 
 // 'romaji' shows the reading in latin letters instead of kana. It is for the
 // first weeks, when the kana themselves are still being learned and furigana
-// is one unknown script explaining another.
-export const FURIGANA_MODES = ['off', 'always', 'unknown-only', 'romaji'] as const
+// is one unknown script explaining another. 'kana' goes the other way: kanji
+// are written out in their reading, so a whole line is hiragana practice.
+export const FURIGANA_MODES = ['off', 'always', 'unknown-only', 'kana', 'romaji'] as const
 export type FuriganaMode = typeof FURIGANA_MODES[number]
 
 // ---------------------------------------------------------------------------

@@ -23,6 +23,9 @@ import { computed } from 'vue'
  *                     unknown script with another. Unconditional: everything
  *                     that can be romanised is, whether or not the reader has
  *                     met it before.
+ *  - `kana`         — no ruby: kanji are REPLACED by their reading, so the
+ *                     line reads as kana throughout. Hiragana reading practice
+ *                     for someone past romaji but not yet reading kanji.
  *
  * Pre-aligned `segments` are preferred; passing `reading` aligns on the fly,
  * which is only safe for single words whose alignment was already checked.
@@ -100,6 +103,15 @@ function showsRuby(segment: FuriganaSegment): boolean {
 }
 
 /**
+ * A segment in kana mode: its reading in place of the kanji. Spaces are
+ * dropped — a token's reading can carry the author's word break, and where the
+ * breaks go is the caller's business, not this run of text's.
+ */
+function spelled(segment: FuriganaSegment): string {
+  return segment.r ? segment.r.replace(/\s+/g, '') : segment.t
+}
+
+/**
  * Whether every character in a segment is already known.
  *
  * A multi-character run keeps its ruby unless the WHOLE run is familiar, since
@@ -119,7 +131,8 @@ function isKnown(segment: FuriganaSegment): boolean {
 <template>
   <span>
     <template v-for="(segment, i) in resolved" :key="i">
-      <ruby v-if="showsRuby(segment)">{{ segment.t }}<rp>(</rp><rt>{{ rubyFor(segment) }}</rt><rp>)</rp></ruby>
+      <template v-if="mode === 'kana'">{{ spelled(segment) }}</template>
+      <ruby v-else-if="showsRuby(segment)">{{ segment.t }}<rp>(</rp><rt>{{ rubyFor(segment) }}</rt><rp>)</rp></ruby>
       <template v-else>{{ segment.t }}</template>
     </template>
   </span>

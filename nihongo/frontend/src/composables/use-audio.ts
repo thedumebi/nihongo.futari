@@ -168,22 +168,90 @@ export function playAudio(src: string | null | undefined): void {
   audio.play().catch((err: unknown) => record(`play ${src}`, err))
 }
 
-/** A gap in a queue: silence for this long before the next clip. */
-export interface AudioPause { pauseMs: number }
+/**
+ * A gap in a queue: silence for this long before the next clip.
+ *
+ * A function is re-read while the pause runs, so a length changed part-way
+ * through — "give me longer" pressed during the silence — takes effect in that
+ * same pause instead of the next one.
+ */
+export interface AudioPause { pauseMs: number | (() => number) }
+
+function pauseLength(pause: AudioPause): number {
+  return typeof pause.pauseMs === 'function' ? pause.pauseMs() : pause.pauseMs
+}
 
 /** One second of silence, played as a clip — see `silentPauses` below. */
 const SILENCE_SECOND = '/silence-1s.m4a'
+const SILENCE_SECOND_MS = 1000
 
-/** Wait, waking often enough to notice the run was superseded. */
-async function wait(ms: number, run: number): Promise<void> {
-  const until = Date.now() + ms
+/** Wait, waking often enough to notice the run was superseded or the length changed. */
+async function wait(pause: AudioPause, run: number): Promise<void> {
+  const started = Date.now()
   // `token` is bumped by whatever supersedes this run, from outside the loop.
   for (;;) {
-    const left = until - Date.now()
+    const left = started + pauseLength(pause) - Date.now()
     if (run !== token || left <= 0)
       return
     await new Promise(resolve => setTimeout(resolve, Math.min(100, left)))
   }
+}
+
+type Played = 'played' | 'skipped' | 'refused'
+
+/** Play one clip to its end on the shared element. */
+async function playClip(audio: HTMLAudioElement, src: string, run: number): Promise<Played> {
+  audio.pause()
+  audio.src = src
+  try {
+    await audio.play()
+  } catch (err: unknown) {
+    // A refusal means the element is not allowed to play at all, so every
+    // remaining clip would be refused too. The caller bails rather than
+    // spinning through the whole queue pretending to play it.
+    if (err instanceof DOMException && err.name === 'NotAllowedError') {
+      record('queue refused — element not unlocked', err)
+      return 'refused'
+    }
+    // Anything else is this one clip's problem: step over it.
+    return 'skipped'
+  }
+  if (run !== token)
+    return 'played'
+
+  await new Promise<void>((resolve) => {
+    // A STALL watchdog, not a time limit. A flat timeout would cut off any
+    // clip longer than it — silently, mid-word — and "long" is a property of
+    // the content, not something this should have an opinion about. Instead
+    // the timer is re-armed on every `timeupdate`, so it only fires when a
+    // clip has genuinely stopped making progress.
+    let stall: ReturnType<typeof setTimeout>
+
+    const done = () => {
+      clearTimeout(stall)
+      audio.removeEventListener('ended', done)
+      audio.removeEventListener('error', done)
+      audio.removeEventListener('timeupdate', resetStall)
+      resolve()
+    }
+
+    // Named apart from the unlock's `arm` on purpose: two functions called
+    // `arm` in one file, one shadowing the other inside this closure, is a
+    // trap for whoever edits it next.
+    function resetStall() {
+      clearTimeout(stall)
+      stall = setTimeout(done, 15_000)
+    }
+
+    // Removed explicitly rather than relying on `once`: this element is
+    // shared, so a listener left behind by a superseded clip would fire on
+    // some later clip's events.
+    audio.addEventListener('ended', done)
+    audio.addEventListener('error', done)
+    audio.addEventListener('timeupdate', resetStall)
+    resetStall()
+  })
+  return 'played'
 }
 
 /**
@@ -197,7 +265,8 @@ async function wait(ms: number, run: number): Promise<void> {
  * of waiting on a timer. Hands-free Speak needs it: with the screen locked iOS
  * suspends JavaScript timers but keeps a page alive for as long as its audio is
  * playing, so a timer-based pause never wakes up and the session stops dead in
- * the first gap.
+ * the first gap. The length is re-read before each second, so a changed
+ * length applies to the silence already under way.
  */
 export async function playAudioQueue(
   items: Array<string | AudioPause | null | undefined>,
@@ -208,73 +277,25 @@ export async function playAudioQueue(
   // superseded run notices it should stop.
   const run = ++token
 
-  // Pauses become clips up front when they must be audible silence.
-  const sources: Array<string | AudioPause | null | undefined> = silentPauses
-    ? items.flatMap(item => typeof item === 'object' && item !== null
-        ? Array.from({ length: Math.max(1, Math.round(item.pauseMs / 1000)) }, () => SILENCE_SECOND)
-        : [item])
-    : items
-
-  for (const src of sources) {
+  for (const item of items) {
     if (run !== token)
       return
-    if (!src)
+    if (!item)
       continue
-    if (typeof src === 'object') {
-      await wait(src.pauseMs, run)
-      continue
-    }
-
-    audio.pause()
-    audio.src = src
-    try {
-      await audio.play()
-    } catch (err: unknown) {
-      // A refusal means the element is not allowed to play at all, so every
-      // remaining clip would be refused too. Bail rather than spinning through
-      // the whole conversation in a tight loop pretending to play it.
-      if (err instanceof DOMException && err.name === 'NotAllowedError') {
-        record('queue refused — element not unlocked', err)
-        return
+    if (typeof item === 'object') {
+      if (!silentPauses) {
+        await wait(item, run)
+        continue
       }
-      // Anything else is this one clip's problem: step over it.
+      // At least one second, as before, so a pause is never skipped outright.
+      for (let silent = 0; silent === 0 || silent < pauseLength(item); silent += SILENCE_SECOND_MS) {
+        if (run !== token || await playClip(audio, SILENCE_SECOND, run) === 'refused')
+          return
+      }
       continue
     }
-    if (run !== token)
+    if (await playClip(audio, item, run) === 'refused')
       return
-
-    await new Promise<void>((resolve) => {
-      // A STALL watchdog, not a time limit. A flat timeout would cut off any
-      // clip longer than it — silently, mid-word — and "long" is a property of
-      // the content, not something this should have an opinion about. Instead
-      // the timer is re-armed on every `timeupdate`, so it only fires when a
-      // clip has genuinely stopped making progress.
-      let stall: ReturnType<typeof setTimeout>
-
-      const done = () => {
-        clearTimeout(stall)
-        audio.removeEventListener('ended', done)
-        audio.removeEventListener('error', done)
-        audio.removeEventListener('timeupdate', resetStall)
-        resolve()
-      }
-
-      // Named apart from the unlock's `arm` on purpose: two functions called
-      // `arm` in one file, one shadowing the other inside this closure, is a
-      // trap for whoever edits it next.
-      function resetStall() {
-        clearTimeout(stall)
-        stall = setTimeout(done, 15_000)
-      }
-
-      // Removed explicitly rather than relying on `once`: this element is
-      // shared, so a listener left behind by a superseded clip would fire on
-      // some later clip's events.
-      audio.addEventListener('ended', done)
-      audio.addEventListener('error', done)
-      audio.addEventListener('timeupdate', resetStall)
-      resetStall()
-    })
   }
 }
 

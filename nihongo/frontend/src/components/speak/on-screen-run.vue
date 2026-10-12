@@ -3,7 +3,7 @@ import type { FuriganaMode } from '@nihongo/shared/constants'
 import type { SpeakStepView, WordGloss } from '@nihongo/shared/types'
 
 import { thinkingTimeMs } from '@nihongo/shared/lib'
-import { Check, RotateCcw, Volume2, X } from 'lucide-vue-next'
+import { Check, Pause, Play, RotateCcw, Volume2, X } from 'lucide-vue-next'
 import { computed, onBeforeUnmount, ref, watch } from 'vue'
 
 import TokenLine from '@/components/ja/token-line.vue'
@@ -24,7 +24,7 @@ interface Props {
   steps: SpeakStepView[]
   mode: FuriganaMode
   knownKanji?: Set<string>
-  /** Thinking-time multiplier: short, normal, long. */
+  /** Thinking-time multiplier. A change applies to the pause already running. */
   thinkScale: number
 }
 
@@ -44,20 +44,39 @@ const phase = ref<Phase>('explain')
 /** First-try result per prompt index. */
 const firstTry = ref(new Map<number, boolean>())
 const retried = ref(new Set<number>())
-const thinkMs = ref(0)
+/** When the current thinking pause began, and how far through it is (0–1) for the ring. */
+const thinkStarted = ref(0)
+const thinkDone = ref(0)
+/** Holding the thinking pause: no reveal until resumed, however long that takes. */
+const held = ref(false)
+let heldAt = 0
 const word = ref<WordGloss | null>(null)
 const picked = ref<number | null>(null)
 
 let run = 0
 let timer: ReturnType<typeof setTimeout> | null = null
+let frame = 0
 
 // ============ Computed Properties ============
 const step = computed(() => props.steps[order.value[position.value] ?? -1] ?? null)
 const isRetry = computed(() => step.value !== null && position.value >= props.steps.length)
 const prompts = computed(() => props.steps.filter(s => s.kind === 'prompt').length)
 const progress = computed(() => Math.min(1, position.value / order.value.length))
+/** The whole pause for this answer at the CURRENT setting — not the one it started with. */
+const thinkMs = computed(() => thinkingTimeMs(step.value?.reading ?? '', props.thinkScale))
 
 // ============ Watchers ============
+// Changing the time to answer mid-pause moves the reveal: what has already
+// elapsed counts, and the rest is whatever the new length leaves.
+watch(() => props.thinkScale, () => {
+  if (phase.value !== 'thinking')
+    return
+  if (held.value)
+    thinkDone.value = Math.min(1, (heldAt - thinkStarted.value) / thinkMs.value)
+  else
+    schedule(run)
+})
+
 watch(() => props.steps, () => {
   order.value = props.steps.map((_, i) => i)
   position.value = 0
@@ -79,6 +98,22 @@ function clearTimer() {
   if (timer)
     clearTimeout(timer)
   timer = null
+  cancelAnimationFrame(frame)
+}
+
+/** (Re)arm the reveal for the time left at the current setting, and keep the ring moving. */
+function schedule(current: number) {
+  clearTimer()
+  const tick = () => {
+    thinkDone.value = Math.min(1, (performance.now() - thinkStarted.value) / thinkMs.value)
+    if (thinkDone.value < 1)
+      frame = requestAnimationFrame(tick)
+  }
+  tick()
+  timer = setTimeout(() => {
+    if (current === run)
+      reveal()
+  }, Math.max(0, thinkStarted.value + thinkMs.value - performance.now()))
 }
 
 async function enter() {
@@ -86,6 +121,7 @@ async function enter() {
   clearTimer()
   word.value = null
   picked.value = null
+  held.value = false
   const s = step.value
   if (!s) {
     phase.value = 'done'
@@ -103,14 +139,28 @@ async function enter() {
   if (current !== run)
     return
   phase.value = 'thinking'
-  thinkMs.value = thinkingTimeMs(s.reading ?? '', props.thinkScale)
-  timer = setTimeout(() => {
-    if (current === run)
-      reveal()
-  }, thinkMs.value)
+  thinkStarted.value = performance.now()
+  schedule(current)
+}
+
+/** Stop the thinking clock where it is, or start it again from there. */
+function toggleHold() {
+  if (phase.value !== 'thinking')
+    return
+  if (held.value) {
+    // The time spent held does not count against the pause.
+    thinkStarted.value += performance.now() - heldAt
+    held.value = false
+    schedule(run)
+  } else {
+    heldAt = performance.now()
+    held.value = true
+    clearTimer()
+  }
 }
 
 function reveal() {
+  held.value = false
   clearTimer()
   stopAudio()
   phase.value = 'answer'
@@ -179,7 +229,6 @@ defineExpose({ restart, prompts })
         <svg viewBox="0 0 36 36" class="h-16 w-16 -rotate-90" aria-hidden="true">
           <circle cx="18" cy="18" r="16" fill="none" stroke="var(--color-border)" stroke-width="3" />
           <circle
-            :key="position"
             cx="18"
             cy="18"
             r="16"
@@ -187,12 +236,11 @@ defineExpose({ restart, prompts })
             stroke="var(--color-primary)"
             stroke-width="3"
             stroke-dasharray="100.5"
-            class="ring"
-            :style="{ animationDuration: `${thinkMs}ms` }"
+            :stroke-dashoffset="100.5 * thinkDone"
           />
         </svg>
         <p class="text-sm text-[var(--color-muted)]">
-          Say it out loud
+          {{ held ? 'Paused — take as long as you need' : 'Say it out loud' }}
         </p>
       </div>
 
@@ -221,9 +269,21 @@ defineExpose({ restart, prompts })
       <Button v-if="phase === 'explain'" @click="next">
         Next
       </Button>
-      <Button v-else-if="phase === 'asking' || phase === 'thinking'" @click="reveal">
-        Show answer
-      </Button>
+      <template v-else-if="phase === 'asking' || phase === 'thinking'">
+        <Button
+          v-if="phase === 'thinking'"
+          variant="ghost"
+          round
+          :aria-label="held ? 'Carry on the countdown' : 'Pause the countdown'"
+          @click="toggleHold"
+        >
+          <Play v-if="held" class="h-5 w-5" />
+          <Pause v-else class="h-5 w-5" />
+        </Button>
+        <Button @click="reveal">
+          Show answer
+        </Button>
+      </template>
       <template v-else-if="phase === 'answer'">
         <Button variant="ghost" @click="answer(false)">
           <X class="h-4 w-4" />
@@ -242,26 +302,3 @@ defineExpose({ restart, prompts })
     <WordMeaning v-if="word" :word="word" @close="onPick(null)" />
   </div>
 </template>
-
-<style scoped>
-.ring {
-  animation-name: empty;
-  animation-timing-function: linear;
-  animation-fill-mode: forwards;
-}
-
-@keyframes empty {
-  from {
-    stroke-dashoffset: 0;
-  }
-  to {
-    stroke-dashoffset: 100.5;
-  }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .ring {
-    animation: none;
-  }
-}
-</style>
