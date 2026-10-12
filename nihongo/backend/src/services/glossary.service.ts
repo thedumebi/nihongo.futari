@@ -2,9 +2,10 @@ import type { GlossedToken, WordGloss } from '@nihongo/shared/types'
 
 import db from '@nihongo/shared/db'
 import { grammarPoints, languageLevels, languages, wordForms, words, wordSenses } from '@nihongo/shared/db/schema'
-import { buildTokenIndex, classifyVerb, conjugateAll, tokenise } from '@nihongo/shared/lib'
+import { buildTokenIndex, classifyVerb, conjugateAll, toHiragana, tokenise } from '@nihongo/shared/lib'
 import { and, asc, eq } from 'drizzle-orm'
 
+import { glueAuthorWords, regroupKana } from '../lib/author-segments.js'
 import { counterWords } from '../lib/counters.js'
 import { setPhrases } from '../lib/set-phrases.js'
 
@@ -79,6 +80,14 @@ interface Glossary {
   index: Map<string, string[]>
   /** Every written form to the word it spells. */
   byForm: Map<string, WordGloss>
+  /**
+   * The kana spellings in `KANA_SPELLED`, with their inflections, to the word.
+   *
+   * NOT used to tokenise: kana collides with far more of the language than
+   * kanji does. Consulted only by `regroupKana`, for a kana word an author
+   * marked as one word and the dictionary cut inside.
+   */
+  byReading: Map<string, WordGloss>
 }
 
 /**
@@ -96,6 +105,42 @@ let cached: Promise<Glossary> | null = null
  * irregular kanji, rare or irregular kana. Indexing them is how 行 ends up
  * glossed as 件 "paragraph" — a real entry, and never what the line means.
  */
+/**
+ * Words a learner meets written in kana, as `<primary form>:<reading>`.
+ *
+ * A word normally written in kanji is indexed by its kanji, so the same word
+ * written in kana — because its kanji is above the reader's level — is not
+ * found, and longest-match cuts it into whatever kana words do exist: わたし
+ * became わた "cotton" | し "and", ねます became ね | ます.
+ *
+ * Named one by one rather than indexing every reading, because that was tried:
+ * kana is ambiguous, and the reading index glossed いい as 飯 "rice", どうか as
+ * 銅貨 "copper coin" and また as 股. Keyed on the reading as well as the form
+ * because 私 alone has a dozen readings, and し is not one to hand out.
+ *
+ * Consulted only through `regroupKana`, where the author's own word breaks say
+ * the kana IS one word. Add to it when `check:readings` reports a cut word
+ * that the dictionary has under its kanji.
+ */
+const KANA_SPELLED = new Set([
+  '私:わたし',
+  '皆さん:みなさん',
+  '果物:くだもの',
+  '寝る:ねる',
+  '怖い:こわい',
+  '机:つくえ',
+  '壁:かべ',
+  '掃除:そうじ',
+  '言葉:ことば',
+  '美味しい:おいしい',
+  '飛ぶ:とぶ',
+  '濡れる:ぬれる',
+  '寂しい:さびしい',
+  '嫌:いや',
+  '初めに:はじめに',
+  '歳:さい'
+])
+
 /** Verbs whose KANA spelling conjugates too — see the note where it is used. */
 const KANA_CONJUGATING = new Set(['有る', '居る', '成る', '為る', '分かる', '掛ける', '参る'])
 
@@ -240,6 +285,14 @@ async function build(languageCode: string): Promise<Glossary> {
   })
 
   const byForm = new Map<string, WordGloss>()
+  const byReading = new Map<string, WordGloss>()
+
+  /** Same first-wins rule as `claim`, on the reading index. */
+  const claimReading = (kana: string, gloss: WordGloss) => {
+    const key = toHiragana(kana)
+    if (!byReading.has(key))
+      byReading.set(key, gloss)
+  }
 
   /** Claim a spelling for a word, unless something better already has it. */
   const claim = (form: string, gloss: WordGloss) => {
@@ -301,10 +354,34 @@ async function build(languageCode: string): Promise<Glossary> {
       form: row.primaryForm,
       reading: row.reading,
       meanings,
-      pos: posLabel(sense?.pos ?? [])
+      pos: posLabel(sense?.pos ?? []),
+      wordId: row.wordId
+    }
+
+    // A kana-only word outside the JLPT lists is never matched by longest-match.
+    // These come in for the speeches — それで, もし, ところが, かつて — and each
+    // is also an ordinary run of kana in someone else's sentence: もし swallowed
+    // the middle of かもしれません and 乾燥もします, and ところが took 最後の
+    // ところが "the last part" for "however". They are found only where an
+    // author's reading marks them as one word, through the reading index.
+    if (row.level === null && !HAS_KANJI.test(row.primaryForm)) {
+      if (row.form === row.primaryForm)
+        claimReading(row.form, gloss)
+      continue
     }
 
     claim(row.form, gloss)
+    const kanaSpelled = row.form === row.primaryForm && KANA_SPELLED.has(`${row.primaryForm}:${row.reading}`)
+    if (kanaSpelled) {
+      claimReading(row.reading, gloss)
+      // The plain i-adjective inflections, for the reading index only — こわかった
+      // and おいしく written in kana have no other way to be found whole.
+      if ((sense?.pos ?? []).includes('adj-i') && row.reading.endsWith('い')) {
+        const stem = row.reading.slice(0, -1)
+        for (const tail of ['く', 'くて', 'かった', 'くない', 'くなかった', 'ければ'])
+          claimReading(`${stem}${tail}`, gloss)
+      }
+    }
 
     // Every form the word can take, so a conjugated verb is an ordinary exact
     // match rather than a guess. This is what stops the tokeniser having to
@@ -353,6 +430,11 @@ async function build(languageCode: string): Promise<Glossary> {
       const forms = conjugateAll({ surface: row.form, reading: row.reading, verbClass })
       for (const c of forms)
         inflections.push({ surface: c.surface, gloss })
+      // The same forms spelled in kana — ねます for 寝る — for the reading index.
+      if (kanaSpelled) {
+        for (const c of conjugateAll({ surface: row.reading, reading: row.reading, verbClass }))
+          claimReading(c.surface, gloss)
+      }
 
       // 〜たい, off the ます stem.
       //
@@ -438,7 +520,7 @@ async function build(languageCode: string): Promise<Glossary> {
     }
   }
 
-  return { index: buildTokenIndex(byForm.keys()), byForm }
+  return { index: buildTokenIndex(byForm.keys()), byForm, byReading }
 }
 
 export async function glossary(languageCode: string): Promise<Glossary> {
@@ -540,11 +622,11 @@ async function patterns(languageCode: string, claimed: Map<string, WordGloss>): 
   return out.sort((a, b) => b.form.length - a.form.length)
 }
 
-export function glossLine(line: string, g: Glossary, reading?: string): GlossedToken[] {
+export function glossLine(line: string, g: Glossary, reading?: string, opts: { regroupKana?: boolean } = {}): GlossedToken[] {
   const tokens = tokenise(line, g.index)
   const readings = reading ? splitReading(line, reading, tokens.map(t => [...t.t].length)) : null
 
-  return tokens.map((token, i) => {
+  const glossed: GlossedToken[] = tokens.map((token, i) => {
     const word = token.key ? g.byForm.get(token.key) : undefined
     const r = readings?.[i]
     return {
@@ -558,6 +640,22 @@ export function glossLine(line: string, g: Glossary, reading?: string): GlossedT
       ...(word ? { w: word } : {})
     }
   })
+
+  // Opt-in, and only with the author's reading: its spaces are what say where
+  // the words are. On for read-aloud speeches, which are written in kana up to
+  // their level and need it; off elsewhere until each corpus has been checked,
+  // because kana is ambiguous and a regrouped homophone is a wrong gloss.
+  //
+  // A word written in kana is looked up as written first — それから, よろしく —
+  // and only hiragana falls back to the reading of a word usually written in
+  // kanji. Katakana is a loanword spelled as itself; ホット is not ほっと.
+  if (!readings || !opts.regroupKana)
+    return glossed
+  const kana = regroupKana(glossed, word => g.byForm.get(word)
+    ?? (/^[\u3041-\u309F]+$/.test(word) ? g.byReading.get(toHiragana(word)) : undefined))
+  // Then words with kanji in them that the dictionary split — 山|本 — glued
+  // back into one chip that lists its pieces.
+  return glueAuthorWords(kana, word => g.byForm.get(word))
 }
 
 /**

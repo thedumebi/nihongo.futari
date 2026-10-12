@@ -121,13 +121,30 @@ export type StudyQueueQuery = z.infer<typeof studyQueueQuerySchema>
  * there is no review gate to satisfy. Leading sense only: an entry can carry a
  * dozen and a popover listing them all answers a question nobody asked.
  */
-export const wordGlossSchema = z.object({
+const wordGlossBaseSchema = z.object({
   /** The dictionary form, which differs from the token for anything inflected. */
   form: z.string(),
   reading: z.string(),
   meanings: z.array(z.string()),
   /** Humanised part of speech — "godan verb", "particle" — or null if unmapped. */
-  pos: z.string().nullable()
+  pos: z.string().nullable(),
+  /**
+   * The `words` row, so a tapped word can be added to reviews. Absent for
+   * glosses that are not dictionary words — grammar patterns, counters.
+   */
+  wordId: z.string().optional()
+})
+
+export const wordGlossSchema = wordGlossBaseSchema.extend({
+  /**
+   * The pieces of a word the dictionary only knows in parts.
+   *
+   * 山本 or 大黒柱 are one word to the author and several to the dictionary.
+   * Rather than making the reader tap each piece, the word is one chip and its
+   * sheet lists the pieces. `meanings` is empty when the dictionary has nothing
+   * for the whole.
+   */
+  parts: z.array(wordGlossBaseSchema).optional()
 }).openapi('WordGloss')
 
 export type WordGloss = z.infer<typeof wordGlossSchema>
@@ -592,3 +609,17 @@ export const lessonSeenResultSchema = z.object({
 }).openapi('LessonSeenResult')
 
 export type LessonSeenResult = z.infer<typeof lessonSeenResultSchema>
+
+/** A word tapped while reading, to be put into review. */
+export const saveWordSchema = z.object({
+  wordId: z.string()
+}).openapi('SaveWord')
+
+export type SaveWordInput = z.infer<typeof saveWordSchema>
+
+export const saveWordResultSchema = z.object({
+  /** False when this word already had a card — nothing was changed. */
+  added: z.boolean()
+}).openapi('SaveWordResult')
+
+export type SaveWordResult = z.infer<typeof saveWordResultSchema>

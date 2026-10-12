@@ -1,5 +1,5 @@
 import { z } from '@hono/zod-openapi'
-import { HttpStatusCodes, REVIEW_QUEUE_ROUTES } from '@nihongo/shared/constants'
+import { HttpStatusCodes, REVIEW_KINDS, REVIEW_QUEUE_ROUTES } from '@nihongo/shared/constants'
 import { createAdminRoute, ErrorSchema, jsonContent, jsonContentRequired } from '@nihongo/shared/openapi'
 import {
   bulkReviewResultSchema,
@@ -27,7 +27,7 @@ export const list = createAdminRoute({
     query: z.object({
       limit: z.coerce.number().int().min(1).max(100).default(25),
       offset: z.coerce.number().int().min(0).default(0),
-      kind: z.enum(['grammar', 'etymology']).optional()
+      kind: z.enum(REVIEW_KINDS).optional()
     })
   },
   responses: {

@@ -47,7 +47,10 @@
     "seed:images": "tsx src/pipeline/make-image-seed.ts",
     "verify:assets": "tsx src/pipeline/verify-assets.ts",
     "upload:assets": "tsx src/pipeline/upload-assets.ts",
-    "import:dialogues": "tsx src/pipeline/import-dialogues.ts"
+    "import:dialogues": "tsx src/pipeline/import-dialogues.ts",
+    "seed:readings": "tsx src/pipeline/make-readings-seed.ts",
+    "seed:words": "tsx src/pipeline/make-words-seed.ts",
+    "check:readings": "tsx src/pipeline/check-readings.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.120.0",

@@ -2,7 +2,7 @@ import type { FuriganaMode } from '@nihongo/shared/constants'
 import type { StudySettings, StudySettingsPatch } from '@nihongo/shared/types'
 
 import db from '@nihongo/shared/db'
-import { userSettings } from '@nihongo/shared/db/schema'
+import { users, userSettings } from '@nihongo/shared/db/schema'
 import { eq } from 'drizzle-orm'
 
 /**
@@ -12,6 +12,17 @@ import { eq } from 'drizzle-orm'
  * defaults, and requiring a row to exist first would mean every read could fail
  * on a fresh account.
  */
+/**
+ * Whether this account is an admin, read from the database every time.
+ *
+ * Never from the session: promoting or demoting someone has to take effect on
+ * their next request, not when their session happens to be re-issued.
+ */
+export async function isAdmin(userId: string): Promise<boolean> {
+  const [row] = await db.select({ role: users.role }).from(users).where(eq(users.id, userId)).limit(1)
+  return row?.role === 'admin'
+}
+
 export async function getSettings(userId: string): Promise<StudySettings> {
   const [row] = await db
     .select({

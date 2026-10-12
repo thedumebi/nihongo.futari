@@ -18,6 +18,7 @@ import lessons from './routes/lessons/lessons.index.js'
 import notifications from './routes/notifications/notifications.index.js'
 import phonetics from './routes/phonetics/phonetics.index.js'
 import progress from './routes/progress/progress.index.js'
+import readings from './routes/readings/readings.index.js'
 import reviewQueue from './routes/review-queue/review-queue.index.js'
 import study from './routes/study/study.index.js'
 import sync from './routes/sync/sync.index.js'
@@ -54,6 +55,7 @@ const routes = [
   index,
   auth,
   dialogues,
+  readings,
   grammar,
   lessons,
   invites,

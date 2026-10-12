@@ -9,6 +9,10 @@ import type {
   importSources
 } from '@/db/schema/ops.js'
 
+import { REVIEW_KINDS } from '@/constants/endpoints.js'
+
+import { readingLineViewSchema, readingSummarySchema } from './readings.js'
+
 /**
  * Import pipeline and AI-enrichment provenance.
  *
@@ -38,7 +42,7 @@ export const reviewItemSchema = z.object({
   status: z.string(),
   createdAt: z.iso.datetime(),
   /** Which shape the payload takes — the reviewer sees different fields. */
-  kind: z.enum(['etymology', 'grammar']),
+  kind: z.enum(REVIEW_KINDS),
   /** What this is about: the grammar point's title. */
   subject: z.string().nullable(),
 
@@ -59,7 +63,12 @@ export const reviewItemSchema = z.object({
     locator: z.string(),
     quote: z.string().nullable(),
     reliabilityTier: z.number().int()
-  }))
+  })),
+
+  /** A read-aloud speech: every line with its reading and English, to read through. */
+  reading: readingSummarySchema.pick({ code: true, title: true, titleEn: true, level: true }).extend({
+    stanzas: z.array(z.array(readingLineViewSchema.pick({ text: true, reading: true, translation: true })))
+  }).nullable()
 }).openapi('ReviewItem')
 
 export type ReviewItem = z.infer<typeof reviewItemSchema>

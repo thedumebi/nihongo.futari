@@ -28,6 +28,7 @@ export const ROUTE_BASE_PATHS = {
   LESSONS: '/lessons',
   SENTENCES: '/sentences',
   DIALOGUES: '/dialogues',
+  READINGS: '/readings',
   STUDY: '/study',
   SYNC: '/sync',
   PROGRESS: '/progress',
@@ -109,6 +110,17 @@ export type EtymologyAspect = typeof ETYMOLOGY_ASPECTS[number]
 /** Editorial lifecycle. AI output enters at `ai-drafted` and cannot skip review. */
 export const CONTENT_STATUSES = ['draft', 'ai-drafted', 'in-review', 'published', 'rejected', 'needs-source'] as const
 export type ContentStatus = typeof CONTENT_STATUSES[number]
+
+/** What the admin review queue can hold — each kind shows different fields. */
+export const REVIEW_KINDS = ['grammar', 'etymology', 'reading'] as const
+export type ReviewKind = typeof REVIEW_KINDS[number]
+
+/** The table each review kind's queue rows point at. */
+export const REVIEW_KIND_TABLES: Record<ReviewKind, string> = {
+  grammar: 'grammar_points',
+  etymology: 'etymology_entries',
+  reading: 'readings'
+}
 
 /** Native / Sino-Japanese / loan / hybrid — drives the word-origin explanation. */
 export const WORD_ORIGINS = ['wago', 'kango', 'gairaigo', 'konshugo', 'wasei-eigo'] as const
@@ -206,12 +218,18 @@ export const DIALOGUE_ROUTES = {
   GET_BY_CODE: '/:code'
 } as const
 
+export const READING_ROUTES = {
+  LIST: '/',
+  GET_BY_CODE: '/:code'
+} as const
+
 export const STUDY_ROUTES = {
   COURSE: '/course',
   DUE: '/due',
   DECKS: '/decks',
   QUEUE: '/queue',
   LESSON_SEEN: '/lesson-seen',
+  SAVE_WORD: '/save-word',
   BUNDLE: '/bundle',
   ANSWER: '/answer',
   UNDO: '/undo',
@@ -379,10 +397,15 @@ export const API_ENDPOINTS = {
     LIST: ROUTE_BASE_PATHS.DIALOGUES,
     GET_BY_CODE: (code: string) => `${ROUTE_BASE_PATHS.DIALOGUES}/${encodeURIComponent(code)}`
   },
+  READINGS: {
+    LIST: ROUTE_BASE_PATHS.READINGS,
+    GET_BY_CODE: (code: string) => `${ROUTE_BASE_PATHS.READINGS}/${encodeURIComponent(code)}`
+  },
   STUDY: {
     DECKS: `${ROUTE_BASE_PATHS.STUDY}${STUDY_ROUTES.DECKS}`,
     QUEUE: `${ROUTE_BASE_PATHS.STUDY}${STUDY_ROUTES.QUEUE}`,
     LESSON_SEEN: `${ROUTE_BASE_PATHS.STUDY}${STUDY_ROUTES.LESSON_SEEN}`,
+    SAVE_WORD: `${ROUTE_BASE_PATHS.STUDY}${STUDY_ROUTES.SAVE_WORD}`,
     DUE: `${ROUTE_BASE_PATHS.STUDY}${STUDY_ROUTES.DUE}`,
     COURSE: `${ROUTE_BASE_PATHS.STUDY}${STUDY_ROUTES.COURSE}`,
     BUNDLE: `${ROUTE_BASE_PATHS.STUDY}${STUDY_ROUTES.BUNDLE}`,

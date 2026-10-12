@@ -8,6 +8,9 @@ export const ROUTES = {
   /** Scripted conversations, browsable rather than only scheduled. */
   CONVERSATIONS: '/conversations',
   CONVERSATION_DETAIL: (code: string) => `/conversations/${encodeURIComponent(code)}`,
+  /** Short speeches to read aloud, scrolling like a teleprompter. */
+  READ: '/read',
+  READING_DETAIL: (code: string) => `/read/${encodeURIComponent(code)}`,
   STUDY_SESSION: '/study/session',
   /** The list of what is due, as opposed to a session that hands it over one card at a time. */
   DUE: '/due',

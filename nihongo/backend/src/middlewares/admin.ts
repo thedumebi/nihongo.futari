@@ -1,9 +1,8 @@
 import type { MiddlewareHandler } from 'hono'
 
 import { HttpStatusCodes, HttpStatusPhrases } from '@nihongo/shared/constants'
-import db from '@nihongo/shared/db'
-import { users } from '@nihongo/shared/db/schema'
-import { eq } from 'drizzle-orm'
+
+import { isAdmin } from '@/services/users.service.js'
 
 /**
  * Run AFTER `authMiddleware`. Reads the user's role from the DB and returns
@@ -17,13 +16,7 @@ const adminMiddleware: MiddlewareHandler = async (ctx, next) => {
     return ctx.json({ message: HttpStatusPhrases.UNAUTHORIZED }, HttpStatusCodes.UNAUTHORIZED)
   }
 
-  const [row] = await db
-    .select({ role: users.role })
-    .from(users)
-    .where(eq(users.id, user.id))
-    .limit(1)
-
-  if (!row || row.role !== 'admin') {
+  if (!await isAdmin(user.id)) {
     return ctx.json({ message: HttpStatusPhrases.FORBIDDEN }, HttpStatusCodes.FORBIDDEN)
   }
 

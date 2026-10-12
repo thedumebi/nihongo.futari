@@ -2,9 +2,9 @@ import { HttpStatusCodes } from '@nihongo/shared/constants'
 
 import type { AppRouteHandler } from '@/lib/types.js'
 
-import { getCourse, getDecks, getDueList, getQueue, markLessonSeen, submitAnswer } from '@/services/srs.service.js'
+import { getCourse, getDecks, getDueList, getQueue, markLessonSeen, saveWord as saveWordForReview, submitAnswer } from '@/services/srs.service.js'
 
-import type { AnswerRoute, CourseRoute, DecksRoute, DueRoute, LessonSeenRoute, QueueRoute } from './study.routes.js'
+import type { AnswerRoute, CourseRoute, DecksRoute, DueRoute, LessonSeenRoute, QueueRoute, SaveWordRoute } from './study.routes.js'
 
 export const decks: AppRouteHandler<DecksRoute> = async (c) => {
   const user = c.get('user')!
@@ -52,4 +52,13 @@ export const lessonSeen: AppRouteHandler<LessonSeenRoute> = async (c) => {
     // is a 404 rather than a 500 — the client sent a stale id.
     return c.json({ message: 'Unknown study item' }, HttpStatusCodes.NOT_FOUND)
   }
+}
+
+export const saveWord: AppRouteHandler<SaveWordRoute> = async (c) => {
+  const user = c.get('user')!
+  const { wordId } = c.req.valid('json')
+  const result = await saveWordForReview(user.id, wordId)
+  if (!result)
+    return c.json({ message: 'No studiable item for this word' }, HttpStatusCodes.NOT_FOUND)
+  return c.json(result, HttpStatusCodes.OK)
 }

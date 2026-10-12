@@ -7,6 +7,8 @@ import {
   dueListResponseSchema,
   lessonSeenResultSchema,
   lessonSeenSchema,
+  saveWordResultSchema,
+  saveWordSchema,
   studyDecksResponseSchema,
   studyQueueQuerySchema,
   studyQueueResponseSchema,
@@ -114,3 +116,20 @@ export const lessonSeen = createSecuredRoute({
   }
 })
 export type LessonSeenRoute = typeof lessonSeen
+
+export const saveWord = createSecuredRoute({
+  tags,
+  path: STUDY_ROUTES.SAVE_WORD,
+  method: 'post',
+  summary: 'Put a word met while reading into review',
+  description:
+    'Idempotent: a word that already has a card is left alone and `added` is false. '
+    + 'No review is logged — tapping a word is not evidence of knowing it.',
+  middleware: [authMiddleware, writeLimiter],
+  request: { body: jsonContentRequired(saveWordSchema, 'The word to review') },
+  responses: {
+    [HttpStatusCodes.OK]: jsonContent(saveWordResultSchema, 'Whether a card was created'),
+    [HttpStatusCodes.NOT_FOUND]: jsonContent(ErrorSchema, 'No studiable item for this word')
+  }
+})
+export type SaveWordRoute = typeof saveWord

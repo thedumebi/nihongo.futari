@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import type { ReviewKind } from '@nihongo/shared/constants'
 import type { ReviewItem } from '@nihongo/shared/types'
 
 import { computed, onMounted, ref } from 'vue'
@@ -7,6 +8,7 @@ import { bulkApprove, bulkReject, listPending } from '@/api/review-queue'
 import AppShell from '@/components/layout/app-shell.vue'
 import Button from '@/components/ui/button.vue'
 import { useToast } from '@/composables/use-toast'
+import { ROUTES } from '@/constants'
 
 const toast = useToast()
 
@@ -14,7 +16,7 @@ const items = ref<ReviewItem[]>([])
 const pending = ref(0)
 const loading = ref(true)
 const working = ref(false)
-const kindFilter = ref<'grammar' | 'etymology' | undefined>(undefined)
+const kindFilter = ref<ReviewKind | undefined>(undefined)
 const offset = ref(0)
 const PAGE = 25
 
@@ -66,7 +68,7 @@ function toggleExpanded(id: string) {
 }
 
 /** Select every item of one kind — the usual way you work through a batch. */
-async function selectKind(kind: 'grammar' | 'etymology' | undefined) {
+async function selectKind(kind: ReviewKind | undefined) {
   // Filters the LIST. Previously this only ticked checkboxes, and because every
   // loaded item was the same kind that just checked "select all" — which looked
   // like the buttons were broken. 265 of 315 items are etymology, so without a
@@ -157,6 +159,14 @@ async function decide(action: 'approve' | 'reject') {
           >
             Etymology
           </button>
+          <button
+            type="button"
+            class="rounded-full border px-3 py-1 text-sm transition"
+            :class="kindFilter === 'reading' ? 'border-[var(--color-text)] text-[var(--color-text)]' : 'border-[var(--color-border)] text-[var(--color-muted)]'"
+            @click="selectKind('reading')"
+          >
+            Speeches
+          </button>
 
           <div class="ml-auto flex items-center gap-3">
             <span class="text-sm text-[var(--color-muted)]">{{ selectedCount }} selected</span>
@@ -182,6 +192,9 @@ async function decide(action: 'approve' | 'reject') {
                 <div class="flex flex-wrap items-center gap-2 text-xs uppercase tracking-wide text-[var(--color-muted)]">
                   <span class="rounded border border-[var(--color-border)] px-1.5 py-0.5">{{ item.kind }}</span>
                   <span style="font-family: var(--font-jp)">{{ item.subject }}</span>
+                  <template v-if="item.kind === 'reading' && item.reading">
+                    <span>&middot; {{ item.reading.level }}</span>
+                  </template>
                   <template v-if="item.kind === 'etymology'">
                     <span>&middot; {{ item.aspect }}</span>
                     <span>&middot; {{ item.confidence }}</span>
@@ -193,8 +206,16 @@ async function decide(action: 'approve' | 'reject') {
                 </div>
 
                 <p class="mt-2 font-medium">
-                  {{ item.kind === 'etymology' ? item.claim : item.meaningShort }}
+                  {{ item.kind === 'etymology' ? item.claim : item.kind === 'reading' ? item.reading?.titleEn : item.meaningShort }}
                 </p>
+                <!-- Read it the way a learner will: scrolling, tappable, with the reading aid. -->
+                <router-link
+                  v-if="item.kind === 'reading' && item.reading"
+                  :to="ROUTES.READING_DETAIL(item.reading.code)"
+                  class="mt-2 mr-4 inline-block text-sm underline underline-offset-4"
+                >
+                  Open in the reader
+                </router-link>
 
                 <button
                   type="button"
@@ -204,7 +225,23 @@ async function decide(action: 'approve' | 'reject') {
                   {{ expanded.has(item.id) ? 'Hide detail' : 'Show detail' }}
                 </button>
 
-                <div v-if="expanded.has(item.id)" class="mt-3 space-y-4">
+                <div v-if="expanded.has(item.id) && item.kind === 'reading' && item.reading" class="mt-3 space-y-4">
+                  <div v-for="(stanza, s) in item.reading.stanzas" :key="s" class="space-y-2">
+                    <div v-for="(line, l) in stanza" :key="l">
+                      <p style="font-family: var(--font-jp)">
+                        {{ line.text }}
+                      </p>
+                      <p class="text-xs text-[var(--color-muted)]" style="font-family: var(--font-jp)">
+                        {{ line.reading }}
+                      </p>
+                      <p class="text-sm text-[var(--color-muted)]">
+                        {{ line.translation }}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                <div v-if="expanded.has(item.id) && item.kind !== 'reading'" class="mt-3 space-y-4">
                   <p v-if="item.kind === 'grammar' && item.pattern" class="text-sm text-[var(--color-muted)]" style="font-family: var(--font-jp)">
                     {{ item.pattern }}
                   </p>

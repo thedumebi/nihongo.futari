@@ -48,6 +48,20 @@ const router = createRouter({
       meta: { requiresAuth: true }
     },
     {
+      path: ROUTES.READ,
+      name: 'readings',
+      component: () => import('@/views/readings.vue'),
+      meta: { requiresAuth: true }
+    },
+    {
+      // Literal, like the conversation route above: the builder would encode
+      // ':code' and the route would match nothing.
+      path: '/read/:code',
+      name: 'reading-detail',
+      component: () => import('@/views/reading-detail.vue'),
+      meta: { requiresAuth: true }
+    },
+    {
       path: ROUTES.COURSE,
       name: 'course',
       component: () => import('@/views/course.vue'),

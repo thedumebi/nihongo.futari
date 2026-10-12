@@ -1,5 +1,7 @@
-import type { BulkReviewResult, ReviewListResponse } from '@nihongo/shared/types'
+import type { ReviewKind } from '@nihongo/shared/constants'
+import type { BulkReviewResult, ReviewItem, ReviewListResponse } from '@nihongo/shared/types'
 
+import { REVIEW_KIND_TABLES } from '@nihongo/shared/constants'
 import db from '@nihongo/shared/db'
 import {
   contentReviewQueue,
@@ -7,6 +9,9 @@ import {
   etymologySources,
   grammarPoints,
   kanji,
+  languageLevels,
+  readingLines,
+  readings,
   sources,
   words
 } from '@nihongo/shared/db/schema'
@@ -23,19 +28,21 @@ const directPoint = aliasedTable(grammarPoints, 'direct_point')
  * in one payload: the claim, the prose, and the verbatim source quotes.
  */
 
+/** The review kind a queue row is, from the table it points at. */
+function kindOf(targetTable: string): ReviewKind {
+  const entry = Object.entries(REVIEW_KIND_TABLES).find(([, table]) => table === targetTable)
+  return (entry?.[0] ?? 'etymology') as ReviewKind
+}
+
 export async function listPending(
   limit = 25,
   offset = 0,
-  kind?: 'grammar' | 'etymology'
+  kind?: ReviewKind
 ): Promise<ReviewListResponse> {
   // `kind` filters the LIST, not just the selection. 265 of 315 pending items
   // are etymology, so without this a reviewer who wants to clear the 50 grammar
   // points cannot reach them at all — they are all past the first page.
-  const kindFilter = kind === 'grammar'
-    ? eq(contentReviewQueue.targetTable, 'grammar_points')
-    : kind === 'etymology'
-      ? eq(contentReviewQueue.targetTable, 'etymology_entries')
-      : undefined
+  const kindFilter = kind ? eq(contentReviewQueue.targetTable, REVIEW_KIND_TABLES[kind]) : undefined
   const rows = await db
     .select({
       id: contentReviewQueue.id,
@@ -58,7 +65,11 @@ export async function listPending(
       gpPattern: directPoint.pattern,
       gpShort: directPoint.meaningShort,
       gpLong: directPoint.meaningLong,
-      gpNuance: directPoint.nuance
+      gpNuance: directPoint.nuance,
+      readingCode: readings.code,
+      readingTitle: readings.title,
+      readingTitleEn: readings.titleEn,
+      readingLevel: languageLevels.code
     })
     .from(contentReviewQueue)
     .leftJoin(etymologyEntries, eq(etymologyEntries.id, contentReviewQueue.targetId))
@@ -66,6 +77,8 @@ export async function listPending(
     .leftJoin(kanji, eq(kanji.id, etymologyEntries.kanjiId))
     .leftJoin(words, eq(words.id, etymologyEntries.wordId))
     .leftJoin(directPoint, eq(directPoint.id, contentReviewQueue.targetId))
+    .leftJoin(readings, and(eq(contentReviewQueue.targetTable, 'readings'), eq(readings.id, contentReviewQueue.targetId)))
+    .leftJoin(languageLevels, eq(languageLevels.id, readings.levelId))
     .where(and(eq(contentReviewQueue.status, 'pending'), kindFilter))
     .orderBy(asc(contentReviewQueue.priority), asc(contentReviewQueue.createdAt))
     .limit(limit)
@@ -87,6 +100,39 @@ export async function listPending(
         .where(inArray(etymologySources.etymologyId, rows.map(r => r.targetId)))
         .orderBy(asc(sources.reliabilityTier))
 
+  // Every line of each speech on the page, so it can be read through in place.
+  const readingIds = rows.filter(r => r.targetTable === 'readings').map(r => r.targetId)
+  const lines = readingIds.length === 0
+    ? []
+    : await db
+        .select({
+          readingId: readingLines.readingId,
+          stanza: readingLines.stanza,
+          text: readingLines.text,
+          reading: readingLines.readingKana,
+          translation: readingLines.translation
+        })
+        .from(readingLines)
+        .where(inArray(readingLines.readingId, readingIds))
+        .orderBy(asc(readingLines.readingId), asc(readingLines.index))
+
+  function speech(r: typeof rows[number]): ReviewItem['reading'] {
+    if (r.targetTable !== 'readings' || !r.readingCode)
+      return null
+    const stanzas: Array<Array<{ text: string, reading: string, translation: string }>> = []
+    let current: number | null = null
+    for (const { readingId, stanza, ...line } of lines) {
+      if (readingId !== r.targetId)
+        continue
+      if (stanza !== current) {
+        stanzas.push([])
+        current = stanza
+      }
+      stanzas.at(-1)!.push(line)
+    }
+    return { code: r.readingCode, title: r.readingTitle!, titleEn: r.readingTitleEn!, level: r.readingLevel ?? '', stanzas }
+  }
+
   const [count] = await db
     .select({ total: sql<number>`count(*)`.mapWith(Number) })
     .from(contentReviewQueue)
@@ -100,8 +146,8 @@ export async function listPending(
       origin: r.origin,
       status: r.status,
       createdAt: r.createdAt.toISOString(),
-      kind: (r.targetTable === 'grammar_points' ? 'grammar' : 'etymology') as 'grammar' | 'etymology',
-      subject: r.etySubject ?? r.gpTitle,
+      kind: kindOf(r.targetTable),
+      subject: r.etySubject ?? r.gpTitle ?? r.readingTitle,
       claim: r.claim,
       body: r.body,
       confidence: r.confidence,
@@ -112,7 +158,8 @@ export async function listPending(
       nuance: r.gpNuance,
       citations: citations
         .filter(c => c.etymologyId === r.targetId)
-        .map(({ etymologyId: _drop, ...rest }) => rest)
+        .map(({ etymologyId: _drop, ...rest }) => rest),
+      reading: speech(r)
     })),
     pending: count?.total ?? 0
   }
@@ -148,6 +195,13 @@ export async function approve(id: string, reviewerId: string, note?: string): Pr
         .update(grammarPoints)
         .set({ status: 'published', reviewedBy: reviewerId, reviewedAt: now, updatedAt: now })
         .where(eq(grammarPoints.id, row.targetId))
+    } else if (row.targetTable === 'readings') {
+      // A speech is invisible until now. Approval is the ONLY thing that
+      // publishes one — the seed that brings it in writes it unpublished.
+      await tx
+        .update(readings)
+        .set({ published: true, updatedAt: now })
+        .where(eq(readings.id, row.targetId))
     }
 
     await tx

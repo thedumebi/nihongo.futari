@@ -8,6 +8,7 @@ import type {
   GhostPolicy,
   LessonSeenResult,
   ReviewEvent,
+  SaveWordResult,
   SrsCard,
   StageCelebration,
   StageProgress,
@@ -487,6 +488,56 @@ export async function markLessonSeen(userId: string, studyItemId: string): Promi
     .returning({ studyItemId: lessonViews.studyItemId, firstSeenAt: lessonViews.firstSeenAt })
 
   return { studyItemId: row!.studyItemId, firstSeenAt: row!.firstSeenAt.toISOString() }
+}
+
+/**
+ * Put a word met while reading into review.
+ *
+ * The same entry `enterReview` gives a finished lesson: one card on the word's
+ * first facet, at state 1 so it is due at once instead of queueing behind the
+ * new-card limit. No `srs_review_logs` row is written — tapping a word is not
+ * evidence of having learned it, and the cards are a fold over that log.
+ *
+ * A word that already has ANY card is left alone. It is already in review, and
+ * a second entry point would reset nothing useful and could only double it up.
+ *
+ * Returns null when the word has no published study item, so there is nothing
+ * to review it with.
+ */
+export async function saveWord(userId: string, wordId: string): Promise<SaveWordResult | null> {
+  const facets = await db
+    .select({
+      facetId: studyItemFacets.id,
+      languageId: studyItems.languageId,
+      cardId: srsCards.id
+    })
+    .from(studyItems)
+    .innerJoin(studyItemFacets, and(eq(studyItemFacets.studyItemId, studyItems.id), eq(studyItemFacets.enabled, true)))
+    .leftJoin(srsCards, and(eq(srsCards.facetId, studyItemFacets.id), eq(srsCards.userId, userId)))
+    .where(and(eq(studyItems.wordId, wordId), eq(studyItems.published, true), eq(studyItems.active, true)))
+    .orderBy(asc(studyItemFacets.introOrder), asc(studyItemFacets.id))
+
+  const first = facets[0]
+  if (!first)
+    return null
+  if (facets.some(f => f.cardId !== null))
+    return { added: false }
+
+  const now = new Date()
+  const created = await db
+    .insert(srsCards)
+    .values({
+      userId,
+      facetId: first.facetId,
+      languageId: first.languageId,
+      due: now,
+      state: 1,
+      firstSeenAt: now
+    })
+    .onConflictDoNothing()
+    .returning({ id: srsCards.id })
+
+  return { added: created.length > 0 }
 }
 
 const STAGE_SIZE = 50

@@ -1,3 +1,4 @@
+import type { ReviewKind } from '@nihongo/shared/constants'
 import type { BulkReviewResult, ReviewListResponse } from '@nihongo/shared/types'
 
 import { API_ENDPOINTS } from '@nihongo/shared/constants'
@@ -7,7 +8,7 @@ import client from './client'
 export interface ReviewQueueParams {
   limit?: number
   offset?: number
-  kind?: 'grammar' | 'etymology'
+  kind?: ReviewKind
 }
 
 export async function listPending(params: ReviewQueueParams = {}): Promise<ReviewListResponse> {
