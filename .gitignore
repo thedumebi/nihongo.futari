@@ -73,3 +73,5 @@ nihongo/frontend/public/images/
 
 # Vite's local dep-optimisation cache. Regenerated on every dev start.
 .vite/
+
+.claude/postmortems
