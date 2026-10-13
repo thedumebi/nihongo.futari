@@ -33,6 +33,17 @@ export function speakSegments(line: string): SpeakSegment[] {
   return out
 }
 
+/**
+ * Whether a segment has anything to say.
+ *
+ * The full stop after a Japanese run — 'Today is {きょう}.' — is a segment of
+ * its own, and handed to the English voice alone it reads it out: "period".
+ * It stays in the line for the eye; it just gets no clip.
+ */
+export function speakSpoken(segment: SpeakSegment): boolean {
+  return /[\p{L}\p{N}]/u.test(segment.text)
+}
+
 /** The line as plain text, braces removed — for search, checks and display fallbacks. */
 export function speakPlainText(line: string): string {
   return speakSegments(line).map(s => s.text).join(' ')

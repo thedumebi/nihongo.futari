@@ -1,7 +1,7 @@
 /* eslint-disable no-console */
 import db, { connection } from '@nihongo/shared/db'
 import { dialogueReplies, dialogues, dialogueTurns, kana, sentences, words } from '@nihongo/shared/db/schema'
-import { speakSegments } from '@nihongo/shared/lib'
+import { speakSegments, speakSpoken } from '@nihongo/shared/lib'
 import { asc, eq } from 'drizzle-orm'
 import { execFile } from 'node:child_process'
 import { readFile, unlink } from 'node:fs/promises'
@@ -141,7 +141,7 @@ async function generate(kind: AudioKind) {
     const add = (text: string, voice: string) => lines.set(audioKeyFor(text, voice), { text, voice })
     for (const session of SPEAK) {
       for (const step of session.steps) {
-        for (const segment of speakSegments('x' in step ? step.x : step.q))
+        for (const segment of speakSegments('x' in step ? step.x : step.q).filter(speakSpoken))
           add(segment.text, segment.lang === 'ja' ? VOICE : englishVoiceFor(session.number))
         if ('t' in step)
           add(step.t, VOICE)

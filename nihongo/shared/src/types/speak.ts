@@ -29,7 +29,8 @@ export const speakStepViewSchema = z.object({
   say: z.array(z.object({
     lang: z.enum(['en', 'ja']),
     text: z.string(),
-    audio: z.string()
+    /** Null for a run with nothing to say — a full stop after a Japanese word. */
+    audio: z.string().nullable()
   })),
   /** The answer as written. Null on an explanation. */
   text: z.string().nullable(),

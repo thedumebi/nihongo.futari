@@ -15,7 +15,7 @@
  */
 import db, { connection } from '@nihongo/shared/db'
 import { kanji, languageLevels, languages } from '@nihongo/shared/db/schema'
-import { speakSegments } from '@nihongo/shared/lib'
+import { speakSegments, speakSpoken } from '@nihongo/shared/lib'
 import { eq } from 'drizzle-orm'
 
 import type { AuthoredSpeakSession } from './data/speak/types.js'
@@ -35,7 +35,7 @@ export function speakClipKeys(all: AuthoredSpeakSession[]): Set<string> {
   const keys = new Set<string>()
   for (const session of all) {
     for (const step of session.steps) {
-      for (const segment of speakSegments('x' in step ? step.x : step.q))
+      for (const segment of speakSegments('x' in step ? step.x : step.q).filter(speakSpoken))
         keys.add(`audio/speak/${audioKeyFor(segment.text, segment.lang === 'ja' ? VOICE_OTHER : englishVoiceFor(session.number))}.m4a`)
       if ('t' in step)
         keys.add(`audio/speak/${audioKeyFor(step.t, VOICE_OTHER)}.m4a`)

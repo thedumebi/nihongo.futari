@@ -1,7 +1,7 @@
 import type { SpeakStepView } from '@nihongo/shared/types'
 
 import env from '@nihongo/shared/env'
-import { speakSegments } from '@nihongo/shared/lib'
+import { speakSegments, speakSpoken } from '@nihongo/shared/lib'
 import { speakStoredPromptSchema } from '@nihongo/shared/types'
 
 import { englishVoiceFor, speakAudioPath, VOICE_OTHER } from './audio-key.js'
@@ -106,7 +106,9 @@ export function withDialogueAudio(prompt: Record<string, unknown>): Record<strin
 export function speakSay(en: string, sessionNumber: number): SpeakStepView['say'] {
   return speakSegments(en).map(segment => ({
     ...segment,
-    audio: assetUrl(speakAudioPath(segment.text, segment.lang === 'ja' ? VOICE_OTHER : englishVoiceFor(sessionNumber)))
+    audio: speakSpoken(segment)
+      ? assetUrl(speakAudioPath(segment.text, segment.lang === 'ja' ? VOICE_OTHER : englishVoiceFor(sessionNumber)))
+      : null
   }))
 }
 

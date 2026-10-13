@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import { moraCount, speakBracesBalanced, speakPlainText, speakSegments, thinkingTimeMs } from './index.js'
+import { moraCount, speakBracesBalanced, speakPlainText, speakSegments, speakSpoken, thinkingTimeMs } from './index.js'
 
 describe('speakSegments', () => {
   it('cuts a line into English and Japanese runs in order', () => {
@@ -56,5 +56,16 @@ describe('thinkingTimeMs', () => {
   it('grows with the answer and scales with the setting', () => {
     expect(thinkingTimeMs('たべます')).toBe(3700)
     expect(thinkingTimeMs('たべます', 1.5)).toBe(5550)
+  })
+})
+
+describe('speakSpoken', () => {
+  it('gives no clip to a run that is only punctuation', () => {
+    const segments = speakSegments('Today is {きょう}.')
+    expect(segments.map(s => [s.text, speakSpoken(s)])).toEqual([
+      ['Today is', true],
+      ['きょう', true],
+      ['.', false]
+    ])
   })
 })
