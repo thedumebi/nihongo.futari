@@ -2,7 +2,7 @@ import type { CrosswordDirection } from '@nihongo/shared/constants'
 import type { CrosswordEntry, CrosswordPuzzle } from '@nihongo/shared/types'
 import type { Ref } from 'vue'
 
-import { consumeRomaji, crosswordCellMatches, crosswordCells, inCrosswordScript } from '@nihongo/shared/lib'
+import { consumeRomaji, crosswordCellMatches, crosswordCells, hasHiragana, hasKatakana, inCrosswordScript } from '@nihongo/shared/lib'
 import { useDocumentVisibility, useIntervalFn, useLocalStorage } from '@vueuse/core'
 import { computed, ref, watch } from 'vue'
 
@@ -76,21 +76,11 @@ export function useCrossword(puzzle: Ref<CrosswordPuzzle | null>) {
   /** The bonus word's kana as far as the grid has been filled. */
   const bonusLetters = computed(() => (puzzle.value?.bonus?.cells ?? []).map(([r, c]) => typed.value[r]?.[c] ?? ''))
 
-  /** "1 of 7" — how much of the grid is right, for the progress line. */
-  const filledRight = computed(() => {
-    const p = puzzle.value
-    if (!p)
-      return { right: 0, total: 0 }
-    let right = 0
-    let total = 0
-    p.cells.forEach((row, r) => row.forEach((answer, c) => {
-      if (answer === null)
-        return
-      total++
-      if (crosswordCellMatches(answer, typed.value[r]?.[c] ?? ''))
-        right++
-    }))
-    return { right, total }
+  /** Words answered in full, out of how many — "3 of 6 words". */
+  const wordsDone = computed(() => {
+    const entries = puzzle.value?.entries ?? []
+    const done = entries.filter(e => cellsOf(e).every(([r, c], i) => crosswordCellMatches(e.answer[i]!, typed.value[r]?.[c] ?? ''))).length
+    return { done, total: entries.length }
   })
 
   // ============ Timer ============
@@ -227,6 +217,47 @@ export function useCrossword(puzzle: Ref<CrosswordPuzzle | null>) {
     write(text)
   }
 
+  // ============ A Japanese keyboard ============
+  //
+  // A kana keyboard does not send kana one at a time: it builds them up as a
+  // "composition" — underlined text on a phone, waiting to be confirmed or
+  // turned into kanji — and only commits it at the end. Waiting for that end
+  // meant nothing appeared while typing, which read as not working at all. So
+  // the composition is drawn into the cells as it grows, from where it began,
+  // and rewritten each time it changes; confirming it just stops tracking.
+
+  let anchor: { row: number, col: number, dir: CrosswordDirection } | null = null
+  /** Cells the current composition has written, so a change can rewrite them. */
+  let composed: Array<[number, number]> = []
+
+  function compositionStart() {
+    flush()
+    anchor = selected.value ? { ...selected.value } : null
+    composed = []
+  }
+
+  function composition(text: string) {
+    if (!anchor || solved.value)
+      return
+    // Kana only: a kanji the keyboard suggests has no place in a kana grid.
+    const kana = [...text].filter(ch => hasHiragana(ch) || hasKatakana(ch)).join('')
+    for (const [r, c] of composed) {
+      if (!revealed.value.has(key(r, c)))
+        setCell(r, c, '')
+    }
+    selected.value = { ...anchor }
+    const cells = current.value ? cellsOf(current.value) : []
+    const start = cells.findIndex(([r, c]) => r === anchor!.row && c === anchor!.col)
+    composed = cells.slice(start, start + crosswordCells(kana).length)
+    write(kana)
+  }
+
+  function compositionEnd(text: string) {
+    composition(text)
+    anchor = null
+    composed = []
+  }
+
   /** A waiting `n` becomes ん when the word or the cell changes. */
   function flush() {
     if (!pending.value)
@@ -300,7 +331,7 @@ export function useCrossword(puzzle: Ref<CrosswordPuzzle | null>) {
     currentCells,
     solved,
     bonusLetters,
-    filledRight,
+    wordsDone,
     isWrong,
     select,
     selectEntry,
@@ -308,6 +339,9 @@ export function useCrossword(puzzle: Ref<CrosswordPuzzle | null>) {
     type,
     flush,
     backspace,
+    compositionStart,
+    composition,
+    compositionEnd,
     revealCell,
     revealWord,
     countHint

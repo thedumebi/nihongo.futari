@@ -265,9 +265,15 @@ export async function getCrossword(userId: string, query: CrosswordQuery): Promi
     return { ...wordView(word), number: p.number, direction: p.dir, row: p.row, col: p.col }
   })
   const bonusWord = grid.bonus ? byId.get(grid.bonus.id) : undefined
+  const puzzleKey = puzzleKeyOf(query.level, grid)
+  const [done] = await db
+    .select({ bestSeconds: crosswordResults.bestSeconds })
+    .from(crosswordResults)
+    .where(and(eq(crosswordResults.userId, userId), eq(crosswordResults.puzzleKey, puzzleKey)))
+    .limit(1)
 
   return {
-    puzzleKey: puzzleKeyOf(query.level, grid),
+    puzzleKey,
     level: query.level,
     source,
     script: source === 'loanwords' ? 'katakana' : 'hiragana',
@@ -276,7 +282,8 @@ export async function getCrossword(userId: string, query: CrosswordQuery): Promi
     entries,
     bonus: grid.bonus && bonusWord ? { ...wordView(bonusWord), cells: grid.bonus.cells } : null,
     knownCount,
-    note
+    note,
+    completed: done ?? null
   }
 }
 

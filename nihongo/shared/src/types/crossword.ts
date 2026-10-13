@@ -117,7 +117,13 @@ export const crosswordPuzzleSchema = z.object({
   /** How many known words at this level could go in a puzzle; null unless asked for known words. */
   knownCount: z.number().int().nullable(),
   /** Anything worth saying about how the puzzle was made — "topped up with new words". */
-  note: z.string().nullable()
+  note: z.string().nullable(),
+  /**
+   * Whether this learner has already finished this puzzle, from the server's
+   * record — not the phone's, which an installed app on iOS keeps separately
+   * from the browser and may clear.
+   */
+  completed: z.object({ bestSeconds: z.number().int() }).nullable()
 }).openapi('Crossword')
 
 export type CrosswordPuzzle = z.infer<typeof crosswordPuzzleSchema>

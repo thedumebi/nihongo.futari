@@ -151,10 +151,16 @@ export function armAudioUnlock(): void {
   arm()
 }
 
-/** Play one clip, replacing whatever was playing. */
-export function playAudio(src: string | null | undefined): void {
+/**
+ * Play one clip, replacing whatever was playing.
+ *
+ * Resolves true once sound has actually started, false if it never did —
+ * for a caller that should only count a play that was heard (a crossword's
+ * "Hear it" hint). Everyone else can ignore it.
+ */
+export function playAudio(src: string | null | undefined): Promise<boolean> {
   if (!src)
-    return
+    return Promise.resolve(false)
   // Supersede any queue in flight. Without this, tapping one line while the
   // conversation is playing would let the queue resume over the top of it: the
   // queue waits on `ended`, and the clip just started fires exactly that.
@@ -165,7 +171,12 @@ export function playAudio(src: string | null | undefined): void {
   // A missing clip must never break the page around it — but swallowing the
   // reason outright is how a Safari-only failure went unnoticed for so long,
   // so development gets told.
-  audio.play().catch((err: unknown) => record(`play ${src}`, err))
+  return audio.play()
+    .then(() => true)
+    .catch((err: unknown) => {
+      record(`play ${src}`, err)
+      return false
+    })
 }
 
 /**

@@ -14,7 +14,7 @@ import CrosswordGrid from '@/components/crossword/crossword-grid.vue'
 import AppShell from '@/components/layout/app-shell.vue'
 import Button from '@/components/ui/button.vue'
 import Segmented from '@/components/ui/segmented.vue'
-import { playAudio } from '@/composables/use-audio'
+import { playAudio, prefetchAudio } from '@/composables/use-audio'
 import { useCrossword } from '@/composables/use-crossword'
 import { useLevel } from '@/composables/use-level'
 import { useLanguageStore } from '@/store/language'
@@ -44,8 +44,11 @@ const knownShort = ref<number | null>(null)
 const level = ref<'N5' | 'N4'>('N5')
 /** Which words — remembered on the device, so coming back resumes the same kind of puzzle. */
 const source = useLocalStorage<CrosswordSource>('go-crossword-source', 'daily')
-/** Entries whose kanji has been shown as a hint. */
-const kanjiShown = ref(new Set<number>())
+/** Entries whose kanji has been shown, and whose word has been heard, as hints — each counted once. */
+const kanjiShown = ref(new Set<string>())
+const heard = ref(new Set<string>())
+/** Said once, when today's puzzle was already done and a new one opened instead. */
+const moved = ref('')
 const best = ref<boolean | null>(null)
 const input = ref<HTMLInputElement | null>(null)
 
@@ -64,7 +67,12 @@ const SOURCES = [
 const SENTINEL = ' '
 
 const game = useCrossword(puzzle)
-const { selected, current, currentCells, typed, revealed, pending, hints, seconds, solved, bonusLetters, filledRight, checkAsYouGo } = game
+const { selected, current, currentCells, typed, revealed, pending, hints, seconds, solved, bonusLetters, wordsDone, checkAsYouGo } = game
+
+/** True only for the first load after opening the page. */
+let opening = true
+/** Set while the page itself moves on from a finished daily, so the note survives that one change. */
+let movingOn = false
 
 // ============ Computed Properties ============
 const clueLabel = computed(() => {
@@ -73,6 +81,14 @@ const clueLabel = computed(() => {
     return ''
   return `${e.number}${e.direction === 'across' ? 'A' : 'D'}`
 })
+
+/**
+ * Today's puzzle, done — by the server's record — but not on this device (another
+ * phone, or storage the phone cleared). Say so rather than show an empty grid,
+ * unless the learner chooses to play it again.
+ */
+const replaying = ref(false)
+const doneElsewhere = computed(() => Boolean(puzzle.value?.source === 'daily' && puzzle.value.completed && !solved.value && !replaying.value))
 
 const time = computed(() => `${Math.floor(seconds.value / 60)}:${String(seconds.value % 60).padStart(2, '0')}`)
 
@@ -98,7 +114,13 @@ watch(solved, async (done) => {
   }
 })
 
-watch([level, source], () => void load())
+watch([level, source], () => {
+  // The note belongs to the one automatic move; any later change clears it.
+  if (!movingOn)
+    moved.value = ''
+  movingOn = false
+  void load()
+})
 
 // ============ Lifecycle Hooks ============
 onMounted(async () => {
@@ -116,22 +138,36 @@ const currentKey = () => `go-crossword-current:${lang.code}:${level.value}:${sou
  * turns, and the saved progress follows it by key); any other kind resumes
  * the last one if it was left unfinished, unless a new one is asked for.
  */
+
 async function load(fresh = false) {
   loading.value = true
   errorMsg.value = ''
   knownShort.value = null
   kanjiShown.value = new Set()
+  heard.value = new Set()
+  replaying.value = false
   best.value = null
   try {
     if (!fresh && source.value !== 'daily') {
       const saved = readCurrent()
       if (saved) {
         puzzle.value = saved
+        void prefetchAudio([...saved.entries.map(e => e.audio), saved.bonus?.audio])
         return
       }
     }
     const next = await getCrossword({ languageCode: lang.code, level: level.value, source: source.value })
+    // Opening the page on a puzzle already done: go to the next undone one
+    // instead of showing it again. Choosing Today on purpose still shows it.
+    if (opening && next.source === 'daily' && next.completed) {
+      opening = false
+      movingOn = true
+      moved.value = 'You have done today\'s puzzle — here is a new one, from words you know and new ones.'
+      source.value = 'mix'
+      return
+    }
     puzzle.value = next
+    void prefetchAudio([...next.entries.map(e => e.audio), next.bonus?.audio])
     try {
       localStorage.setItem(currentKey(), JSON.stringify(next))
     } catch {
@@ -148,7 +184,21 @@ async function load(fresh = false) {
     }
   } finally {
     loading.value = false
+    if (puzzle.value)
+      opening = false
   }
+}
+
+/**
+ * Another puzzle. Today's puzzle is one a day, so "another" from there means a
+ * new one — the Mix tab — rather than fetching today's again.
+ */
+function another() {
+  moved.value = ''
+  if (source.value === 'daily')
+    source.value = 'mix'
+  else
+    void load(true)
 }
 
 function readCurrent(): CrosswordPuzzle | null {
@@ -194,9 +244,14 @@ function onBeforeInput(e: InputEvent) {
   // Composition (a Japanese keyboard) cannot be cancelled; it lands on compositionend.
 }
 
+/** While a Japanese keyboard composes, draw what it has so far into the cells. */
+function onInput(e: Event) {
+  if ((e as InputEvent).isComposing && input.value)
+    game.composition(input.value.value.replace(SENTINEL, ''))
+}
+
 function onCompositionEnd(e: CompositionEvent) {
-  if (e.data)
-    game.type(e.data)
+  game.compositionEnd(e.data ?? '')
   void nextTick(() => {
     if (input.value)
       input.value.value = SENTINEL
@@ -210,26 +265,29 @@ function onKeydown(e: KeyboardEvent) {
   }
 }
 
-function hear() {
+const entryKey = (e: { number: number, direction: string }) => `${e.number}${e.direction}`
+
+/** Hearing a word is a hint only once it is actually heard, and only once per word. */
+async function hear() {
   const e = current.value
   if (!e?.audio)
     return
-  playAudio(e.audio)
-  game.countHint()
+  const played = await playAudio(e.audio)
+  if (played && !heard.value.has(entryKey(e))) {
+    heard.value = new Set(heard.value).add(entryKey(e))
+    game.countHint()
+  }
 }
 
 function showKanji() {
   const e = current.value
-  if (!e || kanjiShown.value.has(e.number * 2 + (e.direction === 'down' ? 1 : 0)))
+  if (!e || kanjiShown.value.has(entryKey(e)))
     return
-  kanjiShown.value = new Set(kanjiShown.value).add(e.number * 2 + (e.direction === 'down' ? 1 : 0))
+  kanjiShown.value = new Set(kanjiShown.value).add(entryKey(e))
   game.countHint()
 }
 
-const kanjiVisible = computed(() => {
-  const e = current.value
-  return Boolean(e && kanjiShown.value.has(e.number * 2 + (e.direction === 'down' ? 1 : 0)))
-})
+const kanjiVisible = computed(() => Boolean(current.value && kanjiShown.value.has(entryKey(current.value))))
 </script>
 
 <template>
@@ -269,15 +327,18 @@ const kanjiVisible = computed(() => {
       <template v-else-if="puzzle">
         <div class="mt-6 flex items-center justify-between text-sm text-[var(--color-muted)]">
           <span class="tabular-nums">{{ time }}</span>
-          <span>{{ filledRight.right }} / {{ filledRight.total }}</span>
+          <span>{{ wordsDone.done }} of {{ wordsDone.total }} words</span>
           <button
             type="button"
             class="inline-flex items-center gap-1 underline-offset-4 hover:underline"
-            @click="load(true)"
+            @click="another"
           >
-            <RefreshCw class="h-3.5 w-3.5" /> New puzzle
+            <RefreshCw class="h-3.5 w-3.5" /> Another puzzle
           </button>
         </div>
+        <p v-if="moved" class="mt-2 text-sm text-[var(--color-muted)]">
+          {{ moved }}
+        </p>
         <p v-if="puzzle.note" class="mt-2 text-sm text-[var(--color-muted)]">
           {{ puzzle.note }}
         </p>
@@ -285,15 +346,32 @@ const kanjiVisible = computed(() => {
           A loanword puzzle this time — answers in katakana.
         </p>
 
+        <div v-if="doneElsewhere" class="mt-6 rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] p-6 text-center">
+          <p class="text-xl font-semibold">
+            Today's puzzle is done
+          </p>
+          <p class="mt-2 text-[var(--color-muted)]">
+            Your best time: {{ Math.floor(puzzle.completed!.bestSeconds / 60) }}:{{ String(puzzle.completed!.bestSeconds % 60).padStart(2, '0') }}. A new one comes tomorrow.
+          </p>
+          <div class="mt-5 flex justify-center gap-3">
+            <Button variant="ghost" @click="replaying = true">
+              Play it again
+            </Button>
+            <Button variant="primary" @click="another">
+              Another puzzle
+            </Button>
+          </div>
+        </div>
+
         <CrosswordFinish
-          v-if="solved"
+          v-else-if="solved"
           class="mt-6"
           :entries="puzzle.entries"
           :bonus="puzzle.bonus"
           :seconds="seconds"
           :hints="hints"
           :best="best"
-          @again="load(true)"
+          @again="another"
         />
 
         <template v-else>
@@ -343,6 +421,8 @@ const kanjiVisible = computed(() => {
             aria-label="Type the answer"
             :value="SENTINEL"
             @beforeinput="onBeforeInput"
+            @compositionstart="game.compositionStart()"
+            @input="onInput"
             @compositionend="onCompositionEnd"
             @keydown="onKeydown"
           >
@@ -354,7 +434,7 @@ const kanjiVisible = computed(() => {
             <Button variant="ghost" @click="game.revealWord(); focusInput()">
               <Eye class="h-4 w-4" /> Reveal word
             </Button>
-            <Button v-if="current?.audio" variant="ghost" @click="hear(); focusInput()">
+            <Button v-if="current?.audio" variant="ghost" @click="hear">
               <Volume2 class="h-4 w-4" /> Hear it
             </Button>
             <Button v-if="current && hasKanji(current.form)" variant="ghost" :disabled="kanjiVisible" @click="showKanji(); focusInput()">
