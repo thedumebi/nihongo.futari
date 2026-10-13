@@ -75,6 +75,12 @@ const router = createRouter({
       meta: { requiresAuth: true }
     },
     {
+      path: ROUTES.CROSSWORD,
+      name: 'crossword',
+      component: () => import('@/views/crossword.vue'),
+      meta: { requiresAuth: true }
+    },
+    {
       path: ROUTES.COURSE,
       name: 'course',
       component: () => import('@/views/course.vue'),

@@ -53,7 +53,8 @@
     "seed:words": "tsx src/pipeline/make-words-seed.ts",
     "seed:speak": "tsx src/pipeline/make-speak-seed.ts",
     "check:speak": "tsx src/pipeline/check-speak.ts",
-    "check:readings": "tsx src/pipeline/check-readings.ts"
+    "check:readings": "tsx src/pipeline/check-readings.ts",
+    "check:crossword": "tsx src/pipeline/check-crossword.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.120.0",

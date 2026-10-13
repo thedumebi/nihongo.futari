@@ -85,6 +85,7 @@ const secondary = computed(() => {
     { label: 'Due', to: ROUTES.DUE },
     { label: 'Writing', to: ROUTES.WRITING },
     { label: 'Sounds', to: ROUTES.SOUND_SERIES },
+    { label: 'Crossword', to: ROUTES.CROSSWORD },
     { label: 'Grammar', to: ROUTES.GRAMMAR }
   ]
 })

@@ -1,5 +1,6 @@
 export * from './auth.js'
 export * from './columns.js'
+export * from './crossword.js'
 export * from './etymology.js'
 export * from './exercises.js'
 export * from './dialogues.js'

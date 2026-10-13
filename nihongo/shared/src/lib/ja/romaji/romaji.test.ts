@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import { collapseLongVowels, looksLikeRomaji, romajiToHiragana, toKatakana } from './index.js'
+import { collapseLongVowels, consumeRomaji, looksLikeRomaji, romajiToHiragana, toKatakana } from './index.js'
 
 describe('romajiToHiragana', () => {
   it('converts the case that started this', () => {
@@ -103,5 +103,31 @@ describe('collapseLongVowels', () => {
   it('leaves a short word untouched', () => {
     expect(collapseLongVowels(toKatakana(romajiToHiragana('pan')))).toBe('パン')
     expect(collapseLongVowels(toKatakana(romajiToHiragana('gurasu')))).toBe('グラス')
+  })
+})
+
+describe('consumeRomaji', () => {
+  it('waits for the rest of a syllable', () => {
+    expect(consumeRomaji('k')).toEqual({ kana: '', rest: 'k' })
+    expect(consumeRomaji('ky')).toEqual({ kana: '', rest: 'ky' })
+    expect(consumeRomaji('ka')).toEqual({ kana: 'か', rest: '' })
+  })
+
+  it('treats n as the start of な until the next key says otherwise', () => {
+    expect(consumeRomaji('n')).toEqual({ kana: '', rest: 'n' })
+    expect(consumeRomaji('na')).toEqual({ kana: 'な', rest: '' })
+    expect(consumeRomaji('nk')).toEqual({ kana: 'ん', rest: 'k' })
+    expect(consumeRomaji('konna')).toEqual({ kana: 'こんな', rest: '' })
+    expect(consumeRomaji("n'")).toEqual({ kana: 'ん', rest: '' })
+    expect(consumeRomaji('hon', { final: true })).toEqual({ kana: 'ほん', rest: '' })
+  })
+
+  it('gives the sokuon for a doubled consonant and ー for a dash', () => {
+    expect(consumeRomaji('kitte')).toEqual({ kana: 'きって', rest: '' })
+    expect(consumeRomaji('ko-hi-')).toEqual({ kana: 'こーひー', rest: '' })
+  })
+
+  it('drops letters that cannot start a syllable', () => {
+    expect(consumeRomaji('qa')).toEqual({ kana: 'あ', rest: '' })
   })
 })

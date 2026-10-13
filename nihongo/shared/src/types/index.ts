@@ -1,5 +1,6 @@
 export * from './auth.js'
 export * from './base.js'
+export * from './crossword.js'
 export * from './emails.js'
 export * from './enrichment.js'
 export * from './etymology.js'

@@ -7,6 +7,7 @@ import { and, asc, eq } from 'drizzle-orm'
 
 import { glueAuthorWords, regroupKana } from '../lib/author-segments.js'
 import { counterWords } from '../lib/counters.js'
+import { posLabel } from '../lib/pos.js'
 import { setPhrases } from '../lib/set-phrases.js'
 
 /**
@@ -23,57 +24,6 @@ import { setPhrases } from '../lib/set-phrases.js'
  * the moment the dictionary grows. Tokenising ten short lines against a
  * prebuilt index costs microseconds, and the dictionary is the single source.
  */
-
-/** JMdict part-of-speech codes, in words a beginner can use. */
-const POS_LABELS: Record<string, string> = {
-  'n': 'noun',
-  'n-adv': 'noun',
-  'n-t': 'noun',
-  'pn': 'pronoun',
-  'adj': 'adjective',
-  'adj-i': 'i-adjective',
-  'adj-na': 'na-adjective',
-  'adj-no': 'adjective',
-  'adj-pn': 'adjective',
-  'adv': 'adverb',
-  'adv-to': 'adverb',
-  'conj': 'conjunction',
-  'int': 'interjection',
-  'prt': 'particle',
-  'prefix': 'prefix',
-  'suf': 'suffix',
-  'pref': 'prefix',
-  'ctr': 'counter',
-  'exp': 'expression',
-  'aux': 'auxiliary',
-  'aux-v': 'auxiliary verb',
-  'aux-adj': 'auxiliary adjective',
-  'vs': 'suru verb',
-  'vs-i': 'suru verb',
-  'vs-s': 'suru verb',
-  'vk': 'kuru verb',
-  'v1': 'ichidan verb',
-  'v1-s': 'ichidan verb',
-  'vz': 'ichidan verb'
-}
-
-/**
- * The godan verbs, which JMdict spells as one code per final consonant —
- * `v5k`, `v5r-i`, `v5u-s` and a dozen more. Matching the family by prefix
- * beats listing every variant and then missing one.
- */
-function posLabel(codes: string[]): string | null {
-  for (const code of codes) {
-    const known = POS_LABELS[code]
-    if (known)
-      return known
-    if (code.startsWith('v5'))
-      return 'godan verb'
-    if (code.startsWith('v'))
-      return 'verb'
-  }
-  return null
-}
 
 interface Glossary {
   /** First character to the dictionary forms starting with it, longest first. */

@@ -30,6 +30,7 @@ export const ROUTE_BASE_PATHS = {
   DIALOGUES: '/dialogues',
   READINGS: '/readings',
   SPEAK: '/speak',
+  CROSSWORD: '/crossword',
   STUDY: '/study',
   SYNC: '/sync',
   PROGRESS: '/progress',
@@ -234,6 +235,26 @@ export const SPEAK_ROUTES = {
   MISS: '/:code/steps/:index/miss'
 } as const
 
+export const CROSSWORD_ROUTES = {
+  GET: '/',
+  RESULT: '/result'
+} as const
+
+/**
+ * Where a crossword's words come from. `daily` is the level's words, the same
+ * puzzle for everyone that day; the rest are the learner's choice for a new
+ * puzzle — words they know, words they have not met, both, or loanwords
+ * (a katakana puzzle).
+ */
+export const CROSSWORD_SOURCES = ['daily', 'known', 'new', 'mix', 'loanwords'] as const
+export type CrosswordSource = typeof CROSSWORD_SOURCES[number]
+
+export const CROSSWORD_DIRECTIONS = ['across', 'down'] as const
+export type CrosswordDirection = typeof CROSSWORD_DIRECTIONS[number]
+
+export const CROSSWORD_SCRIPTS = ['hiragana', 'katakana'] as const
+export type CrosswordScript = typeof CROSSWORD_SCRIPTS[number]
+
 /** A Speak step: the teacher explaining, or a prompt to answer aloud. */
 export const SPEAK_STEP_KINDS = ['explain', 'prompt'] as const
 export type SpeakStepKind = typeof SPEAK_STEP_KINDS[number]
@@ -415,6 +436,10 @@ export const API_ENDPOINTS = {
   READINGS: {
     LIST: ROUTE_BASE_PATHS.READINGS,
     GET_BY_CODE: (code: string) => `${ROUTE_BASE_PATHS.READINGS}/${encodeURIComponent(code)}`
+  },
+  CROSSWORD: {
+    GET: `${ROUTE_BASE_PATHS.CROSSWORD}${CROSSWORD_ROUTES.GET}`,
+    RESULT: `${ROUTE_BASE_PATHS.CROSSWORD}${CROSSWORD_ROUTES.RESULT}`
   },
   SPEAK: {
     LIST: ROUTE_BASE_PATHS.SPEAK,

@@ -45,7 +45,7 @@ interface UserContext {
   dayBoundaryHour: number
 }
 
-async function loadUserContext(userId: string): Promise<UserContext> {
+export async function loadUserContext(userId: string): Promise<UserContext> {
   const [row] = await db
     .select({ timezone: users.timezone, dayBoundaryHour: userSettings.dayBoundaryHour })
     .from(users)

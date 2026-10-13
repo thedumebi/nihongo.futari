@@ -181,6 +181,80 @@ export function romajiToHiragana(input: string): string {
   return out
 }
 
+/**
+ * Romaji typed one key at a time: the kana it has completed so far, and the
+ * letters still waiting.
+ *
+ * `romajiToHiragana` converts a finished string, and treats a trailing `n` as
+ * ん — right for a search box, wrong for live typing, where `n` is very often
+ * the start of な. Here an unfinished syllable waits: `n` waits for its next
+ * key, `k` waits for its vowel, `ky` for its vowel. The rules are the usual
+ * IME ones —
+ *
+ * - `n` before a consonant (or `n'`) is ん, and the consonant carries on,
+ *   so `konna` gives こんな;
+ * - a doubled consonant is っ, so `kitte` gives きって;
+ * - `-` is ー.
+ *
+ * `final` flushes a waiting `n` as ん — for when the word, or the cell, ends.
+ * Letters that cannot start any syllable are dropped rather than kept, since
+ * whatever reads this wants kana.
+ */
+export function consumeRomaji(input: string, { final = false }: { final?: boolean } = {}): { kana: string, rest: string } {
+  const text = input.toLowerCase()
+  let out = ''
+  let i = 0
+
+  while (i < text.length) {
+    const rest = text.slice(i)
+    const a = rest[0]!
+    const b = rest[1]
+
+    if (a === '-') {
+      out += 'ー'
+      i += 1
+      continue
+    }
+    if (a === 'n') {
+      if (b === undefined) {
+        if (!final)
+          break
+        out += 'ん'
+        i += 1
+        continue
+      }
+      if (b === '\'') {
+        out += 'ん'
+        i += 2
+        continue
+      }
+      if (!/[aiueoy]/.test(b)) {
+        out += 'ん'
+        i += 1
+        continue
+      }
+    }
+    if (b && a === b && /[bcdfghjkmp-tv-z]/.test(a)) {
+      out += 'っ'
+      i += 1
+      continue
+    }
+
+    const match = TABLE.find(([romaji]) => rest.startsWith(romaji))
+    if (match) {
+      out += match[1]
+      i += match[0].length
+      continue
+    }
+    // The start of a syllable still being typed: wait for the rest.
+    if (TABLE.some(([romaji]) => romaji.startsWith(rest)))
+      break
+    i += 1
+  }
+
+  return { kana: out, rest: text.slice(i) }
+}
+
 const HIRAGANA_START = 0x3041
 const HIRAGANA_END = 0x3096
 

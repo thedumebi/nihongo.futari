@@ -7,6 +7,7 @@ import createApp from './lib/create-app.js'
 import { standardLimiter } from './middlewares/rate-limit.js'
 import attribution from './routes/attribution/attribution.index.js'
 import auth from './routes/auth.js'
+import crossword from './routes/crossword/crossword.index.js'
 import dialogues from './routes/dialogues/dialogues.index.js'
 import dictionary from './routes/dictionary/dictionary.index.js'
 import grammar from './routes/grammar/grammar.index.js'
@@ -58,6 +59,7 @@ const routes = [
   dialogues,
   readings,
   speak,
+  crossword,
   grammar,
   lessons,
   invites,
