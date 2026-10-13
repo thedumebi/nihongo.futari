@@ -63,6 +63,8 @@ const SOURCES = [
   { value: 'mix' as const, label: 'Mix', title: 'Words you know, topped up with new ones' },
   { value: 'loanwords' as const, label: 'Loanwords', title: 'A katakana puzzle' }
 ]
+/** No word highlighted — the finished board shows none. */
+const NOTHING = new Set<string>()
 /** One character kept in the hidden input, so a backspace always has something to delete. */
 const SENTINEL = ' '
 
@@ -363,16 +365,29 @@ const kanjiVisible = computed(() => Boolean(current.value && kanjiShown.value.ha
           </div>
         </div>
 
-        <CrosswordFinish
-          v-else-if="solved"
-          class="mt-6"
-          :entries="puzzle.entries"
-          :bonus="puzzle.bonus"
-          :seconds="seconds"
-          :hints="hints"
-          :best="best"
-          @again="another"
-        />
+        <!-- Solved: the finished board stays, at rest, with the words under it. -->
+        <template v-else-if="solved">
+          <div class="mx-auto mt-6 max-w-md">
+            <CrosswordGrid
+              :puzzle="puzzle"
+              :typed="typed"
+              :selected="null"
+              :current="NOTHING"
+              :revealed="revealed"
+              pending=""
+              :is-wrong="game.isWrong"
+            />
+          </div>
+          <CrosswordFinish
+            class="mt-6"
+            :entries="puzzle.entries"
+            :bonus="puzzle.bonus"
+            :seconds="seconds"
+            :hints="hints"
+            :best="best"
+            @again="another"
+          />
+        </template>
 
         <template v-else>
           <!-- The clue for the word being answered, with ‹ › through the rest. -->
