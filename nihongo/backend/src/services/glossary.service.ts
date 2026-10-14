@@ -1,13 +1,13 @@
+import type { FuriganaSegment } from '@nihongo/shared/lib'
 import type { GlossedToken, WordGloss } from '@nihongo/shared/types'
 
 import db from '@nihongo/shared/db'
 import { grammarPoints, languageLevels, languages, wordForms, words, wordSenses } from '@nihongo/shared/db/schema'
-import { buildTokenIndex, classifyVerb, conjugateAll, toHiragana, tokenise } from '@nihongo/shared/lib'
+import { buildTokenIndex, classifyVerb, conjugateAll, readLine, toHiragana, tokenise } from '@nihongo/shared/lib'
 import { and, asc, eq } from 'drizzle-orm'
 
 import { glueAuthorWords, regroupKana } from '../lib/author-segments.js'
 import { counterWords } from '../lib/counters.js'
-import { splitKanjiRuns } from '../lib/kanji-runs.js'
 import { posLabel } from '../lib/pos.js'
 import { setPhrases } from '../lib/set-phrases.js'
 
@@ -575,26 +575,56 @@ async function patterns(languageCode: string, claimed: Map<string, WordGloss>): 
   return out.sort((a, b) => b.form.length - a.form.length)
 }
 
-export function glossLine(line: string, g: Glossary, reading?: string, opts: { regroupKana?: boolean } = {}): GlossedToken[] {
+export function glossLine(
+  line: string,
+  g: Glossary,
+  reading?: string | readonly FuriganaSegment[],
+  opts: { regroupKana?: boolean } = {}
+): GlossedToken[] {
   const tokens = tokenise(line, g.index)
-  const readings = reading ? splitReading(line, reading, tokens.map(t => [...t.t].length)) : null
-
-  const cut: GlossedToken[] = tokens.map((token, i) => {
+  // The dictionary entry behind each word as the tokeniser matched it.
+  const keys = new Map(tokens.map(t => [t.t, t.key]))
+  const glossOf = (t: string) => {
+    const key = keys.get(t)
+    return key ? g.byForm.get(key) : undefined
+  }
+  const plainTokens: GlossedToken[] = tokens.map((token) => {
     const word = token.key ? g.byForm.get(token.key) : undefined
-    const r = readings?.[i]
+    return { t: token.t, ...(word ? { w: word } : {}) }
+  })
+  if (reading === undefined || reading.length === 0)
+    return plainTokens
+
+  // Each word's reading, from the import's alignment where there is one and
+  // from the author's reading otherwise — see readLine for why it is never a
+  // single left-to-right guess. Null: the reading does not fit the line, which
+  // the content checker reports; the words are still shown and tappable.
+  const groups = readLine(
+    tokens.map(t => t.t),
+    typeof reading === 'string' ? { reading } : { segments: reading },
+    surface => glossOf(surface)
+  )
+  if (!groups)
+    return plainTokens
+
+  const glossed: GlossedToken[] = groups.map((group) => {
+    const members = plainTokens.slice(group.from, group.to)
+    if (members.length === 1)
+      return { ...members[0]!, r: group.r, f: group.f }
+    // Words whose shared reading cannot be divided — shown as one, the way a
+    // compound the dictionary split is: the whole word's gloss if there is one,
+    // and its pieces either way.
+    const parts = members.map(m => m.w
+      ? (({ parts: _parts, ...rest }) => rest)(m.w)
+      : { form: m.t, reading: '', meanings: [], pos: null })
+    const whole = g.byForm.get(group.t)
     return {
-      t: token.t,
-      // An EMPTY reading is meaningful and must be kept: a run of kanji carries
-      // its whole reading on the first character, so a token covering the rest
-      // of the run legitimately reads as nothing. Dropping it as falsy made the
-      // renderer fall back to the surface, which is how 千二百円です came out as
-      // `sen nihyaku en二百円 desu`.
-      ...(r === undefined ? {} : { r }),
-      ...(word ? { w: word } : {})
+      t: group.t,
+      r: group.r,
+      f: group.f,
+      w: whole ? { ...whole, parts } : { form: group.t, reading: group.r.trim(), meanings: [], pos: null, parts }
     }
   })
-  // A run of kanji spanning several words — 時間英語 — gets one reading per word.
-  const glossed = splitKanjiRuns(cut, surface => g.byForm.get(surface)?.reading)
 
   // Opt-in, and only with the author's reading: its spaces are what say where
   // the words are. On for read-aloud speeches, which are written in kana up to
@@ -604,205 +634,13 @@ export function glossLine(line: string, g: Glossary, reading?: string, opts: { r
   // A word written in kana is looked up as written first — それから, よろしく —
   // and only hiragana falls back to the reading of a word usually written in
   // kanji. Katakana is a loanword spelled as itself; ホット is not ほっと.
-  if (!readings || !opts.regroupKana)
+  if (typeof reading !== 'string' || !opts.regroupKana)
     return glossed
   const kana = regroupKana(glossed, word => g.byForm.get(word)
     ?? (/^[\u3041-\u309F]+$/.test(word) ? g.byReading.get(toHiragana(word)) : undefined))
   // Then words with kanji in them that the dictionary split — 山|本 — glued
   // back into one chip that lists its pieces.
   return glueAuthorWords(kana, word => g.byForm.get(word))
-}
-
-/**
- * Cut a line's kana across token boundaries.
- *
- * Not `alignFurigana`, and the reason matters: these readings are SPOKEN
- * readings. The authoring format writes 傘を as かさ お and 私は as わたし わ,
- * because that is what the romaji has to say. The aligner anchors kana to
- * identical kana, so every particle in the corpus fails to anchor and the
- * whole line is abandoned.
- *
- * So the walk is done here with those three substitutions treated as matches.
- * Kana pair off one for one; a run of kanji takes whatever reading sits before
- * the next kana anchor. Anything that does not line up returns null and the
- * line falls back to being romanised whole — the reader gets no word spacing
- * rather than a word cut in the wrong place.
- */
-function splitReading(line: string, reading: string, lengths: number[]): string[] | null {
-  // Word boundaries first, earliest match second.
-  //
-  // Preferring a boundary is what lets 母 take はは rather than は, but it is a
-  // preference and not a rule: consuming to a later boundary can desync the
-  // rest of the walk and lose the line entirely. Trying it first and falling
-  // back means a line can only ever gain a better cut, never lose the one it
-  // already had.
-  return walkReading(line, reading, lengths, true) ?? walkReading(line, reading, lengths, false)
-}
-
-function walkReading(line: string, reading: string, lengths: number[], preferBoundary: boolean): string[] | null {
-  const surface = [...line]
-  const kana = [...reading]
-
-  /** は/を/へ read as わ/お/え when they are particles, and only then. */
-  const spoken = (char: string): string =>
-    char === 'は' ? 'わ' : char === 'を' ? 'お' : char === 'へ' ? 'え' : char
-
-  /**
-   * Surface positions where a TOKEN begins.
-   *
-   * A kanji run's anchor is the kana that follow it, and those kana are only a
-   * word boundary if they start a new token. In 良い一日を the い is okurigana —
-   * part of 良い — so the space in よい いちにち お falls INSIDE the token, and
-   * preferring it cut 良い as よい+い and left 一日 reading ちにち.
-   */
-  const tokenStart = new Set<number>()
-  let cursor = 0
-  for (const len of lengths) {
-    tokenStart.add(cursor)
-    cursor += len
-  }
-
-  const perChar: string[] = []
-  let i = 0
-  let j = 0
-
-  /**
-   * Spaces the author put in the reading, waiting to be attached to whatever
-   * comes next.
-   *
-   * `これ お おねがいします` is spaced at the word boundaries by the person who
-   * wrote it, which is better information than anything this code could infer:
-   * を is not in the dictionary, so guessing boundaries from what got a gloss
-   * ran これを together as `koreo`. Carrying the spaces through means the romaji
-   * breaks exactly where the author meant it to, and nowhere else — no space
-   * before a full stop, and none inside すみません.
-   */
-  let pending = ''
-
-  while (i < surface.length) {
-    const char = surface[i]!
-
-    while (j < kana.length && /\s/.test(kana[j]!)) {
-      pending += ' '
-      j += 1
-    }
-
-    if (!HAS_KANJI.test(char)) {
-      if (j >= kana.length || spoken(char) !== spoken(kana[j]!))
-        return null
-      // The READING's character is kept, not the surface's: it is the one that
-      // romanises correctly, which is the entire point of storing it.
-      perChar.push(pending + kana[j]!)
-      // Authors do not space after a comma — the kana is written 「すみません、
-      // メニュー お ください」 — but romaji wants one, or the line reads as
-      // `sumimasen,menyuu`.
-      pending = /[、。！？]/.test(kana[j]!) ? ' ' : ''
-      i += 1
-      j += 1
-      continue
-    }
-
-    // A run of kanji, and the kana that follow it up to the next kanji. That
-    // following kana is the anchor: wherever it turns up in the reading is
-    // where this run's reading ends.
-    let end = i
-    while (end < surface.length && HAS_KANJI.test(surface[end]!))
-      end += 1
-
-    let anchorEnd = end
-    while (anchorEnd < surface.length && !HAS_KANJI.test(surface[anchorEnd]!))
-      anchorEnd += 1
-    const anchor = surface.slice(end, anchorEnd).map(spoken).join('')
-    // Spaces are stripped for the anchor search only: they mark word
-    // boundaries, and a boundary may fall anywhere inside the run's reading.
-    //
-    // Both sides are normalised, because a reading may be written either way:
-    // authored lines transcribe the particle は as わ, while a reading rebuilt
-    // from furigana keeps it as は.
-    const rest = kana.slice(j).filter(c => !/\s/.test(c)).map(spoken).join('')
-
-    // Which of those stripped characters START a word, according to the spaces
-    // the author put in.
-    //
-    // The anchor is a single kana often enough that it turns up INSIDE the run's
-    // own reading: 母は先生です。 reads はは わ せんせい です。, so the anchor わ
-    // (は spoken) matches はは's first character as readily as the particle, and
-    // 母 came out annotated は. The space after はは says where the word actually
-    // ends — better information than any guess — so a match on a word boundary
-    // wins over an earlier one that is not.
-    const startsWord: boolean[] = []
-    let atBoundary = true
-    for (const c of kana.slice(j)) {
-      if (/\s/.test(c)) {
-        atBoundary = true
-        continue
-      }
-      startsWord.push(atBoundary)
-      atBoundary = false
-    }
-
-    // No anchor means the run reaches the end of the line, so it takes the
-    // rest of the reading.
-    let consumed: number
-    if (!anchor) {
-      consumed = rest.length
-    } else {
-      // At least one character must belong to the run itself, so the search
-      // starts one past the run's first reading character.
-      // Every place the anchor could sit, boundary matches preferred. With no
-      // spaces in the reading — cloze contexts rebuilt from furigana carry
-      // none — nothing starts a word past the first character, so this falls
-      // back to the earliest match and behaves exactly as it always did.
-      const hits: number[] = []
-      for (let at = rest.indexOf(anchor, 1); at !== -1; at = rest.indexOf(anchor, at + 1))
-        hits.push(at)
-      if (hits.length === 0)
-        return null
-      consumed = (preferBoundary && tokenStart.has(end)
-        ? hits.find(n => startsWord[n])
-        : undefined) ?? hits[0]!
-    }
-
-    if (consumed <= 0)
-      return null
-
-    // Walk forward that many NON-space characters, keeping any spaces met on
-    // the way inside the run's reading.
-    let taken = 0
-    let runEnd = j
-    while (runEnd < kana.length && taken < consumed) {
-      if (!/\s/.test(kana[runEnd]!))
-        taken += 1
-      runEnd += 1
-    }
-    if (taken < consumed)
-      return null
-
-    // The run's reading rides on its first character; the rest contribute
-    // nothing, so slicing at any token boundary inside the run still works.
-    perChar.push(pending + kana.slice(j, runEnd).join(''))
-    pending = ''
-    for (let k = i + 1; k < end; k += 1)
-      perChar.push('')
-
-    i = end
-    j = runEnd
-  }
-
-  // Trailing whitespace in the reading is allowed; anything else left over
-  // means the two never lined up.
-  while (j < kana.length && /\s/.test(kana[j]!))
-    j += 1
-  if (j !== kana.length)
-    return null
-
-  const out: string[] = []
-  let at = 0
-  for (const length of lengths) {
-    out.push(perChar.slice(at, at + length).join(''))
-    at += length
-  }
-  return out
 }
 
 /**
@@ -838,15 +676,15 @@ export function withDialogueTokens(prompt: Record<string, unknown>, g: Glossary)
 /** A furigana segment as the prompt jsonb carries it. */
 interface Segment { t: string, r?: string }
 
-/** The kana a run of furigana segments spells out. */
-function readingOf(segments: unknown): string | undefined {
+/**
+ * The furigana the importer aligned, kept as segments. It used to be joined
+ * into one string and cut again here, which threw the alignment away and
+ * re-guessed it — the guess was where 一日に read as いちに.
+ */
+function segmentsOf(segments: unknown): FuriganaSegment[] | undefined {
   if (!Array.isArray(segments))
     return undefined
-  return segments
-    .map(seg => (typeof seg === 'object' && seg !== null
-      ? ((seg as Segment).r ?? (seg as Segment).t ?? '')
-      : ''))
-    .join('')
+  return segments.filter((seg): seg is Segment => typeof seg === 'object' && seg !== null && typeof (seg as Segment).t === 'string')
 }
 
 /**
@@ -860,8 +698,8 @@ function readingOf(segments: unknown): string | undefined {
  * sits in is the opposite — it is there to be understood, and looking up a word
  * you do not know is the whole point.
  *
- * Readings come from the furigana the importer already computed, so no second
- * alignment pass is needed and the two can never disagree.
+ * Readings come from the furigana the importer already computed, used as
+ * aligned, so the two can never disagree.
  */
 export function withPromptTokens(prompt: Record<string, unknown>, g: Glossary): Record<string, unknown> {
   // A Speak answer, cut exactly as the session cuts it — the author's reading
@@ -873,8 +711,8 @@ export function withPromptTokens(prompt: Record<string, unknown>, g: Glossary): 
 
   const out = { ...prompt }
   if (typeof prompt.before === 'string' && prompt.before)
-    out.beforeTokens = glossLine(prompt.before, g, readingOf(prompt.beforeFurigana))
+    out.beforeTokens = glossLine(prompt.before, g, segmentsOf(prompt.beforeFurigana))
   if (typeof prompt.after === 'string' && prompt.after)
-    out.afterTokens = glossLine(prompt.after, g, readingOf(prompt.afterFurigana))
+    out.afterTokens = glossLine(prompt.after, g, segmentsOf(prompt.afterFurigana))
   return out
 }

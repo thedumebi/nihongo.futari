@@ -167,6 +167,12 @@ export const glossedTokenSchema = z.object({
    * wrong way round.
    */
   r: z.string().optional(),
+  /**
+   * The same reading aligned to the word: ruby over each kanji run, kana as
+   * written. Computed on the server from the import's alignment or the
+   * author's reading, so the page never has to guess where a reading goes.
+   */
+  f: z.array(z.object({ t: z.string(), r: z.string().optional() })).optional(),
   w: wordGlossSchema.optional()
 }).openapi('GlossedToken')
 

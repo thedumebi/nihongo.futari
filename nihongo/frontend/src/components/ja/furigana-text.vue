@@ -5,6 +5,8 @@ import type { FuriganaSegment } from '@nihongo/shared/types'
 import { alignFurigana, kanaToRomaji } from '@nihongo/shared/lib'
 import { computed } from 'vue'
 
+import { useFurigana } from '@/composables/use-furigana'
+
 /**
  * Japanese text with real `<ruby>` furigana.
  *
@@ -45,6 +47,14 @@ const props = withDefaults(defineProps<{
   mode: 'unknown-only',
   knownKanji: undefined
 })
+
+/**
+ * The reader's known kanji when the caller passes none, so "unknown only"
+ * works on every page — conversations never passed a set, and showed every
+ * reading as if nothing were known.
+ */
+const { knownKanji: sharedKnown } = useFurigana()
+const known = computed(() => props.knownKanji ?? sharedKnown.value)
 
 /** Kana and kanji. Anything else cannot carry a reading. */
 const JAPANESE = /[\u3040-\u30FF\u3400-\u4DBF\u4E00-\u9FFF]/
@@ -117,14 +127,12 @@ function spelled(segment: FuriganaSegment): string {
  * A multi-character run keeps its ruby unless the WHOLE run is familiar, since
  * the reading covers the run rather than any one character in it.
  *
- * With no set supplied, nothing counts as known — showing a reading the reader
- * did not need is a smaller failure than withholding one they did.
+ * Until the set has loaded (or offline before it ever has), nothing counts as
+ * known — showing a reading the reader did not need is a smaller failure than
+ * withholding one they did.
  */
 function isKnown(segment: FuriganaSegment): boolean {
-  const known = props.knownKanji
-  if (!known)
-    return false
-  return [...segment.t].every(char => known.has(char))
+  return [...segment.t].every(char => known.value.has(char))
 }
 </script>
 

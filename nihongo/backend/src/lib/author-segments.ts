@@ -124,13 +124,14 @@ function regroupRun(run: GlossedToken[], lookup: KanaLookup): GlossedToken[] {
     const found = cluster.map(word => lookup(word.t))
     if (cluster.length === 1) {
       const [word] = cluster
-      out.push(found[0] ? { t: word!.t, r: word!.r, w: found[0] } : { t: word!.t, r: word!.r })
+      out.push(found[0] ? { t: word!.t, r: word!.r, f: [{ t: word!.t }], w: found[0] } : { t: word!.t, r: word!.r, f: [{ t: word!.t }] })
     } else {
       // Several words the dictionary cut differently: the author's breaks win.
       // Each word gets its gloss if the dictionary has it and none if not — a
       // particle such as も is not in a dictionary of words, and plain is
       // honest where the old cut glossed に も as a grammar pattern.
-      out.push(...cluster.map((word, i) => found[i] ? { t: word.t, r: word.r, w: found[i] } : { t: word.t, r: word.r }))
+      // Kana words: their furigana is just themselves.
+      out.push(...cluster.map((word, i) => found[i] ? { t: word.t, r: word.r, f: [{ t: word.t }], w: found[i] } : { t: word.t, r: word.r, f: [{ t: word.t }] }))
     }
   }
 
@@ -218,9 +219,12 @@ export function glueAuthorWords(tokens: GlossedToken[], lookup: KanaLookup): Glo
     const r = group.map(g => g.r ?? '').join('')
     const parts = group.map(asPart)
     const whole = lookup(t)
+    // Each piece's aligned reading, end to end.
+    const f = group.every(g => g.f) ? group.flatMap(g => g.f!) : undefined
     out.push({
       t,
       r,
+      ...(f ? { f } : {}),
       w: whole
         ? { ...whole, parts }
         : { form: t, reading: r.trim(), meanings: [], pos: null, parts }

@@ -1,11 +1,11 @@
 <script setup lang="ts">
-import { onMounted, ref } from 'vue'
+import { onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 
 import { syncTimezone } from '@/api/notifications'
 import ConfirmDialog from '@/components/ui/confirm-dialog.vue'
 import ToastNotification from '@/components/ui/toast-notification.vue'
-import { refreshFuriganaSetting } from '@/composables/use-furigana'
+import { refreshFuriganaSetting, refreshKnownKanji } from '@/composables/use-furigana'
 import { setupServiceWorker } from '@/offline/register-sw'
 import { startSync } from '@/offline/sync'
 import { useAuthStore } from '@/store/auth'
@@ -65,6 +65,13 @@ function reloadNow() {
   void applyUpdate?.(true)
 }
 
+// "Unknown only" furigana needs the kanji this reader knows, on every page —
+// once the session is known to be signed in, and again for another language.
+watch(() => [auth.isAuthenticated, lang.code] as const, ([signedIn, code]) => {
+  if (signedIn)
+    void refreshKnownKanji(code)
+}, { immediate: true })
+
 onMounted(() => {
   document.documentElement.dataset.theme = ui.theme
   // Anything queued offline — answers, lessons, Speak runs — goes up from any page.
@@ -79,8 +86,10 @@ onMounted(() => {
     applyIfCalm()
     // Back from a trip: the day follows the phone's timezone, and Today with it.
     if (document.visibilityState === 'visible' && auth.isAuthenticated) {
-      // A setting changed on another device reaches this one.
+      // A setting changed on another device reaches this one, and kanji
+      // learned since last time lose their readings.
       void refreshFuriganaSetting()
+      void refreshKnownKanji(lang.code)
       void syncTimezone().then((changed) => {
         if (changed)
           void todayStore.refresh(lang.code, true)

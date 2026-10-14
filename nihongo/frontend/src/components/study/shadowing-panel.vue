@@ -6,9 +6,11 @@ import { computed, ref } from 'vue'
 
 import { getWordPitches } from '@/api/words'
 import PitchAccent from '@/components/ja/pitch-accent.vue'
+import TokenLine from '@/components/ja/token-line.vue'
 import PitchCompare from '@/components/study/pitch-compare.vue'
 import Button from '@/components/ui/button.vue'
 import { playAudio, playAudioQueue, stopAudio } from '@/composables/use-audio'
+import { useFurigana } from '@/composables/use-furigana'
 import { pitchCurve, useRecorder } from '@/composables/use-recorder'
 
 /**
@@ -32,6 +34,7 @@ const emit = defineEmits<{
 
 // ============ Composables ============
 const recorder = useRecorder()
+const { mode } = useFurigana()
 
 // ============ Reactive State ============
 const selected = ref(0)
@@ -46,6 +49,11 @@ let practised = false
 const turn = computed(() => props.turns[selected.value] ?? null)
 
 // ============ Methods ============
+/** A line's words without their glosses, so none renders as a button inside the line's own. */
+function plain(t: DialogueTurn) {
+  return (t.tokens ?? []).map(({ w: _w, ...token }) => token)
+}
+
 async function pick(index: number) {
   stopAudio()
   if (recorder.recording.value)
@@ -131,15 +139,17 @@ function compare() {
           @click="pick(i)"
         >
           <span class="text-xs text-[var(--color-muted)]">{{ t.speaker === 'learner' ? 'You say' : 'They say' }}</span>
-          <span class="block text-lg" style="font-family: var(--font-jp)">{{ t.text }}</span>
+          <!-- In the reader's furigana mode, like every other line. Words are
+               not tappable here: the whole line is already a button. -->
+          <span class="block text-lg"><TokenLine :tokens="plain(t)" :text="t.text" :reading="t.reading ?? ''" :mode="mode" /></span>
           <span class="block text-sm text-[var(--color-muted)]">{{ t.translation }}</span>
         </button>
       </li>
     </ol>
 
     <div v-if="turn && speakerCurve" class="sticky bottom-4 mt-4 rounded-xl border border-[var(--color-border)] bg-[var(--color-bg)] p-4 shadow-lg">
-      <p class="text-lg" style="font-family: var(--font-jp)">
-        {{ turn.text }}
+      <p class="text-lg">
+        <TokenLine :tokens="plain(turn)" :text="turn.text" :reading="turn.reading ?? ''" :mode="mode" />
       </p>
       <PitchCompare class="mt-2" :speaker="speakerCurve" :mine="myCurve" />
       <!-- The dictionary's pattern for each word: where the pitch should drop. -->

@@ -14,9 +14,20 @@ const WORDS: Record<string, WordGloss> = {
 }
 const lookup = (kana: string) => WORDS[kana]
 
+/** Words and readings only; the aligned furigana is checked on its own below. */
+const regroup = (...args: Parameters<typeof regroupKana>) => regroupKana(...args).map(({ f: _f, ...token }) => token)
+
 describe('regroupKana', () => {
+  it('gives a re-cut kana word furigana that is just itself', () => {
+    const [first] = regroupKana([
+      { t: 'わた', r: 'わた', w: gloss('綿', 'cotton') },
+      { t: 'し', r: 'し', w: gloss('し', 'and') }
+    ], lookup)
+    expect(first).toEqual({ t: 'わたし', r: 'わたし', f: [{ t: 'わたし' }], w: WORDS.わたし })
+  })
+
   it('rejoins a kana word the dictionary cut in two', () => {
-    expect(regroupKana([
+    expect(regroup([
       { t: 'わた', r: 'わた', w: gloss('綿', 'cotton') },
       { t: 'し', r: 'し', w: gloss('し', 'and') },
       { t: 'の', r: ' の' }
@@ -27,7 +38,7 @@ describe('regroupKana', () => {
   })
 
   it('re-cuts a token that runs across a word break', () => {
-    expect(regroupKana([
+    expect(regroup([
       { t: 'パン', r: 'パン', w: gloss('パン', 'bread') },
       { t: 'とく', r: ' と く', w: gloss('とく', 'in readiness') },
       { t: 'だもの', r: 'だもの' },
@@ -41,7 +52,7 @@ describe('regroupKana', () => {
   })
 
   it('rejoins a kana verb after a kanji token', () => {
-    expect(regroupKana([
+    expect(regroup([
       { t: '時', r: 'じ', w: gloss('時', 'o\'clock') },
       { t: 'に', r: ' に' },
       { t: 'ね', r: ' ね' },
@@ -54,7 +65,7 @@ describe('regroupKana', () => {
   })
 
   it('keeps a run whose other words were already cut correctly', () => {
-    expect(regroupKana([
+    expect(regroup([
       { t: 'こ', r: 'こ' },
       { t: 'ない', r: 'ない', w: gloss('ない', 'not') },
       { t: 'んです', r: ' ん です', w: { ...gloss('んです', 'explaining'), pos: 'grammar' } }
@@ -65,7 +76,7 @@ describe('regroupKana', () => {
   })
 
   it('makes a word the dictionary lacks one plain token rather than wrong glosses', () => {
-    expect(regroupKana([
+    expect(regroup([
       { t: 'それ', r: 'それ', w: gloss('それ', 'that') },
       { t: 'から', r: 'から', w: gloss('から', 'from') },
       { t: '、', r: '、' }
@@ -76,13 +87,13 @@ describe('regroupKana', () => {
   })
 
   it('re-cuts a multi-word cluster on the author\'s breaks, leaving unknown words plain', () => {
-    expect(regroupKana([{ t: 'とく', r: 'と く' }, { t: 'ふわ', r: 'ふわ' }], lookup))
+    expect(regroup([{ t: 'とく', r: 'と く' }, { t: 'ふわ', r: 'ふわ' }], lookup))
       .toEqual([{ t: 'と', r: 'と', w: WORDS.と }, { t: 'くふわ', r: ' くふわ' }])
   })
 
   it('re-cuts two particles the dictionary glued into a word across a break', () => {
     const lookupParticles = (kana: string) => ({ で: gloss('で', 'at'), は: gloss('は', 'topic') } as Record<string, ReturnType<typeof gloss>>)[kana]
-    expect(regroupKana([
+    expect(regroup([
       { t: 'では', r: ' で わ', w: gloss('では', 'then') },
       { t: 'ありません', r: ' ありません', w: gloss('ありません', 'is not') }
     ], lookupParticles)).toEqual([

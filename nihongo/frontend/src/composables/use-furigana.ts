@@ -73,6 +73,21 @@ export async function refreshFuriganaSetting(): Promise<void> {
   }
 }
 
+/**
+ * Re-read the kanji this reader knows. Called at start-up and whenever the app
+ * returns to the foreground: a kanji learned today should lose its ruby without
+ * a restart.
+ */
+export async function refreshKnownKanji(languageCode: string): Promise<void> {
+  try {
+    const { data } = await client.get<KnownKanji>(API_ENDPOINTS.PROGRESS.KNOWN_KANJI, { params: { languageCode } })
+    knownKanji.value = new Set(data.characters)
+    knownLoaded = Promise.resolve()
+  } catch {
+    // Keep what we had: offline should not bring every reading back.
+  }
+}
+
 export function useFurigana() {
   /** Once per page load; the foreground refresh keeps it current after that. */
   async function loadSettings() {

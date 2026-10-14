@@ -80,12 +80,15 @@ function ruby(token: GlossedToken): boolean {
  * the same place romaji gets them.
  */
 function gap(token: GlossedToken, i: number): boolean {
-  // Not after 、 or 。 — the punctuation already marks the break.
+  // Not after 、 or 。, nor after a space the text already has — either one
+  // already marks the break.
   return props.mode === 'kana' && i > 0 && /^\s/.test(token.r ?? '')
-    && !/[、。！？「」]$/.test(props.tokens[i - 1]?.t ?? '')
+    && !/[、。！？「」\s]$/.test(props.tokens[i - 1]?.t ?? '')
 }
 
-const wholeLine = computed(() => romaji.value ? kanaLineToRomaji(props.reading) : props.text)
+// No reading to romanise (a line the server could not align): show the
+// Japanese rather than an empty line.
+const wholeLine = computed(() => romaji.value && props.reading ? kanaLineToRomaji(props.reading) : props.text)
 
 /**
  * A token as it should read.
@@ -133,6 +136,7 @@ function pick(index: number, token: GlossedToken) {
     @click.stop="pick(i, token)"
   ><template v-if="ruby(token)"><FuriganaText
     :text="token.t"
+    :segments="token.f"
     :reading="token.r"
     :mode="mode"
     :known-kanji="knownKanji"
@@ -141,6 +145,7 @@ function pick(index: number, token: GlossedToken) {
     class="whitespace-pre-wrap"
   ><template v-if="ruby(token)"><FuriganaText
     :text="token.t"
+    :segments="token.f"
     :reading="token.r"
     :mode="mode"
     :known-kanji="knownKanji"
