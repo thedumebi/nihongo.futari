@@ -160,12 +160,15 @@ self.addEventListener('notificationclick', (event) => {
 
   event.waitUntil((async () => {
     const clients = await self.clients.matchAll({ type: 'window', includeUncontrolled: true })
-    // Focus an existing tab rather than opening a duplicate.
+    // Focus an existing tab rather than opening a duplicate, and have the app
+    // route itself there. `client.navigate()` was used and quietly did
+    // nothing on an installed iPhone app: it only works on a window this
+    // worker controls, and it reloads the page besides. A message lets the
+    // router move without a reload, whoever controls the window.
     for (const client of clients) {
       if ('focus' in client) {
         await client.focus()
-        if ('navigate' in client)
-          await client.navigate(target)
+        client.postMessage({ type: 'NAVIGATE', url: target })
         return
       }
     }

@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { onMounted, ref } from 'vue'
+import { useRouter } from 'vue-router'
 
 import ConfirmDialog from '@/components/ui/confirm-dialog.vue'
 import ToastNotification from '@/components/ui/toast-notification.vue'
@@ -7,6 +8,7 @@ import { setupServiceWorker } from '@/offline/register-sw'
 import { useUiStore } from '@/store/ui'
 
 const ui = useUiStore()
+const router = useRouter()
 const needsRefresh = ref(false)
 let applyUpdate: ((reload?: boolean) => Promise<void>) | undefined
 
@@ -16,6 +18,13 @@ onMounted(() => {
   // user is answering.
   applyUpdate = setupServiceWorker(() => {
     needsRefresh.value = true
+  })
+  // A tapped notification, when the app is already open: the service worker
+  // asks the router to go where the notification points. Only app paths.
+  navigator.serviceWorker?.addEventListener('message', (event: MessageEvent<{ type?: string, url?: string }>) => {
+    const url = event.data?.url
+    if (event.data?.type === 'NAVIGATE' && typeof url === 'string' && url.startsWith('/'))
+      void router.push(url)
   })
 })
 

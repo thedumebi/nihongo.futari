@@ -94,6 +94,19 @@ const focusHint = computed(() =>
 const router = useRouter()
 
 /**
+ * Follow `?mode=` when it changes while the page is open — a tapped reminder
+ * or the "cards due for review" link both arrive as a new query on the page
+ * already showing. Read once at setup, that change did nothing at all.
+ */
+watch(() => route.query.mode, (next) => {
+  if (next !== 'due' && next !== 'new')
+    return
+  mode.value = next
+  focused.value = true
+  void load()
+})
+
+/**
  * Leave the focused session for the ordinary deck picker.
  *
  * Clearing the query is enough — `mode` follows it, the queue reloads, and the

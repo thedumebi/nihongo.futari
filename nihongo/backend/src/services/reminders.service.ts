@@ -1,5 +1,6 @@
 import type { ReminderRunResult } from '@nihongo/shared/types'
 
+import { ROUTE_BASE_PATHS } from '@nihongo/shared/constants'
 import db from '@nihongo/shared/db'
 import {
   notificationLog,
@@ -139,6 +140,16 @@ function isDue(candidate: Candidate, now: Date): boolean {
   return Math.floor(local.minute / 15) * 15 === candidate.reminderMinute
 }
 
+/**
+ * Where a reminder opens. With cards waiting, straight into reviewing them —
+ * the plain Study page is new material, so the nudge "12 items are waiting"
+ * used to land somewhere the twelve were not. With nothing due, Study is
+ * the right place: the message says so.
+ */
+export function reminderPath(dueItems: number): string {
+  return dueItems > 0 ? `${ROUTE_BASE_PATHS.STUDY}?mode=due` : ROUTE_BASE_PATHS.STUDY
+}
+
 export async function runReminders(now = new Date()): Promise<ReminderRunResult> {
   const candidates = await findCandidates()
   let emailed = 0
@@ -203,7 +214,7 @@ export async function runReminders(now = new Date()): Promise<ReminderRunResult>
           name,
           dueCount: due.items,
           streak: c.streak,
-          url: `${env.FRONTEND_URL.replace(/\/$/, '')}/study`
+          url: `${env.FRONTEND_URL.replace(/\/$/, '')}${reminderPath(due.items)}`
         })
         emailed++
       } catch (err) {
@@ -236,7 +247,7 @@ export async function runReminders(now = new Date()): Promise<ReminderRunResult>
           body: due.items > 0
             ? `${due.items} ${due.items === 1 ? 'item is' : 'items are'} waiting.`
             : 'Reviews all clear — time to learn something new.',
-          url: '/study'
+          url: reminderPath(due.items)
         })
         if (outcome.ok) {
           pushed++
