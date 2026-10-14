@@ -5,6 +5,7 @@ import db from '@nihongo/shared/db'
 import {
   notificationLog,
   pushSubscriptions,
+  srsCards,
   srsDailyStats,
   users,
   userSettings,
@@ -18,6 +19,7 @@ import { DateTime } from 'luxon'
 
 import { pushConfigured, sendPush } from '@/lib/push.js'
 
+import { studiedToday } from './progress.service.js'
 import { countDue } from './srs.service.js'
 
 /**
@@ -150,6 +152,40 @@ export function reminderPath(dueItems: number): string {
   return dueItems > 0 ? `${ROUTE_BASE_PATHS.STUDY}?mode=due` : ROUTE_BASE_PATHS.STUDY
 }
 
+/**
+ * Send one push to every device the learner enabled, keeping the subscription
+ * table honest: a success clears the failure count, a gone endpoint is
+ * deleted (keeping it would retry forever), anything else counts a failure.
+ */
+async function pushToUser(userId: string, payload: { title: string, body: string, url: string }): Promise<{ sent: number, failed: number, noSubscription: boolean }> {
+  const subs = await db
+    .select({
+      id: pushSubscriptions.id,
+      endpoint: pushSubscriptions.endpoint,
+      p256dh: pushSubscriptions.p256dh,
+      auth: pushSubscriptions.auth
+    })
+    .from(pushSubscriptions)
+    .where(and(eq(pushSubscriptions.userId, userId), eq(pushSubscriptions.enabled, true)))
+
+  let sent = 0
+  let failed = 0
+  for (const sub of subs) {
+    const outcome = await sendPush(sub, payload)
+    if (outcome.ok) {
+      sent++
+      await db.update(pushSubscriptions).set({ lastSuccessAt: new Date(), failureCount: 0 }).where(eq(pushSubscriptions.id, sub.id))
+    } else if (outcome.gone) {
+      failed++
+      await db.delete(pushSubscriptions).where(eq(pushSubscriptions.id, sub.id))
+    } else {
+      failed++
+      await db.update(pushSubscriptions).set({ failureCount: sql`${pushSubscriptions.failureCount} + 1` }).where(eq(pushSubscriptions.id, sub.id))
+    }
+  }
+  return { sent, failed, noSubscription: subs.length === 0 }
+}
+
 export async function runReminders(now = new Date()): Promise<ReminderRunResult> {
   const candidates = await findCandidates()
   let emailed = 0
@@ -226,47 +262,19 @@ export async function runReminders(now = new Date()): Promise<ReminderRunResult>
       pushNotConfigured++
 
     if (c.pushEnabled && pushConfigured()) {
-      const subs = await db
-        .select({
-          id: pushSubscriptions.id,
-          endpoint: pushSubscriptions.endpoint,
-          p256dh: pushSubscriptions.p256dh,
-          auth: pushSubscriptions.auth
-        })
-        .from(pushSubscriptions)
-        .where(and(eq(pushSubscriptions.userId, c.userId), eq(pushSubscriptions.enabled, true)))
-
-      if (subs.length === 0)
+      const outcome = await pushToUser(c.userId, {
+        title: c.streak > 1 ? `${c.streak}-day streak` : 'Time to study',
+        // A cleared queue still gets a nudge, so this cannot assume there is
+        // anything due — "0 cards are waiting" is worse than staying silent.
+        body: due.items > 0
+          ? `${due.items} ${due.items === 1 ? 'item is' : 'items are'} waiting.`
+          : 'Reviews all clear — time to learn something new.',
+        url: reminderPath(due.items)
+      })
+      pushed += outcome.sent
+      pushFailed += outcome.failed
+      if (outcome.noSubscription)
         pushNoSubscription++
-
-      for (const sub of subs) {
-        const outcome = await sendPush(sub, {
-          title: c.streak > 1 ? `${c.streak}-day streak` : 'Time to study',
-          // A cleared queue still gets a nudge, so this cannot assume there is
-          // anything due — "0 cards are waiting" is worse than staying silent.
-          body: due.items > 0
-            ? `${due.items} ${due.items === 1 ? 'item is' : 'items are'} waiting.`
-            : 'Reviews all clear — time to learn something new.',
-          url: reminderPath(due.items)
-        })
-        if (outcome.ok) {
-          pushed++
-          await db
-            .update(pushSubscriptions)
-            .set({ lastSuccessAt: new Date(), failureCount: 0 })
-            .where(eq(pushSubscriptions.id, sub.id))
-        } else if (outcome.gone) {
-          // The browser dropped it. Keeping it would retry forever.
-          pushFailed++
-          await db.delete(pushSubscriptions).where(eq(pushSubscriptions.id, sub.id))
-        } else {
-          pushFailed++
-          await db
-            .update(pushSubscriptions)
-            .set({ failureCount: sql`${pushSubscriptions.failureCount} + 1` })
-            .where(eq(pushSubscriptions.id, sub.id))
-        }
-      }
     }
 
     if (error) {
@@ -419,4 +427,117 @@ export async function runWeeklySummaries(now = new Date()): Promise<ReminderRunR
     pushNoSubscription: 0,
     pushNotConfigured: 0
   }
+}
+
+/** The evening nudge goes out in this local hour, first quarter. */
+const STREAK_RISK_HOUR = 20
+/** A streak shorter than this is not worth an evening nudge. */
+const STREAK_RISK_MIN = 3
+/** Ghost alerts go out on this local weekday (Luxon: 1 = Monday) and hour. */
+const GHOST_ALERT_WEEKDAY = 6
+const GHOST_ALERT_HOUR = 10
+/** Fewer ghosts than this is ordinary forgetting, not something to flag. */
+const GHOST_ALERT_MIN = 5
+
+function emptyRun(): ReminderRunResult {
+  return { considered: 0, emailed: 0, pushed: 0, skipped: 0, skippedNotDue: 0, skippedAlreadySent: 0, failed: 0, pushFailed: 0, pushNoSubscription: 0, pushNotConfigured: 0 }
+}
+
+/** Claim a nudge's slot before sending; false if it was already sent. */
+async function claim(userId: string, kind: string, dedupeKey: string): Promise<boolean> {
+  const [row] = await db
+    .insert(notificationLog)
+    .values({ userId, channel: 'push', kind, dedupeKey })
+    .onConflictDoNothing({ target: notificationLog.dedupeKey })
+    .returning({ id: notificationLog.id })
+  return row !== undefined
+}
+
+/**
+ * The two nudges besides the daily reminder, push only:
+ *
+ * - **streak at risk** — 20:00 local, a streak of 3+ days, nothing studied
+ *   today, and no earned freeze that would cover the day anyway. Once a day.
+ * - **ghost alert** — Saturday morning, when 5+ cards keep being forgotten.
+ *   Once a week; it opens the Due list, where ghosts are marked.
+ *
+ * Both were named in the schema from the start and never sent.
+ */
+export async function runNudges(now = new Date()): Promise<ReminderRunResult> {
+  const result = emptyRun()
+  if (!pushConfigured())
+    return result
+
+  const rows = await db
+    .select({
+      userId: users.id,
+      timezone: users.timezone,
+      dayBoundaryHour: userSettings.dayBoundaryHour,
+      streakRisk: userSettings.streakRiskEnabled,
+      ghostAlert: userSettings.ghostAlertEnabled
+    })
+    .from(users)
+    .innerJoin(userSettings, eq(userSettings.userId, users.id))
+    .where(and(eq(users.active, true), eq(userSettings.reminderPushEnabled, true)))
+
+  for (const r of rows) {
+    const local = DateTime.fromJSDate(now, { zone: r.timezone })
+    if (!local.isValid)
+      continue
+    const firstQuarter = local.minute < 15
+    const localDate = studyDateFor(now, r.timezone, r.dayBoundaryHour ?? 4)
+
+    if (r.streakRisk && firstQuarter && local.hour === STREAK_RISK_HOUR) {
+      result.considered++
+      const [streak] = await db
+        .select({ languageId: userStreaks.languageId, current: userStreaks.currentStreak, freezes: userStreaks.freezeCount })
+        .from(userStreaks)
+        .where(eq(userStreaks.userId, r.userId))
+        .orderBy(desc(userStreaks.currentStreak))
+        .limit(1)
+      if (streak && streak.current >= STREAK_RISK_MIN && streak.freezes === 0 && !(await studiedToday(r.userId, streak.languageId, now))) {
+        if (await claim(r.userId, 'streak-risk', `${r.userId}:streak-risk:${localDate}`)) {
+          const out = await pushToUser(r.userId, {
+            title: `Keep your ${streak.current}-day streak`,
+            body: 'Nothing studied yet today — a few reviews or one Speak session keeps it going.',
+            url: ROUTE_BASE_PATHS.TODAY
+          })
+          result.pushed += out.sent
+          result.pushFailed += out.failed
+          if (out.noSubscription)
+            result.pushNoSubscription++
+        } else {
+          result.skippedAlreadySent++
+        }
+      }
+    }
+
+    if (r.ghostAlert && firstQuarter && local.weekday === GHOST_ALERT_WEEKDAY && local.hour === GHOST_ALERT_HOUR) {
+      result.considered++
+      const [ghosts] = await db
+        .select({ n: sql<number>`count(*)`.mapWith(Number) })
+        .from(srsCards)
+        .where(and(eq(srsCards.userId, r.userId), eq(srsCards.ghost, true), eq(srsCards.suspended, false)))
+      const n = ghosts?.n ?? 0
+      if (n >= GHOST_ALERT_MIN) {
+        const week = `${local.weekYear}-W${local.weekNumber}`
+        if (await claim(r.userId, 'ghost-alert', `${r.userId}:ghost-alert:${week}`)) {
+          const out = await pushToUser(r.userId, {
+            title: `${n} cards keep slipping away`,
+            body: 'They are marked as ghosts in your reviews. A close look at them now saves many reviews later.',
+            // Review what is due — ghosts come back as part of it, marked.
+            url: reminderPath(n)
+          })
+          result.pushed += out.sent
+          result.pushFailed += out.failed
+          if (out.noSubscription)
+            result.pushNoSubscription++
+        } else {
+          result.skippedAlreadySent++
+        }
+      }
+    }
+  }
+  result.skipped = result.skippedAlreadySent
+  return result
 }

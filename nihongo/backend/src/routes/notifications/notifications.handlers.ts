@@ -1,3 +1,5 @@
+import type { ReminderRunResult } from '@nihongo/shared/types'
+
 import { HttpStatusCodes } from '@nihongo/shared/constants'
 import env from '@nihongo/shared/env'
 
@@ -5,7 +7,7 @@ import type { AppRouteHandler } from '@/lib/types.js'
 
 import { publicKey } from '@/lib/push.js'
 import { getPrefs, subscribe as saveSubscription, setTimezone as saveTimezone, setPrefs } from '@/services/notifications.service.js'
-import { runReminders as run, runWeeklySummaries } from '@/services/reminders.service.js'
+import { runReminders as run, runNudges, runWeeklySummaries } from '@/services/reminders.service.js'
 
 import type {
   PreferencesRoute,
@@ -47,25 +49,25 @@ export const runReminders: AppRouteHandler<RunRemindersRoute> = async (c) => {
   // Both run off the same cron tick. Each decides internally whether it is the
   // right local hour, so the scheduler needs to know nothing about timezones,
   // and one endpoint means one secret to keep.
-  const daily = await run()
-  const weekly = await runWeeklySummaries()
+  const runs = [await run(), await runWeeklySummaries(), await runNudges()]
+  const sum = (key: keyof ReminderRunResult) => runs.reduce((n, r) => n + r[key], 0)
   return c.json({
-    considered: daily.considered + weekly.considered,
-    emailed: daily.emailed + weekly.emailed,
-    pushed: daily.pushed + weekly.pushed,
-    skipped: daily.skipped + weekly.skipped,
+    considered: sum('considered'),
+    emailed: sum('emailed'),
+    pushed: sum('pushed'),
+    skipped: sum('skipped'),
     // Broken out so a run that sent nothing says WHY in the cron log. The
     // single `skipped` total could not distinguish "not their hour" from
     // "already sent today" from "the provider rejected it", which is what made
     // a silent evening impossible to diagnose from the log alone.
-    skippedNotDue: daily.skippedNotDue + weekly.skippedNotDue,
-    skippedAlreadySent: daily.skippedAlreadySent + weekly.skippedAlreadySent,
-    failed: daily.failed + weekly.failed,
+    skippedNotDue: sum('skippedNotDue'),
+    skippedAlreadySent: sum('skippedAlreadySent'),
+    failed: sum('failed'),
     // Push has its own outcomes because it used to have none: a run that
     // pushed nothing looked identical to one that pushed successfully.
-    pushFailed: daily.pushFailed + weekly.pushFailed,
-    pushNoSubscription: daily.pushNoSubscription + weekly.pushNoSubscription,
-    pushNotConfigured: daily.pushNotConfigured + weekly.pushNotConfigured
+    pushFailed: sum('pushFailed'),
+    pushNoSubscription: sum('pushNoSubscription'),
+    pushNotConfigured: sum('pushNotConfigured')
   }, HttpStatusCodes.OK)
 }
 

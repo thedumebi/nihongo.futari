@@ -47,7 +47,9 @@ export async function getPrefs(userId: string): Promise<NotificationPrefs> {
       // Stored as a plain integer; the type narrows it to the four quarters.
       reminderMinute: sql<0 | 15 | 30 | 45>`${userSettings.reminderMinute}`,
       timezone: users.timezone,
-      weeklySummaryEnabled: userSettings.weeklySummaryEnabled
+      weeklySummaryEnabled: userSettings.weeklySummaryEnabled,
+      streakRiskEnabled: userSettings.streakRiskEnabled,
+      ghostAlertEnabled: userSettings.ghostAlertEnabled
     })
     .from(userSettings)
     .innerJoin(users, eq(users.id, userSettings.userId))
@@ -60,7 +62,9 @@ export async function getPrefs(userId: string): Promise<NotificationPrefs> {
     reminderPushEnabled: false,
     reminderHour: 19,
     reminderMinute: 0,
-    weeklySummaryEnabled: true
+    weeklySummaryEnabled: true,
+    streakRiskEnabled: true,
+    ghostAlertEnabled: true
   }
 }
 

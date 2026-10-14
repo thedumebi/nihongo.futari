@@ -384,6 +384,22 @@ async function turnOnPush() {
             </span>
           </label>
 
+          <label class="mt-5 flex items-start gap-3">
+            <input v-model="prefs.streakRiskEnabled" type="checkbox" class="mt-1">
+            <span>
+              <span class="font-medium">Streak at risk</span>
+              <span class="block text-sm text-[var(--color-muted)]">A push at 8pm if you have a streak of 3+ days and nothing studied yet today.</span>
+            </span>
+          </label>
+
+          <label class="mt-5 flex items-start gap-3">
+            <input v-model="prefs.ghostAlertEnabled" type="checkbox" class="mt-1">
+            <span>
+              <span class="font-medium">Cards that keep slipping</span>
+              <span class="block text-sm text-[var(--color-muted)]">A push on Saturday morning when five or more cards keep being forgotten.</span>
+            </span>
+          </label>
+
           <div class="mt-6">
             <Button variant="primary" :loading="saving || enabling" @click="save">
               Save

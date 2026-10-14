@@ -44,6 +44,10 @@ export const notificationPrefsSchema = z.object({
    */
   reminderMinute: z.union([z.literal(0), z.literal(15), z.literal(30), z.literal(45)]).default(0),
   weeklySummaryEnabled: z.boolean(),
+  /** An evening push when a streak of 3+ days has nothing in it yet today. */
+  streakRiskEnabled: z.boolean().default(true),
+  /** A weekly push when several cards keep being forgotten. */
+  ghostAlertEnabled: z.boolean().default(true),
   /**
    * The reader's IANA timezone, e.g. `Asia/Tokyo`.
    *
