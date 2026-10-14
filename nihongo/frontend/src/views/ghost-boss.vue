@@ -147,7 +147,7 @@ function detailLink(g: GhostBoss['ghosts'][number]): string {
             </li>
           </ul>
           <Button class="mt-6" @click="fight">
-            {{ boss.rounds.length ? 'Face them' : 'Done' }}
+            {{ boss.ghosts.length === 1 ? 'Face it' : 'Face them' }}
           </Button>
         </template>
 
@@ -156,17 +156,18 @@ function detailLink(g: GhostBoss['ghosts'][number]): string {
           <p class="mt-2 text-sm text-[var(--color-muted)]">
             {{ index + 1 }} of {{ boss.rounds.length }}
           </p>
-          <p class="mt-6 text-lg">
-            Which one means <span class="font-semibold">“{{ round.meaning }}”</span>?
+          <p class="mt-6 text-lg" style="font-family: var(--font-jp)">
+            {{ round.question }}
           </p>
-          <div class="mt-6 grid grid-cols-2 gap-3" style="font-family: var(--font-jp)">
+          <div class="mt-6 grid gap-3" :class="round.kind === 'meaning' ? 'grid-cols-1' : 'grid-cols-2'">
             <button
               v-for="o in round.options"
               :key="o"
               type="button"
-              class="rounded-xl border py-6 transition"
+              class="rounded-xl border transition"
+              :style="round.kind === 'meaning' ? undefined : 'font-family: var(--font-jp)'"
               :class="[
-                o.length > 1 ? 'text-3xl' : 'text-5xl',
+                round.kind === 'meaning' ? 'px-4 py-3 text-left text-base' : o.length > 1 ? 'py-6 text-3xl' : 'py-6 text-5xl',
                 !picked
                   ? 'border-[var(--color-border)] hover:border-[var(--color-text)]'
                   : o === round.answer ? 'border-[var(--color-success)] bg-[var(--color-card)]'
@@ -185,14 +186,18 @@ function detailLink(g: GhostBoss['ghosts'][number]): string {
           </div>
         </template>
 
+        <!-- The end: the score, play again, or back to the games. The ghosts
+             come back in reviews on their own schedule — nothing here moved it. -->
         <template v-else-if="stage === 'done'">
           <GameEnd v-if="boss.rounds.length" :score="score" :total="boss.rounds.length" @again="load" />
-          <p class="mt-6 text-[var(--color-muted)]">
-            Ready for them now. They come back in your reviews as usual.
+          <div v-else class="mt-8 text-center">
+            <Button :to="ROUTES.GAMES">
+              All games
+            </Button>
+          </div>
+          <p class="mt-4 text-center text-sm text-[var(--color-muted)]">
+            {{ boss.ghosts.length === 1 ? 'This card comes' : 'These cards come' }} back in your reviews as usual — you are readier for {{ boss.ghosts.length === 1 ? 'it' : 'them' }} now.
           </p>
-          <Button class="mt-4" :to="ROUTES.REVIEW">
-            Review what's due
-          </Button>
         </template>
       </template>
     </div>

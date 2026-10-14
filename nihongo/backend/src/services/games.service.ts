@@ -262,9 +262,11 @@ export async function getGhostBoss(userId: string, languageCode: string): Promis
     }
   })
 
-  const kanjiRounds = ghosts
+  type Round = GhostBoss['rounds'][number]
+
+  const kanjiRounds: Round[] = ghosts
     .filter(g => g.kind === 'kanji' && g.lookAlikes.length > 0 && g.meaning)
-    .map(g => ({ meaning: g.meaning, answer: g.text, options: shuffle([g.text, ...g.lookAlikes.map(l => l.character)]) }))
+    .map(g => ({ kind: 'look-alike', question: `Which one means “${g.meaning}”?`, answer: g.text, options: shuffle([g.text, ...g.lookAlikes.map(l => l.character)]) }))
 
   // Words: the real spelling against the same word with one kanji swapped for
   // a look-alike — 待つ against 持つ and 時つ. Most ghosts are words, and the
@@ -286,10 +288,44 @@ export async function getGhostBoss(userId: string, languageCode: string): Promis
       .filter(s => s.character === ch)
       .map(s => [...g.text].map((c, j) => j === i ? s.confusable : c).join(''))))]
       .slice(0, 3)
-    return variants.length > 0 ? [{ meaning: g.meaning, answer: g.text, options: shuffle([g.text, ...variants]) }] : []
+    return variants.length > 0 ? [{ kind: 'look-alike' as const, question: `Which one means “${g.meaning}”?`, answer: g.text, options: shuffle([g.text, ...variants]) }] : []
   })
 
-  const rounds = [...kanjiRounds, ...wordRounds]
+  // Every ghost, look-alikes or not, gets its meaning and (when written in
+  // kanji) its reading — wrong answers drawn from other common N5–N4 words.
+  // A ghost with nothing to fight was a boss that was only a list.
+  const pool = ghosts.length === 0
+    ? []
+    : (await db.execute<{ reading: string, glosses: Array<{ lang: string, text: string }> }>(sql`
+        select w.primary_reading as reading, ws.glosses
+        from words w
+        join languages l on l.id = w.language_id and l.code = ${languageCode}
+        join language_levels lv on lv.id = w.level_id and lv.code in ${DEFAULT_LEVELS}
+        join study_items si on si.word_id = w.id and si.published and si.active
+        join word_senses ws on ws.word_id = w.id and ws.sort_index = 0
+        where w.is_common and w.published
+        order by random()
+        limit 120
+      `)).rows.map(r => ({ reading: r.reading, meaning: firstGloss(r.glosses) })).filter(r => r.reading && r.meaning)
+
+  const basicRounds: Round[] = ghosts.flatMap((g) => {
+    const out: Round[] = []
+    const wrongMeanings = shuffle([...new Set(pool.map(p => p.meaning))]).filter(m => m.toLowerCase() !== g.meaning.toLowerCase()).slice(0, 3)
+    if (g.meaning && wrongMeanings.length === 3)
+      out.push({ kind: 'meaning', question: `What does ${g.text} mean?`, answer: g.meaning, options: shuffle([g.meaning, ...wrongMeanings]) })
+    const reading = g.kind === 'word' ? g.reading : null
+    if (reading && hasKanji(g.text)) {
+      const length = [...reading].length
+      const wrongReadings = shuffle([...new Set(pool.map(p => p.reading))])
+        .filter(r => r !== reading && Math.abs([...r].length - length) <= 1 && !hasKatakana(r))
+        .slice(0, 3)
+      if (wrongReadings.length === 3)
+        out.push({ kind: 'reading', question: `How is ${g.text} read?`, answer: reading, options: shuffle([reading, ...wrongReadings]) })
+    }
+    return out
+  })
+
+  const rounds = [...shuffle(basicRounds), ...kanjiRounds, ...wordRounds]
 
   return { week, ghosts, rounds }
 }

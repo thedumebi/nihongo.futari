@@ -97,9 +97,14 @@ export const ghostBossSchema = z.object({
   /** ISO week, e.g. 2026-W42 — the boss is weekly. */
   week: z.string(),
   ghosts: z.array(ghostBossEntrySchema),
-  /** Tell each ghost kanji from its look-alikes, by meaning. */
+  /**
+   * Every ghost gets rounds: its meaning, its reading (when written in kanji),
+   * and — where there are look-alikes — telling it from them.
+   */
   rounds: z.array(z.object({
-    meaning: z.string(),
+    kind: z.enum(['meaning', 'reading', 'look-alike']),
+    /** The question, ready to show: "What does 一つ mean?" */
+    question: z.string(),
     answer: z.string(),
     options: z.array(z.string())
   }))
