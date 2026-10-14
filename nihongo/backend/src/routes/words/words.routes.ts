@@ -1,7 +1,7 @@
 import { z } from '@hono/zod-openapi'
 import { HttpStatusCodes, WORD_ROUTES } from '@nihongo/shared/constants'
 import { createPublicRoute, ErrorSchema, jsonContent } from '@nihongo/shared/openapi'
-import { wordDetailSchema } from '@nihongo/shared/types'
+import { wordDetailSchema, wordPitchesQuerySchema, wordPitchesResponseSchema } from '@nihongo/shared/types'
 
 const tags = ['Words']
 
@@ -21,3 +21,16 @@ export const getById = createPublicRoute({
   }
 })
 export type GetByIdRoute = typeof getById
+
+export const pitches = createPublicRoute({
+  tags,
+  path: WORD_ROUTES.PITCH,
+  method: 'get',
+  summary: 'Pitch accent for several words at once',
+  description: 'For drawing every word of a line — shadowing shows the dictionary pattern under the two curves.',
+  request: { query: wordPitchesQuerySchema },
+  responses: {
+    [HttpStatusCodes.OK]: jsonContent(wordPitchesResponseSchema, 'Pitch by word id')
+  }
+})
+export type PitchesRoute = typeof pitches

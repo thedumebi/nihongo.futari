@@ -7,6 +7,8 @@ import * as routes from './words.routes.js'
 
 const router = createRouter().basePath(ROUTE_BASE_PATHS.WORDS)
 
+// Literal paths before /:id.
+router.openapi(routes.pitches, handlers.pitches)
 router.openapi(routes.getById, handlers.getById)
 
 export default router

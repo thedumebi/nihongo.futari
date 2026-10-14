@@ -1,4 +1,4 @@
-import type { FuriganaSegment, WordDetail } from '@nihongo/shared/types'
+import type { FuriganaSegment, WordDetail, WordPitch } from '@nihongo/shared/types'
 
 import db from '@nihongo/shared/db'
 import {
@@ -15,7 +15,7 @@ import {
   wordSenses
 } from '@nihongo/shared/db/schema'
 import { classifyPitch, countMorae, pitchShape, sentenceFurigana } from '@nihongo/shared/lib'
-import { and, asc, eq, sql } from 'drizzle-orm'
+import { and, asc, eq, inArray, sql } from 'drizzle-orm'
 
 import { assetUrl } from '@/lib/assets.js'
 
@@ -118,10 +118,6 @@ export async function getWordDetail(languageCode: string, id: string): Promise<W
         .from(sentenceTranslations)
         .where(and(sql`${sentenceTranslations.sentenceId} in ${exampleIds}`, eq(sentenceTranslations.lang, 'en')))
 
-  const stored = row.pitchAccent?.[0]
-  const morae = countMorae(row.reading)
-  const position = stored?.positions?.[0]
-
   return {
     id: row.id,
     form: row.form,
@@ -132,14 +128,7 @@ export async function getWordDetail(languageCode: string, id: string): Promise<W
       glosses: s.glosses.filter(g => g.lang === 'en').map(g => g.text),
       pos: s.pos
     })),
-    pitch: stored && position !== undefined && morae > 0
-      ? {
-          reading: stored.reading,
-          positions: stored.positions,
-          pattern: classifyPitch(position, morae),
-          shape: pitchShape(position, morae)
-        }
-      : null,
+    pitch: pitchOf(row.reading, row.pitchAccent),
     kanji: kanjiRows.map(k => ({
       character: k.character,
       meanings: (k.meanings ?? []).filter(m => m.lang === 'en').map(m => m.gloss).slice(0, 3)
@@ -162,4 +151,31 @@ export async function getWordDetail(languageCode: string, id: string): Promise<W
       audio: assetUrl(`/audio/sentences/${s.id}.m4a`)
     }))
   }
+}
+
+/** A word's pitch, drawn from its first recorded downstep; null when none is recorded. */
+function pitchOf(reading: string, pitchAccent: Array<{ reading: string, positions: number[] }> | null): WordPitch | null {
+  const stored = pitchAccent?.[0]
+  const morae = countMorae(reading)
+  const position = stored?.positions?.[0]
+  if (!stored || position === undefined || morae === 0)
+    return null
+  return { reading: stored.reading, positions: stored.positions, pattern: classifyPitch(position, morae), shape: pitchShape(position, morae) }
+}
+
+/** Pitch for several words, by id — for drawing every word of a line at once. */
+export async function getPitches(ids: string[]): Promise<Record<string, WordPitch>> {
+  if (ids.length === 0)
+    return {}
+  const rows = await db
+    .select({ id: words.id, reading: words.primaryReading, pitchAccent: words.pitchAccent })
+    .from(words)
+    .where(inArray(words.id, ids))
+  const out: Record<string, WordPitch> = {}
+  for (const r of rows) {
+    const pitch = pitchOf(r.reading, r.pitchAccent)
+    if (pitch)
+      out[r.id] = pitch
+  }
+  return out
 }

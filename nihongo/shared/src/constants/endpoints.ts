@@ -190,6 +190,7 @@ export const PHONETIC_ROUTES = {
 
 export const WORD_ROUTES = {
   LIST: '/',
+  PITCH: '/pitch',
   GET_BY_ID: '/:id',
   SENTENCES: '/:id/sentences',
   CREATE: '/',
@@ -482,6 +483,7 @@ export const API_ENDPOINTS = {
   WORDS: {
     LIST: ROUTE_BASE_PATHS.WORDS,
     CREATE: ROUTE_BASE_PATHS.WORDS,
+    PITCH: `${ROUTE_BASE_PATHS.WORDS}${WORD_ROUTES.PITCH}`,
     GET_BY_ID: (id: string) => `${ROUTE_BASE_PATHS.WORDS}${WORD_ROUTES.GET_BY_ID.replace(':id', id)}`,
     SENTENCES: (id: string) => `${ROUTE_BASE_PATHS.WORDS}${WORD_ROUTES.SENTENCES.replace(':id', id)}`,
     UPDATE: (id: string) => `${ROUTE_BASE_PATHS.WORDS}${WORD_ROUTES.UPDATE.replace(':id', id)}`,

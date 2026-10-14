@@ -47,6 +47,27 @@ export const searchResponseSchema = z.object({
 export type SearchHit = z.infer<typeof searchHitSchema>
 export type SearchResponse = z.infer<typeof searchResponseSchema>
 
+/** A word's pitch accent, drawn from its downstep position. */
+export const wordPitchSchema = z.object({
+  reading: z.string(),
+  positions: z.array(z.number().int()),
+  pattern: z.string(),
+  /** High/low per mora, plus a trailing entry for the following particle. */
+  shape: z.array(z.boolean())
+}).openapi('WordPitch')
+export type WordPitch = z.infer<typeof wordPitchSchema>
+
+/** Pitch for several words at once — shadowing a line draws every word's. */
+export const wordPitchesQuerySchema = z.object({
+  /** Comma-separated word ids, at most 40. */
+  ids: z.string().min(1).max(2000)
+})
+export const wordPitchesResponseSchema = z.object({
+  /** By word id; words with no recorded pitch are absent. */
+  pitches: z.record(z.string(), wordPitchSchema)
+}).openapi('WordPitches')
+export type WordPitchesResponse = z.infer<typeof wordPitchesResponseSchema>
+
 /**
  * Everything known about one word.
  *
@@ -65,13 +86,7 @@ export const wordDetailSchema = z.object({
     glosses: z.array(z.string()),
     pos: z.array(z.string())
   })),
-  pitch: z.object({
-    reading: z.string(),
-    positions: z.array(z.number().int()),
-    pattern: z.string(),
-    /** High/low per mora, plus a trailing entry for the following particle. */
-    shape: z.array(z.boolean())
-  }).nullable(),
+  pitch: wordPitchSchema.nullable(),
   /** Kanji in this word that the curriculum teaches, for onward links. */
   kanji: z.array(z.object({ character: z.string(), meanings: z.array(z.string()) })),
   etymology: z.array(z.object({
