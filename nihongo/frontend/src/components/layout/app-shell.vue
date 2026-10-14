@@ -153,6 +153,7 @@ watch(() => route.fullPath, () => {
 
 async function signOut() {
   menuOpen.value = false
+  todayStore.reset()
   await auth.logout()
   router.push(ROUTES.HOME)
 }

@@ -7,6 +7,7 @@ import { getDue } from '@/api/due'
 import AppShell from '@/components/layout/app-shell.vue'
 import Button from '@/components/ui/button.vue'
 import { ROUTES } from '@/constants'
+import { onSyncChange } from '@/offline/sync'
 import { useLanguageStore } from '@/store/language'
 
 /**
@@ -34,6 +35,10 @@ const nextDueAt = ref<string | null>(null)
  */
 const nowTick = ref(Date.now())
 let ticker: ReturnType<typeof setInterval> | undefined
+/** Fires when the next card comes due, so it appears here that minute. */
+let dueTimer: ReturnType<typeof setTimeout> | undefined
+let stopSyncWatch: (() => void) | undefined
+let lastSynced: number | null = null
 
 /** "3 hours", "12 minutes", "2 days" — the wait, in the largest useful unit. */
 const nextDue = computed(() => {
@@ -113,8 +118,14 @@ function overdue(due: string): string {
   return `${days} ${days === 1 ? 'day' : 'days'} ago`
 }
 
-async function load() {
-  loading.value = true
+/**
+ * Fetch the list. `quiet` refreshes in place — no spinner, no lost scroll —
+ * for the automatic refreshes: a card coming due, an answer syncing, the
+ * minute ticking over, or coming back to the tab.
+ */
+async function load(quiet = false) {
+  if (!quiet)
+    loading.value = true
   errorMsg.value = ''
   try {
     const data = await getDue({
@@ -129,12 +140,30 @@ async function load() {
     totalCards.value = data.totalCards
     serverTime.value = data.serverTime
     nextDueAt.value = data.nextDueAt
+    armDueTimer()
   } catch {
+    if (quiet)
+      return
     errorMsg.value = "Couldn't load what's due."
     items.value = []
   } finally {
     loading.value = false
   }
+}
+
+const MAX_TIMER_MS = 60 * 60 * 1000
+
+function armDueTimer() {
+  clearTimeout(dueTimer)
+  if (!nextDueAt.value)
+    return
+  const wait = Math.min(MAX_TIMER_MS, Math.max(0, new Date(nextDueAt.value).getTime() - Date.now()) + 1000)
+  dueTimer = setTimeout(() => void load(true), wait)
+}
+
+function onVisible() {
+  if (document.visibilityState === 'visible')
+    void load(true)
 }
 
 function selectKind(next: string) {
@@ -156,15 +185,29 @@ watch(() => lang.code, () => {
 onMounted(() => {
   void load()
   // A minute is the finest unit the phrase shows, so a minute is how often it
-  // needs to change.
+  // needs to change — and the list is re-read with it, so cards that came due
+  // while it was open (not only the very next one) turn up too.
   ticker = setInterval(() => {
     nowTick.value = Date.now()
+    if (document.visibilityState === 'visible')
+      void load(true)
   }, 60_000)
+  // Answers reaching the server take cards off this list.
+  stopSyncWatch = onSyncChange((state) => {
+    if (state.lastSyncedAt !== null && state.lastSyncedAt !== lastSynced) {
+      lastSynced = state.lastSyncedAt
+      void load(true)
+    }
+  })
+  document.addEventListener('visibilitychange', onVisible)
 })
 
 onUnmounted(() => {
   if (ticker)
     clearInterval(ticker)
+  clearTimeout(dueTimer)
+  stopSyncWatch?.()
+  document.removeEventListener('visibilitychange', onVisible)
 })
 </script>
 

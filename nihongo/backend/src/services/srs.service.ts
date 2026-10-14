@@ -1750,6 +1750,32 @@ export async function getDecks(userId: string, languageCode: string, level?: str
 }
 
 /**
+ * When the next card that is not yet due becomes due, or null if none is
+ * waiting. The due list says "the next one is in 3 hours" from it, and the nav
+ * sets a timer on it so the Review badge moves the moment a card comes due.
+ */
+export async function nextDueAfter(userId: string, languageId: string, now: Date): Promise<string | null> {
+  const [soonest] = await db
+    .select({ due: srsCards.due })
+    .from(srsCards)
+    .innerJoin(studyItemFacets, eq(studyItemFacets.id, srsCards.facetId))
+    .innerJoin(studyItems, eq(studyItems.id, studyItemFacets.studyItemId))
+    .where(and(
+      eq(srsCards.userId, userId),
+      eq(srsCards.languageId, languageId),
+      eq(srsCards.suspended, false),
+      gt(srsCards.due, now),
+      inArray(srsCards.state, [1, 2, 3]),
+      eq(studyItemFacets.enabled, true),
+      eq(studyItems.published, true),
+      eq(studyItems.active, true)
+    ))
+    .orderBy(asc(srsCards.due))
+    .limit(1)
+  return soonest?.due?.toISOString() ?? null
+}
+
+/**
  * What is due, as a list you can read.
  *
  * The progress page could say "3 due" and the only way to find out WHAT was
@@ -1917,27 +1943,7 @@ export async function getDueList(userId: string, query: DueListQuery): Promise<D
   // an hour or a week, and the only way to find out was to keep opening the
   // page. Asked for only when the list is empty, so the common path pays
   // nothing for it.
-  let nextDueAt: string | null = null
-  if ((totals?.total ?? 0) === 0) {
-    const [soonest] = await db
-      .select({ due: srsCards.due })
-      .from(srsCards)
-      .innerJoin(studyItemFacets, eq(studyItemFacets.id, srsCards.facetId))
-      .innerJoin(studyItems, eq(studyItems.id, studyItemFacets.studyItemId))
-      .where(and(
-        eq(srsCards.userId, userId),
-        eq(srsCards.languageId, language.id),
-        eq(srsCards.suspended, false),
-        gt(srsCards.due, now),
-        inArray(srsCards.state, [1, 2, 3]),
-        eq(studyItemFacets.enabled, true),
-        eq(studyItems.published, true),
-        eq(studyItems.active, true)
-      ))
-      .orderBy(asc(srsCards.due))
-      .limit(1)
-    nextDueAt = soonest?.due?.toISOString() ?? null
-  }
+  const nextDueAt = (totals?.total ?? 0) === 0 ? await nextDueAfter(userId, language.id, now) : null
 
   return {
     items,

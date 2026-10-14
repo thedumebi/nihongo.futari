@@ -9,7 +9,7 @@ import { listLessons } from './lesson.service.js'
 import { getSummary, studiedToday, todayQuests } from './progress.service.js'
 import { listReadings } from './readings.service.js'
 import { listSpeak } from './speak.service.js'
-import { countDue, newCardsToday } from './srs.service.js'
+import { countDue, newCardsToday, nextDueAfter } from './srs.service.js'
 import { getSettings } from './users.service.js'
 
 /**
@@ -24,8 +24,9 @@ export async function getToday(userId: string, languageCode: string): Promise<To
   if (!language)
     return null
 
-  const [due, newToday, lessons, speak, summary, today, settings, quests, unseen, readings] = await Promise.all([
+  const [due, nextDueAt, newToday, lessons, speak, summary, today, settings, quests, unseen, readings] = await Promise.all([
     countDue(userId, language.id),
+    nextDueAfter(userId, language.id, new Date()),
     newCardsToday(userId, language.id, new Date()),
     listLessons(userId, languageCode),
     listSpeak(userId, languageCode),
@@ -47,6 +48,7 @@ export async function getToday(userId: string, languageCode: string): Promise<To
 
   return {
     due: due.items,
+    nextDueAt,
     newToday,
     newLimit: settings.dailyNewLimit,
     nextLesson: lessons.next ?? null,

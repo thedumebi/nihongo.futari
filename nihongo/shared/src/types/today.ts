@@ -11,6 +11,8 @@ import { z } from '@hono/zod-openapi'
 export const todaySchema = z.object({
   /** Items due now, as every other surface counts them. */
   due: z.number().int(),
+  /** When the next not-yet-due card comes due, so the nav can refresh its badge right then. */
+  nextDueAt: z.string().nullable(),
   /** New cards the queue has introduced today, and the daily limit. */
   newToday: z.number().int(),
   newLimit: z.number().int(),
