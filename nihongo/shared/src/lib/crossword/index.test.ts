@@ -159,6 +159,7 @@ describe('generateCrossword', () => {
     expect(b).toEqual(a)
   })
 
+  // 200 generated grids: a second or two on a laptop, over 6s on a CI runner.
   it('makes every run of two or more cells exactly one placed word, across many seeds', () => {
     for (let seed = 1; seed <= 200; seed++) {
       const grid = generateCrossword(POOL, { seed })
@@ -166,7 +167,7 @@ describe('generateCrossword', () => {
       const placed = grid!.placements.map(p => `${p.dir}:${p.row}:${p.col}:${p.length}`).sort()
       expect(runs(grid!), `seed ${seed}`).toEqual(placed)
     }
-  })
+  }, 30_000)
 
   it('spells each placed word in its cells, uses no word twice, and keeps every word crossing another', () => {
     for (let seed = 1; seed <= 100; seed++) {
