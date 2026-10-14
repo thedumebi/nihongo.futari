@@ -30,17 +30,32 @@ const displayName = ref('')
 const savingName = ref(false)
 
 /**
- * Setting a password when you have never had one.
+ * Setting a password when you have never had one, or changing it.
  *
  * An invited account signs in with an emailed code and no password is ever
  * chosen, so the password sign-in on the login page can never work for them.
  * better-auth's email-OTP plugin has a reset flow that needs no current
- * password, which is exactly this case: send a code, then set the password.
+ * password, which serves both: send a code, then set the password.
+ *
+ * Whether there is a password already is asked of the account, not assumed.
+ * This always said "no password yet", even to someone who had set one and was
+ * signing in with it. Null until known, so neither wording shows by mistake.
  */
+const hasPassword = ref<boolean | null>(null)
 const passwordStep = ref<'idle' | 'code'>('idle')
 const passwordOtp = ref('')
 const newPassword = ref('')
 const passwordBusy = ref(false)
+
+/** better-auth keeps a password as a "credential" account beside the user. */
+async function loadHasPassword() {
+  try {
+    const { data } = await authClient.listAccounts()
+    hasPassword.value = (data ?? []).some(a => a.providerId === 'credential')
+  } catch {
+    hasPassword.value = null
+  }
+}
 
 async function saveName() {
   const next = displayName.value.trim()
@@ -98,7 +113,8 @@ async function finishPassword() {
     passwordStep.value = 'idle'
     passwordOtp.value = ''
     newPassword.value = ''
-    toast.success('Password set — you can now sign in with it')
+    toast.success(hasPassword.value ? 'Password changed' : 'Password set — you can now sign in with it')
+    hasPassword.value = true
   } finally {
     passwordBusy.value = false
   }
@@ -128,6 +144,7 @@ async function setDailyLimit(value: string) {
 
 onMounted(() => {
   void loadSettings()
+  void loadHasPassword()
   displayName.value = auth.user?.name ?? ''
   void getStudySettings().then((s) => {
     dailyNewLimit.value = s.dailyNewLimit
@@ -302,13 +319,17 @@ async function turnOnPush() {
           <p class="font-medium">
             Password
           </p>
-          <p class="mt-1 text-sm text-[var(--color-muted)]">
-            You signed in with an emailed code, so there is no password on this account yet.
+          <p v-if="hasPassword === true" class="mt-1 text-sm text-[var(--color-muted)]">
+            You have a password, so you can sign in with it or with an emailed code. To change it,
+            we email you a code first.
+          </p>
+          <p v-else-if="hasPassword === false" class="mt-1 text-sm text-[var(--color-muted)]">
+            There is no password on this account yet — you sign in with an emailed code.
             Set one if you would rather sign in with it.
           </p>
 
-          <Button v-if="passwordStep === 'idle'" class="mt-4" variant="ghost" :loading="passwordBusy" @click="startPassword">
-            Send me a code
+          <Button v-if="passwordStep === 'idle' && hasPassword !== null" class="mt-4" variant="ghost" :loading="passwordBusy" @click="startPassword">
+            {{ hasPassword ? 'Change password' : 'Send me a code' }}
           </Button>
 
           <form v-else class="mt-4 flex flex-wrap items-end gap-3" @submit.prevent="finishPassword">
@@ -319,7 +340,7 @@ async function turnOnPush() {
               <Input v-model="newPassword" type="password" label="New password" autocomplete="new-password" required />
             </div>
             <Button type="submit" variant="primary" :loading="passwordBusy">
-              Set password
+              {{ hasPassword ? 'Change password' : 'Set password' }}
             </Button>
           </form>
         </div>
