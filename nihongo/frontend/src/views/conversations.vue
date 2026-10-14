@@ -4,10 +4,12 @@ import type { DialogueListResponse } from '@nihongo/shared/types'
 import { looksLikeRomaji, romajiToHiragana } from '@nihongo/shared/lib'
 import { Check, Search } from 'lucide-vue-next'
 import { computed, onMounted, ref, watch } from 'vue'
+import { useRoute } from 'vue-router'
 
 import { listDialogues } from '@/api/dialogues'
 import CoverageBadge from '@/components/ja/coverage-badge.vue'
 import AppShell from '@/components/layout/app-shell.vue'
+import Segmented from '@/components/ui/segmented.vue'
 import { ROUTES } from '@/constants'
 import { useLanguageStore } from '@/store/language'
 
@@ -18,6 +20,7 @@ import { useLanguageStore } from '@/store/language'
  * flashcard: waiting for the review queue to offer one is no way to find it,
  * and it is the part of the app a beginner is most likely to want on purpose.
  */
+const route = useRoute()
 const lang = useLanguageStore()
 
 const dialogues = ref<DialogueListResponse['dialogues']>([])
@@ -25,6 +28,15 @@ const loading = ref(true)
 const errorMsg = ref('')
 
 const query = ref('')
+/** One level, or '' for all. `?level=N5` from Progress's coverage picks it. */
+const level = ref(typeof route.query.level === 'string' ? route.query.level : '')
+
+/** Only the levels that have conversations, easiest first. */
+const levelOptions = computed(() => {
+  const present = new Set(dialogues.value.map(d => d.level).filter((l): l is string => Boolean(l)))
+  const order = ['N5', 'N4', 'N3', 'N2', 'N1']
+  return [{ value: '', label: 'All' }, ...order.filter(l => present.has(l)).map(l => ({ value: l, label: l }))]
+})
 
 /**
  * What to match on, romaji folded to kana.
@@ -51,7 +63,7 @@ function matches(d: DialogueListResponse['dialogues'][number]): boolean {
   return needles.value.some(n => haystack.includes(n))
 }
 
-const found = computed(() => dialogues.value.filter(matches))
+const found = computed(() => dialogues.value.filter(d => (!level.value || d.level === level.value) && matches(d)))
 
 /** Grouped by scenario, in the order the API returned them. */
 const groups = computed(() => {
@@ -105,6 +117,7 @@ onMounted(load)
           spellcheck="false"
         >
       </div>
+      <Segmented v-if="!loading && !errorMsg && levelOptions.length > 2" v-model="level" class="mt-4" label="Level" :options="levelOptions" />
 
       <p v-if="loading" class="mt-10 text-center text-[var(--color-muted)]">
         Loading…
@@ -116,7 +129,12 @@ onMounted(load)
         No conversations yet.
       </p>
       <p v-else-if="found.length === 0" class="mt-10 text-center text-[var(--color-muted)]">
-        Nothing matches &ldquo;{{ query }}&rdquo;.
+        <template v-if="query">
+          Nothing matches &ldquo;{{ query }}&rdquo;{{ level ? ` at ${level}` : '' }}.
+        </template>
+        <template v-else>
+          No {{ level }} conversations yet.
+        </template>
       </p>
 
       <section v-for="group in groups" v-else :key="group.title" class="mt-8">

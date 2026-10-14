@@ -142,6 +142,9 @@ const { level: levelCode, loadLevel } = useLevel()
 // following "Continue" lands where the course said it would.
 if (typeof route.query.level === 'string' && route.query.level)
   levelCode.value = route.query.level
+// `?deck=kind:word` from Progress's coverage, so "Words · N5" opens on words.
+if (typeof route.query.deck === 'string' && route.query.deck)
+  deckId.value = route.query.deck
 
 const levelOptions = computed<DropdownOption[]>(() => [
   { value: '', label: 'All levels' },

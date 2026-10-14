@@ -1,13 +1,14 @@
 <script setup lang="ts">
 import type { AchievementView, Readiness } from '@nihongo/shared/types'
 
-import { Award, Lock } from 'lucide-vue-next'
+import { ChevronRight } from 'lucide-vue-next'
 import { computed, onMounted, ref, watch } from 'vue'
 
 import type { ProgressSummary } from '@/api/progress'
 
 import { getReadiness, getSummary, listAchievements } from '@/api/progress'
 import AppShell from '@/components/layout/app-shell.vue'
+import AchievementCard from '@/components/progress/achievement-card.vue'
 import Dropdown from '@/components/ui/dropdown.vue'
 import Tooltip from '@/components/ui/tooltip.vue'
 import { useLevel } from '@/composables/use-level'
@@ -76,11 +77,41 @@ const stats = computed(() => {
   ]
 })
 
-/** The shelf: unlocked first, then the nearest to unlocking. Secret ones stay hidden until earned. */
+/**
+ * A glimpse of the shelf: the latest few earned, topped up with the nearest to
+ * unlocking. The full shelf is its own page — it was a long scroll here.
+ */
+const SHELF_SIZE = 3
 const achievements = ref<AchievementView[]>([])
-const shelf = computed(() => achievements.value
-  .filter(a => a.unlockedAt || !a.secret)
-  .sort((a, b) => Number(Boolean(b.unlockedAt)) - Number(Boolean(a.unlockedAt)) || b.progress / b.threshold - a.progress / a.threshold))
+const shelf = computed(() => {
+  const earned = achievements.value
+    .filter(a => a.unlockedAt)
+    .sort((a, b) => b.unlockedAt!.localeCompare(a.unlockedAt!))
+  const nearest = achievements.value
+    .filter(a => !a.unlockedAt && !a.secret)
+    .sort((a, b) => b.progress / b.threshold - a.progress / a.threshold)
+  return [...earned, ...nearest].slice(0, SHELF_SIZE)
+})
+
+/**
+ * Where each kind of content lives, at the level being shown — so a coverage
+ * row leads to the things it counts instead of being a number about nothing.
+ * Kinds without a browsing page of their own open on their Study deck.
+ */
+function coverageLink(kind: string, lvl: string): { label: string, to: string | { path: string, query: Record<string, string> } } {
+  const deck = (label: string) => ({ label, to: { path: ROUTES.STUDY, query: { level: lvl, deck: `kind:${kind}` } } })
+  switch (kind) {
+    case 'dialogue': return { label: 'Conversations', to: { path: ROUTES.CONVERSATIONS, query: { level: lvl } } }
+    case 'grammar': return { label: 'Grammar', to: ROUTES.GRAMMAR }
+    case 'speak': return { label: 'Speak', to: ROUTES.SPEAK }
+    case 'phonetic-series': return { label: 'Sound families', to: ROUTES.SOUND_SERIES }
+    case 'word': return deck('Words')
+    case 'sentence': return deck('Sentences')
+    case 'kanji': return deck('Kanji')
+    case 'kana': return deck('Kana')
+    default: return deck(kind)
+  }
+}
 
 const LEVELS = ['N5', 'N4', 'N3', 'N2', 'N1']
 // Shared, but this page reports on exactly ONE level, so an empty shared
@@ -177,21 +208,29 @@ onMounted(async () => {
 
           <ul class="mt-4 space-y-2">
             <li v-for="c in readiness.coverage" :key="c.kind" class="text-sm">
-              <div class="flex items-baseline justify-between">
-                <span class="capitalize">{{ c.kind }}</span>
-                <span class="text-[var(--color-muted)]">{{ c.known }} / {{ c.total }}</span>
-              </div>
-              <div class="mt-1 h-1.5 overflow-hidden rounded-full bg-[var(--color-washi)]">
-                <div
-                  class="h-full rounded-full bg-[var(--color-accent)]"
-                  :style="{ width: `${c.total === 0 ? 0 : (c.known / c.total) * 100}%` }"
-                />
-              </div>
+              <router-link :to="coverageLink(c.kind, level).to" class="group -mx-2 block rounded-lg px-2 py-1 transition hover:bg-[var(--color-card)]">
+                <div class="flex items-baseline justify-between">
+                  <span class="flex items-center gap-1">
+                    {{ coverageLink(c.kind, level).label }}
+                    <ChevronRight class="h-3.5 w-3.5 text-[var(--color-muted)] transition group-hover:translate-x-0.5" />
+                  </span>
+                  <span class="text-[var(--color-muted)]">{{ c.known }} / {{ c.total }} cards</span>
+                </div>
+                <div class="mt-1 h-1.5 overflow-hidden rounded-full bg-[var(--color-washi)]">
+                  <div
+                    class="h-full rounded-full bg-[var(--color-accent)]"
+                    :style="{ width: `${c.total === 0 ? 0 : (c.known / c.total) * 100}%` }"
+                  />
+                </div>
+              </router-link>
             </li>
           </ul>
 
           <p v-if="readiness.weakest" class="mt-4 text-sm text-[var(--color-muted)]">
-            Weakest area: <span class="text-[var(--color-text)]">{{ readiness.weakest }}</span>
+            Weakest area:
+            <router-link :to="coverageLink(readiness.weakest, level).to" class="text-[var(--color-text)] underline underline-offset-4">
+              {{ coverageLink(readiness.weakest, level).label }}
+            </router-link>
           </p>
         </template>
         <p v-else class="mt-3 text-sm text-[var(--color-muted)]">
@@ -199,35 +238,21 @@ onMounted(async () => {
         </p>
       </section>
 
-      <section v-if="shelf.length" class="mt-10">
-        <h2 class="text-xl font-semibold">
-          Achievements
-        </h2>
+      <section v-if="achievements.length" class="mt-10">
+        <div class="flex items-baseline justify-between gap-4">
+          <h2 class="text-xl font-semibold">
+            Achievements
+          </h2>
+          <router-link :to="ROUTES.ACHIEVEMENTS" class="text-sm underline underline-offset-4">
+            See all
+          </router-link>
+        </div>
         <p class="mt-1 text-sm text-[var(--color-muted)]">
           {{ achievements.filter(a => a.unlockedAt).length }} of {{ achievements.length }} unlocked.
         </p>
-        <ul class="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
-          <li
-            v-for="a in shelf"
-            :key="a.code"
-            class="flex items-start gap-3 rounded-xl border p-4"
-            :class="a.unlockedAt ? 'border-[var(--color-accent)]' : 'border-[var(--color-border)] opacity-80'"
-          >
-            <component :is="a.unlockedAt ? Award : Lock" class="mt-0.5 h-5 w-5 shrink-0" :class="a.unlockedAt ? 'text-[var(--color-accent)]' : 'text-[var(--color-muted)]'" />
-            <div class="min-w-0 flex-1">
-              <p class="font-medium">
-                {{ a.title }}
-              </p>
-              <p class="text-sm text-[var(--color-muted)]">
-                {{ a.description }}
-              </p>
-              <div v-if="!a.unlockedAt" class="mt-2 h-1.5 overflow-hidden rounded-full bg-[var(--color-border)]">
-                <div class="h-full bg-[var(--color-primary)]" :style="{ width: `${Math.round(a.progress / a.threshold * 100)}%` }" />
-              </div>
-              <p v-if="!a.unlockedAt" class="mt-1 text-xs tabular-nums text-[var(--color-muted)]">
-                {{ a.progress }} / {{ a.threshold }}
-              </p>
-            </div>
+        <ul class="mt-4 grid grid-cols-1 gap-3">
+          <li v-for="a in shelf" :key="a.code">
+            <AchievementCard :achievement="a" />
           </li>
         </ul>
       </section>
