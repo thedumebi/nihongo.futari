@@ -333,8 +333,12 @@ export const CROSSWORD_SCRIPTS = ['hiragana', 'katakana'] as const
 export type CrosswordScript = typeof CROSSWORD_SCRIPTS[number]
 
 /** A Speak step: the teacher explaining, or a prompt to answer aloud. */
-export const SPEAK_STEP_KINDS = ['explain', 'prompt'] as const
+export const SPEAK_STEP_KINDS = ['explain', 'prompt', 'narrate'] as const
 export type SpeakStepKind = typeof SPEAK_STEP_KINDS[number]
+
+/** course — the build-up method; story — a short tale, said and heard. */
+export const SPEAK_SESSION_KINDS = ['course', 'story'] as const
+export type SpeakSessionKind = typeof SPEAK_SESSION_KINDS[number]
 
 export const STUDY_ROUTES = {
   COURSE: '/course',

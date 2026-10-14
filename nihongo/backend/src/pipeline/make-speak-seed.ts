@@ -119,15 +119,17 @@ async function main(): Promise<void> {
   for (const s of fresh) {
     const id = `spk-ja-${s.code}`
     statements.push(`-- ${s.level} · ${s.number} · ${s.titleEn}
-INSERT INTO speak_sessions (id, language_id, level_id, code, number, title, title_en, published)
-SELECT ${q(id)}, ${q(LANGUAGE)}, ll.id, ${q(s.code)}, ${s.number}, ${q(s.title)}, ${q(s.titleEn)}, false
+INSERT INTO speak_sessions (id, language_id, level_id, code, kind, number, title, title_en, published)
+SELECT ${q(id)}, ${q(LANGUAGE)}, ll.id, ${q(s.code)}, ${q(s.kind ?? 'course')}, ${s.number}, ${q(s.title)}, ${q(s.titleEn)}, false
 FROM language_levels ll
 WHERE ll.language_id = ${q(LANGUAGE)} AND ll.code = ${q(s.level)}
 ON CONFLICT (language_id, code) DO NOTHING;`)
 
     const values = s.steps.map((step, i) => 'x' in step
       ? `  (${q(`${id}-s${i}`)}, ${q(id)}, ${i}, 'explain', ${q(step.x)}, NULL, NULL, NULL)`
-      : `  (${q(`${id}-s${i}`)}, ${q(id)}, ${i}, 'prompt', ${q(step.q)}, ${q(step.t)}, ${q(step.r)}, ${orNull(step.n)})`)
+      : 's' in step
+        ? `  (${q(`${id}-s${i}`)}, ${q(id)}, ${i}, 'narrate', ${q(step.e)}, ${q(step.s)}, ${q(step.r)}, NULL)`
+        : `  (${q(`${id}-s${i}`)}, ${q(id)}, ${i}, 'prompt', ${q(step.q)}, ${q(step.t)}, ${q(step.r)}, ${orNull(step.n)})`)
     statements.push(`INSERT INTO speak_steps (id, session_id, index, kind, en, text, reading_kana, note)
 SELECT v.* FROM (VALUES
 ${values.join(',\n')}

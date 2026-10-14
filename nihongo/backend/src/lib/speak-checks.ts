@@ -4,6 +4,8 @@ import { hasKanji, speakBracesBalanced } from '@nihongo/shared/lib'
 
 import type { AuthoredSpeakSession } from '@/pipeline/data/speak/types.js'
 
+import { japaneseLine, teacherLine } from '@/pipeline/data/speak/types.js'
+
 import { LEVEL_RANK } from './reading-checks.js'
 
 /**
@@ -39,9 +41,19 @@ export function speakWellFormed(all: AuthoredSpeakSession[]): string[] {
         problems.push(`${at}: pattern "${pattern}" is too short to look for safely`)
     }
 
+    if (session.steps.some(st => 's' in st) && session.kind !== 'story')
+      problems.push(`${at}: narration is for stories — set kind: 'story'`)
+
     for (const [i, step] of session.steps.entries()) {
       const where = `${at} step ${i}`
-      const line = 'x' in step ? step.x : step.q
+      if ('s' in step) {
+        if (!step.s.trim() || !step.r.trim() || !step.e.trim())
+          problems.push(`${where}: a narration needs its Japanese, reading and English`)
+        if (hasKanji(step.r))
+          problems.push(`${where}: reading contains kanji — "${step.r}"`)
+        continue
+      }
+      const line = teacherLine(step)
       if (!line.trim())
         problems.push(`${where}: nothing for the teacher to say`)
       if (!speakBracesBalanced(line))
@@ -58,12 +70,12 @@ export function speakWellFormed(all: AuthoredSpeakSession[]): string[] {
     }
   }
 
-  // Sessions are a course: numbered from 1 within a level, without gaps.
-  for (const level of new Set(all.map(s => s.level))) {
-    const numbers = all.filter(s => s.level === level).map(s => s.number).sort((a, b) => a - b)
+  // Sessions are a course: numbered from 1 within a level and kind, without gaps.
+  for (const key of new Set(all.map(s => `${s.level} ${s.kind ?? 'course'}`))) {
+    const numbers = all.filter(s => `${s.level} ${s.kind ?? 'course'}` === key).map(s => s.number).sort((a, b) => a - b)
     numbers.forEach((n, i) => {
       if (n !== i + 1)
-        problems.push(`${level}: session numbers must run 1, 2, 3 … without gaps (found ${numbers.join(', ')})`)
+        problems.push(`${key}: session numbers must run 1, 2, 3 … without gaps (found ${numbers.join(', ')})`)
     })
   }
 
@@ -82,7 +94,10 @@ export function patternsBeforeTaught(all: AuthoredSpeakSession[]): string[] {
   const problems: string[] = []
   // By level RANK — N5 first. Sorting the codes as text put "N4" before "N5",
   // so every N4 session seemed to use N5 grammar before it was taught.
-  const ordered = [...all].sort((a, b) => LEVEL_RANK[a.level] - LEVEL_RANK[b.level] || a.number - b.number)
+  // Stories come after the course sessions of their level: they are told with
+  // what that level has taught.
+  const kindRank = (s: AuthoredSpeakSession) => s.kind === 'story' ? 1 : 0
+  const ordered = [...all].sort((a, b) => LEVEL_RANK[a.level] - LEVEL_RANK[b.level] || kindRank(a) - kindRank(b) || a.number - b.number)
   const everything = new Set(all.flatMap(s => s.patterns))
   const taught = new Set<string>()
 
@@ -90,11 +105,12 @@ export function patternsBeforeTaught(all: AuthoredSpeakSession[]): string[] {
     for (const pattern of session.patterns) taught.add(pattern)
     const notYet = [...everything].filter(p => !taught.has(p))
     for (const [i, step] of session.steps.entries()) {
-      if (!('t' in step))
+      const ja = japaneseLine(step)
+      if (!ja)
         continue
       for (const pattern of notYet) {
-        if (step.t.includes(pattern))
-          problems.push(`${session.code} step ${i} 「${step.t}」 uses 「${pattern}」 before the session that teaches it`)
+        if (ja.includes(pattern))
+          problems.push(`${session.code} step ${i} 「${ja}」 uses 「${pattern}」 before the session that teaches it`)
       }
     }
   }

@@ -20,6 +20,7 @@ export async function listSpeak(userId: string, languageCode: string): Promise<S
   const rows = await db
     .select({
       code: speakSessions.code,
+      kind: speakSessions.kind,
       number: speakSessions.number,
       title: speakSessions.title,
       titleEn: speakSessions.titleEn,
@@ -36,13 +37,15 @@ export async function listSpeak(userId: string, languageCode: string): Promise<S
     .leftJoin(speakProgress, and(eq(speakProgress.sessionId, speakSessions.id), eq(speakProgress.userId, userId)))
     .where(and(eq(languages.code, languageCode), eq(speakSessions.published, true)))
     .groupBy(speakSessions.id, languageLevels.code, languageLevels.rank, speakProgress.completedAt, speakProgress.gotIt, speakProgress.total)
-    .orderBy(asc(languageLevels.rank), asc(speakSessions.number))
+    .orderBy(asc(languageLevels.rank), asc(speakSessions.kind), asc(speakSessions.number))
 
-  const sessions = rows.map(({ completedAt, gotIt, total, ...rest }) => ({
+  const sessions = rows.map(({ completedAt, gotIt, total, kind, ...rest }) => ({
     ...rest,
+    kind: kind === 'story' ? 'story' as const : 'course' as const,
     progress: completedAt ? { completedAt: completedAt.toISOString(), gotIt: gotIt!, total: total! } : null
   }))
-  return { sessions, next: sessions.find(s => !s.progress)?.code ?? null }
+  // "Next" walks the course; stories sit beside it, picked when wanted.
+  return { sessions, next: sessions.find(s => s.kind === 'course' && !s.progress)?.code ?? null }
 }
 
 export async function getSpeakSession(
@@ -54,6 +57,7 @@ export async function getSpeakSession(
     .select({
       id: speakSessions.id,
       code: speakSessions.code,
+      kind: speakSessions.kind,
       number: speakSessions.number,
       title: speakSessions.title,
       titleEn: speakSessions.titleEn,
@@ -89,18 +93,19 @@ export async function getSpeakSession(
   const g = await glossary(languageCode)
   const steps: SpeakStepView[] = stepRows.map(s => ({
     index: s.index,
-    kind: s.kind === 'prompt' ? 'prompt' : 'explain',
-    // Each run in its own voice, exactly as `audio:speak` recorded it.
-    say: speakSay(s.en, row.number),
+    kind: s.kind === 'prompt' ? 'prompt' : s.kind === 'narrate' ? 'narrate' : 'explain',
+    // Each run in its own voice, exactly as `audio:speak` recorded it. A
+    // narration's English is shown, not spoken: the passage is the point.
+    say: s.kind === 'narrate' ? [] : speakSay(s.en, row.number),
     text: s.text,
     reading: s.reading,
-    note: s.note,
+    note: s.kind === 'narrate' ? s.en : s.note,
     tokens: s.text && s.reading ? glossLine(s.text, g, s.reading, { regroupKana: true }) : [],
     answerAudio: s.text ? speakAnswerAudio(s.text) : null
   }))
 
-  const { id: _id, ...rest } = row
-  return { ...rest, promptCount: steps.filter(s => s.kind === 'prompt').length, steps }
+  const { id: _id, kind, ...rest } = row
+  return { ...rest, kind: kind === 'story' ? 'story' : 'course', promptCount: steps.filter(s => s.kind === 'prompt').length, steps }
 }
 
 /**

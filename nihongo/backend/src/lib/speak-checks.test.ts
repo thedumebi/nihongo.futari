@@ -53,7 +53,7 @@ describe('speakWellFormed', () => {
 
   it('wants session numbers to run without gaps', () => {
     expect(speakWellFormed([session(), session({ code: 'n5-03-x', number: 3 })]))
-      .toEqual(['N5: session numbers must run 1, 2, 3 … without gaps (found 1, 3)'])
+      .toEqual(['N5 course: session numbers must run 1, 2, 3 … without gaps (found 1, 3)'])
   })
 
   it('refuses a one-character pattern', () => {
@@ -104,5 +104,44 @@ describe('patternsBeforeTaught across levels', () => {
     const n5 = session({ code: 'n5-01-desu', patterns: ['ません'] })
     const n4 = session({ code: 'n4-01-plain', level: 'N4', number: 1, patterns: ['とおもいます'], steps: [{ x: 'Hi.' }, { q: 'Say it', t: '食べません。', r: 'たべません。' }] })
     expect(patternsBeforeTaught([n4, n5])).toEqual([])
+  })
+})
+
+describe('stories', () => {
+  const story = (over: Partial<AuthoredSpeakSession> = {}) => session({
+    code: 'n5-story-01',
+    kind: 'story',
+    number: 1,
+    patterns: [],
+    steps: [
+      { x: 'A story about a cat.' },
+      { q: 'How would you say "it is a cat"?', t: 'ねこです。', r: 'ねこ です。' },
+      { s: 'ねこです。', r: 'ねこ です。', e: 'It is a cat.' }
+    ],
+    ...over
+  })
+
+  it('numbers stories apart from the course', () => {
+    expect(speakWellFormed([session(), story()])).toEqual([])
+  })
+
+  it('wants a narration to carry its Japanese, kana reading and English', () => {
+    expect(speakWellFormed([story({ steps: [{ x: 'Hi.' }, { q: 'Say it', t: '本です。', r: 'ほん です。' }, { s: '本です。', r: '本 です。', e: '' }] })]))
+      .toEqual([
+        'n5-story-01 step 2: a narration needs its Japanese, reading and English',
+        'n5-story-01 step 2: reading contains kanji — "本 です。"'
+      ])
+  })
+
+  it('keeps narration to stories', () => {
+    expect(speakWellFormed([session({ steps: [{ x: 'Hi.' }, { q: 'Say it', t: '本です。', r: 'ほん です。' }, { s: '本です。', r: 'ほん です。', e: 'A book.' }] })]))
+      .toEqual(['n5-01-desu: narration is for stories — set kind: \'story\''])
+  })
+
+  it('holds narration to the patterns taught so far, like answers', () => {
+    const later = session({ code: 'n5-02-masen', number: 2, patterns: ['ません'], steps: [{ x: 'Not.' }, { q: 'Say it', t: '食べません。', r: 'たべません。' }] })
+    const early = story({ level: 'N5', steps: [{ x: 'Hi.' }, { q: 'Say it', t: 'ねこです。', r: 'ねこ です。' }, { s: '食べません。', r: 'たべません。', e: 'Does not eat.' }] })
+    // Stories come after their level's course, so ません is taught by then.
+    expect(patternsBeforeTaught([session(), later, early])).toEqual([])
   })
 })

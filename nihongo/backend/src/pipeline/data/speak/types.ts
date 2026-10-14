@@ -7,6 +7,9 @@
  *               written, r the answer in kana with particles as SPOKEN (は→わ,
  *               を→お, へ→え) and a space at every word break
  *   n           optional, on a prompt: one line of "why", shown after the answer
+ *   { s, r, e } stories only: the narrator reads s aloud (r its kana reading,
+ *               spoken particles and word breaks as above); e is its English,
+ *               shown on request, never spoken. Nothing to answer.
  *
  * `patterns` names the grammar this session teaches, and `check:speak` refuses
  * a prompt that uses a pattern no session so far has taught. Each prompt should
@@ -30,12 +33,30 @@ export interface PromptStep {
   n?: string
 }
 
-export type AuthoredStep = ExplainStep | PromptStep
+export interface NarrateStep {
+  s: string
+  r: string
+  e: string
+}
+
+export type AuthoredStep = ExplainStep | PromptStep | NarrateStep
+
+/** What the teacher says aloud in English on a step — nothing on a narration. */
+export function teacherLine(step: AuthoredStep): string {
+  return 'x' in step ? step.x : 'q' in step ? step.q : ''
+}
+
+/** The Japanese a step has recorded in the narrator's voice: a prompt's answer, or a narration. */
+export function japaneseLine(step: AuthoredStep): string | null {
+  return 'q' in step ? step.t : 's' in step ? step.s : null
+}
 
 export interface AuthoredSpeakSession {
   code: string
   level: SpeakLevel
-  /** Its place in the course, from 1. */
+  /** A story rather than a course session; numbered separately. */
+  kind?: 'course' | 'story'
+  /** Its place in the course, from 1 — counted within its kind. */
   number: number
   title: string
   titleEn: string

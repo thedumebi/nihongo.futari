@@ -26,14 +26,16 @@ const loading = ref(true)
 const errorMsg = ref('')
 
 // ============ Computed Properties ============
+/** The course by level, then each level's stories under their own heading. */
 const groups = computed(() => {
-  const out = new Map<string, SpeakListResponse['sessions']>()
+  const out = new Map<string, { level: string, title: string, sessions: SpeakListResponse['sessions'] }>()
   for (const s of data.value.sessions) {
-    if (!out.has(s.level))
-      out.set(s.level, [])
-    out.get(s.level)!.push(s)
+    const key = `${s.level}:${s.kind}`
+    if (!out.has(key))
+      out.set(key, { level: s.level, title: s.kind === 'story' ? `${s.level} · Stories` : s.level, sessions: [] })
+    out.get(key)!.sessions.push(s)
   }
-  return [...out.entries()].map(([level, sessions]) => ({ level, sessions }))
+  return [...out.values()]
 })
 
 const nextSession = computed(() => data.value.sessions.find(s => s.code === data.value.next) ?? null)
@@ -104,9 +106,9 @@ async function load() {
           </span>
         </router-link>
 
-        <section v-for="group in groups" :key="group.level" class="mt-8">
+        <section v-for="group in groups" :key="group.title" class="mt-8">
           <h2 class="text-sm uppercase tracking-wide text-[var(--color-muted)]">
-            {{ group.level }}
+            {{ group.title }}
           </h2>
           <ol class="mt-3 divide-y divide-[var(--color-border)] rounded-xl border border-[var(--color-border)]">
             <li v-for="s in group.sessions" :key="s.code">

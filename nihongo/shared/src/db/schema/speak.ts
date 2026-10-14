@@ -24,7 +24,12 @@ export const speakSessions = pgTable('speak_sessions', {
   languageId: text('language_id').notNull().references(() => languages.id, { onDelete: 'cascade' }),
   levelId: text('level_id').notNull().references(() => languageLevels.id, { onDelete: 'restrict' }),
   code: text('code').notNull(),
-  /** Its place in the course — session 1, 2, 3 … */
+  /**
+   * course — the build-up method; story — a short tale told in steps, the
+   * learner saying the sentences and the narrator reading passages aloud.
+   */
+  kind: text('kind').notNull().default('course'),
+  /** Its place in the course — session 1, 2, 3 … — counted within its kind. */
   number: integer('number').notNull(),
   /** As written, kanji and all. */
   title: text('title').notNull(),
@@ -47,9 +52,9 @@ export const speakSteps = pgTable('speak_steps', {
   id: primaryId(),
   sessionId: text('session_id').notNull().references(() => speakSessions.id, { onDelete: 'cascade' }),
   index: integer('index').notNull(),
-  /** explain | prompt */
+  /** explain | prompt | narrate (stories: the narrator reads a passage, nothing to answer) */
   kind: text('kind').notNull(),
-  /** What the teacher says — the explanation, or the English to put into Japanese. */
+  /** What the teacher says — the explanation, or the English to put into Japanese. On a narration, its English, shown not spoken. */
   en: text('en').notNull(),
   /** The answer, as written. Prompts only. */
   text: text('text'),
@@ -61,10 +66,11 @@ export const speakSteps = pgTable('speak_steps', {
 }, t => ({
   orderUnique: uniqueIndex('speak_steps_order_unique').on(t.sessionId, t.index),
   // A prompt without an answer cannot be checked, and an explanation with one
-  // would be a prompt in disguise. The database refuses both.
+  // would be a prompt in disguise. A narration is Japanese read aloud, so it
+  // needs its text and reading like a prompt. The database refuses the rest.
   answerMatchesKind: check(
     'speak_steps_answer_matches_kind',
-    sql`(${t.kind} = 'prompt' and ${t.text} is not null and ${t.readingKana} is not null)
+    sql`(${t.kind} in ('prompt', 'narrate') and ${t.text} is not null and ${t.readingKana} is not null)
       or (${t.kind} = 'explain' and ${t.text} is null and ${t.readingKana} is null)`
   )
 }))

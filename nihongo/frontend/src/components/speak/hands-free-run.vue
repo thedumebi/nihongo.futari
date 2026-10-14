@@ -95,6 +95,10 @@ async function start() {
     const ask = s.say.map(x => x.audio)
     if (s.kind === 'explain') {
       await playAudioQueue([...ask, { pauseMs: AFTER_EXPLAIN_MS }], { silentPauses: true })
+    } else if (s.kind === 'narrate') {
+      // A story's narration: read aloud, then a breath before the story goes on.
+      answered.value = true
+      await playAudioQueue([s.answerAudio, { pauseMs: AFTER_ANSWER_MS }], { silentPauses: true })
     } else {
       // Back from a pause in the silence: play means "ready", so straight to the answer.
       if (heldInThinking.value) {
@@ -169,7 +173,7 @@ function setState(state: MediaSessionPlaybackState) {
       <template v-if="step && !finished">
         <TeacherLine :say="step.say" class="mt-2 text-lg" />
         <p
-          v-if="step.kind === 'prompt' && step.text"
+          v-if="step.kind !== 'explain' && step.text"
           class="mt-6 text-center text-2xl transition-opacity"
           :class="answered ? 'opacity-100' : 'opacity-0'"
           style="font-family: var(--font-jp)"

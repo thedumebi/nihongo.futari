@@ -12,6 +12,7 @@ import { promisify } from 'node:util'
 import { audioKeyFor, englishVoiceFor, GLOSS_AUDIO_LEVELS, VOICE_LEARNER as LEARNER_VOICE, VOICE_OTHER, VOICE_RECALL } from '../lib/audio-key.js'
 import { READINGS } from './data/readings/index.js'
 import { SPEAK } from './data/speak/index.js'
+import { japaneseLine, teacherLine } from './data/speak/types.js'
 import { CONTENT_TYPES, listKeys, putAsset } from './lib/bucket.js'
 
 const run = promisify(execFile)
@@ -170,10 +171,11 @@ async function generate(kind: AudioKind) {
     const add = (text: string, voice: string) => lines.set(audioKeyFor(text, voice), { text, voice })
     for (const session of SPEAK) {
       for (const step of session.steps) {
-        for (const segment of speakSegments('x' in step ? step.x : step.q).filter(speakSpoken))
+        for (const segment of speakSegments(teacherLine(step)).filter(speakSpoken))
           add(segment.text, segment.lang === 'ja' ? VOICE : englishVoiceFor(session.number))
-        if ('t' in step)
-          add(step.t, VOICE)
+        const ja = japaneseLine(step)
+        if (ja)
+          add(ja, VOICE)
       }
     }
     targets = [...lines].map(([name, line]) => ({ name, ...line }))

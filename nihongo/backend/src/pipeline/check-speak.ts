@@ -26,6 +26,7 @@ import { patternsBeforeTaught, speakWellFormed, tooManyNewWords } from '../lib/s
 import { tokenProblems } from '../lib/token-checks.js'
 import { glossary, glossLine } from '../services/glossary.service.js'
 import { SPEAK } from './data/speak/index.js'
+import { japaneseLine, teacherLine } from './data/speak/types.js'
 import { listKeys } from './lib/bucket.js'
 
 const LANGUAGE = 'ja'
@@ -35,10 +36,11 @@ export function speakClipKeys(all: AuthoredSpeakSession[]): Set<string> {
   const keys = new Set<string>()
   for (const session of all) {
     for (const step of session.steps) {
-      for (const segment of speakSegments('x' in step ? step.x : step.q).filter(speakSpoken))
+      for (const segment of speakSegments(teacherLine(step)).filter(speakSpoken))
         keys.add(`audio/speak/${audioKeyFor(segment.text, segment.lang === 'ja' ? VOICE_OTHER : englishVoiceFor(session.number))}.m4a`)
-      if ('t' in step)
-        keys.add(`audio/speak/${audioKeyFor(step.t, VOICE_OTHER)}.m4a`)
+      const ja = japaneseLine(step)
+      if (ja)
+        keys.add(`audio/speak/${audioKeyFor(ja, VOICE_OTHER)}.m4a`)
     }
   }
   return keys
@@ -59,7 +61,7 @@ export async function checkSpeak(all: AuthoredSpeakSession[], { audio = false } 
   // Words carry over from session to session: the course is cumulative, and a
   // closing session that mixes everything adds nothing new.
   const seen = new Set<string>()
-  for (const session of [...all].sort((a, b) => LEVEL_RANK[a.level] - LEVEL_RANK[b.level] || a.number - b.number)) {
+  for (const session of [...all].sort((a, b) => LEVEL_RANK[a.level] - LEVEL_RANK[b.level] || Number(a.kind === 'story') - Number(b.kind === 'story') || a.number - b.number)) {
     const above = kanjiAboveLevel(session.title, session.level, ranks)
     if (above.length > 0)
       problems.push(`${session.code} title: above ${session.level}: ${above.join(' ')}`)
@@ -67,28 +69,34 @@ export async function checkSpeak(all: AuthoredSpeakSession[], { audio = false } 
     const built: Array<{ index: number, tokens: ReturnType<typeof glossLine>, said: ReturnType<typeof glossLine> }> = []
     let said: ReturnType<typeof glossLine> = []
     for (const [i, step] of session.steps.entries()) {
-      const line = 'x' in step ? step.x : step.q
       // Japanese the teacher says aloud counts as heard.
-      for (const segment of speakSegments(line)) {
+      for (const segment of speakSegments(teacherLine(step))) {
         if (segment.lang === 'ja')
           said = [...said, ...glossLine(segment.text, g)]
       }
-      if (!('t' in step))
+      const ja = japaneseLine(step)
+      if (!ja || 'x' in step)
         continue
 
-      const where = `${session.code} step ${i} 「${step.t}」`
-      const high = kanjiAboveLevel(step.t, session.level, ranks)
+      const where = `${session.code} step ${i} 「${ja}」`
+      const high = kanjiAboveLevel(ja, session.level, ranks)
       if (high.length > 0)
         problems.push(`${where}: above ${session.level}: ${high.join(' ')} — write it in kana`)
 
-      const tokens = glossLine(step.t, g, step.r, { regroupKana: true })
+      const tokens = glossLine(ja, g, step.r, { regroupKana: true })
       const report = tokenProblems(tokens, true)
       const ruby = lineFurigana(tokens)
-      for (const p of [...report.problems, ...ruby.problems, ...unspacedParticles(glossLine(step.t, g, step.r)), ...spansWordBreak(tokens)])
+      for (const p of [...report.problems, ...ruby.problems, ...unspacedParticles(glossLine(ja, g, step.r)), ...spansWordBreak(tokens)])
         problems.push(`${where}: ${p}\n     ${tokens.map(t => t.t).join(' | ')}`)
       for (const w of report.warnings)
         warnings.push(`${where}: ${w}`)
 
+      // A narration is heard, not said: its words join what the learner has
+      // met, and it is not a step that adds words to an answer.
+      if ('s' in step) {
+        said = [...said, ...tokens]
+        continue
+      }
       built.push({ index: i, tokens, said })
       said = []
     }

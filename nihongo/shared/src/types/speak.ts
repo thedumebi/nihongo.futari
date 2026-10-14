@@ -2,7 +2,7 @@ import { z } from '@hono/zod-openapi'
 
 import type { speakProgress, speakSessions, speakSteps } from '@/db/schema/speak.js'
 
-import { SPEAK_STEP_KINDS } from '@/constants/endpoints.js'
+import { SPEAK_SESSION_KINDS, SPEAK_STEP_KINDS } from '@/constants/endpoints.js'
 
 import { glossedTokenSchema } from './study.js'
 
@@ -32,10 +32,11 @@ export const speakStepViewSchema = z.object({
     /** Null for a run with nothing to say — a full stop after a Japanese word. */
     audio: z.string().nullable()
   })),
-  /** The answer as written. Null on an explanation. */
+  /** The answer — or, on a narration, the passage read aloud — as written. Null on an explanation. */
   text: z.string().nullable(),
   /** The answer in kana, particles as spoken. Null on an explanation. */
   reading: z.string().nullable(),
+  /** A one-line "why" after an answer; on a narration, its English. */
   note: z.string().nullable(),
   /** The answer cut into tappable words; empty on an explanation. */
   tokens: z.array(glossedTokenSchema),
@@ -47,6 +48,7 @@ export type SpeakStepView = z.infer<typeof speakStepViewSchema>
 
 export const speakSessionSummarySchema = z.object({
   code: z.string(),
+  kind: z.enum(SPEAK_SESSION_KINDS),
   number: z.number().int(),
   title: z.string(),
   titleEn: z.string(),

@@ -36,7 +36,7 @@ const emit = defineEmits<{
   missed: [index: number]
 }>()
 
-type Phase = 'explain' | 'asking' | 'thinking' | 'answer' | 'done'
+type Phase = 'explain' | 'narrate' | 'asking' | 'thinking' | 'answer' | 'done'
 
 // ============ Reactive State ============
 /** Positions into `steps`, in the order they will be met; misses are appended. */
@@ -54,6 +54,8 @@ const held = ref(false)
 let heldAt = 0
 const word = ref<WordGloss | null>(null)
 const picked = ref<number | null>(null)
+/** A narration's English, shown on request — the passage is to be understood by ear first. */
+const showEnglish = ref(false)
 
 let run = 0
 let timer: ReturnType<typeof setTimeout> | null = null
@@ -124,6 +126,7 @@ async function enter() {
   word.value = null
   picked.value = null
   held.value = false
+  showEnglish.value = false
   const s = step.value
   if (!s) {
     phase.value = 'done'
@@ -134,6 +137,12 @@ async function enter() {
   if (s.kind === 'explain') {
     phase.value = 'explain'
     await playAudioQueue(s.say.map(x => x.audio))
+    return
+  }
+  // A story's narrator reads a passage: listen, follow the words, move on.
+  if (s.kind === 'narrate') {
+    phase.value = 'narrate'
+    playAudio(s.answerAudio)
     return
   }
   phase.value = 'asking'
@@ -193,7 +202,7 @@ function replay() {
   const s = step.value
   if (!s)
     return
-  if (phase.value === 'answer')
+  if (phase.value === 'answer' || phase.value === 'narrate')
     playAudio(s.answerAudio)
   else
     void playAudioQueue(s.say.map(x => x.audio))
@@ -248,6 +257,30 @@ defineExpose({ restart, prompts })
         </p>
       </div>
 
+      <!-- A narration: the passage, its words tappable, its English on request. -->
+      <div v-if="phase === 'narrate' && step.text" class="text-center">
+        <p class="text-xs uppercase tracking-wide text-[var(--color-muted)]">
+          Listen
+        </p>
+        <p class="mt-4 text-2xl leading-[2.2] sm:text-3xl">
+          <TokenLine
+            :tokens="step.tokens"
+            :text="step.text"
+            :reading="step.reading ?? ''"
+            :mode="mode"
+            :known-kanji="knownKanji"
+            :selected="picked"
+            @pick="onPick"
+          />
+        </p>
+        <p v-if="showEnglish && step.note" class="mt-3 text-sm text-[var(--color-muted)]">
+          {{ step.note }}
+        </p>
+        <button v-else-if="step.note" type="button" class="mt-3 text-sm text-[var(--color-muted)] underline underline-offset-4" @click="showEnglish = true">
+          Show the English
+        </button>
+      </div>
+
       <div v-if="phase === 'answer' && step.text" class="mt-8 text-center">
         <p class="text-2xl leading-[2.2] sm:text-3xl">
           <TokenLine
@@ -270,7 +303,7 @@ defineExpose({ restart, prompts })
       <Button variant="ghost" round aria-label="Hear it again" @click="replay">
         <Volume2 class="h-5 w-5" />
       </Button>
-      <Button v-if="phase === 'explain'" @click="next">
+      <Button v-if="phase === 'explain' || phase === 'narrate'" @click="next">
         Next
       </Button>
       <template v-else-if="phase === 'asking' || phase === 'thinking'">
