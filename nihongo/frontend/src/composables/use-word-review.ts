@@ -6,6 +6,7 @@ import { computed, ref, watch } from 'vue'
 
 import { getWordStatus, saveWord } from '@/api/study'
 import { useToast } from '@/composables/use-toast'
+import { isNetworkError, queueAction } from '@/offline/queue'
 
 /**
  * A word's place in the learner's reviews, and a way to add it.
@@ -43,6 +44,11 @@ export function useWordReview(wordId: Ref<string | undefined | null>, label: Ref
       toast.success(`${label.value} added to your reviews`)
       await load()
     } catch (e) {
+      if (isNetworkError(e)) {
+        await queueAction({ type: 'saveWord', wordId: id })
+        toast.success(`${label.value} will be added to your reviews when you are back online`)
+        return
+      }
       toast.error(isAxiosError(e) && e.response?.status === 404 ? `${label.value} cannot be reviewed yet` : 'Could not add that word — try again')
     } finally {
       saving.value = false

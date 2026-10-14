@@ -62,6 +62,8 @@ export const useAuthStore = defineStore('auth', () => {
     await authClient.signOut()
     user.value = null
     ready.value = true
+    // This learner's cached API responses must not outlive their session.
+    navigator.serviceWorker?.controller?.postMessage({ type: 'CLEAR_USER_CACHES' })
   }
 
   return { user, isAuthenticated, isAdmin, ready, syncSession, logout }

@@ -18,6 +18,7 @@ import Input from '@/components/ui/input.vue'
 import { playAudio } from '@/composables/use-audio'
 import { useFurigana } from '@/composables/use-furigana'
 import { ROUTES } from '@/constants'
+import { isNetworkError, queueAction } from '@/offline/queue'
 import { useLanguageStore } from '@/store/language'
 
 /**
@@ -200,9 +201,11 @@ async function finish() {
   const score = total.value === 0 ? 100 : Math.round((firstTimeRight.value / total.value) * 100)
   try {
     await completeLesson(slug, { score, missedPromptIds: [...missed.value] }, lang.code)
-  } catch {
-    // The lesson still happened. Losing the record costs a status chip and a
-    // re-ask, which is not worth blocking the reader on.
+  } catch (e) {
+    // The lesson still happened. Offline, it is queued and sent once the
+    // phone is back — it used to be lost, and the topic never reached review.
+    if (isNetworkError(e))
+      await queueAction({ type: 'lessonComplete', languageCode: lang.code, slug, score, missedPromptIds: [...missed.value] })
   }
   // What comes after, so the done screen leads somewhere instead of back to a list.
   try {

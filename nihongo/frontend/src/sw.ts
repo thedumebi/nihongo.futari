@@ -1,3 +1,4 @@
+import { ROUTE_BASE_PATHS } from '@nihongo/shared/constants'
 import { CacheableResponsePlugin } from 'workbox-cacheable-response'
 import { ExpirationPlugin } from 'workbox-expiration'
 /// <reference lib="webworker" />
@@ -124,6 +125,51 @@ registerRoute(
     plugins: [new CacheableResponsePlugin({ statuses: [0, 200] })]
   })
 )
+
+/**
+ * Everything else a learner reads: lessons, Speak sessions, conversations,
+ * speeches, words, the crossword, Today, progress.
+ *
+ * Without this only Review and grammar worked offline, so on a train the
+ * Lessons tab — the app's starting point — and every Speak session came up
+ * blank. Matched by API path prefix and only for data requests (no
+ * `destination`), never for page navigations, which the app shell serves.
+ * One bounded cache: these are small JSON responses.
+ */
+const READ_PREFIXES: string[] = [
+  ROUTE_BASE_PATHS.LESSONS,
+  ROUTE_BASE_PATHS.SPEAK,
+  ROUTE_BASE_PATHS.DIALOGUES,
+  ROUTE_BASE_PATHS.READINGS,
+  ROUTE_BASE_PATHS.WORDS,
+  ROUTE_BASE_PATHS.KANJI,
+  ROUTE_BASE_PATHS.DICTIONARY,
+  ROUTE_BASE_PATHS.PHONETICS,
+  ROUTE_BASE_PATHS.CROSSWORD,
+  ROUTE_BASE_PATHS.TODAY,
+  ROUTE_BASE_PATHS.PROGRESS
+]
+registerRoute(
+  ({ url, request }) => request.method === 'GET'
+    && request.destination === ''
+    && READ_PREFIXES.some(p => url.pathname === p || url.pathname.startsWith(`${p}/`) || url.pathname.includes(`/api${p}`)),
+  new NetworkFirst({
+    cacheName: 'go-reading',
+    networkTimeoutSeconds: 3,
+    plugins: [
+      new CacheableResponsePlugin({ statuses: [200] }),
+      new ExpirationPlugin({ maxEntries: 400, maxAgeSeconds: 30 * 24 * 60 * 60, purgeOnQuotaError: true })
+    ]
+  })
+)
+
+// Signing out clears every cached API response: they are this learner's own
+// data, and the next person on a shared phone must not be served them.
+self.addEventListener('message', (event) => {
+  if (event.data?.type === 'CLEAR_USER_CACHES') {
+    event.waitUntil(Promise.all(['go-study', 'go-grammar', 'go-reading'].map(name => caches.delete(name))))
+  }
+})
 
 interface PushPayload {
   title?: string

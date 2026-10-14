@@ -1,12 +1,14 @@
-import type { SyncMutationsInput, SyncResult } from '@nihongo/shared/types'
+import type { SyncAction, SyncMutationsInput, SyncResult } from '@nihongo/shared/types'
 
 import db from '@nihongo/shared/db'
 import { srsCards } from '@nihongo/shared/db/schema'
 import { inArray } from 'drizzle-orm'
 
 import { recordActivityFor } from './activities.service.js'
+import { completeLesson } from './lesson.service.js'
 import { recomputeProgress } from './progress.service.js'
-import { submitAnswer } from './srs.service.js'
+import { completeSpeakSession, missSpeakStep } from './speak.service.js'
+import { saveWord, submitAnswer } from './srs.service.js'
 
 /**
  * Offline sync.
@@ -60,11 +62,10 @@ export async function applyMutations(userId: string, input: SyncMutationsInput):
   // online route, so idempotency and the habit recompute come with it.
   for (const action of input.actions ?? []) {
     try {
-      const { type: _type, languageCode, ...activity } = action
-      const result = await recordActivityFor(userId, languageCode, activity)
-      if (!result)
-        rejected.push({ id: action.id, reason: 'No such language' })
-      else if (result.recorded)
+      const applied = await applyAction(userId, action)
+      if (applied === null)
+        rejected.push({ id: action.id, reason: 'Nothing to apply it to' })
+      else if (applied)
         accepted.push(action.id)
       else duplicates.push(action.id)
     } catch (err) {
@@ -129,5 +130,34 @@ export async function applyMutations(userId: string, input: SyncMutationsInput):
       }
     })),
     serverTime: new Date().toISOString()
+  }
+}
+
+/**
+ * One queued action, through the same service as its online route. True when
+ * it changed something, false when it was already applied, null when it names
+ * something that does not exist (refused — retrying cannot help).
+ */
+async function applyAction(userId: string, action: SyncAction): Promise<boolean | null> {
+  switch (action.type) {
+    case 'activity': {
+      const { type: _type, languageCode, ...activity } = action
+      const result = await recordActivityFor(userId, languageCode, activity)
+      return result ? result.recorded : null
+    }
+    case 'lessonComplete': {
+      const result = await completeLesson(userId, action.languageCode, action.slug, { score: action.score, missedPromptIds: action.missedPromptIds })
+      return result ? true : null
+    }
+    case 'speakComplete':
+      return (await completeSpeakSession(userId, action.languageCode, action.code, { gotIt: action.gotIt, total: action.total })) ? true : null
+    case 'speakMiss': {
+      const result = await missSpeakStep(userId, action.languageCode, action.code, action.index)
+      return result ? result.added : null
+    }
+    case 'saveWord': {
+      const result = await saveWord(userId, action.wordId)
+      return result ? result.added : null
+    }
   }
 }

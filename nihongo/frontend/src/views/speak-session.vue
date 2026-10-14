@@ -16,6 +16,7 @@ import Slider from '@/components/ui/slider.vue'
 import { useFurigana } from '@/composables/use-furigana'
 import { useToast } from '@/composables/use-toast'
 import { ROUTES } from '@/constants'
+import { isNetworkError, queueAction } from '@/offline/queue'
 import { useLanguageStore } from '@/store/language'
 
 /**
@@ -105,8 +106,11 @@ async function onFinished(run: { gotIt: number, total: number }) {
     return
   try {
     await completeSpeakSession(s.code, run, lang.code)
-  } catch {
-    toast.error('Could not save this run — it still counts, try again later.')
+  } catch (e) {
+    if (isNetworkError(e))
+      await queueAction({ type: 'speakComplete', languageCode: lang.code, code: s.code, gotIt: run.gotIt, total: run.total })
+    else
+      toast.error('Could not save this run — it still counts, try again later.')
   }
   await findNext(s.code)
 }
@@ -152,8 +156,10 @@ async function onMissed(index: number) {
       toldAboutReviews = true
       toast.success('Added to your reviews — prompts you miss will come back.')
     }
-  } catch {
-    // Not worth interrupting the session for; the next miss tries again.
+  } catch (e) {
+    // Offline, the miss is queued so the prompt still reaches reviews.
+    if (isNetworkError(e))
+      await queueAction({ type: 'speakMiss', languageCode: lang.code, code: s.code, index })
   }
 }
 

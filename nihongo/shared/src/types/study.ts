@@ -553,11 +553,47 @@ export type AnswerResult = z.infer<typeof answerResultSchema>
  * validated here, carries its own client id for idempotency, and keeps the
  * time it HAPPENED, not the time it finally synced.
  */
+const queuedBase = {
+  id: z.uuid(),
+  /** When it happened on the device — kept, not replaced by when it synced. */
+  occurredAt: z.iso.datetime()
+}
+
 export const syncActionSchema = z.discriminatedUnion('type', [
   recordActivitySchema.extend({
     type: z.literal('activity'),
     id: z.uuid(),
     languageCode: z.string().min(2)
+  }),
+  // The same fields as the online routes, inline rather than imported, so this
+  // file does not import the domains that import it.
+  z.object({
+    ...queuedBase,
+    type: z.literal('lessonComplete'),
+    languageCode: z.string().min(2),
+    slug: z.string().min(1),
+    score: z.number().int().min(0).max(100),
+    missedPromptIds: z.array(z.string()).default([])
+  }),
+  z.object({
+    ...queuedBase,
+    type: z.literal('speakComplete'),
+    languageCode: z.string().min(2),
+    code: z.string().min(1),
+    gotIt: z.number().int().min(0),
+    total: z.number().int().min(1)
+  }),
+  z.object({
+    ...queuedBase,
+    type: z.literal('speakMiss'),
+    languageCode: z.string().min(2),
+    code: z.string().min(1),
+    index: z.number().int().min(0)
+  }),
+  z.object({
+    ...queuedBase,
+    type: z.literal('saveWord'),
+    wordId: z.string().min(1)
   })
 ]).openapi('SyncAction')
 
