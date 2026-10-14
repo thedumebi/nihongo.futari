@@ -66,8 +66,10 @@ const KANA_MEANS: Record<string, string> = {
  *   正しく   正しくする "make right", not "certainly"
  *   作り方   "how to make", not "style of building"
  *   お話し   humble "talk", not "story"
+ *   かさ     an umbrella (傘), not a pine "cone"
+ *   あし     a foot or leg (足), not "common reed"
  */
-const WRONG_SENSE = new Set(['山本', '一つ目', '三つ目', 'かも', 'みたい', '正しく', '作り方', 'お話し'])
+const WRONG_SENSE = new Set(['山本', '一つ目', '三つ目', 'かも', 'みたい', '正しく', '作り方', 'お話し', 'かさ', 'あし'])
 
 const q = (value: string) => `'${value.replace(/'/g, '\'\'')}'`
 const arr = (values: string[]) => values.length === 0 ? `'{}'::text[]` : `ARRAY[${values.map(q).join(', ')}]::text[]`

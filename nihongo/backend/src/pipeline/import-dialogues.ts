@@ -5,6 +5,7 @@ import { sql } from 'drizzle-orm'
 import type { Dialogue } from './data/dialogues/types.js'
 
 import { DIALOGUES } from './data/dialogues/index.js'
+import { DIALOGUE_LEVELS } from './data/dialogues/levels.js'
 
 /**
  * Build the conversations from the authored data.
@@ -22,7 +23,15 @@ import { DIALOGUES } from './data/dialogues/index.js'
  */
 
 const LANGUAGE = 'lang-ja'
-const LEVEL = 'lvl-ja-n5'
+
+/**
+ * A conversation's level, from the authored list. N5 only where a level is
+ * missing — every conversation used to be imported as N5, which told a learner
+ * nothing about which ones were easy.
+ */
+function levelOf(code: string): string {
+  return `lvl-ja-${(DIALOGUE_LEVELS[code] ?? 'N5').toLowerCase()}`
+}
 
 function assertWellFormed(d: Dialogue): void {
   const learner = d.turns.filter(t => t.s === 'you')
@@ -69,7 +78,7 @@ export async function importDialogues() {
     await db.execute(sql`
       insert into dialogues (id, language_id, level_id, unit_id, code, title, situation, published, sort_index)
       values (
-        ${id}, ${LANGUAGE}, ${LEVEL},
+        ${id}, ${LANGUAGE}, ${levelOf(d.code)},
         (select cu.id from curriculum_units cu where cu.language_id = ${LANGUAGE} and cu.code = ${d.unit}),
         ${d.code}, ${d.title}, ${d.situation}, true, ${index}
       )
@@ -77,6 +86,7 @@ export async function importDialogues() {
         title = excluded.title,
         situation = excluded.situation,
         unit_id = excluded.unit_id,
+        level_id = excluded.level_id,
         sort_index = excluded.sort_index,
         updated_at = now()
     `)
@@ -120,6 +130,12 @@ export async function importDialogues() {
     select 'si-'||d.id, d.language_id, 'dialogue', d.id, d.level_id, 4000 + d.sort_index, d.published, true
     from dialogues d where d.language_id = ${LANGUAGE}
     on conflict (id) do nothing
+  `)
+  // An existing item follows its conversation's level.
+  await db.execute(sql`
+    update study_items si set level_id = d.level_id, updated_at = now()
+    from dialogues d
+    where si.dialogue_id = d.id and d.language_id = ${LANGUAGE} and si.level_id is distinct from d.level_id
   `)
   await db.execute(sql`
     insert into study_item_facets (id, study_item_id, facet, enabled, weight, intro_order)
