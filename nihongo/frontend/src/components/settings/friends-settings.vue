@@ -6,6 +6,7 @@ import { computed, onMounted, ref } from 'vue'
 
 import { getFriends, rotateFriendCode, updateFriendSettings } from '@/api/friends'
 import Button from '@/components/ui/button.vue'
+import CollapsibleCard from '@/components/ui/collapsible-card.vue'
 import Input from '@/components/ui/input.vue'
 import { useConfirm } from '@/composables/use-confirm'
 import { useToast } from '@/composables/use-toast'
@@ -92,10 +93,7 @@ async function copyLink() {
 </script>
 
 <template>
-  <section class="mt-8 rounded-xl border border-[var(--color-border)] p-6">
-    <h2 class="font-semibold">
-      Friends
-    </h2>
+  <CollapsibleCard class="mt-4" title="Friends" :summary="!settings ? '' : settings.enabled ? `On · your code ${settings.code}` : 'Off'">
     <p class="mt-1 text-sm text-[var(--color-muted)]">
       Study alongside friends: see who has studied today, keep a streak together, compare crossword times.
       Off unless you turn it on. Your words, accuracy and the cards you find hard are never shared.
@@ -168,5 +166,5 @@ async function copyLink() {
         </Button>
       </template>
     </template>
-  </section>
+  </CollapsibleCard>
 </template>

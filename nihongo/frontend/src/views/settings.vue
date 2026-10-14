@@ -9,6 +9,7 @@ import { getStudySettings, updateStudySettings } from '@/api/settings'
 import AppShell from '@/components/layout/app-shell.vue'
 import FriendsSettings from '@/components/settings/friends-settings.vue'
 import Button from '@/components/ui/button.vue'
+import CollapsibleCard from '@/components/ui/collapsible-card.vue'
 import Dropdown from '@/components/ui/dropdown.vue'
 import Input from '@/components/ui/input.vue'
 import Segmented from '@/components/ui/segmented.vue'
@@ -174,6 +175,17 @@ const HOURS = Array.from({ length: 24 }, (_, h) => ({
  * caller.
  */
 const HOUR_OPTIONS = HOURS.map(h => ({ value: String(h.value ?? h), label: String(h.label ?? h) }))
+/** The Reminders section folded: which channels are on, and when. */
+const remindersSummary = computed(() => {
+  const p = prefs.value
+  if (!p)
+    return ''
+  const channels = [p.reminderEmailEnabled ? 'Email' : null, p.reminderPushEnabled ? 'Push' : null].filter(Boolean)
+  if (channels.length === 0)
+    return 'Off'
+  return `${channels.join(' and ')} at ${String(p.reminderHour).padStart(2, '0')}:${String(p.reminderMinute ?? 0).padStart(2, '0')}`
+})
+
 const reminderHourValue = computed({
   get: () => String(prefs.value?.reminderHour ?? 19),
   set: (v: string) => {
@@ -253,10 +265,7 @@ async function turnOnPush() {
         Settings
       </h1>
 
-      <div class="mt-8 rounded-xl border border-[var(--color-border)] p-6">
-        <h2 class="font-semibold">
-          New words a day
-        </h2>
+      <CollapsibleCard class="mt-8" title="New words a day" :summary="dailyNewLimit === null ? '' : `${dailyNewLimit} a day`">
         <p class="mt-1 text-sm text-[var(--color-muted)]">
           How many new cards Learn gives you each day. More now means more reviews in a few days —
           10 is a steady pace. You can always ask for a few more on the day.
@@ -269,12 +278,9 @@ async function turnOnPush() {
           :options="DAILY_OPTIONS"
           @update:model-value="setDailyLimit"
         />
-      </div>
+      </CollapsibleCard>
 
-      <div class="mt-4 rounded-xl border border-[var(--color-border)] p-6">
-        <h2 class="font-semibold">
-          Furigana
-        </h2>
+      <CollapsibleCard class="mt-4" title="Furigana" :summary="FURIGANA_MODE_LABELS[furiganaMode].description">
         <p class="mt-1 text-sm text-[var(--color-muted)]">
           Readings printed above kanji.
         </p>
@@ -294,14 +300,11 @@ async function turnOnPush() {
             <span class="block text-sm text-[var(--color-muted)]">{{ FURIGANA_MODE_LABELS[option].description }}</span>
           </span>
         </label>
-      </div>
+      </CollapsibleCard>
 
       <!-- Account. Kept above the study preferences because a beginner's
            first visit here is usually to fix their own name. -->
-      <section class="mt-8 rounded-xl border border-[var(--color-border)] p-6">
-        <h2 class="font-semibold">
-          Account
-        </h2>
+      <CollapsibleCard class="mt-4" title="Account" :summary="`${auth.user?.name ? `${auth.user.name} · ` : ''}${auth.user?.email ?? ''}`">
         <p class="mt-1 text-sm text-[var(--color-muted)]">
           Signed in as {{ auth.user?.email }}.
         </p>
@@ -344,19 +347,16 @@ async function turnOnPush() {
             </Button>
           </form>
         </div>
-      </section>
+      </CollapsibleCard>
 
       <FriendsSettings />
 
-      <p v-if="loading" class="mt-8 text-[var(--color-muted)]">
+      <p v-if="loading" class="mt-4 text-[var(--color-muted)]">
         Loading…
       </p>
 
-      <section v-else-if="prefs" class="mt-8 space-y-6">
-        <div class="rounded-xl border border-[var(--color-border)] p-6">
-          <h2 class="font-semibold">
-            Reminders
-          </h2>
+      <CollapsibleCard v-else-if="prefs" class="mt-4" title="Reminders" :summary="remindersSummary">
+        <div>
           <p class="mt-1 text-sm text-[var(--color-muted)]">
             A nudge when cards are waiting. Sent at your chosen hour, in your own timezone.
           </p>
@@ -430,7 +430,7 @@ async function turnOnPush() {
             </Button>
           </div>
         </div>
-      </section>
+      </CollapsibleCard>
     </div>
   </AppShell>
 </template>
