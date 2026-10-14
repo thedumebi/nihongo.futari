@@ -4,9 +4,11 @@ import { Flame, Globe, Menu, X } from 'lucide-vue-next'
 import { computed, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 
+import type { NavMenuItem } from '@/components/layout/nav-menu.vue'
 import type { DropdownOption } from '@/components/ui/dropdown.vue'
 
 import { markAchievementsSeen } from '@/api/progress'
+import NavMenu from '@/components/layout/nav-menu.vue'
 import Dropdown from '@/components/ui/dropdown.vue'
 import { useToast } from '@/composables/use-toast'
 import { ROUTES } from '@/constants'
@@ -69,56 +71,58 @@ interface NavLink {
   badge?: number
 }
 
-// Only surface routes that exist — a nav that 404s is worse than a short nav.
-const links = computed(() => {
+/**
+ * The menu, grouped by what you came to do.
+ *
+ * It had grown to eight links and a second row of seven more — Course, Due,
+ * Writing, Sounds, Games… — with no sense of which were for learning
+ * something new and which for practising it, and the owner found it
+ * confusing. Now: five places in one row. Today and Review are the daily
+ * loop; Learn gathers everything that introduces something new; Practise
+ * everything that uses what you know; Dictionary is the reference. Progress,
+ * friends and settings live in your account menu.
+ */
+const dailyLinks = computed<NavLink[]>(() => {
   if (!auth.isAuthenticated)
     return []
   const due = todayStore.today?.due ?? 0
-  const base: NavLink[] = [
-    // Today first: the one screen that answers "what should I do now".
-    //
-    // Learn and Review are the two halves of the old "Review" tab, which
-    // opened on NEW cards while the reviews that were actually due sat under
-    // "Due" in the second row with no count anywhere — so a beginner tapping
-    // Review kept taking new material while the backlog grew unseen.
+  return [
     { label: 'Today', to: ROUTES.TODAY },
-    { label: 'Learn', to: ROUTES.LEARN },
     // Review opens the list of what is due; "Start reviewing" there starts the session.
-    { label: 'Review', to: ROUTES.DUE, ...(due > 0 ? { badge: due } : {}) },
-    { label: 'Lessons', to: ROUTES.LESSONS },
-    { label: 'Conversations', to: ROUTES.CONVERSATIONS },
-    { label: 'Read', to: ROUTES.READ },
-    { label: 'Speak', to: ROUTES.SPEAK },
-    { label: 'Dictionary', to: ROUTES.DICTIONARY }
+    { label: 'Review', to: ROUTES.DUE, ...(due > 0 ? { badge: due } : {}) }
   ]
-  // An admin is an ordinary account with a role, so the admin entry is an
-  // addition to the normal nav rather than a separate area you log into.
-  if (auth.isAdmin)
-    base.push({ label: 'Admin', to: ROUTES.ADMIN })
-  return base
 })
 
-/**
- * The rest, reachable without cluttering the main five.
- *
- * Course, Writing and Sounds left the primary nav when it went from eight
- * tabs to five, but nothing about them was retired — losing a route because a
- * tab moved would be a regression dressed as a tidy-up. On a phone they sit in
- * the same drawer; on a desk they are a quieter second row.
- */
-const secondary = computed(() => {
-  if (!auth.isAuthenticated)
-    return []
-  return [
-    { label: 'Progress', to: ROUTES.PROGRESS },
-    { label: 'Course', to: ROUTES.COURSE },
-    { label: 'Writing', to: ROUTES.WRITING },
-    { label: 'Sounds', to: ROUTES.SOUND_SERIES },
-    { label: 'Games', to: ROUTES.GAMES },
-    { label: 'Friends', to: ROUTES.FRIENDS },
-    { label: 'Grammar', to: ROUTES.GRAMMAR }
-  ]
-})
+const learnMenu: NavMenuItem[] = [
+  { label: 'New words', to: ROUTES.LEARN, hint: 'Today\'s new cards' },
+  { label: 'Lessons', to: ROUTES.LESSONS, hint: 'Grammar and kana, one lesson at a time' },
+  { label: 'Course', to: ROUTES.COURSE, hint: 'Where you are and what comes next' },
+  { label: 'Grammar', to: ROUTES.GRAMMAR, hint: 'Every pattern, to look up' },
+  { label: 'Writing', to: ROUTES.WRITING, hint: 'Kana and kanji, stroke by stroke' },
+  { label: 'Sounds', to: ROUTES.SOUND_SERIES, hint: 'Parts that tell you a kanji\'s reading' }
+]
+
+const practiseMenu: NavMenuItem[] = [
+  { label: 'Speak', to: ROUTES.SPEAK, hint: 'Hear the English, say the Japanese' },
+  { label: 'Recall', to: ROUTES.RECALL, hint: 'Your shaky words, hands-free' },
+  { label: 'Conversations', to: ROUTES.CONVERSATIONS, hint: 'Short exchanges, and shadowing' },
+  { label: 'Read', to: ROUTES.READ, hint: 'Speeches to read aloud' },
+  { label: 'Games', to: ROUTES.GAMES, hint: 'Crossword, listening, build a kanji' }
+]
+
+const accountMenu = computed<NavMenuItem[]>(() => [
+  { label: 'Progress', to: ROUTES.PROGRESS },
+  { label: 'Achievements', to: ROUTES.ACHIEVEMENTS },
+  { label: 'Friends', to: ROUTES.FRIENDS },
+  { label: 'Settings', to: ROUTES.SETTINGS },
+  // An admin is an ordinary account with a role, so the admin entry is an
+  // addition to the normal menu rather than a separate area you log into.
+  ...(auth.isAdmin ? [{ label: 'Admin', to: ROUTES.ADMIN }] : [])
+])
+
+function groupActive(items: NavMenuItem[]): boolean {
+  return items.some(i => isActive(i.to))
+}
 
 /**
  * Whether a nav link is the current page. Learn and Review are one path with
@@ -194,20 +198,31 @@ async function signOut() {
             <span>{{ SITE_NAME }}</span>
           </router-link>
 
-          <router-link
-            v-for="item in links"
-            :key="item.to"
-            :to="item.to"
-            class="hidden items-center gap-1 whitespace-nowrap text-sm transition hover:text-[var(--color-text)] lg:inline-flex"
-            :class="isActive(item.to) ? 'text-[var(--color-text)]' : 'text-[var(--color-muted)]'"
-          >
-            {{ item.label }}
-            <span
-              v-if="item.badge"
-              class="rounded-full bg-[var(--color-primary)] px-1.5 text-[0.65rem] font-semibold leading-4 text-[var(--color-bg)]"
-              :aria-label="`${item.badge} due`"
-            >{{ item.badge }}</span>
-          </router-link>
+          <template v-if="auth.isAuthenticated">
+            <router-link
+              v-for="item in dailyLinks"
+              :key="item.to"
+              :to="item.to"
+              class="hidden items-center gap-1 whitespace-nowrap text-sm transition hover:text-[var(--color-text)] lg:inline-flex"
+              :class="isActive(item.to) ? 'text-[var(--color-text)]' : 'text-[var(--color-muted)]'"
+            >
+              {{ item.label }}
+              <span
+                v-if="item.badge"
+                class="rounded-full bg-[var(--color-primary)] px-1.5 text-[0.65rem] font-semibold leading-4 text-[var(--color-bg)]"
+                :aria-label="`${item.badge} due`"
+              >{{ item.badge }}</span>
+            </router-link>
+            <NavMenu class="hidden lg:block" label="Learn" :items="learnMenu" :active="groupActive(learnMenu)" />
+            <NavMenu class="hidden lg:block" label="Practise" :items="practiseMenu" :active="groupActive(practiseMenu)" />
+            <router-link
+              :to="ROUTES.DICTIONARY"
+              class="hidden whitespace-nowrap text-sm transition hover:text-[var(--color-text)] lg:inline-flex"
+              :class="isActive(ROUTES.DICTIONARY) ? 'text-[var(--color-text)]' : 'text-[var(--color-muted)]'"
+            >
+              Dictionary
+            </router-link>
+          </template>
 
           <div class="ml-auto flex items-center gap-4 text-sm">
             <Dropdown
@@ -233,12 +248,23 @@ async function signOut() {
                 <Flame class="h-4 w-4" />{{ todayStore.today.streak.current }}
                 <span class="ml-1 hidden text-xs text-[var(--color-muted)] sm:inline">Lv {{ todayStore.today.xp.level }}</span>
               </router-link>
-              <router-link :to="ROUTES.SETTINGS" class="hidden text-[var(--color-muted)] underline underline-offset-4 hover:text-[var(--color-text)] xl:inline">
-                {{ auth.user?.name || auth.user?.email }}
-              </router-link>
-              <button type="button" class="hidden whitespace-nowrap text-[var(--color-muted)] underline underline-offset-4 hover:text-[var(--color-text)] lg:inline" @click="signOut">
-                Sign out
-              </button>
+              <NavMenu
+                class="hidden lg:block"
+                :label="auth.user?.name || 'Account'"
+                :items="accountMenu"
+                :active="groupActive(accountMenu)"
+                align-right
+              >
+                <template #footer>
+                  <button
+                    type="button"
+                    class="mt-1 block w-full rounded-lg border-t border-[var(--color-border)] px-3 py-2 text-left text-sm text-[var(--color-muted)] transition hover:bg-[var(--color-card)] hover:text-[var(--color-text)]"
+                    @click="signOut"
+                  >
+                    Sign out
+                  </button>
+                </template>
+              </NavMenu>
               <button
                 type="button"
                 class="-mr-1 rounded p-1 text-[var(--color-muted)] transition hover:text-[var(--color-text)] lg:hidden"
@@ -254,24 +280,6 @@ async function signOut() {
               Sign in
             </router-link>
           </div>
-        </div>
-
-        <!--
-          The quieter row. Course, Due, Writing, Sounds and Grammar left the
-          main nav when it went from eight tabs to five, but they are still
-          whole pages — without this they were reachable on a desktop only by
-          typing the URL, while a comment claimed otherwise.
-        -->
-        <div v-if="secondary.length" class="mt-2 hidden flex-wrap gap-4 lg:flex">
-          <router-link
-            v-for="item in secondary"
-            :key="item.to"
-            :to="item.to"
-            class="text-xs text-[var(--color-muted)] opacity-80 transition hover:text-[var(--color-text)] hover:opacity-100"
-            active-class="!text-[var(--color-text)] !opacity-100"
-          >
-            {{ item.label }}
-          </router-link>
         </div>
       </nav>
 
@@ -313,7 +321,7 @@ async function signOut() {
               <X class="h-5 w-5" />
             </button>
             <router-link
-              v-for="item in links"
+              v-for="item in dailyLinks"
               :key="item.to"
               :to="item.to"
               class="flex items-center justify-between rounded-lg px-2 py-2 transition hover:text-[var(--color-text)]"
@@ -325,20 +333,38 @@ async function signOut() {
                 class="rounded-full bg-[var(--color-primary)] px-1.5 text-xs font-semibold text-[var(--color-bg)]"
               >{{ item.badge }}</span>
             </router-link>
+            <template v-for="group in [{ title: 'Learn', items: learnMenu }, { title: 'Practise', items: practiseMenu }]" :key="group.title">
+              <p class="mt-3 px-2 text-xs uppercase tracking-wide text-[var(--color-muted)] opacity-70">
+                {{ group.title }}
+              </p>
+              <router-link
+                v-for="item in group.items"
+                :key="item.to"
+                :to="item.to"
+                class="rounded-lg px-2 py-1.5 transition hover:text-[var(--color-text)]"
+                :class="isActive(item.to) ? 'text-[var(--color-text)]' : 'text-[var(--color-muted)]'"
+              >
+                {{ item.label }}
+              </router-link>
+            </template>
             <router-link
-              v-for="item in secondary"
+              :to="ROUTES.DICTIONARY"
+              class="mt-3 rounded-lg px-2 py-2 transition hover:text-[var(--color-text)]"
+              :class="isActive(ROUTES.DICTIONARY) ? 'text-[var(--color-text)]' : 'text-[var(--color-muted)]'"
+            >
+              Dictionary
+            </router-link>
+            <p class="mt-3 truncate border-t border-[var(--color-border)] px-2 pt-4 text-xs uppercase tracking-wide text-[var(--color-muted)] opacity-70">
+              {{ auth.user?.name || auth.user?.email }}
+            </p>
+            <router-link
+              v-for="item in accountMenu"
               :key="item.to"
               :to="item.to"
-              class="rounded-lg px-2 py-1.5 text-sm text-[var(--color-muted)] opacity-80 transition hover:text-[var(--color-text)] hover:opacity-100"
-              active-class="!text-[var(--color-text)]"
+              class="rounded-lg px-2 py-1.5 text-sm transition hover:text-[var(--color-text)]"
+              :class="isActive(item.to) ? 'text-[var(--color-text)]' : 'text-[var(--color-muted)]'"
             >
               {{ item.label }}
-            </router-link>
-            <router-link
-              :to="ROUTES.SETTINGS"
-              class="mt-2 truncate border-t border-[var(--color-border)] px-2 pt-4 text-sm text-[var(--color-muted)] transition hover:text-[var(--color-text)]"
-            >
-              {{ auth.user?.name || auth.user?.email }}
             </router-link>
             <button
               type="button"
