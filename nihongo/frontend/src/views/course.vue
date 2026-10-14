@@ -89,13 +89,19 @@ onMounted(load)
   <AppShell>
     <div class="mx-auto max-w-2xl px-6 py-12">
       <h1 class="text-3xl font-semibold">
-        Your course
+        Course map
       </h1>
       <p class="mt-2 text-[var(--color-muted)]">
-        Everything except grammar, in the order it is best met &mdash; kana, words, kanji,
-        sentences and conversations. New material arrives one stage at a time; the next
-        opens once most of this one has stuck. Grammar is not staged: topics live in
-        Lessons and you take them in any order.
+        The order <router-link :to="ROUTES.LEARN" class="underline underline-offset-4">
+          New words
+        </router-link>
+        deals cards in &mdash; kana, words, kanji, sentences and conversations, one stage at a
+        time. The next stage opens once most of this one has stuck. You do not study here: New
+        words gives you today's cards from your current stage. Grammar is not staged &mdash; it is
+        taught in <router-link :to="ROUTES.LESSONS" class="underline underline-offset-4">
+          Lessons
+        </router-link>,
+        in any order.
       </p>
 
       <p v-if="loading" class="mt-10 text-center text-[var(--color-muted)]">

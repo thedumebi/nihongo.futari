@@ -131,6 +131,10 @@ onMounted(async () => {
         Grammar
       </h1>
       <p class="mt-2 text-[var(--color-muted)]">
+        Look up any pattern. To learn one and be quizzed on it, take its lesson in
+        <router-link :to="ROUTES.LESSONS" class="underline underline-offset-4">
+          Lessons
+        </router-link>.
         Where the history genuinely explains the modern form, there's a sourced note attached.
       </p>
 

@@ -1424,6 +1424,9 @@ watch(() => lang.code, async () => {
               of THIS stage has stuck, and it resets each time a stage opens.
             -->
             <span>{{ stage.learned }}/{{ stage.total }} cards</span>
+            <router-link :to="ROUTES.COURSE" class="underline underline-offset-4 hover:text-[var(--color-text)]">
+              Map
+            </router-link>
           </span>
         </Tooltip>
         <span v-if="sessionSeen > 0" class="ml-auto text-sm text-[var(--color-muted)]">

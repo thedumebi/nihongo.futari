@@ -186,6 +186,18 @@ onMounted(async () => {
 
       <LevelCard v-if="summary" class="mt-8" :total-xp="summary.totalXp" />
 
+      <!-- The course map left the menu: it is a view of progress, not a place to study. -->
+      <router-link
+        :to="ROUTES.COURSE"
+        class="mt-4 flex items-center justify-between gap-4 rounded-xl border border-[var(--color-border)] p-5 transition hover:border-[var(--color-text)]"
+      >
+        <span>
+          <span class="block font-semibold">Course map</span>
+          <span class="block text-sm text-[var(--color-muted)]">Every stage of words, kanji and kana that New words takes you through, and where you are.</span>
+        </span>
+        <ChevronRight class="h-5 w-5 shrink-0 text-[var(--color-muted)]" />
+      </router-link>
+
       <section class="mt-10">
         <div class="flex items-baseline justify-between gap-4">
           <h2 class="text-xs uppercase tracking-wide text-[var(--color-muted)]">
