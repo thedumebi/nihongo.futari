@@ -5,7 +5,9 @@ import { useRoute, useRouter } from 'vue-router'
 
 import type { DropdownOption } from '@/components/ui/dropdown.vue'
 
+import { markAchievementsSeen } from '@/api/progress'
 import Dropdown from '@/components/ui/dropdown.vue'
+import { useToast } from '@/composables/use-toast'
 import { ROUTES } from '@/constants'
 import { SITE_MARK, SITE_NAME } from '@/constants/site'
 import { useAuthStore } from '@/store/auth'
@@ -17,6 +19,22 @@ const router = useRouter()
 const auth = useAuthStore()
 const lang = useLanguageStore()
 const todayStore = useTodayStore()
+const toast = useToast()
+
+/**
+ * An achievement unlocked since last time: said once, wherever the learner
+ * happens to be, then marked seen so it is never said again.
+ */
+watch(() => todayStore.today?.unseenAchievements, (unseen) => {
+  if (!unseen || unseen.length === 0)
+    return
+  const [first, ...rest] = unseen
+  toast.success(rest.length === 0
+    ? `Achievement unlocked: ${first!.title} — ${first!.description}`
+    : `${unseen.length} achievements unlocked: ${unseen.map(a => a.title).join(', ')}`, 6000)
+  void markAchievementsSeen(unseen.map(a => a.code)).catch(() => {})
+  todayStore.today!.unseenAchievements = []
+})
 const languageIcon = Globe
 
 /**

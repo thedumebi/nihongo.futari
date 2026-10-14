@@ -2,9 +2,10 @@ import { HttpStatusCodes } from '@nihongo/shared/constants'
 
 import type { AppRouteHandler } from '@/lib/types.js'
 
+import { listAchievements, markAchievementsSeen } from '@/services/achievements.service.js'
 import { getKnownKanji, getReadiness, getSummary } from '@/services/progress.service.js'
 
-import type { KnownKanjiRoute, ReadinessRoute, SummaryRoute } from './progress.routes.js'
+import type { AchievementListRoute, AchievementsSeenRoute, KnownKanjiRoute, ReadinessRoute, SummaryRoute } from './progress.routes.js'
 
 export const summary: AppRouteHandler<SummaryRoute> = async (c) => {
   const user = c.get('user')!
@@ -26,4 +27,15 @@ export const readiness: AppRouteHandler<ReadinessRoute> = async (c) => {
   if (!result)
     return c.json({ message: 'No such level' }, HttpStatusCodes.NOT_FOUND)
   return c.json(result, HttpStatusCodes.OK)
+}
+
+export const achievementList: AppRouteHandler<AchievementListRoute> = async (c) => {
+  const user = c.get('user')!
+  return c.json(await listAchievements(user.id, c.req.valid('query').languageCode), HttpStatusCodes.OK)
+}
+
+export const achievementsSeen: AppRouteHandler<AchievementsSeenRoute> = async (c) => {
+  const user = c.get('user')!
+  await markAchievementsSeen(user.id, c.req.valid('json').codes)
+  return c.json({ message: 'Marked' }, HttpStatusCodes.OK)
 }

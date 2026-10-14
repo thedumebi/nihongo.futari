@@ -258,6 +258,23 @@ export const ACTIVITY_KINDS = [
 ] as const
 export type ActivityKind = typeof ACTIVITY_KINDS[number]
 
+/** What an achievement counts — achievements.threshold_kind. */
+export const ACHIEVEMENT_KINDS = [
+  'reviews',
+  'streak',
+  'items-learned',
+  'accuracy',
+  'kanji-known',
+  'handwriting',
+  'lessons',
+  'speak-sessions',
+  'crosswords',
+  'conversations',
+  'readings',
+  'recall'
+] as const
+export type AchievementKind = typeof ACHIEVEMENT_KINDS[number]
+
 export const ACTIVITY_ROUTES = {
   RECORD: '/'
 } as const
@@ -322,7 +339,9 @@ export const PROGRESS_ROUTES = {
   STREAK: '/streak',
   FORECAST: '/forecast',
   READINESS: '/readiness/:levelCode',
-  KNOWN_KANJI: '/known-kanji'
+  KNOWN_KANJI: '/known-kanji',
+  ACHIEVEMENTS: '/achievements',
+  ACHIEVEMENTS_SEEN: '/achievements/seen'
 } as const
 
 export const DICTIONARY_ROUTES = {
@@ -517,7 +536,9 @@ export const API_ENDPOINTS = {
     FORECAST: `${ROUTE_BASE_PATHS.PROGRESS}${PROGRESS_ROUTES.FORECAST}`,
     READINESS: (levelCode: string) =>
       `${ROUTE_BASE_PATHS.PROGRESS}${PROGRESS_ROUTES.READINESS.replace(':levelCode', levelCode)}`,
-    KNOWN_KANJI: `${ROUTE_BASE_PATHS.PROGRESS}${PROGRESS_ROUTES.KNOWN_KANJI}`
+    KNOWN_KANJI: `${ROUTE_BASE_PATHS.PROGRESS}${PROGRESS_ROUTES.KNOWN_KANJI}`,
+    ACHIEVEMENTS: `${ROUTE_BASE_PATHS.PROGRESS}${PROGRESS_ROUTES.ACHIEVEMENTS}`,
+    ACHIEVEMENTS_SEEN: `${ROUTE_BASE_PATHS.PROGRESS}${PROGRESS_ROUTES.ACHIEVEMENTS_SEEN}`
   },
 
   DICTIONARY: {

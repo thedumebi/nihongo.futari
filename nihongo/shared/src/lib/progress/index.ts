@@ -1,3 +1,5 @@
+export { evaluateAchievements } from './achievements.js'
+export type { AchievementDef, AchievementState } from './achievements.js'
 /**
  * Progress aggregates — all pure, all replay-safe.
  *
@@ -9,6 +11,9 @@
  */
 export type { AggregateOptions } from './aggregate.js'
 export { aggregateReviews } from './aggregate.js'
+export { QUEST_POOL, QUEST_XP, questProgress, questsFor } from './quests.js'
+export type { QuestDef, QuestProgress } from './quests.js'
 export type { StreakOptions } from './streak.js'
 export { computeStreak } from './streak.js'
+export { FREEZE_CAP, FREEZE_EARN_EVERY } from './streak.js'
 export { daysBetween, nextDate, studyDateFor, studyDayRange } from './study-day.js'

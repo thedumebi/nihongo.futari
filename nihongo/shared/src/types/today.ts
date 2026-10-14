@@ -22,7 +22,17 @@ export const todaySchema = z.object({
     /** Whether today already counts — so the page can say "keep it going" or "done for today". */
     studiedToday: z.boolean()
   }),
-  xp: z.object({ total: z.number().int(), level: z.number().int() })
+  xp: z.object({ total: z.number().int(), level: z.number().int() }),
+  /** Today's three small goals — the same all day. */
+  quests: z.array(z.object({
+    code: z.string(),
+    title: z.string(),
+    target: z.number().int(),
+    progress: z.number().int(),
+    done: z.boolean()
+  })),
+  /** Achievements unlocked but not yet celebrated — shown once, then marked seen. */
+  unseenAchievements: z.array(z.object({ code: z.string(), title: z.string(), description: z.string() }))
 }).openapi('Today')
 
 export type Today = z.infer<typeof todaySchema>

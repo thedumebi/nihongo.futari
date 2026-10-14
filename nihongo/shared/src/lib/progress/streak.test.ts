@@ -196,3 +196,59 @@ describe('studyDayRange', () => {
     expect(() => studyDayRange('2026-03-10', 'Mars/Olympus')).toThrow(/Invalid study date or timezone/)
   })
 })
+
+describe('computeStreak — earned freezes', () => {
+  /** Consecutive study dates starting at `from`. */
+  const run = (from: string, n: number) => Array.from({ length: n }, (_, i) => nextN(from, i))
+  function nextN(date: string, n: number): string {
+    let d = date
+    for (let i = 0; i < n; i++) d = nextDate(d)
+    return d
+  }
+
+  it('earns one freeze after seven study days and spends it on the next gap', () => {
+    const days = [...run('2026-03-01', 7), ...run('2026-03-09', 3)] // 03-08 missed
+    const s = computeStreak(days, { today: '2026-03-11' })
+    expect(s.currentStreak).toBe(11)
+    expect(s.freezes).toEqual([{ earnedOn: '2026-03-07', usedOn: '2026-03-08' }])
+    expect(s.freezesRemaining).toBe(0)
+  })
+
+  it('never bridges a gap that comes before the freeze was earned', () => {
+    const days = ['2026-03-01', ...run('2026-03-03', 7)] // 03-02 missed, then a week
+    const s = computeStreak(days, { today: '2026-03-09' })
+    expect(s.freezesUsed).toEqual([])
+    expect(s.currentStreak).toBe(7)
+    expect(s.freezesRemaining).toBe(1)
+  })
+
+  it('holds at most two', () => {
+    const s = computeStreak(run('2026-03-01', 30), { today: '2026-03-30' })
+    expect(s.freezes.map(f => f.earnedOn)).toEqual(['2026-03-07', '2026-03-14'])
+    expect(s.freezesRemaining).toBe(2)
+  })
+
+  it('does not count bridged days toward the next freeze', () => {
+    // 6 real days, a gap a granted freeze bridges, then 1 more: 7 real days earn one.
+    const days = [...run('2026-03-01', 6), '2026-03-08']
+    const s = computeStreak(days, { today: '2026-03-08', freezesAvailable: 1 })
+    expect(s.freezesUsed).toEqual(['2026-03-07'])
+    expect(s.freezes).toEqual([{ earnedOn: '2026-03-08', usedOn: null }])
+  })
+
+  it('lands on the same answer whatever order the days arrive in', () => {
+    const days = [...run('2026-03-01', 7), ...run('2026-03-09', 9), ...run('2026-03-20', 4)]
+    const expected = computeStreak(days, { today: '2026-03-23' })
+    for (let i = 0; i < 20; i++) {
+      const shuffled = [...days].sort(() => (i * 7919 % 13) - 6)
+      expect(computeStreak(shuffled.reverse(), { today: '2026-03-23' })).toEqual(expected)
+    }
+  })
+
+  it('a past day filled in later can release a freeze it no longer needs', () => {
+    const gappy = [...run('2026-03-01', 7), ...run('2026-03-09', 2)]
+    const filled = [...gappy, '2026-03-08']
+    expect(computeStreak(gappy, { today: '2026-03-10' }).freezesRemaining).toBe(0)
+    expect(computeStreak(filled, { today: '2026-03-10' }).freezesRemaining).toBe(1)
+  })
+})

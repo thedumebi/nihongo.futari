@@ -1,4 +1,4 @@
-import type { ProgressSummary, Readiness } from '@nihongo/shared/types'
+import type { AchievementList, ProgressSummary, Readiness } from '@nihongo/shared/types'
 
 import { API_ENDPOINTS } from '@nihongo/shared/constants'
 
@@ -16,4 +16,14 @@ export async function getReadiness(levelCode: string, languageCode = 'ja'): Prom
     params: { languageCode }
   })
   return data
+}
+
+export async function listAchievements(languageCode = 'ja'): Promise<AchievementList> {
+  const { data } = await client.get<AchievementList>(API_ENDPOINTS.PROGRESS.ACHIEVEMENTS, { params: { languageCode } })
+  return data
+}
+
+/** Record that these unlocks were shown, so each is celebrated once. */
+export async function markAchievementsSeen(codes: string[]): Promise<void> {
+  await client.post(API_ENDPOINTS.PROGRESS.ACHIEVEMENTS_SEEN, { codes })
 }

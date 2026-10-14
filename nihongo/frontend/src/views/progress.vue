@@ -1,11 +1,12 @@
 <script setup lang="ts">
-import type { Readiness } from '@nihongo/shared/types'
+import type { AchievementView, Readiness } from '@nihongo/shared/types'
 
+import { Award, Lock } from 'lucide-vue-next'
 import { computed, onMounted, ref, watch } from 'vue'
 
 import type { ProgressSummary } from '@/api/progress'
 
-import { getReadiness, getSummary } from '@/api/progress'
+import { getReadiness, getSummary, listAchievements } from '@/api/progress'
 import AppShell from '@/components/layout/app-shell.vue'
 import Dropdown from '@/components/ui/dropdown.vue'
 import Tooltip from '@/components/ui/tooltip.vue'
@@ -69,11 +70,17 @@ const stats = computed(() => {
     {
       label: 'XP',
       value: s.totalXp,
-      tip: 'Points from reviews. Recomputed from your review history, so it stays correct even when an offline session syncs late.',
+      tip: 'Points from reviews, lessons, Speak, conversations, speeches, crosswords and quests. Recomputed from what you did, so it stays correct even when an offline session syncs late.',
       to: null
     }
   ]
 })
+
+/** The shelf: unlocked first, then the nearest to unlocking. Secret ones stay hidden until earned. */
+const achievements = ref<AchievementView[]>([])
+const shelf = computed(() => achievements.value
+  .filter(a => a.unlockedAt || !a.secret)
+  .sort((a, b) => Number(Boolean(b.unlockedAt)) - Number(Boolean(a.unlockedAt)) || b.progress / b.threshold - a.progress / a.threshold))
 
 const LEVELS = ['N5', 'N4', 'N3', 'N2', 'N1']
 // Shared, but this page reports on exactly ONE level, so an empty shared
@@ -99,6 +106,9 @@ onMounted(async () => {
   // Cached value renders now; the stored one replaces it when it lands.
   void loadLevel()
   void loadReadiness()
+  void listAchievements().then((list) => {
+    achievements.value = list.achievements
+  }).catch(() => {})
   try {
     summary.value = await getSummary()
   } catch {
@@ -187,6 +197,39 @@ onMounted(async () => {
         <p v-else class="mt-3 text-sm text-[var(--color-muted)]">
           No coverage data for {{ level }} yet.
         </p>
+      </section>
+
+      <section v-if="shelf.length" class="mt-10">
+        <h2 class="text-xl font-semibold">
+          Achievements
+        </h2>
+        <p class="mt-1 text-sm text-[var(--color-muted)]">
+          {{ achievements.filter(a => a.unlockedAt).length }} of {{ achievements.length }} unlocked.
+        </p>
+        <ul class="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
+          <li
+            v-for="a in shelf"
+            :key="a.code"
+            class="flex items-start gap-3 rounded-xl border p-4"
+            :class="a.unlockedAt ? 'border-[var(--color-accent)]' : 'border-[var(--color-border)] opacity-80'"
+          >
+            <component :is="a.unlockedAt ? Award : Lock" class="mt-0.5 h-5 w-5 shrink-0" :class="a.unlockedAt ? 'text-[var(--color-accent)]' : 'text-[var(--color-muted)]'" />
+            <div class="min-w-0 flex-1">
+              <p class="font-medium">
+                {{ a.title }}
+              </p>
+              <p class="text-sm text-[var(--color-muted)]">
+                {{ a.description }}
+              </p>
+              <div v-if="!a.unlockedAt" class="mt-2 h-1.5 overflow-hidden rounded-full bg-[var(--color-border)]">
+                <div class="h-full bg-[var(--color-primary)]" :style="{ width: `${Math.round(a.progress / a.threshold * 100)}%` }" />
+              </div>
+              <p v-if="!a.unlockedAt" class="mt-1 text-xs tabular-nums text-[var(--color-muted)]">
+                {{ a.progress }} / {{ a.threshold }}
+              </p>
+            </div>
+          </li>
+        </ul>
       </section>
     </div>
   </AppShell>

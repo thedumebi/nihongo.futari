@@ -1,3 +1,5 @@
+import type { ActivityKind } from '@nihongo/shared/constants'
+import type { QuestProgress } from '@nihongo/shared/lib'
 import type { AggregateEvent, KnownKanji, ProgressSummary, Readiness, Streak } from '@nihongo/shared/types'
 
 import db from '@nihongo/shared/db'
@@ -19,9 +21,10 @@ import {
   userXp,
   xpEvents
 } from '@nihongo/shared/db/schema'
-import { aggregateReviews, computeStreak, studyDateFor, studyDayRange } from '@nihongo/shared/lib'
+import { aggregateReviews, computeStreak, QUEST_XP, questProgress, questsFor, studyDateFor, studyDayRange } from '@nihongo/shared/lib'
 import { and, eq, gte, inArray, isNull, sql } from 'drizzle-orm'
 
+import { recomputeAchievements } from './achievements.service.js'
 import { countDue } from './srs.service.js'
 
 /**
@@ -181,6 +184,16 @@ export async function recomputeProgress(userId: string, languageId: string, sinc
 export async function recomputeHabit(userId: string, languageId: string): Promise<Streak> {
   const { timezone, dayBoundaryHour } = await loadUserContext(userId)
 
+  // Today's quests: a finished one earns its XP once, keyed by quest and day.
+  const { localDate, quests } = await todayQuests(userId, languageId)
+  const done = quests.filter(q => q.done)
+  if (done.length > 0) {
+    await db
+      .insert(xpEvents)
+      .values(done.map(q => ({ userId, languageId, source: 'quest', refId: `${q.code}:${localDate}`, amount: QUEST_XP })))
+      .onConflictDoNothing()
+  }
+
   // user_xp is a cache of the sum, recomputed rather than incremented.
   const [totals] = await db
     .select({ total: sql<number>`coalesce(sum(${xpEvents.amount}), 0)`.mapWith(Number) })
@@ -196,7 +209,29 @@ export async function recomputeHabit(userId: string, languageId: string): Promis
       set: { totalXp, level: xpToLevel(totalXp), updatedAt: new Date() }
     })
 
-  return persistStreak(userId, languageId, timezone, dayBoundaryHour)
+  const streak = await persistStreak(userId, languageId, timezone, dayBoundaryHour)
+  await recomputeAchievements(userId, languageId)
+  return streak
+}
+
+/**
+ * Today's quests and how far each has got — from today's review count and
+ * today's activities, so it can be asked at any moment and agrees with itself.
+ */
+export async function todayQuests(userId: string, languageId: string, now = new Date()): Promise<{ localDate: string, quests: QuestProgress[] }> {
+  const { timezone, dayBoundaryHour } = await loadUserContext(userId)
+  const localDate = studyDateFor(now, timezone, dayBoundaryHour)
+  const [[stats], activities] = await Promise.all([
+    db.select({ reviews: srsDailyStats.reviewCount }).from(srsDailyStats).where(and(eq(srsDailyStats.userId, userId), eq(srsDailyStats.languageId, languageId), eq(srsDailyStats.localDate, localDate))),
+    db.select({ kind: learningActivities.kind }).from(learningActivities).where(and(eq(learningActivities.userId, userId), eq(learningActivities.languageId, languageId), eq(learningActivities.localDate, localDate)))
+  ])
+  return {
+    localDate,
+    quests: questProgress(questsFor(userId, localDate), {
+      reviews: stats?.reviews ?? 0,
+      activities: activities.map(a => ({ kind: a.kind as ActivityKind }))
+    })
+  }
 }
 
 /**
@@ -223,15 +258,34 @@ async function persistStreak(
 ): Promise<Streak> {
   const days = await studyDays(userId, languageId)
 
-  const [freezes] = await db
+  // Granted freezes only — earned ones are the fold's own output, below.
+  const [granted] = await db
     .select({ available: sql<number>`count(*)`.mapWith(Number) })
     .from(streakFreezes)
-    .where(and(eq(streakFreezes.userId, userId), isNull(streakFreezes.usedOnDate)))
+    .where(and(eq(streakFreezes.userId, userId), eq(streakFreezes.reason, 'admin'), isNull(streakFreezes.usedOnDate)))
 
   const today = studyDateFor(new Date(), timezone, dayBoundaryHour)
   const streak = computeStreak(days, {
     today,
-    freezesAvailable: freezes?.available ?? 0
+    freezesAvailable: granted?.available ?? 0
+  })
+
+  // Earned freezes are rebuilt wholesale from the fold — which ones exist, and
+  // which day each covered — so a replay that fills a past day can hand one
+  // back, and nothing is ever spent twice.
+  await db.transaction(async (tx) => {
+    await tx
+      .delete(streakFreezes)
+      .where(and(eq(streakFreezes.userId, userId), eq(streakFreezes.languageId, languageId), eq(streakFreezes.reason, 'earned')))
+    if (streak.freezes.length > 0) {
+      await tx.insert(streakFreezes).values(streak.freezes.map(f => ({
+        userId,
+        languageId,
+        reason: 'earned',
+        earnedOn: f.earnedOn,
+        usedOnDate: f.usedOn
+      })))
+    }
   })
 
   await db

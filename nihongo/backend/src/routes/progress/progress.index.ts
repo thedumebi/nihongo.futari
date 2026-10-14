@@ -9,6 +9,10 @@ const router = createRouter().basePath(ROUTE_BASE_PATHS.PROGRESS)
 
 router.openapi(routes.summary, handlers.summary)
 
+router.openapi(routes.achievementsSeen, handlers.achievementsSeen)
+
+router.openapi(routes.achievementList, handlers.achievementList)
+
 router.openapi(routes.knownKanji, handlers.knownKanji)
 
 router.openapi(routes.readiness, handlers.readiness)

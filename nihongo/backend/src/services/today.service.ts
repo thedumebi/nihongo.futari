@@ -4,8 +4,9 @@ import db from '@nihongo/shared/db'
 import { languages } from '@nihongo/shared/db/schema'
 import { eq } from 'drizzle-orm'
 
+import { unseenAchievements } from './achievements.service.js'
 import { listLessons } from './lesson.service.js'
-import { getSummary, studiedToday } from './progress.service.js'
+import { getSummary, studiedToday, todayQuests } from './progress.service.js'
 import { listSpeak } from './speak.service.js'
 import { countDue, newCardsToday } from './srs.service.js'
 import { getSettings } from './users.service.js'
@@ -22,14 +23,16 @@ export async function getToday(userId: string, languageCode: string): Promise<To
   if (!language)
     return null
 
-  const [due, newToday, lessons, speak, summary, today, settings] = await Promise.all([
+  const [due, newToday, lessons, speak, summary, today, settings, quests, unseen] = await Promise.all([
     countDue(userId, language.id),
     newCardsToday(userId, language.id, new Date()),
     listLessons(userId, languageCode),
     listSpeak(userId, languageCode),
     getSummary(userId, languageCode),
     studiedToday(userId, language.id),
-    getSettings(userId)
+    getSettings(userId),
+    todayQuests(userId, language.id),
+    unseenAchievements(userId)
   ])
 
   const nextSpeak = speak.next ? speak.sessions.find(s => s.code === speak.next) : undefined
@@ -41,6 +44,8 @@ export async function getToday(userId: string, languageCode: string): Promise<To
     nextLesson: lessons.next ?? null,
     nextSpeak: nextSpeak ? { code: nextSpeak.code, number: nextSpeak.number, level: nextSpeak.level, titleEn: nextSpeak.titleEn } : null,
     streak: { current: summary.currentStreak, longest: summary.longestStreak, studiedToday: today },
-    xp: { total: summary.totalXp, level: summary.level }
+    xp: { total: summary.totalXp, level: summary.level },
+    quests: quests.quests,
+    unseenAchievements: unseen
   }
 }

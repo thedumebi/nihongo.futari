@@ -1,9 +1,10 @@
 import { z } from '@hono/zod-openapi'
 import { HttpStatusCodes, PROGRESS_ROUTES } from '@nihongo/shared/constants'
-import { createSecuredRoute, ErrorSchema, jsonContent } from '@nihongo/shared/openapi'
-import { knownKanjiSchema, progressSummarySchema, readinessSchema } from '@nihongo/shared/types'
+import { createSecuredRoute, ErrorSchema, jsonContent, jsonContentRequired } from '@nihongo/shared/openapi'
+import { achievementListSchema, achievementsSeenSchema, knownKanjiSchema, MessageResponseSchema, progressSummarySchema, readinessSchema } from '@nihongo/shared/types'
 
 import authMiddleware from '@/middlewares/auth.js'
+import { writeLimiter } from '@/middlewares/rate-limit.js'
 
 const tags = ['Progress']
 
@@ -51,3 +52,29 @@ export const readiness = createSecuredRoute({
   }
 })
 export type ReadinessRoute = typeof readiness
+
+export const achievementList = createSecuredRoute({
+  tags,
+  path: PROGRESS_ROUTES.ACHIEVEMENTS,
+  method: 'get',
+  summary: 'Every achievement, with this learner\'s progress toward it',
+  middleware: [authMiddleware],
+  request: { query: z.object({ languageCode: z.string().min(2).default('ja') }) },
+  responses: {
+    [HttpStatusCodes.OK]: jsonContent(achievementListSchema, 'Achievements')
+  }
+})
+export type AchievementListRoute = typeof achievementList
+
+export const achievementsSeen = createSecuredRoute({
+  tags,
+  path: PROGRESS_ROUTES.ACHIEVEMENTS_SEEN,
+  method: 'post',
+  summary: 'Mark unlocked achievements as shown, so each is celebrated once',
+  middleware: [authMiddleware, writeLimiter],
+  request: { body: jsonContentRequired(achievementsSeenSchema, 'Which were shown') },
+  responses: {
+    [HttpStatusCodes.OK]: jsonContent(MessageResponseSchema, 'Marked')
+  }
+})
+export type AchievementsSeenRoute = typeof achievementsSeen

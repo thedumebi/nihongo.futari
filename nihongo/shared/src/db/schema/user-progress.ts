@@ -58,6 +58,10 @@ export const userSettings = pgTable('user_settings', {
    */
   reminderMinute: integer('reminder_minute').notNull().default(0),
   weeklySummaryEnabled: boolean('weekly_summary_enabled').notNull().default(true),
+  /** An evening nudge when a streak of 3+ days has nothing in it yet today. */
+  streakRiskEnabled: boolean('streak_risk_enabled').notNull().default(true),
+  /** A weekly note when several cards keep getting forgotten. */
+  ghostAlertEnabled: boolean('ghost_alert_enabled').notNull().default(true),
   /** Per-user FSRS weights, optimised nightly once there's enough history. */
   fsrsParams: jsonb('fsrs_params').$type<{
     w?: number[]
@@ -156,12 +160,18 @@ export const userStreaks = pgTable('user_streaks', {
 export const streakFreezes = pgTable('streak_freezes', {
   id: primaryId(),
   userId: text('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  /** Per language, like the streak it protects. Null on a grant before this existed. */
+  languageId: text('language_id').references(() => languages.id, { onDelete: 'cascade' }),
   grantedAt: timestamp('granted_at').notNull().defaultNow(),
+  /** The study day an earned freeze was earned on; null for an admin grant. */
+  earnedOn: date('earned_on'),
   usedOnDate: date('used_on_date'),
   reason: text('reason').notNull().default('earned'), // earned | admin
   ...timestamps
 }, t => ({
-  userIdx: index('streak_freezes_user_idx').on(t.userId).where(sql`${t.usedOnDate} is null`)
+  userIdx: index('streak_freezes_user_idx').on(t.userId).where(sql`${t.usedOnDate} is null`),
+  // Earned rows are rebuilt wholesale from the streak fold; this keeps one per day.
+  earnedUnique: uniqueIndex('streak_freezes_earned_unique').on(t.userId, t.languageId, t.reason, t.earnedOn)
 }))
 
 /**
@@ -251,6 +261,8 @@ export const userAchievements = pgTable('user_achievements', {
   achievementId: text('achievement_id').notNull().references(() => achievements.id, { onDelete: 'cascade' }),
   unlockedAt: timestamp('unlocked_at'),
   progress: integer('progress').notNull().default(0),
+  /** When the learner was shown the unlock — so it is celebrated once. */
+  seenAt: timestamp('seen_at'),
   ...timestamps
 }, t => ({
   pk: primaryKey({ columns: [t.userId, t.achievementId] })

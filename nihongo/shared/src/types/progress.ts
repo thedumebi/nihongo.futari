@@ -57,7 +57,9 @@ export const streakSchema = z.object({
   lastActiveDate: z.string().nullable(),
   /** Dates a freeze was consumed to bridge a gap. */
   freezesUsed: z.array(z.string()),
-  freezesRemaining: z.number().int()
+  freezesRemaining: z.number().int(),
+  /** Every freeze the run earned: when, and the day it covered if spent. */
+  freezes: z.array(z.object({ earnedOn: z.string(), usedOn: z.string().nullable() }))
 }).openapi('Streak')
 
 export type Streak = z.infer<typeof streakSchema>
@@ -188,3 +190,31 @@ export const readinessSchema = z.object({
 }).openapi('Readiness')
 
 export type Readiness = z.infer<typeof readinessSchema>
+
+/** An achievement as the Progress shelf shows it. */
+export const achievementViewSchema = z.object({
+  code: z.string(),
+  title: z.string(),
+  description: z.string(),
+  icon: z.string(),
+  category: z.string(),
+  threshold: z.number().int(),
+  progress: z.number().int(),
+  unlockedAt: z.iso.datetime().nullable(),
+  /** Hidden until unlocked. */
+  secret: z.boolean()
+}).openapi('Achievement')
+
+export type AchievementView = z.infer<typeof achievementViewSchema>
+
+export const achievementListSchema = z.object({
+  achievements: z.array(achievementViewSchema)
+}).openapi('AchievementList')
+
+export type AchievementList = z.infer<typeof achievementListSchema>
+
+export const achievementsSeenSchema = z.object({
+  codes: z.array(z.string()).max(50)
+}).openapi('AchievementsSeen')
+
+export type AchievementsSeenInput = z.infer<typeof achievementsSeenSchema>

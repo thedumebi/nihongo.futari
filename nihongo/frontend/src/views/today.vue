@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { BookOpen, Flame, Grid3x3, Layers, Mic, RotateCcw } from 'lucide-vue-next'
+import { BookOpen, Check, Flame, Grid3x3, Layers, Mic, RotateCcw, Target } from 'lucide-vue-next'
 import { computed, onMounted, ref } from 'vue'
 
 import AppShell from '@/components/layout/app-shell.vue'
@@ -113,6 +113,25 @@ onMounted(async () => {
               </router-link>.
             </p>
           </template>
+        </section>
+
+        <!-- Today's quests: small goals that nudge variety, the same all day. -->
+        <section v-if="today.quests.length" class="mt-4 rounded-xl border border-[var(--color-border)] p-5">
+          <div class="flex items-center gap-2 text-sm text-[var(--color-muted)]">
+            <Target class="h-4 w-4" /> Today's quests
+          </div>
+          <ul class="mt-3 space-y-2">
+            <li v-for="q in today.quests" :key="q.code" class="flex items-center gap-3">
+              <span
+                class="flex h-5 w-5 shrink-0 items-center justify-center rounded-full border"
+                :class="q.done ? 'border-[var(--color-success)] bg-[var(--color-success)] text-[var(--color-bg)]' : 'border-[var(--color-border)]'"
+              >
+                <Check v-if="q.done" class="h-3 w-3" />
+              </span>
+              <span :class="q.done ? 'text-[var(--color-muted)] line-through' : ''">{{ q.title }}</span>
+              <span class="ml-auto text-sm tabular-nums text-[var(--color-muted)]">{{ q.progress }}/{{ q.target }}</span>
+            </li>
+          </ul>
         </section>
 
         <!-- 3. Something to work through. -->
