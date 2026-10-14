@@ -176,6 +176,13 @@
       "when": 1791991719067,
       "tag": "0024_slow_emma_frost",
       "breakpoints": true
+    },
+    {
+      "idx": 25,
+      "version": "7",
+      "when": 1792013176275,
+      "tag": "0025_open_surge",
+      "breakpoints": true
     }
   ]
 }

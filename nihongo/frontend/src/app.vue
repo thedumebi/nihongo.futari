@@ -5,6 +5,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { syncTimezone } from '@/api/notifications'
 import ConfirmDialog from '@/components/ui/confirm-dialog.vue'
 import ToastNotification from '@/components/ui/toast-notification.vue'
+import { refreshFuriganaSetting } from '@/composables/use-furigana'
 import { setupServiceWorker } from '@/offline/register-sw'
 import { startSync } from '@/offline/sync'
 import { useAuthStore } from '@/store/auth'
@@ -78,6 +79,8 @@ onMounted(() => {
     applyIfCalm()
     // Back from a trip: the day follows the phone's timezone, and Today with it.
     if (document.visibilityState === 'visible' && auth.isAuthenticated) {
+      // A setting changed on another device reaches this one.
+      void refreshFuriganaSetting()
       void syncTimezone().then((changed) => {
         if (changed)
           void todayStore.refresh(lang.code, true)

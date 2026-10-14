@@ -140,6 +140,9 @@ export type WordOrigin = typeof WORD_ORIGINS[number]
 // are written out in their reading, so a whole line is hiragana practice.
 export const FURIGANA_MODES = ['off', 'always', 'unknown-only', 'kana', 'romaji'] as const
 export type FuriganaMode = typeof FURIGANA_MODES[number]
+// A new learner reads kanji spelled out in hiragana: readable from day one,
+// and every line is kana practice. Romaji is a choice, never the default.
+export const DEFAULT_FURIGANA_MODE: FuriganaMode = 'kana'
 
 // ---------------------------------------------------------------------------
 // Relative route paths.

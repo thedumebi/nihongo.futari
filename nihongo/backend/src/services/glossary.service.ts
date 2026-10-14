@@ -7,6 +7,7 @@ import { and, asc, eq } from 'drizzle-orm'
 
 import { glueAuthorWords, regroupKana } from '../lib/author-segments.js'
 import { counterWords } from '../lib/counters.js'
+import { splitKanjiRuns } from '../lib/kanji-runs.js'
 import { posLabel } from '../lib/pos.js'
 import { setPhrases } from '../lib/set-phrases.js'
 
@@ -578,7 +579,7 @@ export function glossLine(line: string, g: Glossary, reading?: string, opts: { r
   const tokens = tokenise(line, g.index)
   const readings = reading ? splitReading(line, reading, tokens.map(t => [...t.t].length)) : null
 
-  const glossed: GlossedToken[] = tokens.map((token, i) => {
+  const cut: GlossedToken[] = tokens.map((token, i) => {
     const word = token.key ? g.byForm.get(token.key) : undefined
     const r = readings?.[i]
     return {
@@ -592,6 +593,8 @@ export function glossLine(line: string, g: Glossary, reading?: string, opts: { r
       ...(word ? { w: word } : {})
     }
   })
+  // A run of kanji spanning several words — 時間英語 — gets one reading per word.
+  const glossed = splitKanjiRuns(cut, surface => g.byForm.get(surface)?.reading)
 
   // Opt-in, and only with the author's reading: its spaces are what say where
   // the words are. On for read-aloud speeches, which are written in kana up to

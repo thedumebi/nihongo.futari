@@ -97,6 +97,11 @@ const wholeLine = computed(() => romaji.value ? kanaLineToRomaji(props.reading) 
  * and so looked like the middle of a word.
  */
 function label(token: GlossedToken): string {
+  // Kana mode, a word inside a run of kanji whose reading rode on the word
+  // before: that reading already spelled it out, so printing the kanji too
+  // doubled it — `じかんえいご英語`.
+  if (props.mode === 'kana' && token.r === '' && hasKanji(token.t))
+    return ''
   if (!romaji.value)
     return token.t
   // Per TOKEN, so the three particles read as they are spoken — を as `o`, は

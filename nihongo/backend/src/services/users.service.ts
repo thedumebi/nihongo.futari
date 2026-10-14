@@ -1,6 +1,7 @@
 import type { FuriganaMode } from '@nihongo/shared/constants'
 import type { StudySettings, StudySettingsPatch } from '@nihongo/shared/types'
 
+import { DEFAULT_FURIGANA_MODE } from '@nihongo/shared/constants'
 import db from '@nihongo/shared/db'
 import { users, userSettings } from '@nihongo/shared/db/schema'
 import { DEFAULT_DAY_BOUNDARY_HOUR } from '@nihongo/shared/lib'
@@ -37,7 +38,7 @@ export async function getSettings(userId: string): Promise<StudySettings> {
     .limit(1)
 
   return {
-    furiganaMode: (row?.furiganaMode ?? 'unknown-only') as FuriganaMode,
+    furiganaMode: (row?.furiganaMode ?? DEFAULT_FURIGANA_MODE) as FuriganaMode,
     // Empty string is the app's own word for "every level", so a user with no
     // row yet gets the same thing as a user who chose All.
     studyLevel: row?.studyLevel ?? '',

@@ -24,7 +24,8 @@ export const userSettings = pgTable('user_settings', {
   dailyReviewLimit: integer('daily_review_limit').notNull().default(200),
   sessionLength: integer('session_length').notNull().default(20),
   /** See FURIGANA_MODES in constants — the single vocabulary for this value. */
-  furiganaMode: text('furigana_mode').notNull().default('unknown-only'),
+  // 'kana' is DEFAULT_FURIGANA_MODE in constants: kanji spelled out in hiragana.
+  furiganaMode: text('furigana_mode').notNull().default('kana'),
   /**
    * The JLPT level the reader is working at, as a level CODE ('N5'), with the
    * empty string meaning every level.

@@ -1,9 +1,9 @@
 import type { FuriganaMode } from '@nihongo/shared/constants'
 import type { KnownKanji, StudySettings } from '@nihongo/shared/types'
 
-import { API_ENDPOINTS } from '@nihongo/shared/constants'
+import { API_ENDPOINTS, DEFAULT_FURIGANA_MODE } from '@nihongo/shared/constants'
 import { useLocalStorage } from '@vueuse/core'
-import { ref, watch } from 'vue'
+import { nextTick, ref, watch } from 'vue'
 
 import client from '@/api/client'
 
@@ -31,28 +31,52 @@ export const FURIGANA_MODE_LABELS: Record<FuriganaMode, { label: string, descrip
 const knownKanji = ref<Set<string>>(new Set())
 let knownLoaded: Promise<void> | null = null
 let settingsLoaded: Promise<void> | null = null
+/** True while a server value is being applied, so it is not written back. */
+let applying = false
+let writing = false
+
+/** One shared preference; every caller reads and writes the same ref. */
+const mode = useLocalStorage<FuriganaMode>('go-furigana', DEFAULT_FURIGANA_MODE)
+
+/**
+ * Read the stored preference from the server, every time it is called.
+ *
+ * An installed app on a phone stays open for days, so reading it once at
+ * start-up meant a change made on the laptop never reached the phone: it kept
+ * its own cached copy. The app calls this again whenever it comes back to the
+ * foreground.
+ */
+export async function refreshFuriganaSetting(): Promise<void> {
+  try {
+    const { data } = await client.get<StudySettings>(API_ENDPOINTS.USERS.SETTINGS)
+    applying = true
+    mode.value = data.furiganaMode
+  } catch {
+    // Logged out or offline — the cached preference is enough to render.
+  } finally {
+    // After the watcher below has seen the assignment, not before.
+    await nextTick()
+    applying = false
+  }
+  if (!writing) {
+    writing = true
+    // Only start writing AFTER the server value has landed, so the initial
+    // assignment cannot echo back as a spurious write.
+    watch(mode, (next) => {
+      if (applying)
+        return
+      void client.patch(API_ENDPOINTS.USERS.UPDATE_SETTINGS, { furiganaMode: next }).catch(() => {
+        // Offline: the cached value still drives rendering, and the next
+        // change while online writes through.
+      })
+    })
+  }
+}
 
 export function useFurigana() {
-  const mode = useLocalStorage<FuriganaMode>('go-furigana', 'unknown-only')
-
-  /** Pull the stored preference once, then keep writing changes back. */
+  /** Once per page load; the foreground refresh keeps it current after that. */
   async function loadSettings() {
-    settingsLoaded ??= client
-      .get<StudySettings>(API_ENDPOINTS.USERS.SETTINGS)
-      .then(({ data }) => {
-        mode.value = data.furiganaMode
-        // Only start syncing AFTER the server value has landed, so the initial
-        // assignment above cannot echo back as a spurious write.
-        watch(mode, (next) => {
-          void client.patch(API_ENDPOINTS.USERS.UPDATE_SETTINGS, { furiganaMode: next }).catch(() => {
-            // Offline: the cached value still drives rendering, and the next
-            // change while online writes through.
-          })
-        })
-      })
-      .catch(() => {
-        // Logged out or offline — the cached preference is enough to render.
-      })
+    settingsLoaded ??= refreshFuriganaSetting()
     return settingsLoaded
   }
 
