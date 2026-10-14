@@ -2,6 +2,7 @@ import type SMTPTransport from 'nodemailer/lib/smtp-transport/index.js'
 
 import type {
   InviteEmailType,
+  NudgeEmailType,
   PasswordOtpType,
   ResetPasswordEmailType,
   SignInOtpType,
@@ -14,6 +15,7 @@ import type {
 import { sendMail } from '@/helpers/emails.js'
 
 import InviteMessage from './messages/invite.js'
+import NudgeMessage from './messages/nudge.js'
 import PasswordOtpMessage from './messages/password-otp.js'
 import ResetPasswordMessage from './messages/reset-password.js'
 import SignInOtpMessage from './messages/signin-otp.js'
@@ -26,6 +28,7 @@ export { renderTemplate } from '@/helpers/emails.js'
 
 export type {
   InviteEmailType,
+  NudgeEmailType,
   ResetPasswordEmailType,
   SignInOtpType,
   StudyReminderType,
@@ -67,6 +70,11 @@ export default class SendMail {
 
   static async sendStudyReminder(data: StudyReminderType, language?: string): Promise<SMTPTransport.SentMessageInfo> {
     const inst = new StudyReminderMessage(data, { email: data.email, name: data.name }, language)
+    return sendMail(await inst.buildMessage())
+  }
+
+  static async sendNudge(data: NudgeEmailType, language?: string): Promise<SMTPTransport.SentMessageInfo> {
+    const inst = new NudgeMessage(data, { email: data.email, name: data.name }, language)
     return sendMail(await inst.buildMessage())
   }
 

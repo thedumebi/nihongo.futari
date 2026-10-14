@@ -64,6 +64,15 @@ export const studyReminderSchema = emailRecipientSchema.extend({
 })
 export type StudyReminderType = z.infer<typeof studyReminderSchema>
 
+/** A nudge — streak at risk, cards slipping: a heading, one line, one button. */
+export const nudgeEmailSchema = emailRecipientSchema.extend({
+  title: z.string(),
+  body: z.string(),
+  cta: z.string(),
+  url: z.string()
+})
+export type NudgeEmailType = z.infer<typeof nudgeEmailSchema>
+
 /**
  * The weekly summary.
  *

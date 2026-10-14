@@ -1,6 +1,6 @@
 import type { ReminderRunResult } from '@nihongo/shared/types'
 
-import { ROUTE_BASE_PATHS } from '@nihongo/shared/constants'
+import { GAMES_ROUTES, ROUTE_BASE_PATHS } from '@nihongo/shared/constants'
 import db from '@nihongo/shared/db'
 import {
   notificationLog,
@@ -14,7 +14,7 @@ import {
 import SendMail from '@nihongo/shared/emails'
 import env from '@nihongo/shared/env'
 import { studyDateFor } from '@nihongo/shared/lib'
-import { and, desc, eq, gte, sql } from 'drizzle-orm'
+import { and, desc, eq, gte, or, sql } from 'drizzle-orm'
 import { DateTime } from 'luxon'
 
 import { pushConfigured, sendPush } from '@/lib/push.js'
@@ -444,17 +444,18 @@ function emptyRun(): ReminderRunResult {
 }
 
 /** Claim a nudge's slot before sending; false if it was already sent. */
-async function claim(userId: string, kind: string, dedupeKey: string): Promise<boolean> {
+async function claim(userId: string, kind: string, dedupeKey: string, channel: 'email' | 'push'): Promise<boolean> {
   const [row] = await db
     .insert(notificationLog)
-    .values({ userId, channel: 'push', kind, dedupeKey })
+    .values({ userId, channel, kind, dedupeKey })
     .onConflictDoNothing({ target: notificationLog.dedupeKey })
     .returning({ id: notificationLog.id })
   return row !== undefined
 }
 
 /**
- * The two nudges besides the daily reminder, push only:
+ * The two nudges besides the daily reminder, by push and by email — each to
+ * whoever has that channel on for reminders:
  *
  * - **streak at risk** — 20:00 local, a streak of 3+ days, nothing studied
  *   today, and no earned freeze that would cover the day anyway. Once a day.
@@ -465,20 +466,58 @@ async function claim(userId: string, kind: string, dedupeKey: string): Promise<b
  */
 export async function runNudges(now = new Date()): Promise<ReminderRunResult> {
   const result = emptyRun()
-  if (!pushConfigured())
-    return result
+  const canPush = pushConfigured()
 
   const rows = await db
     .select({
       userId: users.id,
+      email: users.email,
+      name: users.name,
       timezone: users.timezone,
       dayBoundaryHour: userSettings.dayBoundaryHour,
       streakRisk: userSettings.streakRiskEnabled,
-      ghostAlert: userSettings.ghostAlertEnabled
+      ghostAlert: userSettings.ghostAlertEnabled,
+      pushEnabled: userSettings.reminderPushEnabled,
+      emailEnabled: userSettings.reminderEmailEnabled
     })
     .from(users)
     .innerJoin(userSettings, eq(userSettings.userId, users.id))
-    .where(and(eq(users.active, true), eq(userSettings.reminderPushEnabled, true)))
+    .where(and(
+      eq(users.active, true),
+      or(eq(userSettings.reminderPushEnabled, true), eq(userSettings.reminderEmailEnabled, true))
+    ))
+
+  const site = env.FRONTEND_URL.replace(/\/$/, '')
+
+  /** Send one nudge on every channel the learner has on. Each channel is claimed on its own key. */
+  async function send(r: typeof rows[number], kind: string, key: string, message: { title: string, body: string, cta: string, url: string }) {
+    if (r.pushEnabled && canPush) {
+      if (await claim(r.userId, kind, `${key}:push`, 'push')) {
+        const out = await pushToUser(r.userId, { title: message.title, body: message.body, url: message.url })
+        result.pushed += out.sent
+        result.pushFailed += out.failed
+        if (out.noSubscription)
+          result.pushNoSubscription++
+      } else {
+        result.skippedAlreadySent++
+      }
+    }
+    if (r.emailEnabled) {
+      if (await claim(r.userId, kind, `${key}:email`, 'email')) {
+        try {
+          await SendMail.sendNudge({ email: r.email, name: r.name || r.email, title: message.title, body: message.body, cta: message.cta, url: `${site}${message.url}` })
+          result.emailed++
+        } catch (err) {
+          result.failed++
+          await db.update(notificationLog)
+            .set({ status: 'failed', error: err instanceof Error ? err.message : 'Email failed' })
+            .where(eq(notificationLog.dedupeKey, `${key}:email`))
+        }
+      } else {
+        result.skippedAlreadySent++
+      }
+    }
+  }
 
   for (const r of rows) {
     const local = DateTime.fromJSDate(now, { zone: r.timezone })
@@ -496,19 +535,12 @@ export async function runNudges(now = new Date()): Promise<ReminderRunResult> {
         .orderBy(desc(userStreaks.currentStreak))
         .limit(1)
       if (streak && streak.current >= STREAK_RISK_MIN && streak.freezes === 0 && !(await studiedToday(r.userId, streak.languageId, now))) {
-        if (await claim(r.userId, 'streak-risk', `${r.userId}:streak-risk:${localDate}`)) {
-          const out = await pushToUser(r.userId, {
-            title: `Keep your ${streak.current}-day streak`,
-            body: 'Nothing studied yet today — a few reviews or one Speak session keeps it going.',
-            url: ROUTE_BASE_PATHS.TODAY
-          })
-          result.pushed += out.sent
-          result.pushFailed += out.failed
-          if (out.noSubscription)
-            result.pushNoSubscription++
-        } else {
-          result.skippedAlreadySent++
-        }
+        await send(r, 'streak-risk', `${r.userId}:streak-risk:${localDate}`, {
+          title: `Keep your ${streak.current}-day streak`,
+          body: 'nothing is studied yet today — a few reviews or one Speak session keeps it going.',
+          cta: 'Open today',
+          url: ROUTE_BASE_PATHS.TODAY
+        })
       }
     }
 
@@ -521,20 +553,14 @@ export async function runNudges(now = new Date()): Promise<ReminderRunResult> {
       const n = ghosts?.n ?? 0
       if (n >= GHOST_ALERT_MIN) {
         const week = `${local.weekYear}-W${local.weekNumber}`
-        if (await claim(r.userId, 'ghost-alert', `${r.userId}:ghost-alert:${week}`)) {
-          const out = await pushToUser(r.userId, {
-            title: `${n} cards keep slipping away`,
-            body: 'They are marked as ghosts in your reviews. A close look at them now saves many reviews later.',
-            // Review what is due — ghosts come back as part of it, marked.
-            url: reminderPath(n)
-          })
-          result.pushed += out.sent
-          result.pushFailed += out.failed
-          if (out.noSubscription)
-            result.pushNoSubscription++
-        } else {
-          result.skippedAlreadySent++
-        }
+        // To this week's ghost boss: the cards with where they come from and
+        // what they get confused with, then a round telling them apart.
+        await send(r, 'ghost-alert', `${r.userId}:ghost-alert:${week}`, {
+          title: `${n} cards keep slipping away`,
+          body: 'this week\'s ghost boss is ready — a close look at them now saves many reviews later.',
+          cta: 'Face the ghost boss',
+          url: `${ROUTE_BASE_PATHS.GAMES}${GAMES_ROUTES.GHOST_BOSS}`
+        })
       }
     }
   }

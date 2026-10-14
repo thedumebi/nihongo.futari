@@ -5,6 +5,7 @@ export const MAIL_TYPES = {
   RESET_PASSWORD: 'reset-password',
   PASSWORD_OTP: 'password-otp',
   STUDY_REMINDER: 'study-reminder',
+  NUDGE: 'nudge',
   VERIFY_EMAIL: 'verify-email',
   WEEKLY_SUMMARY: 'weekly-summary',
   INVITE: 'invite'
