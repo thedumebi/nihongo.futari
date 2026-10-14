@@ -236,9 +236,14 @@ async function generate(kind: AudioKind) {
       skipped++
       continue
     }
-    if (await synthesise(t.text, key, t.voice ?? VOICE))
+    if (await synthesise(t.text, key, t.voice ?? VOICE)) {
       made++
-    else failed++
+    } else {
+      failed++
+      // Name it: a clip that fails every run is a text \`say\` cannot speak,
+      // not bad luck, and "4 failed" alone gives nothing to fix.
+      console.log(`  failed: ${JSON.stringify(t.text)} (${t.voice ?? VOICE})`)
+    }
     if ((made + failed) % 250 === 0 && made + failed > 0)
       console.log(`  ${kind}: ${made} uploaded, ${failed} failed…`)
   }

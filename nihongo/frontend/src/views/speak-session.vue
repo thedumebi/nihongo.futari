@@ -186,7 +186,7 @@ function again() {
       <template v-else-if="session">
         <header class="mt-6">
           <p class="text-xs uppercase tracking-wide text-[var(--color-muted)]">
-            {{ session.level }} &middot; Session {{ session.number }}
+            {{ session.level }} &middot; {{ session.kind === 'story' ? 'Story' : 'Session' }} {{ session.number }}
             <span
               v-if="!session.published"
               class="ml-2 rounded border border-[var(--color-border)] px-1.5 py-0.5 normal-case tracking-normal"

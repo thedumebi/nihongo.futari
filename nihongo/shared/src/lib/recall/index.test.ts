@@ -8,6 +8,11 @@ describe('recallGloss', () => {
     expect(recallGloss(['station (train, bus)'])).toBe('station')
     expect(recallGloss(['', 'cat'])).toBe('cat')
   })
+
+  it('leaves out suffixes, which cannot be said on their own', () => {
+    expect(recallGloss(['-ness'])).toBe('')
+    expect(recallGloss(['-like nature'])).toBe('')
+  })
 })
 
 describe('recallSchedule', () => {

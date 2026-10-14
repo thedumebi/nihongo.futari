@@ -15,7 +15,11 @@
  */
 export function recallGloss(glosses: readonly string[]): string {
   const first = glosses.find(g => g.trim()) ?? ''
-  return first.replace(/\s*\([^)]*\)/g, '').replace(/\s+/g, ' ').trim()
+  const gloss = first.replace(/\s*\([^)]*\)/g, '').replace(/\s+/g, ' ').trim()
+  // A suffix ("-ness", "-ian") cannot be said on its own, so it is no prompt
+  // to answer aloud — and \`say\` reads the leading hyphen as an option and
+  // fails. Empty means "not a Recall word".
+  return gloss.startsWith('-') ? '' : gloss
 }
 
 /** How many other items come between one asking of a word and the next. */
