@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 
 import { splitKanjiRuns } from './kanji-runs.js'
 
-const DICT: Record<string, string> = { 時間: 'じかん', 英語: 'えいご', 日本: 'にほん', 語: 'ご' }
+const DICT: Record<string, string> = { 時間: 'じかん', 英語: 'えいご', 日本: 'にほん', 語: 'ご', 今: 'いま', 一日: 'いちにち' }
 const lookup = (t: string) => DICT[t]
 
 describe('splitKanjiRuns', () => {
@@ -30,6 +30,21 @@ describe('splitKanjiRuns', () => {
 
   it('leaves the run alone when a word has no dictionary reading', () => {
     const tokens = [{ t: '時間', r: 'じかんかんじ' }, { t: '漢字', r: '' }]
+    expect(splitKanjiRuns(tokens, lookup)).toEqual(tokens)
+  })
+
+  it('moves the front of a word with kana in it back where it belongs', () => {
+    expect(splitKanjiRuns([{ t: '今', r: 'いまお' }, { t: '起きた', r: 'きた' }], lookup))
+      .toEqual([{ t: '今', r: 'いま' }, { t: '起きた', r: 'おきた' }])
+  })
+
+  it('does not move anything when the first word does not start with its dictionary reading', () => {
+    const tokens = [{ t: '一日', r: 'ついたちや' }, { t: '休み', r: 'すみ' }]
+    expect(splitKanjiRuns(tokens, lookup)).toEqual(tokens)
+  })
+
+  it('does not move anything when the reading is already the dictionary one', () => {
+    const tokens = [{ t: '今', r: 'いま' }, { t: '起きた', r: 'おきた' }]
     expect(splitKanjiRuns(tokens, lookup)).toEqual(tokens)
   })
 })

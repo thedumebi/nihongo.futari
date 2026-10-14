@@ -63,7 +63,7 @@ async function gatherStats(userId: string, languageId: string): Promise<Partial<
     'kanji-known': kanjiKnown[0]?.n ?? 0,
     'handwriting': handwriting[0]?.n ?? 0,
     'lessons': distinct('lesson', 'kana-lesson'),
-    'speak-sessions': distinct('speak'),
+    'speak-sessions': distinct('speak', 'story'),
     'crosswords': distinct('crossword'),
     'conversations': distinct('conversation'),
     'readings': distinct('reading'),

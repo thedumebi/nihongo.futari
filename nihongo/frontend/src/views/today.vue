@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { levelProgress } from '@nihongo/shared/lib'
-import { BookOpen, Check, Flame, Grid3x3, Headphones, Layers, Mic, RotateCcw, ScrollText, Target } from 'lucide-vue-next'
+import { BookOpen, Check, ChevronRight, Flame, Grid3x3, Headphones, Layers, Mic, RotateCcw, ScrollText, Target } from 'lucide-vue-next'
 import { computed, onMounted, ref } from 'vue'
 
 import CoverageBadge from '@/components/ja/coverage-badge.vue'
@@ -19,6 +19,23 @@ import { useTodayStore } from '@/store/today'
  * The app opened on a sales page and then a choice of thirteen tabs; this is
  * the one screen that answers "where do I start".
  */
+
+// ============ Constants ============
+/** Where each quest is done, so a quest is a way in rather than a chore list. */
+const QUEST_LINKS: Record<string, string> = {
+  'reviews-20': ROUTES.DUE,
+  'reviews-50': ROUTES.DUE,
+  'new-5': ROUTES.LEARN,
+  'speak-1': ROUTES.SPEAK,
+  'story-1': ROUTES.SPEAK,
+  'lesson-1': ROUTES.LESSONS,
+  'conversation-2': ROUTES.CONVERSATIONS,
+  'shadowing-1': ROUTES.CONVERSATIONS,
+  'reading-1': ROUTES.READ,
+  'crossword-1': ROUTES.CROSSWORD,
+  'recall-1': ROUTES.RECALL,
+  'game-1': ROUTES.GAMES
+}
 
 // ============ Stores ============
 const auth = useAuthStore()
@@ -125,15 +142,23 @@ onMounted(async () => {
             <Target class="h-4 w-4" /> Today's quests
           </div>
           <ul class="mt-3 space-y-2">
-            <li v-for="q in today.quests" :key="q.code" class="flex items-center gap-3">
-              <span
-                class="flex h-5 w-5 shrink-0 items-center justify-center rounded-full border"
-                :class="q.done ? 'border-[var(--color-success)] bg-[var(--color-success)] text-[var(--color-bg)]' : 'border-[var(--color-border)]'"
+            <li v-for="q in today.quests" :key="q.code">
+              <component
+                :is="q.done || !QUEST_LINKS[q.code] ? 'div' : 'router-link'"
+                :to="q.done ? undefined : QUEST_LINKS[q.code]"
+                class="-mx-2 flex items-center gap-3 rounded-lg px-2 py-1"
+                :class="q.done || !QUEST_LINKS[q.code] ? '' : 'transition hover:bg-[var(--color-card)]'"
               >
-                <Check v-if="q.done" class="h-3 w-3" />
-              </span>
-              <span :class="q.done ? 'text-[var(--color-muted)] line-through' : ''">{{ q.title }}</span>
-              <span class="ml-auto text-sm tabular-nums text-[var(--color-muted)]">{{ q.progress }}/{{ q.target }}</span>
+                <span
+                  class="flex h-5 w-5 shrink-0 items-center justify-center rounded-full border"
+                  :class="q.done ? 'border-[var(--color-success)] bg-[var(--color-success)] text-[var(--color-bg)]' : 'border-[var(--color-border)]'"
+                >
+                  <Check v-if="q.done" class="h-3 w-3" />
+                </span>
+                <span :class="q.done ? 'text-[var(--color-muted)] line-through' : ''">{{ q.title }}</span>
+                <span class="ml-auto text-sm tabular-nums text-[var(--color-muted)]">{{ q.progress }}/{{ q.target }}</span>
+                <ChevronRight v-if="!q.done && QUEST_LINKS[q.code]" class="h-4 w-4 shrink-0 text-[var(--color-muted)]" />
+              </component>
             </li>
           </ul>
         </section>

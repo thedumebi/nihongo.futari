@@ -221,14 +221,20 @@ export async function recomputeHabit(userId: string, languageId: string): Promis
 export async function todayQuests(userId: string, languageId: string, now = new Date()): Promise<{ localDate: string, quests: QuestProgress[] }> {
   const { timezone, dayBoundaryHour } = await loadUserContext(userId)
   const localDate = studyDateFor(now, timezone, dayBoundaryHour)
-  const [[stats], activities] = await Promise.all([
-    db.select({ reviews: srsDailyStats.reviewCount }).from(srsDailyStats).where(and(eq(srsDailyStats.userId, userId), eq(srsDailyStats.languageId, languageId), eq(srsDailyStats.localDate, localDate))),
-    db.select({ kind: learningActivities.kind }).from(learningActivities).where(and(eq(learningActivities.userId, userId), eq(learningActivities.languageId, languageId), eq(learningActivities.localDate, localDate)))
+  const [[stats], activities, due] = await Promise.all([
+    db.select({ reviews: srsDailyStats.reviewCount, newCards: srsDailyStats.newCount }).from(srsDailyStats).where(and(eq(srsDailyStats.userId, userId), eq(srsDailyStats.languageId, languageId), eq(srsDailyStats.localDate, localDate))),
+    db.select({ kind: learningActivities.kind }).from(learningActivities).where(and(eq(learningActivities.userId, userId), eq(learningActivities.languageId, languageId), eq(learningActivities.localDate, localDate))),
+    // Everything still due before this study day ends.
+    countDue(userId, languageId, studyDayRange(localDate, timezone, dayBoundaryHour).end)
   ])
+  // Reviews today holds: those already done (not first looks at new cards,
+  // which are a choice) plus those still to come.
+  const reviewsAvailable = (stats?.reviews ?? 0) - (stats?.newCards ?? 0) + due.cards
   return {
     localDate,
-    quests: questProgress(questsFor(userId, localDate), {
+    quests: questProgress(questsFor(userId, localDate, reviewsAvailable), {
       reviews: stats?.reviews ?? 0,
+      newCards: stats?.newCards ?? 0,
       activities: activities.map(a => ({ kind: a.kind as ActivityKind }))
     })
   }

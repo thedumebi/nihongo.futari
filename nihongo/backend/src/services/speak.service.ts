@@ -116,7 +116,7 @@ export async function getSpeakSession(
  */
 export async function completeSpeakSession(userId: string, languageCode: string, code: string, input: SpeakCompleteInput): Promise<boolean> {
   const [session] = await db
-    .select({ id: speakSessions.id, languageId: speakSessions.languageId })
+    .select({ id: speakSessions.id, languageId: speakSessions.languageId, kind: speakSessions.kind })
     .from(speakSessions)
     .innerJoin(languages, eq(languages.id, speakSessions.languageId))
     .where(and(eq(languages.code, languageCode), eq(speakSessions.code, code), eq(speakSessions.published, true)))
@@ -132,7 +132,8 @@ export async function completeSpeakSession(userId: string, languageCode: string,
       target: [speakProgress.userId, speakProgress.sessionId],
       set: { completedAt: now, gotIt: input.gotIt, total: input.total, updatedAt: sql`now()` }
     })
-  await recordActivity(userId, session.languageId, { kind: 'speak', refId: code, score: input.gotIt, total: input.total })
+  // A story is its own activity, so the story quest can tell it from the course.
+  await recordActivity(userId, session.languageId, { kind: session.kind === 'story' ? 'story' : 'speak', refId: code, score: input.gotIt, total: input.total })
   return true
 }
 

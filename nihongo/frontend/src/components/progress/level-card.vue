@@ -32,7 +32,8 @@ const ACTIVITY_LABELS: Partial<Record<ActivityKind, string>> = {
   'shadowing': 'Shadow a conversation',
   'speak-listen': 'Listen through a Speak session',
   'listening-game': 'Play Listening',
-  'kanji-build': 'Play Build a kanji'
+  'kanji-build': 'Play Build a kanji',
+  'story': 'Say a Speak story'
 }
 
 const showHow = ref(props.open)
