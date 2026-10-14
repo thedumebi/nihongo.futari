@@ -5,7 +5,7 @@ import { useLocalStorage } from '@vueuse/core'
 import { computed, onMounted, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 
-import { completeSpeakSession, getSpeakSession, missSpeakStep } from '@/api/speak'
+import { completeSpeakSession, getSpeakSession, listSpeak, missSpeakStep } from '@/api/speak'
 import AppShell from '@/components/layout/app-shell.vue'
 import HandsFreeRun from '@/components/speak/hands-free-run.vue'
 import OnScreenRun from '@/components/speak/on-screen-run.vue'
@@ -107,6 +107,20 @@ async function onFinished(run: { gotIt: number, total: number }) {
   } catch {
     toast.error('Could not save this run — it still counts, try again later.')
   }
+  await findNext(s.code)
+}
+
+/** The session after this one in the course, so "done" leads on. */
+const nextSession = ref<{ code: string, number: number, titleEn: string } | null>(null)
+
+async function findNext(code: string) {
+  try {
+    const { sessions } = await listSpeak(lang.code)
+    const at = sessions.findIndex(x => x.code === code)
+    nextSession.value = at >= 0 ? sessions[at + 1] ?? null : null
+  } catch {
+    nextSession.value = null
+  }
 }
 
 /**
@@ -195,7 +209,10 @@ function again() {
                 <Button variant="ghost" @click="again">
                   Go again
                 </Button>
-                <Button :to="ROUTES.SPEAK">
+                <Button v-if="nextSession" :to="ROUTES.SPEAK_SESSION(nextSession.code)">
+                  Next: {{ nextSession.titleEn }}
+                </Button>
+                <Button v-else :to="ROUTES.SPEAK">
                   Back to the course
                 </Button>
               </div>

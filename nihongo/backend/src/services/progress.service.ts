@@ -242,6 +242,18 @@ export function xpToLevel(totalXp: number): number {
   return Math.max(1, Math.floor((Math.sqrt(1 + (8 * totalXp) / 100) - 1) / 2) + 1)
 }
 
+/** Whether the learner has done anything counted today, in their own study day. */
+export async function studiedToday(userId: string, languageId: string, now = new Date()): Promise<boolean> {
+  const { timezone, dayBoundaryHour } = await loadUserContext(userId)
+  const today = studyDateFor(now, timezone, dayBoundaryHour)
+  const [row] = await db
+    .select({ reviews: srsDailyStats.reviewCount })
+    .from(srsDailyStats)
+    .where(and(eq(srsDailyStats.userId, userId), eq(srsDailyStats.languageId, languageId), eq(srsDailyStats.localDate, today)))
+    .limit(1)
+  return (row?.reviews ?? 0) > 0
+}
+
 /** Headline numbers for the progress page. All scoped to one user. */
 export async function getSummary(userId: string, languageCode = 'ja'): Promise<ProgressSummary> {
   const [language] = await db.select({ id: languages.id }).from(languages).where(eq(languages.code, languageCode)).limit(1)

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Globe, Menu, X } from 'lucide-vue-next'
+import { Flame, Globe, Menu, X } from 'lucide-vue-next'
 import { computed, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 
@@ -10,11 +10,13 @@ import { ROUTES } from '@/constants'
 import { SITE_MARK, SITE_NAME } from '@/constants/site'
 import { useAuthStore } from '@/store/auth'
 import { useLanguageStore } from '@/store/language'
+import { useTodayStore } from '@/store/today'
 
 const route = useRoute()
 const router = useRouter()
 const auth = useAuthStore()
 const lang = useLanguageStore()
+const todayStore = useTodayStore()
 const languageIcon = Globe
 
 /**
@@ -41,25 +43,32 @@ const languageOptions = computed<DropdownOption[]>(() => lang.languages.map(l =>
   disabled: l.itemCount === 0
 })))
 
+interface NavLink {
+  label: string
+  to: string
+  /** A number to show beside the label — the due count on Review. */
+  badge?: number
+}
+
 // Only surface routes that exist — a nav that 404s is worse than a short nav.
 const links = computed(() => {
   if (!auth.isAuthenticated)
     return []
-  const base: Array<{ label: string, to: string }> = [
-    // Lessons first, because it is the answer to "where do I start" and the
-    // thing the app is now organised around: learn a topic, then it comes back.
+  const due = todayStore.today?.due ?? 0
+  const base: NavLink[] = [
+    // Today first: the one screen that answers "what should I do now".
     //
-    // Eight tabs became five. Grammar was a reference list sitting in the main
-    // nav while the lessons that teach the same material were buried inside it
-    // — "I dont want grammer. I want study lessons!!" — so it moves into
-    // Dictionary, which is where you go to look something up. Writing and
-    // Sounds are drills you reach from Review rather than destinations.
+    // Learn and Review are the two halves of the old "Review" tab, which
+    // opened on NEW cards while the reviews that were actually due sat under
+    // "Due" in the second row with no count anywhere — so a beginner tapping
+    // Review kept taking new material while the backlog grew unseen.
+    { label: 'Today', to: ROUTES.TODAY },
+    { label: 'Learn', to: ROUTES.LEARN },
+    { label: 'Review', to: ROUTES.REVIEW, ...(due > 0 ? { badge: due } : {}) },
     { label: 'Lessons', to: ROUTES.LESSONS },
-    { label: 'Review', to: ROUTES.STUDY },
     { label: 'Conversations', to: ROUTES.CONVERSATIONS },
     { label: 'Read', to: ROUTES.READ },
     { label: 'Speak', to: ROUTES.SPEAK },
-    { label: 'Progress', to: ROUTES.PROGRESS },
     { label: 'Dictionary', to: ROUTES.DICTIONARY }
   ]
   // An admin is an ordinary account with a role, so the admin entry is an
@@ -81,6 +90,7 @@ const secondary = computed(() => {
   if (!auth.isAuthenticated)
     return []
   return [
+    { label: 'Progress', to: ROUTES.PROGRESS },
     { label: 'Course', to: ROUTES.COURSE },
     { label: 'Due', to: ROUTES.DUE },
     { label: 'Writing', to: ROUTES.WRITING },
@@ -90,8 +100,23 @@ const secondary = computed(() => {
   ]
 })
 
+/**
+ * Whether a nav link is the current page. Learn and Review are one path with
+ * different `?mode=`, and the router ignores the query when it decides what
+ * is active — both would light up — so this compares the mode itself.
+ */
+function isActive(to: string): boolean {
+  const [path, query] = to.split('?')
+  if (route.path !== path)
+    return false
+  const mode = new URLSearchParams(query ?? '').get('mode')
+  return mode === null || route.query.mode === mode || (mode === 'new' && route.query.mode === undefined)
+}
+
 onMounted(() => {
   void lang.load()
+  if (auth.isAuthenticated)
+    void todayStore.refresh(lang.code)
 })
 
 watch(() => route.fullPath, () => {
@@ -103,6 +128,9 @@ watch(() => route.fullPath, () => {
   // Tapping a link must dismiss the panel, or the destination arrives hidden
   // behind it.
   menuOpen.value = false
+  // Coming back from a session should move the badge and the streak.
+  if (auth.isAuthenticated)
+    void todayStore.refresh(lang.code)
 })
 
 async function signOut() {
@@ -130,11 +158,11 @@ async function signOut() {
       (z-50), so an open menu still covers the header rather than fighting it.
     -->
     <header class="sticky top-0 z-30 border-b border-[var(--color-border)] bg-[var(--color-bg)]">
-      <nav class="mx-auto max-w-4xl px-6 py-4">
+      <nav class="mx-auto max-w-5xl px-6 py-4">
         <div class="flex items-center gap-6">
           <!-- 語 is read "go" and means "language"; the name comes from it. -->
           <router-link
-            :to="auth.isAuthenticated ? ROUTES.LESSONS : ROUTES.HOME"
+            :to="auth.isAuthenticated ? ROUTES.TODAY : ROUTES.HOME"
             class="flex items-baseline gap-1.5 font-semibold"
           >
             <span class="text-[var(--color-accent)]" style="font-family: var(--font-jp)">{{ SITE_MARK }}</span>
@@ -145,10 +173,15 @@ async function signOut() {
             v-for="item in links"
             :key="item.to"
             :to="item.to"
-            class="hidden text-sm text-[var(--color-muted)] transition hover:text-[var(--color-text)] md:inline"
-            active-class="!text-[var(--color-text)]"
+            class="hidden items-center gap-1 whitespace-nowrap text-sm transition hover:text-[var(--color-text)] lg:inline-flex"
+            :class="isActive(item.to) ? 'text-[var(--color-text)]' : 'text-[var(--color-muted)]'"
           >
             {{ item.label }}
+            <span
+              v-if="item.badge"
+              class="rounded-full bg-[var(--color-primary)] px-1.5 text-[0.65rem] font-semibold leading-4 text-[var(--color-bg)]"
+              :aria-label="`${item.badge} due`"
+            >{{ item.badge }}</span>
           </router-link>
 
           <div class="ml-auto flex items-center gap-4 text-sm">
@@ -163,15 +196,27 @@ async function signOut() {
             />
 
             <template v-if="auth.isAuthenticated">
-              <router-link :to="ROUTES.SETTINGS" class="hidden text-[var(--color-muted)] underline underline-offset-4 hover:text-[var(--color-text)] lg:inline">
+              <!-- The streak, and the level XP adds up to — always in sight, so a
+                   day kept or lost is felt where it happens, not on Progress. -->
+              <router-link
+                v-if="todayStore.today"
+                :to="ROUTES.PROGRESS"
+                class="flex items-center gap-1 whitespace-nowrap tabular-nums transition hover:text-[var(--color-text)]"
+                :class="todayStore.today.streak.studiedToday ? 'text-[var(--color-accent)]' : 'text-[var(--color-muted)]'"
+                :title="`${todayStore.today.streak.current}-day streak${todayStore.today.streak.studiedToday ? ' — today counts' : ' — study today to keep it'} · level ${todayStore.today.xp.level}`"
+              >
+                <Flame class="h-4 w-4" />{{ todayStore.today.streak.current }}
+                <span class="ml-1 hidden text-xs text-[var(--color-muted)] sm:inline">Lv {{ todayStore.today.xp.level }}</span>
+              </router-link>
+              <router-link :to="ROUTES.SETTINGS" class="hidden text-[var(--color-muted)] underline underline-offset-4 hover:text-[var(--color-text)] xl:inline">
                 {{ auth.user?.name || auth.user?.email }}
               </router-link>
-              <button type="button" class="hidden whitespace-nowrap text-[var(--color-muted)] underline underline-offset-4 hover:text-[var(--color-text)] md:inline" @click="signOut">
+              <button type="button" class="hidden whitespace-nowrap text-[var(--color-muted)] underline underline-offset-4 hover:text-[var(--color-text)] lg:inline" @click="signOut">
                 Sign out
               </button>
               <button
                 type="button"
-                class="-mr-1 rounded p-1 text-[var(--color-muted)] transition hover:text-[var(--color-text)] md:hidden"
+                class="-mr-1 rounded p-1 text-[var(--color-muted)] transition hover:text-[var(--color-text)] lg:hidden"
                 :aria-expanded="menuOpen"
                 aria-controls="mobile-nav"
                 :aria-label="menuOpen ? 'Close menu' : 'Open menu'"
@@ -192,7 +237,7 @@ async function signOut() {
           whole pages — without this they were reachable on a desktop only by
           typing the URL, while a comment claimed otherwise.
         -->
-        <div v-if="secondary.length" class="mt-2 hidden flex-wrap gap-4 md:flex">
+        <div v-if="secondary.length" class="mt-2 hidden flex-wrap gap-4 lg:flex">
           <router-link
             v-for="item in secondary"
             :key="item.to"
@@ -219,7 +264,7 @@ async function signOut() {
         >
           <div
             v-if="menuOpen && auth.isAuthenticated"
-            class="fixed inset-0 z-40 bg-black/40 md:hidden"
+            class="fixed inset-0 z-40 bg-black/40 lg:hidden"
             @click="menuOpen = false"
           />
         </Transition>
@@ -232,7 +277,7 @@ async function signOut() {
           <aside
             v-if="menuOpen && auth.isAuthenticated"
             id="mobile-nav"
-            class="fixed inset-y-0 right-0 z-50 flex w-56 max-w-[70vw] flex-col overflow-y-auto border-l border-[var(--color-border)] bg-[var(--color-bg)] px-4 py-4 md:hidden"
+            class="fixed inset-y-0 right-0 z-50 flex w-56 max-w-[70vw] flex-col overflow-y-auto border-l border-[var(--color-border)] bg-[var(--color-bg)] px-4 py-4 lg:hidden"
           >
             <button
               type="button"
@@ -246,10 +291,14 @@ async function signOut() {
               v-for="item in links"
               :key="item.to"
               :to="item.to"
-              class="rounded-lg px-2 py-2 text-[var(--color-muted)] transition hover:text-[var(--color-text)]"
-              active-class="!text-[var(--color-text)]"
+              class="flex items-center justify-between rounded-lg px-2 py-2 transition hover:text-[var(--color-text)]"
+              :class="isActive(item.to) ? 'text-[var(--color-text)]' : 'text-[var(--color-muted)]'"
             >
               {{ item.label }}
+              <span
+                v-if="item.badge"
+                class="rounded-full bg-[var(--color-primary)] px-1.5 text-xs font-semibold text-[var(--color-bg)]"
+              >{{ item.badge }}</span>
             </router-link>
             <router-link
               v-for="item in secondary"

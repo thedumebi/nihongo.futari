@@ -5,7 +5,7 @@ import { Volume2 } from 'lucide-vue-next'
 import { onMounted, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 
-import { getDialogue } from '@/api/dialogues'
+import { getDialogue, listDialogues } from '@/api/dialogues'
 import AppShell from '@/components/layout/app-shell.vue'
 import DialogueCard from '@/components/study/dialogue-card.vue'
 import Button from '@/components/ui/button.vue'
@@ -45,6 +45,21 @@ async function load() {
     dialogue.value = null
   } finally {
     loading.value = false
+  }
+}
+
+/** The conversation after this one, so finishing leads somewhere. */
+const nextUp = ref<{ code: string, title: string } | null>(null)
+
+async function onFinished(run: { correct: number, total: number }) {
+  result.value = run
+  try {
+    const { dialogues: items } = await listDialogues(lang.code)
+    const at = items.findIndex(d => d.code === dialogue.value?.code)
+    const next = at >= 0 ? items[at + 1] : undefined
+    nextUp.value = next ? { code: next.code, title: next.title } : null
+  } catch {
+    nextUp.value = null
   }
 }
 
@@ -112,7 +127,7 @@ watch(() => route.params.code, load)
             :situation="dialogue.situation"
             :turns="dialogue.turns"
             :mode="mode"
-            @finished="result = $event"
+            @finished="onFinished"
           />
         </div>
 
@@ -120,9 +135,14 @@ watch(() => route.params.code, load)
           <p class="text-lg font-semibold">
             {{ result.correct }} of {{ result.total }} right.
           </p>
-          <Button class="mt-4" variant="ghost" @click="again">
-            Try it again
-          </Button>
+          <div class="mt-4 flex flex-wrap justify-center gap-3">
+            <Button variant="ghost" @click="again">
+              Try it again
+            </Button>
+            <Button v-if="nextUp" :to="ROUTES.CONVERSATION_DETAIL(nextUp.code)">
+              Next: {{ nextUp.title }}
+            </Button>
+          </div>
         </div>
       </template>
     </div>

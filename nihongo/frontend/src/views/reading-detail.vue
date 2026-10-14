@@ -9,7 +9,7 @@ import { Languages, Pause, Play, RotateCcw } from 'lucide-vue-next'
 import { computed, onMounted, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 
-import { getReading } from '@/api/readings'
+import { getReading, listReadings } from '@/api/readings'
 import { saveWord } from '@/api/study'
 import WordMeaning from '@/components/ja/word-meaning.vue'
 import AppShell from '@/components/layout/app-shell.vue'
@@ -44,6 +44,31 @@ const reading = ref<ReadingView | null>(null)
 const loading = ref(true)
 const notFound = ref(false)
 const playing = ref(false)
+/** Read to the end: show where to go next instead of a still teleprompter. */
+const ended = ref(false)
+const nextReading = ref<{ code: string, title: string, titleEn: string } | null>(null)
+
+// Playing again from the top puts the end card away.
+watch(playing, (on) => {
+  if (on)
+    ended.value = false
+})
+
+/** The teleprompter reached the last line. */
+async function onEnd() {
+  ended.value = true
+  const r = reading.value
+  if (!r)
+    return
+  try {
+    const { readings } = await listReadings(lang.code, r.level)
+    const at = readings.findIndex(x => x.code === r.code)
+    const next = at >= 0 ? readings[at + 1] : undefined
+    nextReading.value = next ? { code: next.code, title: next.title, titleEn: next.titleEn } : null
+  } catch {
+    nextReading.value = null
+  }
+}
 /** This speech's reading aid; null until the reader picks one, so it follows the setting. */
 const aid = ref<FuriganaMode | null>(null)
 /** 1–10, ten pixels a second per step. A per-device convenience, so localStorage. */
@@ -167,6 +192,7 @@ async function addToReviews(target: WordGloss) {
             :known-kanji="knownKanji"
             :speed="speedStep * 10"
             @pick="word = $event"
+            @end="onEnd"
           />
           <div class="absolute bottom-3 right-3 flex items-center gap-2">
             <Button variant="ghost" round aria-label="Start again" @click="restart">
@@ -175,6 +201,23 @@ async function addToReviews(target: WordGloss) {
             <Button round :aria-label="playing ? 'Pause' : 'Play'" @click="playing = !playing">
               <Pause v-if="playing" class="h-5 w-5" />
               <Play v-else class="h-5 w-5" />
+            </Button>
+          </div>
+        </div>
+
+        <div v-if="ended" class="mt-4 rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] p-5 text-center">
+          <p class="text-lg font-semibold">
+            Well read.
+          </p>
+          <div class="mt-4 flex flex-wrap justify-center gap-3">
+            <Button variant="ghost" @click="ended = false; restart()">
+              Read it again
+            </Button>
+            <Button v-if="nextReading" :to="ROUTES.READING_DETAIL(nextReading.code)">
+              Next: <span style="font-family: var(--font-jp)">{{ nextReading.title }}</span>
+            </Button>
+            <Button v-else :to="ROUTES.READ">
+              All speeches
             </Button>
           </div>
         </div>

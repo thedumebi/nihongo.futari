@@ -62,6 +62,13 @@ export const srsCards = pgTable('srs_cards', {
   totalReviews: integer('total_reviews').notNull().default(0),
   firstSeenAt: timestamp('first_seen_at'),
   lastCorrectAt: timestamp('last_correct_at'),
+  /**
+   * How the card came to exist — CARD_ORIGINS. Only `queue` cards count
+   * toward the daily new-card limit: a finished lesson, a saved word or a
+   * missed Speak prompt was the learner's own choice, not the queue handing
+   * them more to learn.
+   */
+  origin: text('origin').notNull().default('queue'),
 
   /** Head of applied history; lets the fast path skip a full replay. */
   lastAppliedLogId: text('last_applied_log_id'),
@@ -75,7 +82,9 @@ export const srsCards = pgTable('srs_cards', {
   // The core queue query.
   dueIdx: index('srs_cards_due_idx').on(t.userId, t.due).where(sql`not ${t.suspended}`),
   stateIdx: index('srs_cards_state_idx').on(t.userId, t.languageId, t.state),
-  ghostIdx: index('srs_cards_ghost_idx').on(t.userId).where(sql`${t.ghost}`)
+  ghostIdx: index('srs_cards_ghost_idx').on(t.userId).where(sql`${t.ghost}`),
+  // "How many new cards today" — the daily limit's question, asked on every queue.
+  firstSeenIdx: index('srs_cards_first_seen_idx').on(t.userId, t.languageId, t.firstSeenAt)
 }))
 
 /**

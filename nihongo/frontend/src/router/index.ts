@@ -15,6 +15,12 @@ const router = createRouter({
       component: () => import('@/views/home.vue')
     },
     {
+      path: ROUTES.TODAY,
+      name: 'today',
+      component: () => import('@/views/today.vue'),
+      meta: { requiresAuth: true }
+    },
+    {
       path: ROUTES.STUDY,
       name: 'study',
       component: () => import('@/views/study.vue'),
@@ -217,8 +223,12 @@ router.beforeEach(async (to) => {
   // Nobody signed in needs the login or sign-up form. Landing on one is
   // either a stale bookmark or the browser restoring a tab, and showing a
   // sign-in box to someone already signed in reads as being logged out.
-  if (auth.isAuthenticated && (to.name === 'login' || to.name === 'signup'))
-    return { name: 'progress' }
+  //
+  // The landing page is for people who are not yet in. Signed in — the
+  // installed app opens at `/` — it is Today, the one screen that says what to
+  // do next, instead of a sales page and then a choice of thirteen tabs.
+  if (auth.isAuthenticated && (to.name === 'login' || to.name === 'signup' || to.name === 'home'))
+    return { name: 'today' }
 
   if (!to.meta.requiresAuth && !to.meta.isAdmin)
     return true

@@ -192,6 +192,7 @@ export async function listLessons(userId: string, languageCode: string): Promise
   }>()
 
   let next: LessonListResponse['next'] = null
+  let unfinished: LessonListResponse['next'] = null
 
   for (const r of rows) {
     const status = statusOf(r)
@@ -223,9 +224,15 @@ export async function listLessons(userId: string, languageCode: string): Promise
     level.groups.set(key, group)
     levels.set(r.level, level)
 
+    // A lesson opened and left unfinished comes before one never opened —
+    // "Continue" should continue. It used to skip anything already seen.
+    if (status === 'seen' && unfinished === null)
+      unfinished = { level: r.level, slug: r.slug, title: r.title }
     if (next === null && status === 'not-started')
       next = { level: r.level, slug: r.slug, title: r.title }
   }
+
+  next = unfinished ?? next
 
   // The writing system comes first, before any grammar.
   //
@@ -239,11 +246,10 @@ export async function listLessons(userId: string, languageCode: string): Promise
       ['writing-system', { code: 'writing-system', title: 'The writing system', imageUrl: null, lessons: kanaLessons }],
       ...first.groups
     ])
-    if (next === null || kanaLessons.some(l => l.status === 'not-started')) {
-      const firstUnseen = kanaLessons.find(l => l.status === 'not-started')
-      if (firstUnseen)
-        next = { level: first.level, slug: firstUnseen.slug, title: firstUnseen.title }
-    }
+    // An unfinished kana lesson first, then the next new one.
+    const kanaNext = kanaLessons.find(l => l.status === 'seen') ?? kanaLessons.find(l => l.status === 'not-started')
+    if (kanaNext)
+      next = { level: first.level, slug: kanaNext.slug, title: kanaNext.title }
   }
 
   return {
@@ -511,7 +517,8 @@ async function enterReview(
       languageId: facet.languageId,
       due,
       state: 1,
-      firstSeenAt: now
+      firstSeenAt: now,
+      origin: 'lesson'
     })
     // Re-taking a lesson must never reset a schedule the reader has earned.
     .onConflictDoNothing()

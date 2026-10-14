@@ -71,7 +71,7 @@ async function signUpWithGoogle() {
   const origin = window.location.origin
   await authClient.signIn.social({
     provider: 'google',
-    callbackURL: origin + ROUTES.PROGRESS,
+    callbackURL: origin + ROUTES.TODAY,
     errorCallbackURL: `${origin}${ROUTES.LOGIN}`
   })
 }
@@ -124,7 +124,7 @@ async function verifyCode() {
       await authClient.updateUser({ name: name.value.trim() }).catch(() => {})
 
     await auth.syncSession(true)
-    router.push(ROUTES.PROGRESS)
+    router.push(ROUTES.TODAY)
   } catch {
     errorMsg.value = 'That code was not accepted.'
   } finally {

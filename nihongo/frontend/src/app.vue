@@ -34,7 +34,11 @@ function update() {
 </script>
 
 <template>
-  <router-view />
+  <!-- Keyed on the path: going from one lesson, session or speech straight to
+       the next is the same route with a new id, and a page that loads on mount
+       would otherwise keep showing the old one. Query changes (?mode=) do not
+       remount — the pages that use them follow the query themselves. -->
+  <router-view :key="$route.path" />
 
   <div
     v-if="needsRefresh"

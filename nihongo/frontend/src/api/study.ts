@@ -10,7 +10,7 @@ export async function getDecks(languageCode = 'ja', level?: string): Promise<Stu
 }
 
 export async function getQueue(
-  params: { languageCode?: string, limit?: number, kind?: string, unit?: string, mode?: 'due' | 'new' | 'ghost' | 'mixed', level?: string } = {}
+  params: { languageCode?: string, limit?: number, kind?: string, unit?: string, mode?: 'due' | 'new' | 'ghost' | 'mixed', level?: string, moreNew?: number } = {}
 ): Promise<StudyQueueResponse> {
   const { data } = await client.get<StudyQueueResponse>(API_ENDPOINTS.STUDY.QUEUE, { params })
   return data

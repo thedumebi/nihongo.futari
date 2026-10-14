@@ -1,3 +1,4 @@
+import type { CardOrigin } from '@nihongo/shared/constants'
 import type {
   AnswerResult,
   CardState,
@@ -54,16 +55,18 @@ import {
   effectiveCardState,
   emptyCardState,
   evaluateGhost,
-  replay
+  replay,
+  studyDateFor,
+  studyDayRange
 } from '@nihongo/shared/lib'
 import { ghostPolicySchema } from '@nihongo/shared/types'
-import { and, asc, desc, eq, gt, inArray, isNotNull, isNull, lt, lte, or, sql } from 'drizzle-orm'
+import { and, asc, desc, eq, gt, gte, inArray, isNotNull, isNull, lt, lte, or, sql } from 'drizzle-orm'
 
 import { assetUrl, withAssetUrls, withDialogueAudio, withSpeakAudio } from '@/lib/assets.js'
 
 import { glossary, withDialogueTokens, withPromptTokens } from './glossary.service.js'
 import { hintFromLesson, loadLessons } from './grammar.service.js'
-import { recomputeProgress } from './progress.service.js'
+import { loadUserContext, recomputeProgress } from './progress.service.js'
 
 /**
  * SRS persistence.
@@ -527,7 +530,7 @@ export async function markLessonSeen(userId: string, studyItemId: string): Promi
  * to review it with.
  */
 export async function saveWord(userId: string, wordId: string): Promise<SaveWordResult | null> {
-  return cardFirstFacet(userId, eq(studyItems.wordId, wordId))
+  return cardFirstFacet(userId, eq(studyItems.wordId, wordId), 'saved')
 }
 
 /**
@@ -539,11 +542,11 @@ export async function saveWord(userId: string, wordId: string): Promise<SaveWord
  * business, and the SRS starts counting from the first review.
  */
 export async function saveSpeakStep(userId: string, speakStepId: string): Promise<SaveWordResult | null> {
-  return cardFirstFacet(userId, eq(studyItems.speakStepId, speakStepId))
+  return cardFirstFacet(userId, eq(studyItems.speakStepId, speakStepId), 'speak-miss')
 }
 
 /** One card, at state 1 and due now, on the first facet of the one published item `target` picks. */
-async function cardFirstFacet(userId: string, target: SQL): Promise<SaveWordResult | null> {
+async function cardFirstFacet(userId: string, target: SQL, origin: CardOrigin): Promise<SaveWordResult | null> {
   const facets = await db
     .select({
       facetId: studyItemFacets.id,
@@ -571,7 +574,8 @@ async function cardFirstFacet(userId: string, target: SQL): Promise<SaveWordResu
       languageId: first.languageId,
       due: now,
       state: 1,
-      firstSeenAt: now
+      firstSeenAt: now,
+      origin
     })
     .onConflictDoNothing()
     .returning({ id: srsCards.id })
@@ -947,6 +951,29 @@ async function claimStageCelebration(
   return announced
 }
 
+/**
+ * New cards the queue has introduced in the learner's current study day.
+ *
+ * A queue card's `firstSeenAt` is stamped by its first answer. Cards made
+ * another way (`origin` other than `queue`) are the learner's own choice and do
+ * not count against the day's limit.
+ */
+export async function newCardsToday(userId: string, languageId: string, now: Date): Promise<number> {
+  const { timezone, dayBoundaryHour } = await loadUserContext(userId)
+  const { start, end } = studyDayRange(studyDateFor(now, timezone, dayBoundaryHour), timezone, dayBoundaryHour)
+  const [row] = await db
+    .select({ total: sql<number>`count(*)`.mapWith(Number) })
+    .from(srsCards)
+    .where(and(
+      eq(srsCards.userId, userId),
+      eq(srsCards.languageId, languageId),
+      eq(srsCards.origin, 'queue'),
+      gte(srsCards.firstSeenAt, start),
+      lt(srsCards.firstSeenAt, end)
+    ))
+  return row?.total ?? 0
+}
+
 export async function getQueue(userId: string, query: StudyQueueQuery): Promise<StudyQueueResponse> {
   const now = new Date()
   const horizon = new Date(now.getTime() + query.horizonDays * 24 * 60 * 60 * 1000)
@@ -958,7 +985,7 @@ export async function getQueue(userId: string, query: StudyQueueQuery): Promise<
     .limit(1)
 
   if (!language) {
-    return { items: [], counts: { due: 0, dueCards: 0, learning: 0, newAvailable: 0, ghost: 0 }, gate: null, progress: [], serverTime: now.toISOString() }
+    return { items: [], counts: { due: 0, dueCards: 0, learning: 0, newAvailable: 0, ghost: 0, newToday: 0, newLimit: 0 }, gate: null, progress: [], serverTime: now.toISOString() }
   }
 
   const [settings] = await db
@@ -967,6 +994,12 @@ export async function getQueue(userId: string, query: StudyQueueQuery): Promise<
     .where(eq(userSettings.userId, userId))
     .limit(1)
   const newLimit = settings?.dailyNewLimit ?? 10
+  // The limit is DAILY. It was applied per request, so every "Refresh" handed
+  // over ten more and a beginner could take sixty new words on day one, then
+  // meet a wall of reviews on day three. Only cards the queue introduced count
+  // — a finished lesson or a saved word was the learner's own choice.
+  const newToday = await newCardsToday(userId, language.id, now)
+  const newRemaining = Math.max(0, newLimit - newToday) + (query.moreNew ?? 0)
 
   // Deck filters. `kind` narrows the content type, `unit` narrows to a
   // curriculum unit — a script (hiragana) or a scenario (at a restaurant).
@@ -1154,7 +1187,7 @@ export async function getQueue(userId: string, query: StudyQueueQuery): Promise<
           ...levelFilter
         ))
         .orderBy(asc(studyItems.sortIndex))
-        .limit(Math.max(0, Math.min(newLimit, query.limit - dueRows.length)))
+        .limit(Math.max(0, Math.min(newRemaining, query.limit - dueRows.length)))
 
   // --- Finish the stage -----------------------------------------------------
   //
@@ -1506,7 +1539,9 @@ export async function getQueue(userId: string, query: StudyQueueQuery): Promise<
       dueCards: counts?.dueCards ?? 0,
       learning: counts?.learning ?? 0,
       newAvailable: newAvailable?.total ?? 0,
-      ghost: ghosts?.total ?? 0
+      ghost: ghosts?.total ?? 0,
+      newToday,
+      newLimit
     },
     serverTime: now.toISOString()
   }

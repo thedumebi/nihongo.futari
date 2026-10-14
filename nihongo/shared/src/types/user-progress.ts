@@ -35,7 +35,9 @@ export type LevelReadinessSnapshot = typeof levelReadinessSnapshots.$inferSelect
 export const studySettingsSchema = z.object({
   furiganaMode: z.enum(FURIGANA_MODES),
   /** A level code such as 'N5'; the empty string means every level. */
-  studyLevel: z.string()
+  studyLevel: z.string(),
+  /** New cards the queue introduces per study day. "Learn more anyway" can go past it. */
+  dailyNewLimit: z.number().int().min(0).max(100)
 }).openapi('StudySettings')
 
 export type StudySettings = z.infer<typeof studySettingsSchema>

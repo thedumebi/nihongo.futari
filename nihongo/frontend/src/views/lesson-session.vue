@@ -6,7 +6,7 @@ import { Volume2 } from 'lucide-vue-next'
 import { computed, onMounted, ref, shallowRef, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 
-import { completeLesson, getLesson } from '@/api/lessons'
+import { completeLesson, getLesson, getLessons } from '@/api/lessons'
 import { markLessonSeen } from '@/api/study'
 import AppShell from '@/components/layout/app-shell.vue'
 import ChoiceInput from '@/components/study/choice-input.vue'
@@ -39,6 +39,8 @@ const { mode, knownKanji, loadKnownKanji, loadSettings } = useFurigana()
 type Phase = 'teach' | 'quiz' | 'done'
 
 const detail = shallowRef<LessonDetail | null>(null)
+/** The lesson to go on to once this one is done. */
+const nextLesson = ref<{ slug: string, title: string } | null>(null)
 const loading = ref(true)
 const phase = ref<Phase>('teach')
 
@@ -201,6 +203,13 @@ async function finish() {
   } catch {
     // The lesson still happened. Losing the record costs a status chip and a
     // re-ask, which is not worth blocking the reader on.
+  }
+  // What comes after, so the done screen leads somewhere instead of back to a list.
+  try {
+    const next = (await getLessons(lang.code)).next
+    nextLesson.value = next && next.slug !== slug ? next : null
+  } catch {
+    nextLesson.value = null
   }
 }
 
@@ -372,9 +381,17 @@ onMounted(async () => {
               as the curriculum reaches it.
             </template>
           </p>
-          <div class="mt-8 flex justify-center gap-3">
-            <Button variant="primary" @click="router.push(ROUTES.LESSONS)">
-              Back to lessons
+          <div class="mt-8 flex flex-wrap justify-center gap-3">
+            <!-- A missed question is due straight away: review it while the
+                 lesson is fresh, rather than meet it cold days later. -->
+            <Button v-if="missed.size > 0" :variant="nextLesson ? 'ghost' : 'primary'" :to="ROUTES.REVIEW">
+              Review the {{ missed.size === 1 ? 'one' : 'ones' }} you missed
+            </Button>
+            <Button v-if="nextLesson" :to="ROUTES.LESSON_DETAIL(nextLesson.slug)">
+              Next: <span style="font-family: var(--font-jp)">{{ nextLesson.title }}</span>
+            </Button>
+            <Button variant="ghost" @click="router.push(ROUTES.LESSONS)">
+              All lessons
             </Button>
           </div>
         </div>

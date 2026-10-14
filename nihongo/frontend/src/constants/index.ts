@@ -5,6 +5,9 @@ export const ROUTES = {
   /** The course: where you are and what comes next. */
   COURSE: '/course',
   STUDY: '/study',
+  TODAY: '/today',
+  LEARN: '/study?mode=new',
+  REVIEW: '/study?mode=due',
   /** Scripted conversations, browsable rather than only scheduled. */
   CONVERSATIONS: '/conversations',
   CONVERSATION_DETAIL: (code: string) => `/conversations/${encodeURIComponent(code)}`,

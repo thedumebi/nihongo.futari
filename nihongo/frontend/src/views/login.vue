@@ -75,7 +75,7 @@ function googleMessage(raw: string): string {
 async function signInWithGoogle() {
   errorMsg.value = ''
   const origin = window.location.origin
-  const redirect = typeof route.query.redirect === 'string' ? route.query.redirect : ROUTES.PROGRESS
+  const redirect = typeof route.query.redirect === 'string' ? route.query.redirect : ROUTES.TODAY
   await authClient.signIn.social({
     provider: 'google',
     callbackURL: origin + redirect,
@@ -88,7 +88,7 @@ async function signInWithGoogle() {
 
 function afterSignIn() {
   const redirect = route.query.redirect
-  router.push(typeof redirect === 'string' ? redirect : ROUTES.PROGRESS)
+  router.push(typeof redirect === 'string' ? redirect : ROUTES.TODAY)
 }
 
 async function sendCode() {

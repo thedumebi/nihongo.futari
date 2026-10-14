@@ -5,10 +5,12 @@ import { FURIGANA_MODES } from '@nihongo/shared/constants'
 import { computed, onMounted, ref } from 'vue'
 
 import { getPrefs, savePrefs } from '@/api/notifications'
+import { getStudySettings, updateStudySettings } from '@/api/settings'
 import AppShell from '@/components/layout/app-shell.vue'
 import Button from '@/components/ui/button.vue'
 import Dropdown from '@/components/ui/dropdown.vue'
 import Input from '@/components/ui/input.vue'
+import Segmented from '@/components/ui/segmented.vue'
 import { FURIGANA_MODE_LABELS, useFurigana } from '@/composables/use-furigana'
 import { useToast } from '@/composables/use-toast'
 import { authClient } from '@/lib/auth-client'
@@ -104,9 +106,31 @@ async function finishPassword() {
 // it should be allowed to differ between your phone and your desk.
 const { mode: furiganaMode, loadSettings } = useFurigana()
 
+/**
+ * New words a day. Per account (it shapes the schedule, which lives on the
+ * server), saved as soon as it is picked.
+ */
+const dailyNewLimit = ref<number | null>(null)
+const DAILY_OPTIONS = ['5', '10', '15', '20', '30'].map(n => ({ value: n, label: n }))
+
+async function setDailyLimit(value: string) {
+  const next = Number(value)
+  const before = dailyNewLimit.value
+  dailyNewLimit.value = next
+  try {
+    await updateStudySettings({ dailyNewLimit: next })
+  } catch {
+    dailyNewLimit.value = before
+    toast.error('Could not save that — try again.')
+  }
+}
+
 onMounted(() => {
   void loadSettings()
   displayName.value = auth.user?.name ?? ''
+  void getStudySettings().then((s) => {
+    dailyNewLimit.value = s.dailyNewLimit
+  }).catch(() => {})
 })
 
 const prefs = ref<NotificationPrefs | null>(null)
@@ -212,6 +236,24 @@ async function turnOnPush() {
       </h1>
 
       <div class="mt-8 rounded-xl border border-[var(--color-border)] p-6">
+        <h2 class="font-semibold">
+          New words a day
+        </h2>
+        <p class="mt-1 text-sm text-[var(--color-muted)]">
+          How many new cards Learn gives you each day. More now means more reviews in a few days —
+          10 is a steady pace. You can always ask for a few more on the day.
+        </p>
+        <Segmented
+          v-if="dailyNewLimit !== null"
+          class="mt-4"
+          label="Per day"
+          :model-value="String(dailyNewLimit)"
+          :options="DAILY_OPTIONS"
+          @update:model-value="setDailyLimit"
+        />
+      </div>
+
+      <div class="mt-4 rounded-xl border border-[var(--color-border)] p-6">
         <h2 class="font-semibold">
           Furigana
         </h2>

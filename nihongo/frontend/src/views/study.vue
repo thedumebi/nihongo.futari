@@ -197,7 +197,23 @@ let stopSyncListener: (() => void) | undefined
 
 const items = ref<StudyQueueItem[]>([])
 const index = ref(0)
-const counts = ref({ due: 0, dueCards: 0, learning: 0, newAvailable: 0, ghost: 0 })
+const counts = ref({ due: 0, dueCards: 0, learning: 0, newAvailable: 0, ghost: 0, newToday: 0, newLimit: 0 })
+/**
+ * New cards past today's limit, asked for on purpose. Used for one load and
+ * then cleared — otherwise every refill would quietly hand over five more and
+ * the limit would mean nothing again.
+ */
+const moreNew = ref(0)
+
+/** Today's new cards are done, though more are waiting: say so, honestly. */
+const limitReached = computed(() =>
+  mode.value === 'new' && counts.value.newLimit > 0
+  && counts.value.newToday >= counts.value.newLimit && counts.value.newAvailable > 0)
+
+function learnMore() {
+  moreNew.value = 5
+  void load()
+}
 
 /**
  * Curriculum position, one entry per unfinished level.
@@ -967,8 +983,10 @@ async function load() {
       limit: 20,
       ...(levelCode.value ? { level: levelCode.value } : {}),
       ...(deck?.kind ? { kind: deck.kind } : {}),
-      ...(deck?.unit ? { unit: deck.unit } : {})
+      ...(deck?.unit ? { unit: deck.unit } : {}),
+      ...(moreNew.value ? { moreNew: moreNew.value } : {})
     })
+    moreNew.value = 0
     items.value = queue.items
     counts.value = queue.counts
     progress.value = queue.progress
@@ -988,7 +1006,7 @@ async function load() {
       // A bundle cached before `dueCards` existed has no such field, and the
       // reader is offline — the worst moment to throw. Default it rather than
       // trusting the shape of something written by an older build.
-      counts.value = { dueCards: 0, ...cached.counts }
+      counts.value = { dueCards: 0, newToday: 0, newLimit: 0, ...cached.counts }
       index.value = 0
       // Say so when the cache is standing in while the network is fine. A
       // silent fallback masked a server error that made the whole curriculum
@@ -1455,7 +1473,24 @@ watch(() => lang.code, async () => {
           not a dead end, and saying so is the difference between "the app is
           stuck" and "come back shortly".
         -->
-        <template v-if="stageInProgress">
+        <template v-if="limitReached">
+          <p class="text-2xl font-semibold">
+            You've learned today's {{ counts.newLimit }} new words.
+          </p>
+          <p class="mx-auto mt-3 max-w-md text-sm text-[var(--color-muted)]">
+            Letting them settle beats piling on more — they come back for review soon, and
+            that is what makes them stick. Tomorrow brings the next ones.
+          </p>
+          <div class="mt-5 flex flex-wrap justify-center gap-3">
+            <Button v-if="counts.due > 0" :to="ROUTES.REVIEW">
+              Review {{ counts.due }} due
+            </Button>
+            <Button variant="ghost" @click="learnMore">
+              Learn 5 more anyway
+            </Button>
+          </div>
+        </template>
+        <template v-else-if="stageInProgress">
           <p class="text-2xl font-semibold">
             Caught up for now.
           </p>

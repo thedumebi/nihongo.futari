@@ -24,6 +24,7 @@ import reviewQueue from './routes/review-queue/review-queue.index.js'
 import speak from './routes/speak/speak.index.js'
 import study from './routes/study/study.index.js'
 import sync from './routes/sync/sync.index.js'
+import today from './routes/today/today.index.js'
 import usersRoutes from './routes/users/users.index.js'
 import wordsRoutes from './routes/words/words.index.js'
 import writing from './routes/writing/writing.index.js'
@@ -60,6 +61,7 @@ const routes = [
   readings,
   speak,
   crossword,
+  today,
   grammar,
   lessons,
   invites,

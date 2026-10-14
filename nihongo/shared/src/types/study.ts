@@ -109,7 +109,13 @@ export const studyQueueQuerySchema = z.object({
    * vocabulary in among the kana — because the importers level everything but
    * nothing was filtering on it.
    */
-  level: z.string().optional()
+  level: z.string().optional(),
+  /**
+   * New cards past today's limit, asked for on purpose — "learn 5 more
+   * anyway". Grants that many for this request only; the next queue counts
+   * the day afresh, so it cannot quietly turn into no limit at all.
+   */
+  moreNew: z.coerce.number().int().min(0).max(50).optional()
 }).openapi('StudyQueueQuery')
 
 export type StudyQueueQuery = z.infer<typeof studyQueueQuerySchema>
@@ -463,7 +469,11 @@ export const studyQueueResponseSchema = z.object({
     learning: z.number().int(),
     /** Items never studied that the curriculum will release next. */
     newAvailable: z.number().int(),
-    ghost: z.number().int()
+    ghost: z.number().int(),
+    /** New cards the queue has introduced in this study day (4am to 4am, the learner's time). */
+    newToday: z.number().int(),
+    /** The learner's daily new-card limit (Settings). */
+    newLimit: z.number().int()
   }),
   /**
    * Curriculum position, one row per level that still has a stage open.

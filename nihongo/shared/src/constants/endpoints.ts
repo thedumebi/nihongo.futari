@@ -31,6 +31,7 @@ export const ROUTE_BASE_PATHS = {
   READINGS: '/readings',
   SPEAK: '/speak',
   CROSSWORD: '/crossword',
+  TODAY: '/today',
   STUDY: '/study',
   SYNC: '/sync',
   PROGRESS: '/progress',
@@ -235,6 +236,17 @@ export const SPEAK_ROUTES = {
   MISS: '/:code/steps/:index/miss'
 } as const
 
+/**
+ * How an SRS card came to exist. Only `queue` counts toward the daily
+ * new-card limit — the rest are the learner's own choices.
+ */
+export const CARD_ORIGINS = ['queue', 'lesson', 'kana-lesson', 'saved', 'speak-miss'] as const
+export type CardOrigin = typeof CARD_ORIGINS[number]
+
+export const TODAY_ROUTES = {
+  GET: '/'
+} as const
+
 export const CROSSWORD_ROUTES = {
   GET: '/',
   RESULT: '/result'
@@ -436,6 +448,9 @@ export const API_ENDPOINTS = {
   READINGS: {
     LIST: ROUTE_BASE_PATHS.READINGS,
     GET_BY_CODE: (code: string) => `${ROUTE_BASE_PATHS.READINGS}/${encodeURIComponent(code)}`
+  },
+  TODAY: {
+    GET: `${ROUTE_BASE_PATHS.TODAY}${TODAY_ROUTES.GET}`
   },
   CROSSWORD: {
     GET: `${ROUTE_BASE_PATHS.CROSSWORD}${CROSSWORD_ROUTES.GET}`,

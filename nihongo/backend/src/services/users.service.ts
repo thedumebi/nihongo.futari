@@ -27,7 +27,8 @@ export async function getSettings(userId: string): Promise<StudySettings> {
   const [row] = await db
     .select({
       furiganaMode: userSettings.furiganaMode,
-      studyLevel: userSettings.studyLevel
+      studyLevel: userSettings.studyLevel,
+      dailyNewLimit: userSettings.dailyNewLimit
     })
     .from(userSettings)
     .where(eq(userSettings.userId, userId))
@@ -37,7 +38,8 @@ export async function getSettings(userId: string): Promise<StudySettings> {
     furiganaMode: (row?.furiganaMode ?? 'unknown-only') as FuriganaMode,
     // Empty string is the app's own word for "every level", so a user with no
     // row yet gets the same thing as a user who chose All.
-    studyLevel: row?.studyLevel ?? ''
+    studyLevel: row?.studyLevel ?? '',
+    dailyNewLimit: row?.dailyNewLimit ?? 10
   }
 }
 
@@ -52,7 +54,8 @@ export async function getSettings(userId: string): Promise<StudySettings> {
 export async function updateSettings(userId: string, patch: StudySettingsPatch): Promise<StudySettings> {
   const changes = {
     ...(patch.furiganaMode !== undefined ? { furiganaMode: patch.furiganaMode } : {}),
-    ...(patch.studyLevel !== undefined ? { studyLevel: patch.studyLevel } : {})
+    ...(patch.studyLevel !== undefined ? { studyLevel: patch.studyLevel } : {}),
+    ...(patch.dailyNewLimit !== undefined ? { dailyNewLimit: patch.dailyNewLimit } : {})
   }
 
   // An empty patch is a read, not a write. Without this the insert below would
