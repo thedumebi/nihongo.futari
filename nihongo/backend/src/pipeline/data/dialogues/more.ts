@@ -294,7 +294,7 @@ export const MORE: Dialogue[] = [
       ] },
       { s: 'other', t: '大丈夫だよ。また今度ね。', r: 'だいじょうぶ だ よ。また こんど ね。', e: 'No problem. Another time.' },
       { s: 'you', t: '本当にごめん。埋め合わせするね。', r: 'ほんとうに ごめん。うめあわせ する ね。', e: 'Really sorry. I will make it up to you.', wrong: [
-        ['本当にごめん。埋め合わせします。', 'ほんとうに うめあわせ します。', 'Mixing plain gomen with polite shimasu in one breath is jarring — keep one register.'],
+        ['本当にごめん。埋め合わせします。', 'ほんとうに ごめん。うめあわせ します。', 'Mixing plain gomen with polite shimasu in one breath is jarring — keep one register.'],
         ['本当にごめんなさい。埋め合わせするね。', 'ほんとうに ごめんなさい。うめあわせ する ね。', 'Not wrong, but gomen nasai to a close friend over a cancelled drink is heavier than the situation.']
       ] },
       { s: 'other', t: 'いいっていいって。じゃあ来週はどう？', r: 'いい って いい って。じゃあ らいしゅう わ どう？', e: "It's really fine. So, how about next week?" },

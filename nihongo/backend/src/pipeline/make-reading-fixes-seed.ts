@@ -1,38 +1,38 @@
 /* eslint-disable no-console */
 /**
- * Turn checked reading corrections into a seed.
+ * Turn checked reading corrections into review-queue proposals.
  *
  *   pnpm -C nihongo/backend exec dotenvx run -f .env -- tsx src/pipeline/make-reading-fixes-seed.ts <verified.jsonl> <seed-number>
  *
  * The imported (Tatoeba) sentences got their readings from a tokeniser at
  * import, and some are wrong in context — 五時 read ごとき, 来た read くた — or
  * missing, for names the tokeniser did not know. Each correction here was
- * proposed by one reviewer and confirmed by another (see the review notes in
- * the seed header), then approved by the owner.
+ * proposed by one reviewer and confirmed by another.
+ *
+ * Nothing is changed by the seed. It puts one proposal per sentence in the
+ * admin review queue — the sentence as it reads now and as it would read, and
+ * why — and approving it there applies the change to the sentence and to every
+ * cloze card cut from it (review-queue.service applyCorrection).
  *
  * Input lines, as the verifier writes them:
- *   {"id","index","final":"来[き]た","verdict":"accept|modify|reject"}   a token
- *   {"id","gap_at","t","reading"}                                         a name with no token
+ *   {"id","index","final":"来[き]た","verdict":"accept|modify|reject","why"}   a token
+ *   {"id","gap_at","t","reading","why"}                                        a name with no token
  *
- * The seed:
- *  - rewrites the token's furigana, guarded by its current value;
- *  - adds a token for each name that had none, guarded by its position;
- *  - rebuilds every cloze card cut from a changed sentence, since a card keeps
- *    its own copy of the sentence's furigana, and puts the corrected reading
- *    of the blank in place of the wrong one among the accepted answers.
- * Every statement is guarded by the value it replaces, so a re-run is a no-op.
+ * Sentences are found by their text, not their id, so the seed works whatever
+ * ids a database gave them.
  */
 
 import type { FuriganaSegment } from '@nihongo/shared/lib'
+import type { CorrectionProposal } from '@nihongo/shared/types'
 
 import db, { connection } from '@nihongo/shared/db'
 import { hasHiragana, hasKatakana, sentenceFurigana } from '@nihongo/shared/lib'
 import { sql } from 'drizzle-orm'
+import { createHash } from 'node:crypto'
 import { readFileSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 
-interface TokenFix { id: string, index: number, final: string | null, verdict: string }
-interface GapFix { id: string, gap_at: number, t: string, reading: string }
+interface Fix { id: string, index?: number, final?: string | null, verdict?: string, gap_at?: number, t?: string, reading?: string, why?: string }
 
 /** `来[き]た` → [{t:'来', r:'き'}, {t:'た'}]. */
 export function parseBracketed(token: string): FuriganaSegment[] {
@@ -59,124 +59,94 @@ export function parseBracketed(token: string): FuriganaSegment[] {
 const q = (s: string) => `'${s.replace(/'/g, '\'\'')}'`
 const json = (v: unknown) => `${q(JSON.stringify(v))}::jsonb`
 
-interface Tok { index: number, surface: string, charStart: number, charEnd: number, furigana: FuriganaSegment[] }
+interface Tok { index: number, charStart: number, charEnd: number, furigana: FuriganaSegment[] }
 
 async function main() {
   const [file, number] = process.argv.slice(2)
   if (!file || !number)
     throw new Error('usage: make-reading-fixes-seed.ts <verified.jsonl> <seed-number>')
 
-  const lines = readFileSync(file, 'utf8').split('\n').filter(Boolean).map(l => JSON.parse(l) as TokenFix & GapFix)
-  const tokenFixes = lines.filter(l => 'index' in l && l.final && l.verdict !== 'reject')
-  const gapFixes = lines.filter(l => 'gap_at' in l && l.reading)
-  const ids = [...new Set([...tokenFixes, ...gapFixes].map(l => l.id))]
+  const fixes = readFileSync(file, 'utf8').split('\n').filter(Boolean).map(l => JSON.parse(l) as Fix)
+  const usable = fixes.filter(f => (f.index !== undefined && f.final && f.verdict !== 'reject') || (f.gap_at !== undefined && f.reading))
+  const ids = [...new Set(usable.map(f => f.id))]
 
-  const tokens = new Map<string, Tok[]>()
-  const texts = new Map<string, string>()
-  for (const row of (await db.execute(sql`
-    select s.id, s.text, st.index, st.surface, st.char_start, st.char_end, st.furigana
+  const rows = (await db.execute(sql`
+    select s.id, s.text, (select tr.text from sentence_translations tr where tr.sentence_id = s.id limit 1) as translation,
+      st.index, st.char_start, st.char_end, st.furigana
     from sentences s join sentence_tokens st on st.sentence_id = s.id
-    where s.id in ${ids}`)).rows as Array<{ id: string, text: string, index: number, surface: string, char_start: number, char_end: number, furigana: FuriganaSegment[] }>) {
-    texts.set(row.id, row.text)
-    const list = tokens.get(row.id) ?? []
-    list.push({ index: row.index, surface: row.surface, charStart: row.char_start, charEnd: row.char_end, furigana: row.furigana })
-    tokens.set(row.id, list)
+    where s.id in ${ids}`)).rows as Array<{ id: string, text: string, translation: string | null, index: number, char_start: number, char_end: number, furigana: FuriganaSegment[] }>
+  const sentences = new Map<string, { text: string, translation: string | null, tokens: Tok[] }>()
+  for (const r of rows) {
+    const s = sentences.get(r.id) ?? { text: r.text, translation: r.translation, tokens: [] }
+    s.tokens.push({ index: r.index, charStart: r.char_start, charEnd: r.char_end, furigana: r.furigana })
+    sentences.set(r.id, s)
   }
 
   const out: string[] = []
-  const after = new Map<string, Tok[]>()
-  for (const id of ids)
-    after.set(id, (tokens.get(id) ?? []).map(t => ({ ...t })))
-
-  for (const fix of tokenFixes) {
-    const tok = after.get(fix.id)?.find(t => t.index === fix.index)
-    if (!tok)
-      throw new Error(`no token ${fix.id}#${fix.index}`)
-    const segments = parseBracketed(fix.final!)
-    if (segments.map(s => s.t).join('') !== tok.surface)
-      throw new Error(`${fix.id}#${fix.index}: ${fix.final} does not spell ${tok.surface}`)
-    out.push(`UPDATE sentence_tokens SET furigana = ${json(segments)}, alignment_confidence = 1, updated_at = now()\n  WHERE sentence_id = ${q(fix.id)} AND index = ${fix.index} AND furigana = ${json(tok.furigana)};`)
-    tok.furigana = segments
-  }
-
-  for (const gap of gapFixes) {
-    const text = texts.get(gap.id)!
-    const at = gap.gap_at
-    const end = at + [...gap.t].length
-    if ([...text].slice(at, end).join('') !== gap.t)
-      throw new Error(`${gap.id}: ${gap.t} is not at ${at}`)
-    const furigana = [{ t: gap.t, r: gap.reading }]
-    // Index past the tokeniser's own: readers order tokens by position.
-    out.push(`INSERT INTO sentence_tokens (id, sentence_id, index, surface, reading, char_start, char_end, furigana, alignment_confidence)
-  SELECT gen_random_uuid()::text, ${q(gap.id)}, ${1000 + at}, ${q(gap.t)}, ${q(gap.reading)}, ${at}, ${end}, ${json(furigana)}, 1
-  WHERE NOT EXISTS (SELECT 1 FROM sentence_tokens WHERE sentence_id = ${q(gap.id)} AND char_start = ${at});`)
-    after.get(gap.id)!.push({ index: 1000 + at, surface: gap.t, charStart: at, charEnd: end, furigana })
-  }
-
-  // Cloze cards cut from these sentences.
-  const prompts = (await db.execute(sql`
-    select id, prompt, answer from exercise_prompts
-    where prompt->>'kind' = 'cloze' and assets->>'sentenceId' in ${ids}`)).rows as Array<{ id: string, prompt: Record<string, unknown>, answer: { primary: string, accepted: string[] } }>
-  const half = (text: string, list: Tok[], from: number, to: number) => sentenceFurigana(
-    text,
-    list.filter(t => t.charStart >= from && t.charEnd <= to).map(t => ({ ...t, charStart: t.charStart - from, charEnd: t.charEnd - from }))
-  )
-  let cards = 0
-  for (const p of prompts) {
-    const sentence = String(p.prompt.sentence)
-    const sid = [...texts].find(([, t]) => t === sentence)?.[0]
-    if (!sid)
-      continue
-    const before = String(p.prompt.before)
-    const after2 = String(p.prompt.after)
-    const blankStart = [...before].length
-    const blankEnd = [...sentence].length - [...after2].length
-    const list = after.get(sid)!
-    const old = tokens.get(sid) ?? []
-    const nb = half(before, list, 0, blankStart)
-    const na = half(after2, list, blankEnd, [...sentence].length)
-    const blankOf = (l: Tok[]) => half(sentence.slice(before.length, sentence.length - after2.length), l, blankStart, blankEnd).map(s => s.r ?? s.t).join('')
-    const oldBlank = blankOf(old)
-    const newBlank = blankOf(list)
-    const sets: string[] = []
-    if (JSON.stringify(nb) !== JSON.stringify(p.prompt.beforeFurigana))
-      sets.push(`prompt = jsonb_set(prompt, '{beforeFurigana}', ${json(nb)})`)
-    if (JSON.stringify(na) !== JSON.stringify(p.prompt.afterFurigana))
-      sets.push(`prompt = jsonb_set(prompt, '{afterFurigana}', ${json(na)})`)
-    if (sets.length === 2)
-      sets.splice(0, 2, `prompt = jsonb_set(jsonb_set(prompt, '{beforeFurigana}', ${json(nb)}), '{afterFurigana}', ${json(na)})`)
-    if (oldBlank !== newBlank && p.answer.accepted.includes(oldBlank)) {
-      // The wrong reading came only from the bad furigana; the right one replaces it.
-      // A blank that had no reading spelled itself, so its "reading" was the
-      // written answer — which must stay accepted.
-      const keep = (a: string) => a !== oldBlank || a === p.answer.primary
-      const accepted = [...new Set([...p.answer.accepted.filter(keep), newBlank])]
-      sets.push(`answer = jsonb_set(answer, '{accepted}', ${json(accepted)})`)
+  let tokenCount = 0
+  let gapCount = 0
+  for (const id of ids) {
+    const s = sentences.get(id)!
+    const after = s.tokens.map(t => ({ ...t }))
+    const proposal: Extract<CorrectionProposal, { type: 'sentence' }> = {
+      type: 'sentence',
+      text: s.text,
+      translation: s.translation,
+      before: sentenceFurigana(s.text, s.tokens),
+      after: [],
+      tokens: [],
+      gaps: []
     }
-    if (sets.length === 0)
-      continue
-    cards++
-    out.push(`UPDATE exercise_prompts SET ${sets.join(', ')}, updated_at = now()\n  WHERE id = ${q(p.id)} AND prompt->'beforeFurigana' = ${json(p.prompt.beforeFurigana)} AND prompt->'afterFurigana' = ${json(p.prompt.afterFurigana)};`)
+    for (const fix of usable.filter(f => f.id === id)) {
+      if (fix.index !== undefined) {
+        const tok = after.find(t => t.index === fix.index)!
+        const surface = [...s.text].slice(tok.charStart, tok.charEnd).join('')
+        const to = parseBracketed(fix.final!)
+        if (to.map(seg => seg.t).join('') !== surface)
+          throw new Error(`${id}#${fix.index}: ${fix.final} does not spell ${surface}`)
+        proposal.tokens.push({ index: fix.index, from: tok.furigana, to, why: fix.why ?? '' })
+        tok.furigana = to
+        tokenCount++
+      } else {
+        const at = fix.gap_at!
+        if ([...s.text].slice(at, at + [...fix.t!].length).join('') !== fix.t)
+          throw new Error(`${id}: ${fix.t} is not at ${at}`)
+        proposal.gaps.push({ at, t: fix.t!, reading: fix.reading!, why: fix.why ?? '' })
+        after.push({ index: 1000 + at, charStart: at, charEnd: at + [...fix.t!].length, furigana: [{ t: fix.t!, r: fix.reading! }] })
+        gapCount++
+      }
+    }
+    proposal.after = sentenceFurigana(s.text, after)
+
+    const key = `crq-reading-${createHash('sha1').update(s.text).digest('hex').slice(0, 16)}`
+    out.push(`-- ${s.text}
+INSERT INTO content_review_queue (id, language_id, target_table, target_id, change_type, proposed, current, origin, priority, status)
+SELECT ${q(key)}, s.language_id, 'sentences', s.id, 'update', ${json(proposal)}, ${json({ furigana: proposal.before })}, 'ai', 900, 'pending'
+FROM sentences s
+WHERE s.text = ${q(s.text)} AND s.source = 'tatoeba'
+  AND NOT EXISTS (SELECT 1 FROM content_review_queue c WHERE c.target_table = 'sentences' AND c.target_id = s.id AND c.status = 'pending')
+LIMIT 1
+ON CONFLICT DO NOTHING;`)
   }
 
-  const header = `-- Readings in imported sentences, corrected.
+  const header = `-- Reading corrections for imported sentences, for review.
 --
--- The Tatoeba sentences got their readings from a tokeniser at import. Every
--- one of the ${texts.size} sentences touched here was checked in context: a
--- first reviewer read all 1,826 imported sentences and proposed fixes, and a
--- second, independent reviewer confirmed each one before it was kept. Then
--- the owner approved the list.
+-- The Tatoeba sentences got their readings from a tokeniser at import. A first
+-- reviewer read all 1,826 of them in context and proposed fixes; a second,
+-- independent reviewer confirmed each. Nothing changes here: each sentence
+-- becomes one proposal in the admin review queue (Corrections), showing how it
+-- reads now and how it would read, and why. Approving one applies it to the
+-- sentence and to every cloze card cut from it.
 --
--- ${tokenFixes.length} word readings corrected (五時 read ごとき, 来た read くた, 何ですか
--- read なにですか …), ${gapFixes.length} names given a reading they never had, and
--- ${cards} cloze cards rebuilt from the corrected sentences.
+-- ${ids.length} sentences: ${tokenCount} word readings (五時 read ごとき, 来た read くた,
+-- 何ですか read なにですか …) and ${gapCount} names that had no reading at all.
 --
--- Generated by pipeline/make-reading-fixes-seed.ts. Every statement is guarded
--- by the value it replaces, so a re-run changes nothing.
+-- Generated by pipeline/make-reading-fixes-seed.ts. Sentences are found by
+-- their text; a sentence already awaiting review is skipped.
 `
   const path = join('src/db/seeds', `${number}-imported-sentence-readings.sql`)
   writeFileSync(path, `${header}\n${out.join('\n\n')}\n`)
-  console.log(`${path}: ${tokenFixes.length} tokens, ${gapFixes.length} gaps, ${cards} cards`)
+  console.log(`${path}: ${ids.length} sentences, ${tokenCount} tokens, ${gapCount} gaps`)
   await connection.end()
 }
 

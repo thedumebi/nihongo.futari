@@ -5,6 +5,7 @@ import type { ReviewItem } from '@nihongo/shared/types'
 import { computed, onMounted, ref } from 'vue'
 
 import { bulkApprove, bulkReject, listPending } from '@/api/review-queue'
+import CorrectionDiff from '@/components/admin/correction-diff.vue'
 import AppShell from '@/components/layout/app-shell.vue'
 import Button from '@/components/ui/button.vue'
 import { useToast } from '@/composables/use-toast'
@@ -115,7 +116,8 @@ async function decide(action: 'approve' | 'reject') {
       </div>
       <p class="mt-2 text-sm text-[var(--color-muted)]">
         Nothing here reaches a reader until you approve it. Etymology is checked against its
-        sources; grammar prose just needs a read.
+        sources; grammar prose just needs a read. A correction changes something already live —
+        approving it applies the change everywhere it appears.
       </p>
 
       <p v-if="loading" class="mt-8 text-[var(--color-muted)]">
@@ -175,6 +177,14 @@ async function decide(action: 'approve' | 'reject') {
           >
             Speak
           </button>
+          <button
+            type="button"
+            class="rounded-full border px-3 py-1 text-sm transition"
+            :class="kindFilter === 'correction' ? 'border-[var(--color-text)] text-[var(--color-text)]' : 'border-[var(--color-border)] text-[var(--color-muted)]'"
+            @click="selectKind('correction')"
+          >
+            Corrections
+          </button>
 
           <div class="ml-auto flex items-center gap-3">
             <span class="text-sm text-[var(--color-muted)]">{{ selectedCount }} selected</span>
@@ -216,7 +226,10 @@ async function decide(action: 'approve' | 'reject') {
                   </template>
                 </div>
 
-                <p class="mt-2 font-medium">
+                <!-- A correction is small enough to judge at a glance: always shown. -->
+                <CorrectionDiff v-if="item.kind === 'correction' && item.correction" :correction="item.correction" />
+
+                <p v-if="item.kind !== 'correction'" class="mt-2 font-medium">
                   {{ item.kind === 'etymology' ? item.claim : item.kind === 'reading' ? item.reading?.titleEn : item.kind === 'speak' ? item.speak?.titleEn : item.meaningShort }}
                 </p>
                 <!-- Read it the way a learner will: scrolling, tappable, with the reading aid. -->
@@ -237,6 +250,7 @@ async function decide(action: 'approve' | 'reject') {
                 </router-link>
 
                 <button
+                  v-if="item.kind !== 'correction'"
                   type="button"
                   class="mt-2 text-sm text-[var(--color-muted)] underline underline-offset-4"
                   @click="toggleExpanded(item.id)"
@@ -279,7 +293,7 @@ async function decide(action: 'approve' | 'reject') {
                   </li>
                 </ol>
 
-                <div v-if="expanded.has(item.id) && item.kind !== 'reading' && item.kind !== 'speak'" class="mt-3 space-y-4">
+                <div v-if="expanded.has(item.id) && item.kind !== 'reading' && item.kind !== 'speak' && item.kind !== 'correction'" class="mt-3 space-y-4">
                   <p v-if="item.kind === 'grammar' && item.pattern" class="text-sm text-[var(--color-muted)]" style="font-family: var(--font-jp)">
                     {{ item.pattern }}
                   </p>

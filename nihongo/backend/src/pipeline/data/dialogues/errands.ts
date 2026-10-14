@@ -70,7 +70,7 @@ export const ERRANDS: Dialogue[] = [
         ['口座振替でお願いします。通帳と印鑑を持ってくるといいですか。', 'こうざふりかえ で おねがいします。つうちょう と いんかん お もって くる と いい です か。', 'to ii ka is not how you check whether something suffices — the conditional ba plus ii ka is the pattern: motte kureba ii desu ka.']
       ] },
       { s: 'other', t: 'はい。今日は印鑑がなくても大丈夫ですよ、サインで結構です。', r: 'はい。きょう わ いんかん が なくて も だいじょうぶ です よ、サイン で けっこう です。', e: "Yes. You don't need the seal today though — a signature is fine." },
-      { s: 'other', t: '保険証は後日、郵送でお届けします。それまではこの資格確認書をお使いください。', r: 'ほけんしょう わ ごじつ、ゆうそう で おとどけ します。それ まで わ この しかく かくにんしょ お つかって ください。', e: "We'll mail the insurance card to you later. Until then, please use this certificate of eligibility." },
+      { s: 'other', t: '保険証は後日、郵送でお届けします。それまではこの資格確認書をお使いください。', r: 'ほけんしょう わ ごじつ、ゆうそう で おとどけ します。それ まで わ この しかく かくにんしょ お おつかい ください。', e: "We'll mail the insurance card to you later. Until then, please use this certificate of eligibility." },
       { s: 'you', t: 'わかりました。届くまでどのくらいかかりますか。', r: 'わかりました。とどく まで どの くらい かかります か。', e: 'Understood. How long will it take to arrive?', wrong: [
         ['わかりました。届くまでどのくらいかけますか。', 'わかりました。とどく まで どの くらい かけます か。', 'kakemasu is spending time on purpose, someone doing the spending. How long the wait itself takes is intransitive: kakarimasu.'],
         ['わかりました。届くまでどのくらいありますか。', 'わかりました。とどく まで どの くらい あります か。', 'arimasu asks whether a duration exists at all. Asking how long a process takes is dono kurai kakarimasu ka.']
@@ -347,7 +347,7 @@ export const ERRANDS: Dialogue[] = [
         ['あ、細かいのがいないんですけど、両替できますか。', 'あ、こまかい の が いない ん です けど、りょうがえ できます か。', 'inai is for animate things being absent; small change is inanimate, so nai.'],
         ['あ、細かいのをないんですけど、両替できますか。', 'あ、こまかい の お ない ん です けど、りょうがえ できます か。', 'nai, "there isn\'t", is intransitive — what is absent takes ga, not o.']
       ] },
-      { s: 'other', t: 'あちらに両替機がありますよ。1000円札が使えます。', r: 'あちら に りょうがえき が あります よ。せんえんさつ が つかえます よ。', e: 'There is a change machine over there. It takes 1000 yen notes.' },
+      { s: 'other', t: 'あちらに両替機がありますよ。1000円札が使えます。', r: 'あちら に りょうがえき が あります よ。せんえんさつ が つかえます。', e: 'There is a change machine over there. It takes 1000 yen notes.' },
       { s: 'you', t: '助かります。ありがとうございます。', r: 'たすかります。ありがとうございます。', e: 'That is a help, thank you.', wrong: [
         ['助けます。ありがとうございます。', 'たすけます。ありがとうございます。', 'tasukemasu means YOU will help someone. Saying their tip helped you needs the intransitive: tasukarimasu.'],
         ['助かっています。ありがとうございます。', 'たすかって います。ありがとうございます。', 'The -te iru form reads as an ongoing state. Thanking them for the help just given is the plain tasukarimasu.']

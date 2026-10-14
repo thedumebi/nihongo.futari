@@ -1,24 +1,32 @@
-import type { ReviewKind } from '@nihongo/shared/constants'
-import type { BulkReviewResult, ReviewItem, ReviewListResponse } from '@nihongo/shared/types'
+import type { CorrectionTable, ReviewKind } from '@nihongo/shared/constants'
+import type { FuriganaSegment } from '@nihongo/shared/lib'
+import type { BulkReviewResult, CorrectionProposal, ReviewItem, ReviewListResponse } from '@nihongo/shared/types'
 
-import { REVIEW_KIND_TABLES } from '@nihongo/shared/constants'
+import { CORRECTION_TABLES, REVIEW_KIND_TABLES } from '@nihongo/shared/constants'
 import db from '@nihongo/shared/db'
 import {
   contentReviewQueue,
+  dialogueReplies,
+  dialogueTurns,
   etymologyEntries,
   etymologySources,
+  exercisePrompts,
   grammarPoints,
   kanji,
   languageLevels,
   readingLines,
   readings,
+  sentences,
+  sentenceTokens,
   sources,
   speakSessions,
   speakSteps,
   studyItems,
   words
 } from '@nihongo/shared/db/schema'
-import { aliasedTable, and, asc, eq, inArray, sql } from 'drizzle-orm'
+import { clozeFurigana, correctedAnswers, withLineReading } from '@nihongo/shared/lib'
+import { correctionProposalSchema } from '@nihongo/shared/types'
+import { aliasedTable, and, asc, eq, inArray, like, sql } from 'drizzle-orm'
 
 /** Second alias: a queue row can point straight at a grammar point. */
 const directPoint = aliasedTable(grammarPoints, 'direct_point')
@@ -33,8 +41,14 @@ const speakLevel = aliasedTable(languageLevels, 'speak_level')
  * in one payload: the claim, the prose, and the verbatim source quotes.
  */
 
+function isCorrection(table: string): table is CorrectionTable {
+  return (CORRECTION_TABLES as readonly string[]).includes(table)
+}
+
 /** The review kind a queue row is, from the table it points at. */
 function kindOf(targetTable: string): ReviewKind {
+  if (isCorrection(targetTable))
+    return 'correction'
   const entry = Object.entries(REVIEW_KIND_TABLES).find(([, table]) => table === targetTable)
   return (entry?.[0] ?? 'etymology') as ReviewKind
 }
@@ -47,7 +61,11 @@ export async function listPending(
   // `kind` filters the LIST, not just the selection. 265 of 315 pending items
   // are etymology, so without this a reviewer who wants to clear the 50 grammar
   // points cannot reach them at all — they are all past the first page.
-  const kindFilter = kind ? eq(contentReviewQueue.targetTable, REVIEW_KIND_TABLES[kind]) : undefined
+  const kindFilter = !kind
+    ? undefined
+    : kind === 'correction'
+      ? inArray(contentReviewQueue.targetTable, [...CORRECTION_TABLES])
+      : eq(contentReviewQueue.targetTable, REVIEW_KIND_TABLES[kind])
   const rows = await db
     .select({
       id: contentReviewQueue.id,
@@ -56,6 +74,7 @@ export async function listPending(
       origin: contentReviewQueue.origin,
       status: contentReviewQueue.status,
       createdAt: contentReviewQueue.createdAt,
+      proposed: contentReviewQueue.proposed,
       claim: etymologyEntries.claim,
       body: etymologyEntries.body,
       confidence: etymologyEntries.confidence,
@@ -191,7 +210,7 @@ export async function listPending(
       status: r.status,
       createdAt: r.createdAt.toISOString(),
       kind: kindOf(r.targetTable),
-      subject: r.etySubject ?? r.gpTitle ?? r.readingTitle ?? r.speakTitle,
+      subject: r.etySubject ?? r.gpTitle ?? r.readingTitle ?? r.speakTitle ?? correctionSubject(r.targetTable, r.proposed),
       claim: r.claim,
       body: r.body,
       confidence: r.confidence,
@@ -204,7 +223,8 @@ export async function listPending(
         .filter(c => c.etymologyId === r.targetId)
         .map(({ etymologyId: _drop, ...rest }) => rest),
       reading: speech(r),
-      speak: speakSession(r)
+      speak: speakSession(r),
+      correction: isCorrection(r.targetTable) ? proposalOf(r.proposed) : null
     })),
     pending: count?.total ?? 0
   }
@@ -220,7 +240,7 @@ export async function listPending(
 export async function approve(id: string, reviewerId: string, note?: string): Promise<boolean> {
   return db.transaction(async (tx) => {
     const [row] = await tx
-      .select({ targetId: contentReviewQueue.targetId, targetTable: contentReviewQueue.targetTable })
+      .select({ targetId: contentReviewQueue.targetId, targetTable: contentReviewQueue.targetTable, proposed: contentReviewQueue.proposed })
       .from(contentReviewQueue)
       .where(and(eq(contentReviewQueue.id, id), eq(contentReviewQueue.status, 'pending')))
       .limit(1)
@@ -228,7 +248,14 @@ export async function approve(id: string, reviewerId: string, note?: string): Pr
       return false
 
     const now = new Date()
-    if (row.targetTable === 'etymology_entries') {
+    if (isCorrection(row.targetTable)) {
+      // A correction is applied, not published: the readings change now, and
+      // every copy of them with it.
+      const proposal = proposalOf(row.proposed)
+      if (!proposal)
+        return false
+      await applyCorrection(tx, row.targetTable, row.targetId, proposal)
+    } else if (row.targetTable === 'etymology_entries') {
       await tx
         .update(etymologyEntries)
         .set({ status: 'published', reviewedBy: reviewerId, reviewedAt: now, publishedAt: now, updatedAt: now })
@@ -330,4 +357,102 @@ export async function bulkDecide(
   }
 
   return { succeeded, failed }
+}
+
+// ============ Corrections ============
+
+/** The stored proposal, or null if it is not one this code understands. */
+function proposalOf(proposed: unknown): CorrectionProposal | null {
+  const parsed = correctionProposalSchema.safeParse(proposed)
+  return parsed.success ? parsed.data : null
+}
+
+function correctionSubject(table: string, proposed: unknown): string | null {
+  if (!isCorrection(table))
+    return null
+  const p = proposalOf(proposed)
+  if (!p)
+    return null
+  return p.type === 'line' ? `Conversation · ${p.dialogue}` : 'Imported sentence'
+}
+
+type Tx = Parameters<Parameters<typeof db.transaction>[0]>[0]
+
+/**
+ * Apply an approved correction to the source and to every copy of it.
+ *
+ * Each change is guarded by the value it replaces, so a line edited since the
+ * proposal was made is left alone rather than overwritten.
+ */
+async function applyCorrection(tx: Tx, table: CorrectionTable, targetId: string, p: CorrectionProposal): Promise<void> {
+  const now = new Date()
+  if (p.type === 'line') {
+    const target = table === 'dialogue_replies' ? dialogueReplies : dialogueTurns
+    await tx.update(target)
+      .set({ readingKana: p.to, updatedAt: now })
+      .where(and(eq(target.id, targetId), eq(target.readingKana, p.from)))
+    // The study queue's snapshot of the conversation carries the line too.
+    const prompts = await tx.select({ id: exercisePrompts.id, prompt: exercisePrompts.prompt })
+      .from(exercisePrompts)
+      .where(like(sql`${exercisePrompts.prompt}::text`, `%${p.text}%`))
+    for (const prompt of prompts) {
+      const next = withLineReading(prompt.prompt, p.text, p.from, p.to)
+      if (next)
+        await tx.update(exercisePrompts).set({ prompt: next as Record<string, unknown>, updatedAt: now }).where(eq(exercisePrompts.id, prompt.id))
+    }
+    return
+  }
+
+  const tokensOf = async () => (await tx.select({
+    index: sentenceTokens.index,
+    charStart: sentenceTokens.charStart,
+    charEnd: sentenceTokens.charEnd,
+    furigana: sentenceTokens.furigana
+  }).from(sentenceTokens).where(eq(sentenceTokens.sentenceId, targetId))).map(t => ({ ...t, furigana: t.furigana as FuriganaSegment[] }))
+
+  const before = await tokensOf()
+  for (const change of p.tokens) {
+    await tx.update(sentenceTokens)
+      .set({ furigana: change.to, alignmentConfidence: '1', updatedAt: now })
+      .where(and(
+        eq(sentenceTokens.sentenceId, targetId),
+        eq(sentenceTokens.index, change.index),
+        sql`${sentenceTokens.furigana} = ${JSON.stringify(change.from)}::jsonb`
+      ))
+  }
+  for (const gap of p.gaps) {
+    if (before.some(t => t.charStart === gap.at))
+      continue
+    // Indexed past the tokeniser's own; readers order tokens by position.
+    await tx.insert(sentenceTokens).values({
+      sentenceId: targetId,
+      index: 1000 + gap.at,
+      surface: gap.t,
+      reading: gap.reading,
+      charStart: gap.at,
+      charEnd: gap.at + [...gap.t].length,
+      furigana: [{ t: gap.t, r: gap.reading }],
+      alignmentConfidence: '1'
+    })
+  }
+  const after = await tokensOf()
+
+  // Every cloze card cut from this sentence keeps its own copy.
+  const [sentence] = await tx.select({ text: sentences.text }).from(sentences).where(eq(sentences.id, targetId)).limit(1)
+  if (!sentence)
+    return
+  const cards = await tx.select({ id: exercisePrompts.id, prompt: exercisePrompts.prompt, answer: exercisePrompts.answer })
+    .from(exercisePrompts)
+    .where(and(sql`${exercisePrompts.prompt}->>'kind' = 'cloze'`, sql`${exercisePrompts.assets}->>'sentenceId' = ${targetId}`))
+  for (const card of cards) {
+    const prompt = card.prompt as Record<string, unknown>
+    const answer = card.answer as { primary: string, accepted: string[] }
+    const was = clozeFurigana(sentence.text, String(prompt.before ?? ''), String(prompt.after ?? ''), before)
+    const now2 = clozeFurigana(sentence.text, String(prompt.before ?? ''), String(prompt.after ?? ''), after)
+    await tx.update(exercisePrompts).set({
+      prompt: { ...prompt, beforeFurigana: now2.beforeFurigana, afterFurigana: now2.afterFurigana },
+      answer: { ...answer, accepted: correctedAnswers(answer.accepted, answer.primary, was.blankReading, now2.blankReading) },
+      updatedAt: now
+    }).where(eq(exercisePrompts.id, card.id))
+  }
 }

@@ -12,6 +12,7 @@ import type {
 import { REVIEW_KINDS, SPEAK_STEP_KINDS } from '@/constants/endpoints.js'
 
 import { readingLineViewSchema, readingSummarySchema } from './readings.js'
+import { furiganaSegmentSchema } from './sentences.js'
 import { speakSessionSummarySchema } from './speak.js'
 
 /**
@@ -29,6 +30,44 @@ export type EnrichmentItem = typeof enrichmentItems.$inferSelect
 export type NewEnrichmentItem = typeof enrichmentItems.$inferInsert
 export type ContentReviewItem = typeof contentReviewQueue.$inferSelect
 export type NewContentReviewItem = typeof contentReviewQueue.$inferInsert
+
+/**
+ * A proposed correction to readings already live, as the queue row's
+ * `proposed` column holds it. Everything a reviewer needs is in it — the line
+ * as it reads now and as it would read — and so is everything approval needs
+ * to apply it, each change guarded by the value it replaces.
+ */
+export const correctionProposalSchema = z.discriminatedUnion('type', [
+  z.object({
+    type: z.literal('sentence'),
+    text: z.string(),
+    translation: z.string().nullable(),
+    /** The whole sentence's furigana now, and after the change. */
+    before: z.array(furiganaSegmentSchema),
+    after: z.array(furiganaSegmentSchema),
+    /** Tokens whose furigana changes: from → to. */
+    tokens: z.array(z.object({
+      index: z.number().int(),
+      from: z.array(furiganaSegmentSchema),
+      to: z.array(furiganaSegmentSchema),
+      why: z.string()
+    })),
+    /** Words (names, mostly) that had no token and so no reading at all. */
+    gaps: z.array(z.object({ at: z.number().int(), t: z.string(), reading: z.string(), why: z.string() }))
+  }),
+  z.object({
+    type: z.literal('line'),
+    text: z.string(),
+    translation: z.string().nullable(),
+    /** The conversation it is in. */
+    dialogue: z.string(),
+    from: z.string(),
+    to: z.string(),
+    why: z.string()
+  })
+]).openapi('CorrectionProposal')
+
+export type CorrectionProposal = z.infer<typeof correctionProposalSchema>
 
 /**
  * One item awaiting sign-off, with everything a reviewer needs on screen at
@@ -80,7 +119,10 @@ export const reviewItemSchema = z.object({
       reading: z.string().nullable(),
       note: z.string().nullable()
     }))
-  }).nullable()
+  }).nullable(),
+
+  /** A correction to readings already live: before, after, and why. */
+  correction: correctionProposalSchema.nullable()
 }).openapi('ReviewItem')
 
 export type ReviewItem = z.infer<typeof reviewItemSchema>

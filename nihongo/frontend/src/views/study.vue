@@ -761,6 +761,24 @@ const clozeTranslation = computed(() => {
  */
 const showFurigana = computed(() =>
   furiganaMode.value !== 'off' && (revealed.value || current.value?.facet !== 'reading'))
+/**
+ * How big the card's word is drawn, from what is actually on screen. In
+ * hiragana mode 文章 is shown as ぶんしょう — five characters, not two — and
+ * sized for two it broke across lines.
+ */
+const characterSize = computed(() => {
+  const shown = showFurigana.value && furiganaMode.value === 'kana' && subLabel.value
+    ? subLabel.value
+    : character.value
+  const length = [...shown].length
+  if (length <= 2)
+    return 'text-7xl sm:text-8xl'
+  if (length <= 4)
+    return 'text-6xl sm:text-7xl'
+  if (length <= 6)
+    return 'text-5xl sm:text-6xl'
+  return 'text-4xl sm:text-5xl'
+})
 const referenceStrokes = computed<ReferenceStroke[]>(() => {
   const strokes = current.value?.assets?.strokes
   return Array.isArray(strokes) ? strokes as ReferenceStroke[] : []
@@ -1732,8 +1750,8 @@ watch(() => lang.code, async () => {
 
             <p
               v-else-if="!isOrdering && character"
-              class="mt-8 text-center leading-none"
-              :class="character.length > 3 ? 'text-5xl' : 'text-8xl'"
+              class="mt-8 text-center leading-none [word-break:keep-all]"
+              :class="characterSize"
               style="font-family: var(--font-jp)"
             >
               <FuriganaText

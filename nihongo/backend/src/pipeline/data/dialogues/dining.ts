@@ -300,7 +300,7 @@ export const DINING: Dialogue[] = [
         ['PayPayです。', 'ペイペイ です。', 'desu states a fact. Naming how you will pay, among the possible methods, is the same de-answer pattern as hotto de.'],
         ['PayPayを。', 'ペイペイ お。', 'o marks a direct object being acted on. The method of payment is marked with de, not o.']
       ] },
-      { s: 'other', t: 'サンドイッチはお席までお持ちしますので、こちらの番号札を見えるところにお置きください。', r: 'サンドイッチ わ おせき まで おもち します ので、こちら の ばんごうふだ お みえる ところ に おき ください。', e: 'We will bring the sandwich to your table, so please put this number stand somewhere visible.' },
+      { s: 'other', t: 'サンドイッチはお席までお持ちしますので、こちらの番号札を見えるところにお置きください。', r: 'サンドイッチ わ おせき まで おもち します ので、こちら の ばんごうふだ お みえる ところ に おおき ください。', e: 'We will bring the sandwich to your table, so please put this number stand somewhere visible.' },
       { s: 'you', t: '分かりました。ありがとうございます。', r: 'わかりました。ありがとうございます。', e: 'Got it, thank you.', wrong: [
         ['分かります。ありがとうございます。', 'わかります。ありがとうございます。', 'wakarimasu is a general statement of ability to understand. Acknowledging what was just said needs the past: wakarimashita.'],
         ['知りました。ありがとうございます。', 'しりました。ありがとうございます。', 'shiru is learning a brand-new fact. Confirming you understood an instruction is wakarimashita.']

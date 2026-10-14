@@ -265,7 +265,7 @@ export const LIFE: Dialogue[] = [
       { s: 'other', t: 'それはいいですね。安心しました。', r: 'それ わ いい です ね。あんしん しました。', e: 'Good to hear. That is a relief.' },
       { s: 'you', t: '今、正しいファイルをお送りしました。ご確認いただけますでしょうか。', r: 'いま、ただしい ファイル お おおくり しました。ごかくにん いただけます でしょう か。', e: 'I have just sent the correct file. Could you please check it?', wrong: [
         ['今、正しいファイルをお送りになりました。ご確認いただけますでしょうか。', 'いま、ただしい ファイル お おおくり に なりました。ごかくにん いただけます でしょう か。', 'o-...-ni naru raises the action of the OTHER person. Describing your own sending needs the humble o-...-suru: o-okuri shimashita.'],
-        ['今、正しいファイルをお送りしてもらいました。ご確認いただけますでしょうか。', 'いま、ただしい ファイル お おおくり して もらいました。ごかくにん いただけます か。', 'te-moraimashita says someone else sent it for you. You sent it yourself, so drop moratte.']
+        ['今、正しいファイルをお送りしてもらいました。ご確認いただけますでしょうか。', 'いま、ただしい ファイル お おおくり して もらいました。ごかくにん いただけます でしょう か。', 'te-moraimashita says someone else sent it for you. You sent it yourself, so drop moratte.']
       ] },
       { s: 'other', t: '確認しました。今度は問題ないですね。ありがとうございます。', r: 'かくにん しました。こんど わ もんだい ない です ね。ありがとう ございます。', e: 'Checked it. No problem this time. Thank you.' },
       { s: 'you', t: 'こちらこそ、お手数をおかけしました。', r: 'こちらこそ、おてすう お おかけ しました。', e: 'No, thank you. Sorry for the trouble.', wrong: [

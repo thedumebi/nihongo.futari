@@ -119,7 +119,7 @@ export const CONTENT_STATUSES = ['draft', 'ai-drafted', 'in-review', 'published'
 export type ContentStatus = typeof CONTENT_STATUSES[number]
 
 /** What the admin review queue can hold — each kind shows different fields. */
-export const REVIEW_KINDS = ['grammar', 'etymology', 'reading', 'speak'] as const
+export const REVIEW_KINDS = ['grammar', 'etymology', 'reading', 'speak', 'correction'] as const
 export type ReviewKind = typeof REVIEW_KINDS[number]
 
 /** The table each review kind's queue rows point at. */
@@ -127,8 +127,17 @@ export const REVIEW_KIND_TABLES: Record<ReviewKind, string> = {
   grammar: 'grammar_points',
   etymology: 'etymology_entries',
   reading: 'readings',
-  speak: 'speak_sessions'
+  speak: 'speak_sessions',
+  correction: 'sentences'
 }
+
+/**
+ * A correction to something already live — a sentence's readings, a
+ * conversation line's reading — rather than new content to publish. Nothing
+ * changes until it is approved. These are the tables one can point at.
+ */
+export const CORRECTION_TABLES = ['sentences', 'dialogue_turns', 'dialogue_replies'] as const
+export type CorrectionTable = typeof CORRECTION_TABLES[number]
 
 /** Native / Sino-Japanese / loan / hybrid — drives the word-origin explanation. */
 export const WORD_ORIGINS = ['wago', 'kango', 'gairaigo', 'konshugo', 'wasei-eigo'] as const
