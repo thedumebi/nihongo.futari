@@ -35,6 +35,7 @@ export const ROUTE_BASE_PATHS = {
   ACTIVITIES: '/activities',
   RECALL: '/recall',
   GAMES: '/games',
+  FRIENDS: '/friends',
   STUDY: '/study',
   SYNC: '/sync',
   PROGRESS: '/progress',
@@ -281,6 +282,15 @@ export const RECALL_ROUTES = {
   GET: '/'
 } as const
 
+export const FRIENDS_ROUTES = {
+  LIST: '/',
+  SETTINGS: '/settings',
+  ROTATE_CODE: '/settings/rotate-code',
+  REQUESTS: '/requests',
+  ACCEPT: '/:id/accept',
+  REMOVE: '/:id'
+} as const
+
 export const GAMES_ROUTES = {
   LISTENING: '/listening',
   KANJI_BUILD: '/kanji-build',
@@ -509,6 +519,14 @@ export const API_ENDPOINTS = {
   },
   RECALL: {
     GET: `${ROUTE_BASE_PATHS.RECALL}${RECALL_ROUTES.GET}`
+  },
+  FRIENDS: {
+    LIST: ROUTE_BASE_PATHS.FRIENDS,
+    SETTINGS: `${ROUTE_BASE_PATHS.FRIENDS}${FRIENDS_ROUTES.SETTINGS}`,
+    ROTATE_CODE: `${ROUTE_BASE_PATHS.FRIENDS}${FRIENDS_ROUTES.ROTATE_CODE}`,
+    REQUESTS: `${ROUTE_BASE_PATHS.FRIENDS}${FRIENDS_ROUTES.REQUESTS}`,
+    ACCEPT: (id: string) => `${ROUTE_BASE_PATHS.FRIENDS}/${encodeURIComponent(id)}/accept`,
+    REMOVE: (id: string) => `${ROUTE_BASE_PATHS.FRIENDS}/${encodeURIComponent(id)}`
   },
   GAMES: {
     LISTENING: `${ROUTE_BASE_PATHS.GAMES}${GAMES_ROUTES.LISTENING}`,

@@ -29,6 +29,8 @@ export const ROUTES = {
   /** The list of what is due, as opposed to a session that hands it over one card at a time. */
   DUE: '/due',
   PROGRESS: '/progress',
+  /** Opt-in, turned on in Settings. `?code=` from a friend's link fills in the add box. */
+  FRIENDS: '/friends',
   ACHIEVEMENTS: '/achievements',
 
   // Browse / reference, decoupled from the study path

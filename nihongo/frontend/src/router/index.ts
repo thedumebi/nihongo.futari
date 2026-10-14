@@ -135,6 +135,12 @@ const router = createRouter({
       meta: { requiresAuth: true }
     },
     {
+      path: ROUTES.FRIENDS,
+      name: 'friends',
+      component: () => import('@/views/friends.vue'),
+      meta: { requiresAuth: true }
+    },
+    {
       path: ROUTES.ACHIEVEMENTS,
       name: 'achievements',
       component: () => import('@/views/achievements.vue'),

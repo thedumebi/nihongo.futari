@@ -7,6 +7,7 @@ import { computed, onMounted, ref } from 'vue'
 import { getPrefs, savePrefs } from '@/api/notifications'
 import { getStudySettings, updateStudySettings } from '@/api/settings'
 import AppShell from '@/components/layout/app-shell.vue'
+import FriendsSettings from '@/components/settings/friends-settings.vue'
 import Button from '@/components/ui/button.vue'
 import Dropdown from '@/components/ui/dropdown.vue'
 import Input from '@/components/ui/input.vue'
@@ -323,6 +324,8 @@ async function turnOnPush() {
           </form>
         </div>
       </section>
+
+      <FriendsSettings />
 
       <p v-if="loading" class="mt-8 text-[var(--color-muted)]">
         Loading…
