@@ -7,6 +7,7 @@ import { computed, onMounted, ref, watch } from 'vue'
 import { listReadings } from '@/api/readings'
 import CoverageBadge from '@/components/ja/coverage-badge.vue'
 import AppShell from '@/components/layout/app-shell.vue'
+import LevelTabs from '@/components/ui/level-tabs.vue'
 import { useLevel } from '@/composables/use-level'
 import { ROUTES } from '@/constants'
 import { useLanguageStore } from '@/store/language'
@@ -87,23 +88,7 @@ async function load() {
         listening but you. Tap any word for its meaning.
       </p>
 
-      <div class="mt-8 flex flex-wrap gap-2" role="tablist" aria-label="Level">
-        <button
-          v-for="l in LEVELS"
-          :key="l"
-          type="button"
-          role="tab"
-          :aria-selected="l === active"
-          class="rounded-full border px-3 py-1.5 text-sm transition"
-          :class="l === active
-            ? 'border-[var(--color-text)]'
-            : 'border-[var(--color-border)] text-[var(--color-muted)] hover:text-[var(--color-text)]'"
-          @click="picked = l"
-        >
-          {{ l }}
-          <span class="ml-1 opacity-70">{{ counts.get(l) ?? 0 }}</span>
-        </button>
-      </div>
+      <LevelTabs class="mt-8" :model-value="active" :levels="LEVELS" :counts="counts" @update:model-value="picked = $event" />
 
       <p v-if="loading" class="mt-10 text-center text-[var(--color-muted)]">
         Loading…
