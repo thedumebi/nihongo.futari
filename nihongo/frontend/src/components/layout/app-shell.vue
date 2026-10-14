@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { levelProgress } from '@nihongo/shared/lib'
-import { Flame, Globe, Menu, X } from 'lucide-vue-next'
+import { ChevronDown, Flame, Globe, Menu, X } from 'lucide-vue-next'
 import { computed, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 
@@ -112,18 +112,35 @@ const practiseMenu: NavMenuItem[] = [
 ]
 
 const accountMenu = computed<NavMenuItem[]>(() => [
-  { label: 'Progress', to: ROUTES.PROGRESS },
-  { label: 'Achievements', to: ROUTES.ACHIEVEMENTS },
-  { label: 'Friends', to: ROUTES.FRIENDS },
-  { label: 'Settings', to: ROUTES.SETTINGS },
+  { label: 'Progress', to: ROUTES.PROGRESS, hint: 'Your level, streak and JLPT coverage' },
+  { label: 'Achievements', to: ROUTES.ACHIEVEMENTS, hint: 'What you have earned, and what is next' },
+  { label: 'Friends', to: ROUTES.FRIENDS, hint: 'Study alongside friends, if you turn it on' },
+  { label: 'Settings', to: ROUTES.SETTINGS, hint: 'Reminders, reading aids, your account' },
   // An admin is an ordinary account with a role, so the admin entry is an
   // addition to the normal menu rather than a separate area you log into.
-  ...(auth.isAdmin ? [{ label: 'Admin', to: ROUTES.ADMIN }] : [])
+  ...(auth.isAdmin ? [{ label: 'Admin', to: ROUTES.ADMIN, hint: 'Review queue, invites, users' }] : [])
 ])
 
 function groupActive(items: NavMenuItem[]): boolean {
   return items.some(i => isActive(i.to))
 }
+
+/**
+ * The phone drawer's sections, each folded until opened — the flat list of
+ * nineteen links was too much to scan. The section holding the current page
+ * starts open, so the drawer still shows where you are.
+ */
+const drawerSections = computed(() => [
+  { key: 'learn', title: 'Learn', items: learnMenu },
+  { key: 'practise', title: 'Practise', items: practiseMenu },
+  { key: 'account', title: auth.user?.name || 'You', items: accountMenu.value }
+])
+const drawerOpen = ref<Record<string, boolean>>({})
+
+watch(menuOpen, (isOpen) => {
+  if (isOpen)
+    drawerOpen.value = Object.fromEntries(drawerSections.value.map(sec => [sec.key, groupActive(sec.items)]))
+})
 
 /**
  * Whether a nav link is the current page. Learn and Review are one path with
@@ -312,7 +329,7 @@ async function signOut() {
           <aside
             v-if="menuOpen && auth.isAuthenticated"
             id="mobile-nav"
-            class="fixed inset-y-0 right-0 z-50 flex w-56 max-w-[70vw] flex-col overflow-y-auto border-l border-[var(--color-border)] bg-[var(--color-bg)] px-4 py-4 lg:hidden"
+            class="fixed inset-y-0 right-0 z-50 flex w-80 max-w-[85vw] flex-col overflow-y-auto border-l border-[var(--color-border)] bg-[var(--color-bg)] px-4 py-4 lg:hidden"
           >
             <button
               type="button"
@@ -335,46 +352,47 @@ async function signOut() {
                 class="rounded-full bg-[var(--color-primary)] px-1.5 text-xs font-semibold text-[var(--color-bg)]"
               >{{ item.badge }}</span>
             </router-link>
-            <template v-for="group in [{ title: 'Learn', items: learnMenu }, { title: 'Practise', items: practiseMenu }]" :key="group.title">
-              <p class="mt-3 px-2 text-xs uppercase tracking-wide text-[var(--color-muted)] opacity-70">
-                {{ group.title }}
-              </p>
-              <router-link
-                v-for="item in group.items"
-                :key="item.to"
-                :to="item.to"
-                class="rounded-lg px-2 py-1.5 transition hover:text-[var(--color-text)]"
-                :class="isActive(item.to) ? 'text-[var(--color-text)]' : 'text-[var(--color-muted)]'"
-              >
-                {{ item.label }}
-              </router-link>
-            </template>
             <router-link
               :to="ROUTES.DICTIONARY"
-              class="mt-3 rounded-lg px-2 py-2 transition hover:text-[var(--color-text)]"
+              class="rounded-lg px-2 py-2 transition hover:text-[var(--color-text)]"
               :class="isActive(ROUTES.DICTIONARY) ? 'text-[var(--color-text)]' : 'text-[var(--color-muted)]'"
             >
               Dictionary
             </router-link>
-            <p class="mt-3 truncate border-t border-[var(--color-border)] px-2 pt-4 text-xs uppercase tracking-wide text-[var(--color-muted)] opacity-70">
-              {{ auth.user?.name || auth.user?.email }}
-            </p>
-            <router-link
-              v-for="item in accountMenu"
-              :key="item.to"
-              :to="item.to"
-              class="rounded-lg px-2 py-1.5 text-sm transition hover:text-[var(--color-text)]"
-              :class="isActive(item.to) ? 'text-[var(--color-text)]' : 'text-[var(--color-muted)]'"
-            >
-              {{ item.label }}
-            </router-link>
-            <button
-              type="button"
-              class="px-2 py-2 text-left text-sm text-[var(--color-muted)] transition hover:text-[var(--color-text)]"
-              @click="signOut"
-            >
-              Sign out
-            </button>
+
+            <div v-for="sec in drawerSections" :key="sec.key" class="mt-1 border-t border-[var(--color-border)] pt-1">
+              <button
+                type="button"
+                class="flex w-full items-center justify-between rounded-lg px-2 py-2 text-left transition hover:text-[var(--color-text)]"
+                :class="groupActive(sec.items) ? 'text-[var(--color-text)]' : 'text-[var(--color-muted)]'"
+                :aria-expanded="drawerOpen[sec.key] === true"
+                @click="drawerOpen[sec.key] = !drawerOpen[sec.key]"
+              >
+                <span class="truncate">{{ sec.title }}</span>
+                <ChevronDown class="h-4 w-4 shrink-0 transition" :class="drawerOpen[sec.key] ? 'rotate-180' : ''" />
+              </button>
+              <!-- Indented, with a rule down the side, so what belongs to the section is plain. -->
+              <div v-if="drawerOpen[sec.key]" class="mb-2 ml-3 border-l-2 border-[var(--color-border)] pl-2">
+                <router-link
+                  v-for="item in sec.items"
+                  :key="item.to"
+                  :to="item.to"
+                  class="block rounded-lg px-2 py-1.5 transition hover:text-[var(--color-text)]"
+                  :class="isActive(item.to) ? 'text-[var(--color-text)]' : 'text-[var(--color-muted)]'"
+                >
+                  <span class="block text-sm" :class="isActive(item.to) ? 'font-medium' : ''">{{ item.label }}</span>
+                  <span v-if="item.hint" class="block text-xs leading-snug text-[var(--color-muted)] opacity-80">{{ item.hint }}</span>
+                </router-link>
+                <button
+                  v-if="sec.key === 'account'"
+                  type="button"
+                  class="block w-full rounded-lg px-2 py-1.5 text-left text-sm text-[var(--color-muted)] transition hover:text-[var(--color-text)]"
+                  @click="signOut"
+                >
+                  Sign out
+                </button>
+              </div>
+            </div>
           </aside>
         </Transition>
       </Teleport>

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onMounted } from 'vue'
+import { onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 
 import ConfirmDialog from '@/components/ui/confirm-dialog.vue'
@@ -33,12 +33,14 @@ const BUSY_ROUTES = new Set([
 
 let applyUpdate: ((reload?: boolean) => Promise<void>) | undefined
 let updateReady = false
+/** A new version is waiting on a busy page: say so, and offer to reload now. */
+const showUpdateBar = ref(false)
 
 /**
  * A new version is applied by itself, at the first moment it costs nothing:
  * straight away on a calm page, otherwise on the next move to another page or
- * when the app goes to the background. There used to be a "Reload / Later"
- * bar, and a deploy could sit unseen behind it for hours.
+ * when the app goes to the background. Meanwhile, on a busy page, a bar says
+ * it is ready, so it can be had at once with a tap rather than waited for.
  */
 function applyIfCalm(justNavigated = false): void {
   if (!updateReady || !applyUpdate)
@@ -47,6 +49,12 @@ function applyIfCalm(justNavigated = false): void {
   const busy = !justNavigated && BUSY_ROUTES.has(String(route.name ?? ''))
   if (!busy || document.visibilityState === 'hidden')
     void applyUpdate(true)
+  else
+    showUpdateBar.value = true
+}
+
+function reloadNow() {
+  void applyUpdate?.(true)
 }
 
 onMounted(() => {
@@ -76,6 +84,19 @@ onMounted(() => {
        would otherwise keep showing the old one. Query changes (?mode=) do not
        remount — the pages that use them follow the query themselves. -->
   <router-view :key="$route.path" />
+
+  <div
+    v-if="showUpdateBar"
+    class="fixed inset-x-0 bottom-0 z-50 flex flex-wrap items-center justify-center gap-3 border-t border-[var(--color-border)] bg-[var(--color-card)] px-4 py-3 text-sm"
+  >
+    <span>A new version is ready. It loads by itself when you leave this page.</span>
+    <button type="button" class="font-medium underline underline-offset-4" @click="reloadNow">
+      Reload now
+    </button>
+    <button type="button" class="text-[var(--color-muted)] underline underline-offset-4" @click="showUpdateBar = false">
+      Later
+    </button>
+  </div>
 
   <ConfirmDialog />
   <ToastNotification />
