@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import { contrastOf, findMinimalPairs, shortenVowels } from './minimal-pairs.js'
+import { contrastOf, findMinimalPairs, findPitchPairs, shortenVowels } from './minimal-pairs.js'
 
 describe('shortenVowels', () => {
   it('shortens doubled vowels, おう and えい, and drops ー', () => {
@@ -52,6 +52,26 @@ describe('findMinimalPairs', () => {
     expect(pairs).toEqual([
       ['おばさん', 'おばあさん', 'long-vowel'],
       ['きて', 'きって', 'small-tsu']
+    ])
+  })
+})
+
+describe('findPitchPairs', () => {
+  it('pairs words that share a reading but not a pitch, once per pair of patterns', () => {
+    const pairs = findPitchPairs([
+      { id: 'hashi-chopsticks', reading: 'はし', position: 1 },
+      { id: 'hashi-bridge', reading: 'はし', position: 2 },
+      { id: 'hashi-edge', reading: 'はし', position: 0 },
+      { id: 'hashi-bridge-2', reading: 'はし', position: 2 },
+      { id: 'kiru-wear', reading: 'きる', position: 0 },
+      { id: 'kiru-cut', reading: 'きる', position: 1 },
+      { id: 'neko', reading: 'ねこ', position: 1 }
+    ]).map(p => [p.a.id, p.b.id])
+    expect(pairs).toEqual([
+      ['hashi-chopsticks', 'hashi-bridge'],
+      ['hashi-chopsticks', 'hashi-edge'],
+      ['hashi-bridge', 'hashi-edge'],
+      ['kiru-wear', 'kiru-cut']
     ])
   })
 })

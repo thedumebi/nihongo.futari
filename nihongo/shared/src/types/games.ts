@@ -1,5 +1,7 @@
 import { z } from '@hono/zod-openapi'
 
+import { wordPitchSchema } from './words.js'
+
 /**
  * The games: short, grounded drills over real data. None of them writes a
  * review — they are practice beside the schedule, not answers to it. Each
@@ -16,17 +18,25 @@ export type GamesQuery = z.infer<typeof gamesQuerySchema>
 
 // ============ Listening: minimal pairs ============
 
-export const pairContrastSchema = z.enum(['long-vowel', 'small-tsu', 'n'])
+/**
+ * long-vowel, small-tsu, n — hear one of two words and pick it. pitch — two
+ * words that differ only in pitch, shown as drawings (no audio: a synthetic
+ * voice's pitch is not reliable enough to test by ear); pick the one with the
+ * meaning asked.
+ */
+export const pairContrastSchema = z.enum(['long-vowel', 'small-tsu', 'n', 'pitch'])
 
 export const listeningRoundSchema = z.object({
   contrast: pairContrastSchema,
-  /** The word that is played. */
-  audio: z.string(),
-  /** The two words of the pair; `answer` is the index of the one played. */
+  /** The word that is played. Null on a pitch round, which is read, not heard. */
+  audio: z.string().nullable(),
+  /** The two words of the pair; `answer` is the index of the one played (or asked for). */
   options: z.array(z.object({
     reading: z.string(),
     text: z.string(),
-    meaning: z.string()
+    meaning: z.string(),
+    /** Pitch rounds only: the shape to tell the two apart by. */
+    pitch: wordPitchSchema.optional()
   })).length(2),
   answer: z.number().int().min(0).max(1)
 }).openapi('ListeningRound')

@@ -106,3 +106,37 @@ export function findMinimalPairs<T extends PairCandidate>(words: readonly T[]): 
   }
   return pairs
 }
+
+export interface PitchCandidate {
+  id: string
+  reading: string
+  /** The downstep position: 0 for heiban, 1 for atamadaka, and so on. */
+  position: number
+}
+
+/**
+ * Words that sound alike but for their pitch — 箸 and 橋, 着る and 切る. Same
+ * reading, different downstep. One pair per pair of patterns for a reading,
+ * so three spellings of one pattern do not make three pairs.
+ */
+export function findPitchPairs<T extends PitchCandidate>(words: readonly T[]): Array<{ a: T, b: T }> {
+  const byReading = new Map<string, T[]>()
+  for (const w of words)
+    byReading.set(w.reading, [...(byReading.get(w.reading) ?? []), w])
+  const pairs: Array<{ a: T, b: T }> = []
+  for (const group of byReading.values()) {
+    const seen = new Set<string>()
+    for (let i = 0; i < group.length; i++) {
+      for (let j = i + 1; j < group.length; j++) {
+        const a = group[i]!
+        const b = group[j]!
+        const key = [a.position, b.position].sort().join('|')
+        if (a.position !== b.position && !seen.has(key)) {
+          seen.add(key)
+          pairs.push({ a, b })
+        }
+      }
+    }
+  }
+  return pairs
+}

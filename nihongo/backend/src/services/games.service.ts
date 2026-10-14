@@ -1,7 +1,7 @@
 import type { GamesQuery, GhostBoss, GhostBossEntry, KanjiBuildGame, KanjiBuildRound, ListeningGame } from '@nihongo/shared/types'
 
 import db from '@nihongo/shared/db'
-import { findMinimalPairs, hasKanji, hasKatakana, lookAlikes, parseIds, studyDateFor } from '@nihongo/shared/lib'
+import { classifyPitch, countMorae, findMinimalPairs, findPitchPairs, hasKanji, hasKatakana, lookAlikes, parseIds, pitchShape, studyDateFor } from '@nihongo/shared/lib'
 import { sql } from 'drizzle-orm'
 import { DateTime } from 'luxon'
 
@@ -84,9 +84,50 @@ async function minimalPairs(languageCode: string, levels: string[]) {
  */
 const LISTENING_LEVELS = ['N5', 'N4', 'N3']
 
+interface PitchWord {
+  id: string
+  reading: string
+  text: string
+  meaning: string
+  position: number
+}
+
+const pitchPairCache = new Map<string, ReturnType<typeof findPitchPairs<PitchWord>>>()
+
+/** Common words that sound alike but for their pitch, worked out once like the sound pairs. */
+async function pitchPairs(languageCode: string, levels: string[]) {
+  const key = `${languageCode}:${levels.join(',')}`
+  const cached = pitchPairCache.get(key)
+  if (cached)
+    return cached
+  const rows = await db.execute<{ id: string, reading: string, text: string, glosses: Array<{ lang: string, text: string }>, position: number }>(sql`
+    select distinct on (w.id) w.id, w.primary_reading as reading, w.primary_form as text, ws.glosses,
+      (w.pitch_accent->0->'positions'->>0)::int as position
+    from words w
+    join languages l on l.id = w.language_id and l.code = ${languageCode}
+    join language_levels lv on lv.id = w.level_id and lv.code in ${levels}
+    join study_items si on si.word_id = w.id and si.published and si.active
+    join word_senses ws on ws.word_id = w.id and ws.sort_index = 0
+    where w.published and w.is_common and jsonb_array_length(coalesce(w.pitch_accent, '[]'::jsonb)) > 0
+  `)
+  const words: PitchWord[] = rows.rows
+    .map(r => ({ id: r.id, reading: r.reading, text: r.text, meaning: firstGloss(r.glosses), position: Number(r.position) }))
+    // Same spelling twice is one word read two ways, not two words.
+    .filter(w => w.meaning && Number.isInteger(w.position))
+  const pairs = findPitchPairs(words).filter(p => p.a.text !== p.b.text && p.a.meaning !== p.b.meaning)
+  pitchPairCache.set(key, pairs)
+  return pairs
+}
+
+/** About one round in four is a pitch round, when there are pitch pairs to draw on. */
+const PITCH_SHARE = 0.25
+
 export async function getListeningGame(query: GamesQuery): Promise<ListeningGame> {
-  const pairs = await minimalPairs(query.languageCode, query.level ? [query.level] : LISTENING_LEVELS)
-  const rounds = shuffle(pairs).slice(0, query.size).map((pair) => {
+  const levels = query.level ? [query.level] : LISTENING_LEVELS
+  const [pairs, pitched] = await Promise.all([minimalPairs(query.languageCode, levels), pitchPairs(query.languageCode, levels)])
+  const pitchCount = Math.min(pitched.length, Math.round(query.size * PITCH_SHARE))
+
+  const soundRounds = shuffle(pairs).slice(0, query.size - pitchCount).map((pair) => {
     const answer = Math.random() < 0.5 ? 0 : 1
     const options = [pair.a, pair.b]
     return {
@@ -96,7 +137,26 @@ export async function getListeningGame(query: GamesQuery): Promise<ListeningGame
       answer
     }
   })
-  return { rounds }
+
+  const pitchRounds = shuffle(pitched).slice(0, pitchCount).map((pair) => {
+    const answer = Math.random() < 0.5 ? 0 : 1
+    return {
+      contrast: 'pitch' as const,
+      audio: null,
+      options: [pair.a, pair.b].map((w) => {
+        const morae = countMorae(w.reading)
+        return {
+          reading: w.reading,
+          text: w.text,
+          meaning: w.meaning,
+          pitch: { reading: w.reading, positions: [w.position], pattern: classifyPitch(w.position, morae), shape: pitchShape(w.position, morae) }
+        }
+      }),
+      answer
+    }
+  })
+
+  return { rounds: shuffle([...soundRounds, ...pitchRounds]) }
 }
 
 // ============ Build-a-kanji ============

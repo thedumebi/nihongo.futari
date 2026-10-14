@@ -7,6 +7,7 @@ import { computed, onMounted, ref } from 'vue'
 import { recordActivity } from '@/api/activities'
 import { getListeningGame } from '@/api/games'
 import GameEnd from '@/components/games/game-end.vue'
+import PitchAccent from '@/components/ja/pitch-accent.vue'
 import AppShell from '@/components/layout/app-shell.vue'
 import Button from '@/components/ui/button.vue'
 import { playAudio } from '@/composables/use-audio'
@@ -28,7 +29,8 @@ const lang = useLanguageStore()
 const CONTRAST_HINT = {
   'long-vowel': 'Listen for a vowel held longer.',
   'small-tsu': 'Listen for a tiny pause — a small っ.',
-  'n': 'Listen for an ん.'
+  'n': 'Listen for an ん.',
+  'pitch': 'Same sounds — only the pitch differs. Read the shapes.'
 } as const
 
 // ============ Reactive State ============
@@ -64,7 +66,7 @@ async function load() {
 }
 
 function play() {
-  if (round.value)
+  if (round.value?.audio)
     void playAudio(round.value.audio)
 }
 
@@ -113,11 +115,16 @@ function next() {
           {{ index + 1 }} of {{ game.rounds.length }} · {{ CONTRAST_HINT[round.contrast] }}
         </p>
 
-        <div class="mt-8 flex justify-center">
+        <div v-if="round.audio" class="mt-8 flex justify-center">
           <Button round aria-label="Play the word again" @click="play">
             <Volume2 class="h-6 w-6" />
           </Button>
         </div>
+        <!-- A pitch round: no sound to play — the question is the meaning, the
+             answer is in the shapes. -->
+        <p v-else class="mt-8 text-center text-lg">
+          Which one means <span class="font-semibold">“{{ round.options[round.answer]!.meaning }}”</span>?
+        </p>
 
         <div class="mt-8 grid grid-cols-2 gap-3">
           <button
@@ -133,7 +140,8 @@ function next() {
             :disabled="picked !== null"
             @click="pick(i)"
           >
-            <span class="block text-3xl" style="font-family: var(--font-jp)">{{ o.reading }}</span>
+            <span v-if="!o.pitch" class="block text-3xl" style="font-family: var(--font-jp)">{{ o.reading }}</span>
+            <PitchAccent v-else class="mx-auto w-fit" :reading="o.pitch.reading" :shape="o.pitch.shape" :pattern="o.pitch.pattern" />
             <span v-if="picked !== null" class="mt-2 block text-sm text-[var(--color-muted)]">
               <span style="font-family: var(--font-jp)">{{ o.text }}</span> · {{ o.meaning }}
             </span>
@@ -142,7 +150,7 @@ function next() {
 
         <div v-if="picked !== null" class="mt-6 text-center">
           <p class="font-semibold" :class="picked === round.answer ? 'text-[var(--color-success)]' : 'text-[var(--color-danger)]'">
-            {{ picked === round.answer ? 'Right.' : `It was ${round.options[round.answer]!.reading}.` }}
+            {{ picked === round.answer ? 'Right.' : `It was ${round.contrast === 'pitch' ? round.options[round.answer]!.text : round.options[round.answer]!.reading}.` }}
           </p>
           <Button class="mt-4" @click="next">
             Next
