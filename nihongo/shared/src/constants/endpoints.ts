@@ -32,6 +32,7 @@ export const ROUTE_BASE_PATHS = {
   SPEAK: '/speak',
   CROSSWORD: '/crossword',
   TODAY: '/today',
+  ACTIVITIES: '/activities',
   STUDY: '/study',
   SYNC: '/sync',
   PROGRESS: '/progress',
@@ -234,6 +235,31 @@ export const SPEAK_ROUTES = {
   COMPLETE: '/:code/complete',
   /** A prompt answered "Not quite": it goes into the learner's reviews. */
   MISS: '/:code/steps/:index/miss'
+} as const
+
+/**
+ * What a learner did, besides answering reviews — each counts toward the
+ * streak and earns XP (see `learning_activities`).
+ */
+export const ACTIVITY_KINDS = [
+  'lesson',
+  'kana-lesson',
+  'speak',
+  'speak-listen',
+  'crossword',
+  'conversation',
+  'reading',
+  'recall',
+  'shadowing',
+  'listening-game',
+  'kanji-build',
+  'ghost-boss',
+  'story'
+] as const
+export type ActivityKind = typeof ACTIVITY_KINDS[number]
+
+export const ACTIVITY_ROUTES = {
+  RECORD: '/'
 } as const
 
 /**
@@ -448,6 +474,9 @@ export const API_ENDPOINTS = {
   READINGS: {
     LIST: ROUTE_BASE_PATHS.READINGS,
     GET_BY_CODE: (code: string) => `${ROUTE_BASE_PATHS.READINGS}/${encodeURIComponent(code)}`
+  },
+  ACTIVITIES: {
+    RECORD: `${ROUTE_BASE_PATHS.ACTIVITIES}${ACTIVITY_ROUTES.RECORD}`
   },
   TODAY: {
     GET: `${ROUTE_BASE_PATHS.TODAY}${TODAY_ROUTES.GET}`

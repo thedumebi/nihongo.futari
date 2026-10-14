@@ -5,6 +5,7 @@ import { languageLevels, languages, speakProgress, speakSessions, speakSteps } f
 import { and, asc, count, eq, sql } from 'drizzle-orm'
 
 import { speakAnswerAudio, speakSay } from '../lib/assets.js'
+import { recordActivity } from './activities.service.js'
 import { glossary, glossLine } from './glossary.service.js'
 import { saveSpeakStep } from './srs.service.js'
 
@@ -110,7 +111,7 @@ export async function getSpeakSession(
  */
 export async function completeSpeakSession(userId: string, languageCode: string, code: string, input: SpeakCompleteInput): Promise<boolean> {
   const [session] = await db
-    .select({ id: speakSessions.id })
+    .select({ id: speakSessions.id, languageId: speakSessions.languageId })
     .from(speakSessions)
     .innerJoin(languages, eq(languages.id, speakSessions.languageId))
     .where(and(eq(languages.code, languageCode), eq(speakSessions.code, code), eq(speakSessions.published, true)))
@@ -126,6 +127,7 @@ export async function completeSpeakSession(userId: string, languageCode: string,
       target: [speakProgress.userId, speakProgress.sessionId],
       set: { completedAt: now, gotIt: input.gotIt, total: input.total, updatedAt: sql`now()` }
     })
+  await recordActivity(userId, session.languageId, { kind: 'speak', refId: code, score: input.gotIt, total: input.total })
   return true
 }
 

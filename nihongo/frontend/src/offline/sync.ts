@@ -5,6 +5,7 @@ import {
   deadCount,
   deviceId,
   moveToDead,
+  pendingActions,
   pendingAnswers,
   pendingCount
 } from './db'
@@ -96,13 +97,18 @@ async function flushInner(): Promise<void> {
   if (syncing || !navigator.onLine)
     return
   const batch = await pendingAnswers(BATCH)
-  if (batch.length === 0)
+  const actions = await pendingActions(BATCH)
+  if (batch.length === 0 && actions.length === 0)
     return
 
   syncing = true
   await emit()
   try {
-    const result = await pushMutations(deviceId(), batch.map(({ clientSeq: _s, attempts: _a, lastError: _e, ...m }) => m))
+    const result = await pushMutations(
+      deviceId(),
+      batch.map(({ clientSeq: _s, attempts: _a, lastError: _e, ...m }) => m),
+      actions.map(({ attempts: _a, lastError: _e, ...a }) => a)
+    )
 
     // Duplicates are a success: the server already had them.
     await clearAccepted([...result.accepted, ...result.duplicates])

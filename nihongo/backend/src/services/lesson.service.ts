@@ -31,9 +31,11 @@ import { DateTime } from 'luxon'
 
 import { withAssetUrls } from '../lib/assets.js'
 import { readingFor } from '../lib/token-reading.js'
+import { recordActivity } from './activities.service.js'
 import { glossary, glossLine } from './glossary.service.js'
 import { loadExamples, loadLessons } from './grammar.service.js'
 import { getKanaLesson, KANA_SLUG_PREFIX, kanaLessonItems, kanaLessonSummaries } from './kana-lesson.service.js'
+import { saveStudyItem } from './srs.service.js'
 
 /**
  * Japanese embedded in English prose, with readings attached.
@@ -402,6 +404,7 @@ export async function completeLesson(
     // A row is five separate study items, so finishing it records five views.
     // Marking only the first would leave four characters looking untaught and,
     // worse, still barred from Review.
+    let added = false
     for (const studyItemId of items) {
       await db
         .insert(lessonViews)
@@ -410,19 +413,25 @@ export async function completeLesson(
           target: [lessonViews.userId, lessonViews.studyItemId],
           set: { completedAt: sql`coalesce(${lessonViews.completedAt}, now())`, quizScore: input.score }
         })
+      // The characters just taught go into review now, while they are fresh.
+      // Kana used to wait for the queue to reach them in course order, which
+      // could be days after the lesson — the lesson and the review never met.
+      // These cards are the learner's choice, so they do not count against the
+      // day's new-card limit.
+      const saved = await saveStudyItem(userId, studyItemId, 'kana-lesson')
+      added ||= saved?.added ?? false
     }
+    await recordActivity(userId, language!.id, { kind: 'kana-lesson', refId: slug, score: input.score })
     return {
       studyItemId: items[0]!,
       completedAt: new Date().toISOString(),
       score: input.score,
-      // The kana already have cards from the course; a lesson does not create
-      // them, it only records that the characters have now been taught.
-      addedToReview: false
+      addedToReview: added
     }
   }
 
   const [point] = await db
-    .select({ studyItemId: studyItems.id })
+    .select({ studyItemId: studyItems.id, languageId: languages.id })
     .from(grammarPoints)
     .innerJoin(languages, eq(languages.id, grammarPoints.languageId))
     .innerJoin(studyItems, eq(studyItems.grammarPointId, grammarPoints.id))
@@ -456,6 +465,7 @@ export async function completeLesson(
   }
 
   const addedToReview = await enterReview(userId, point.studyItemId, input, now)
+  await recordActivity(userId, point.languageId, { kind: 'lesson', refId: slug, score: input.score })
 
   return {
     studyItemId: row!.studyItemId,

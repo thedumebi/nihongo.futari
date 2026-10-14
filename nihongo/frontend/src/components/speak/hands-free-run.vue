@@ -27,6 +27,11 @@ interface Props {
 
 const props = defineProps<Props>()
 
+const emit = defineEmits<{
+  /** Played through to the end — a listen, recorded apart from a scored run. */
+  finished: []
+}>()
+
 /** Breath after an answer before the teacher moves on. */
 const AFTER_ANSWER_MS = 1500
 const AFTER_EXPLAIN_MS = 700
@@ -116,6 +121,7 @@ async function start() {
   playing.value = false
   finished.value = true
   setState('none')
+  emit('finished')
 }
 
 function pause() {

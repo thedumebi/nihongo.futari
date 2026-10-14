@@ -6,6 +6,7 @@ import {
   kanji,
   languageLevels,
   languages,
+  learningActivities,
   srsCards,
   srsDailyStats,
   srsReviewLogs,
@@ -163,24 +164,54 @@ export async function recomputeProgress(userId: string, languageId: string, sinc
         })))
         .onConflictDoNothing()
     }
-
-    // user_xp is a cache of the sum, recomputed rather than incremented.
-    const [totals] = await tx
-      .select({ total: sql<number>`coalesce(sum(${xpEvents.amount}), 0)`.mapWith(Number) })
-      .from(xpEvents)
-      .where(and(eq(xpEvents.userId, userId), eq(xpEvents.languageId, languageId)))
-
-    const totalXp = totals?.total ?? 0
-    await tx
-      .insert(userXp)
-      .values({ userId, languageId, totalXp, level: xpToLevel(totalXp) })
-      .onConflictDoUpdate({
-        target: [userXp.userId, userXp.languageId],
-        set: { totalXp, level: xpToLevel(totalXp), updatedAt: new Date() }
-      })
   })
 
+  return recomputeHabit(userId, languageId)
+}
+
+/**
+ * Everything derived from WHETHER and HOW MUCH the learner did, not from
+ * individual reviews: the XP total and the streak. Run after reviews and after
+ * any learning activity — a lesson, a Speak session, a crossword.
+ *
+ * Wholesale, never incremented: the XP total is the sum of the keyed award
+ * rows, the streak a fold over every study day. So it can run as often as it
+ * likes, in any order, and land on the same answer.
+ */
+export async function recomputeHabit(userId: string, languageId: string): Promise<Streak> {
+  const { timezone, dayBoundaryHour } = await loadUserContext(userId)
+
+  // user_xp is a cache of the sum, recomputed rather than incremented.
+  const [totals] = await db
+    .select({ total: sql<number>`coalesce(sum(${xpEvents.amount}), 0)`.mapWith(Number) })
+    .from(xpEvents)
+    .where(and(eq(xpEvents.userId, userId), eq(xpEvents.languageId, languageId)))
+
+  const totalXp = totals?.total ?? 0
+  await db
+    .insert(userXp)
+    .values({ userId, languageId, totalXp, level: xpToLevel(totalXp) })
+    .onConflictDoUpdate({
+      target: [userXp.userId, userXp.languageId],
+      set: { totalXp, level: xpToLevel(totalXp), updatedAt: new Date() }
+    })
+
   return persistStreak(userId, languageId, timezone, dayBoundaryHour)
+}
+
+/**
+ * Every day the learner studied: a day with a review, or with any learning
+ * activity. Reviews alone made a day of Speak and lessons count for nothing.
+ */
+async function studyDays(userId: string, languageId: string): Promise<string[]> {
+  const rows = await db.execute<{ local_date: string }>(sql`
+    select local_date::text as local_date from ${srsDailyStats}
+    where ${srsDailyStats.userId} = ${userId} and ${srsDailyStats.languageId} = ${languageId} and ${srsDailyStats.reviewCount} > 0
+    union
+    select local_date::text from ${learningActivities}
+    where ${learningActivities.userId} = ${userId} and ${learningActivities.languageId} = ${languageId}
+  `)
+  return rows.rows.map(r => r.local_date)
 }
 
 /** Rebuild the streak from the full set of study days. */
@@ -190,14 +221,7 @@ async function persistStreak(
   timezone: string,
   dayBoundaryHour: number
 ): Promise<Streak> {
-  const days = await db
-    .select({ localDate: srsDailyStats.localDate })
-    .from(srsDailyStats)
-    .where(and(
-      eq(srsDailyStats.userId, userId),
-      eq(srsDailyStats.languageId, languageId),
-      sql`${srsDailyStats.reviewCount} > 0`
-    ))
+  const days = await studyDays(userId, languageId)
 
   const [freezes] = await db
     .select({ available: sql<number>`count(*)`.mapWith(Number) })
@@ -205,7 +229,7 @@ async function persistStreak(
     .where(and(eq(streakFreezes.userId, userId), isNull(streakFreezes.usedOnDate)))
 
   const today = studyDateFor(new Date(), timezone, dayBoundaryHour)
-  const streak = computeStreak(days.map(d => d.localDate), {
+  const streak = computeStreak(days, {
     today,
     freezesAvailable: freezes?.available ?? 0
   })
@@ -251,7 +275,14 @@ export async function studiedToday(userId: string, languageId: string, now = new
     .from(srsDailyStats)
     .where(and(eq(srsDailyStats.userId, userId), eq(srsDailyStats.languageId, languageId), eq(srsDailyStats.localDate, today)))
     .limit(1)
-  return (row?.reviews ?? 0) > 0
+  if ((row?.reviews ?? 0) > 0)
+    return true
+  const [activity] = await db
+    .select({ id: learningActivities.id })
+    .from(learningActivities)
+    .where(and(eq(learningActivities.userId, userId), eq(learningActivities.languageId, languageId), eq(learningActivities.localDate, today)))
+    .limit(1)
+  return activity !== undefined
 }
 
 /** Headline numbers for the progress page. All scoped to one user. */

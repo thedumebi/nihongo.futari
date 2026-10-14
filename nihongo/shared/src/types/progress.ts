@@ -1,5 +1,7 @@
 import { z } from '@hono/zod-openapi'
 
+import type { ActivityKind } from '@/constants/endpoints.js'
+
 import { SRS_RATINGS } from './srs.js'
 
 /**
@@ -40,7 +42,7 @@ export type DailyStat = z.infer<typeof dailyStatSchema>
 
 /** One XP award, keyed so a replay can re-emit it without double-counting. */
 export const xpAwardSchema = z.object({
-  source: z.enum(['review', 'session-complete', 'streak', 'achievement', 'lesson']),
+  source: z.enum(['review', 'session-complete', 'streak', 'achievement', 'lesson', 'activity', 'quest']),
   /** The log id for review XP. Unique per (user, source, refId). */
   refId: z.string(),
   amount: z.number().int(),
@@ -85,6 +87,28 @@ export const XP_RULES = {
   /** Bonus for `Easy` on a mature card. */
   EASY_BONUS: 1
 } as const
+
+/**
+ * XP for a learning activity: a pure function of its kind, so a replayed
+ * record is worth exactly what the original was. Bigger for the things that
+ * take longer and ask more — a whole lesson or Speak session — than for a
+ * listen-through.
+ */
+export const XP_FOR_ACTIVITY: Record<ActivityKind, number> = {
+  'lesson': 10,
+  'kana-lesson': 10,
+  'speak': 10,
+  'speak-listen': 5,
+  'crossword': 8,
+  'conversation': 6,
+  'reading': 6,
+  'recall': 6,
+  'shadowing': 6,
+  'listening-game': 5,
+  'kanji-build': 5,
+  'ghost-boss': 8,
+  'story': 8
+}
 
 export function xpForReview(event: Pick<AggregateEvent, 'rating' | 'stateBefore'>): number {
   if (event.stateBefore === 0)

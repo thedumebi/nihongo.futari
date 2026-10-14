@@ -27,6 +27,7 @@ import { createHash, randomInt } from 'node:crypto'
 import { assetUrl } from '../lib/assets.js'
 import { crosswordClue } from '../lib/crossword-clues.js'
 import { posLabel } from '../lib/pos.js'
+import { recordActivity } from './activities.service.js'
 import { loadUserContext } from './progress.service.js'
 
 /**
@@ -329,5 +330,6 @@ export async function saveCrosswordResult(userId: string, languageCode: string, 
     })
     .returning({ bestSeconds: crosswordResults.bestSeconds, lastSeconds: crosswordResults.lastSeconds })
 
+  await recordActivity(userId, level.languageId, { kind: 'crossword', refId: input.puzzleKey, durationMs: input.seconds * 1000 })
   return { bestSeconds: row!.bestSeconds, lastSeconds: row!.lastSeconds, best: row!.bestSeconds === input.seconds }
 }

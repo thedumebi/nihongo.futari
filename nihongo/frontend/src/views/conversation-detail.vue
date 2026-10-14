@@ -5,6 +5,7 @@ import { Volume2 } from 'lucide-vue-next'
 import { onMounted, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 
+import { recordActivity } from '@/api/activities'
 import { getDialogue, listDialogues } from '@/api/dialogues'
 import AppShell from '@/components/layout/app-shell.vue'
 import DialogueCard from '@/components/study/dialogue-card.vue'
@@ -53,6 +54,9 @@ const nextUp = ref<{ code: string, title: string } | null>(null)
 
 async function onFinished(run: { correct: number, total: number }) {
   result.value = run
+  // Practising a conversation from the menu counts as a day studied.
+  if (dialogue.value)
+    void recordActivity({ kind: 'conversation', refId: dialogue.value.code, score: run.correct, total: run.total }, lang.code)
   try {
     const { dialogues: items } = await listDialogues(lang.code)
     const at = items.findIndex(d => d.code === dialogue.value?.code)

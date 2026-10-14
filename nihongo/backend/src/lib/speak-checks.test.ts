@@ -98,3 +98,11 @@ describe('tooManyNewWords', () => {
     ])).toEqual([])
   })
 })
+
+describe('patternsBeforeTaught across levels', () => {
+  it('takes N5 before N4, by level and not by the code as text', () => {
+    const n5 = session({ code: 'n5-01-desu', patterns: ['ません'] })
+    const n4 = session({ code: 'n4-01-plain', level: 'N4', number: 1, patterns: ['とおもいます'], steps: [{ x: 'Hi.' }, { q: 'Say it', t: '食べません。', r: 'たべません。' }] })
+    expect(patternsBeforeTaught([n4, n5])).toEqual([])
+  })
+})

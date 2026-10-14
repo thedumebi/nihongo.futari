@@ -2,6 +2,7 @@ import { z } from '@hono/zod-openapi'
 
 import { EXERCISE_TEMPLATE_CODES, STUDY_FACETS, STUDY_ITEM_KINDS } from '@/constants/endpoints.js'
 
+import { recordActivitySchema } from './activities.js'
 import { furiganaSegmentSchema } from './sentences.js'
 import { cardStateSchema } from './srs.js'
 
@@ -540,9 +541,29 @@ export const answerResultSchema = z.object({
 export type AnswerResult = z.infer<typeof answerResultSchema>
 
 /** Batch form used by the offline sync endpoint. */
+/**
+ * A write queued on the device besides an answer — so finishing a
+ * conversation on a train still counts once the phone is back online.
+ *
+ * A discriminated union rather than "replay this request later": each kind is
+ * validated here, carries its own client id for idempotency, and keeps the
+ * time it HAPPENED, not the time it finally synced.
+ */
+export const syncActionSchema = z.discriminatedUnion('type', [
+  recordActivitySchema.extend({
+    type: z.literal('activity'),
+    id: z.uuid(),
+    languageCode: z.string().min(2)
+  })
+]).openapi('SyncAction')
+
+export type SyncAction = z.infer<typeof syncActionSchema>
+
 export const syncMutationsSchema = z.object({
   deviceId: z.string().min(1),
-  mutations: z.array(submitAnswerSchema).max(200)
+  mutations: z.array(submitAnswerSchema).max(200),
+  /** Optional, so a client from before actions existed still syncs. */
+  actions: z.array(syncActionSchema).max(200).optional()
 }).openapi('SyncMutations')
 
 export type SyncMutationsInput = z.infer<typeof syncMutationsSchema>

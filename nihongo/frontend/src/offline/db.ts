@@ -1,4 +1,4 @@
-import type { StudyQueueItem, SubmitAnswerInput } from '@nihongo/shared/types'
+import type { StudyQueueItem, SubmitAnswerInput, SyncAction } from '@nihongo/shared/types'
 import type { Table } from 'dexie'
 
 import Dexie from 'dexie'
@@ -12,6 +12,8 @@ import Dexie from 'dexie'
  *   dead   — answers the server refused with a 4xx. Kept and surfaced rather
  *            than silently discarded.
  *   bundle — cached review queue. Disposable; re-fetched whenever convenient.
+ *   actions — other writes not yet accepted: a finished conversation, a
+ *            speech read. Same durability rule as answers.
  */
 
 export interface QueuedAnswer extends SubmitAnswerInput {
@@ -20,6 +22,9 @@ export interface QueuedAnswer extends SubmitAnswerInput {
   attempts: number
   lastError?: string
 }
+
+/** A queued non-answer write, with retry bookkeeping. */
+export type QueuedAction = SyncAction & { attempts: number, lastError?: string }
 
 export interface CachedBundle {
   key: string
@@ -32,6 +37,8 @@ class OfflineDb extends Dexie {
   queue!: Table<QueuedAnswer, string>
   dead!: Table<QueuedAnswer, string>
   bundles!: Table<CachedBundle, string>
+  actions!: Table<QueuedAction, string>
+  deadActions!: Table<QueuedAction, string>
 
   constructor() {
     super('go-offline')
@@ -39,6 +46,14 @@ class OfflineDb extends Dexie {
       queue: 'id, clientSeq, reviewedAt',
       dead: 'id',
       bundles: 'key, cachedAt'
+    })
+    // Adds two stores; the answer queue is untouched, so nothing queued is lost.
+    this.version(2).stores({
+      queue: 'id, clientSeq, reviewedAt',
+      dead: 'id',
+      bundles: 'key, cachedAt',
+      actions: 'id, occurredAt',
+      deadActions: 'id'
     })
   }
 }
@@ -70,12 +85,21 @@ export async function enqueueAnswer(answer: SubmitAnswerInput): Promise<QueuedAn
   return row
 }
 
+/** Queue a non-answer write. Durable first, like answers. */
+export async function enqueueAction(action: SyncAction): Promise<void> {
+  await offlineDb.actions.put({ ...action, attempts: 0 })
+}
+
+export async function pendingActions(limit = 200): Promise<QueuedAction[]> {
+  return offlineDb.actions.orderBy('occurredAt').limit(limit).toArray()
+}
+
 export async function pendingAnswers(limit = 200): Promise<QueuedAnswer[]> {
   return offlineDb.queue.orderBy('reviewedAt').limit(limit).toArray()
 }
 
 export async function pendingCount(): Promise<number> {
-  return offlineDb.queue.count()
+  return (await offlineDb.queue.count()) + (await offlineDb.actions.count())
 }
 
 export async function deadCount(): Promise<number> {
@@ -83,8 +107,10 @@ export async function deadCount(): Promise<number> {
 }
 
 export async function clearAccepted(ids: string[]): Promise<void> {
-  if (ids.length > 0)
+  if (ids.length > 0) {
     await offlineDb.queue.bulkDelete(ids)
+    await offlineDb.actions.bulkDelete(ids)
+  }
 }
 
 /**
@@ -97,10 +123,16 @@ export async function clearAccepted(ids: string[]): Promise<void> {
 export async function moveToDead(failures: Array<{ id: string, reason: string }>): Promise<void> {
   for (const f of failures) {
     const row = await offlineDb.queue.get(f.id)
-    if (!row)
+    if (row) {
+      await offlineDb.dead.put({ ...row, lastError: f.reason })
+      await offlineDb.queue.delete(f.id)
       continue
-    await offlineDb.dead.put({ ...row, lastError: f.reason })
-    await offlineDb.queue.delete(f.id)
+    }
+    const action = await offlineDb.actions.get(f.id)
+    if (action) {
+      await offlineDb.deadActions.put({ ...action, lastError: f.reason })
+      await offlineDb.actions.delete(f.id)
+    }
   }
 }
 

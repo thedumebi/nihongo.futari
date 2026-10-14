@@ -4,6 +4,8 @@ import { hasKanji, speakBracesBalanced } from '@nihongo/shared/lib'
 
 import type { AuthoredSpeakSession } from '@/pipeline/data/speak/types.js'
 
+import { LEVEL_RANK } from './reading-checks.js'
+
 /**
  * The rules a Speak session must keep before anyone reads it.
  *
@@ -78,7 +80,9 @@ export function speakWellFormed(all: AuthoredSpeakSession[]): string[] {
  */
 export function patternsBeforeTaught(all: AuthoredSpeakSession[]): string[] {
   const problems: string[] = []
-  const ordered = [...all].sort((a, b) => a.level.localeCompare(b.level) || a.number - b.number)
+  // By level RANK — N5 first. Sorting the codes as text put "N4" before "N5",
+  // so every N4 session seemed to use N5 grammar before it was taught.
+  const ordered = [...all].sort((a, b) => LEVEL_RANK[a.level] - LEVEL_RANK[b.level] || a.number - b.number)
   const everything = new Set(all.flatMap(s => s.patterns))
   const taught = new Set<string>()
 

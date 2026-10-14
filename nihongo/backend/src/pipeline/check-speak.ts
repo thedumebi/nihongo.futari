@@ -21,7 +21,7 @@ import { eq } from 'drizzle-orm'
 import type { AuthoredSpeakSession } from './data/speak/types.js'
 
 import { audioKeyFor, englishVoiceFor, VOICE_OTHER } from '../lib/audio-key.js'
-import { kanjiAboveLevel, lineFurigana, spansWordBreak, unspacedParticles } from '../lib/reading-checks.js'
+import { kanjiAboveLevel, LEVEL_RANK, lineFurigana, spansWordBreak, unspacedParticles } from '../lib/reading-checks.js'
 import { patternsBeforeTaught, speakWellFormed, tooManyNewWords } from '../lib/speak-checks.js'
 import { tokenProblems } from '../lib/token-checks.js'
 import { glossary, glossLine } from '../services/glossary.service.js'
@@ -59,7 +59,7 @@ export async function checkSpeak(all: AuthoredSpeakSession[], { audio = false } 
   // Words carry over from session to session: the course is cumulative, and a
   // closing session that mixes everything adds nothing new.
   const seen = new Set<string>()
-  for (const session of [...all].sort((a, b) => a.level.localeCompare(b.level) || a.number - b.number)) {
+  for (const session of [...all].sort((a, b) => LEVEL_RANK[a.level] - LEVEL_RANK[b.level] || a.number - b.number)) {
     const above = kanjiAboveLevel(session.title, session.level, ranks)
     if (above.length > 0)
       problems.push(`${session.code} title: above ${session.level}: ${above.join(' ')}`)

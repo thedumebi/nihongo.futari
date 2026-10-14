@@ -5,6 +5,7 @@ import { useLocalStorage } from '@vueuse/core'
 import { computed, onMounted, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 
+import { recordActivity } from '@/api/activities'
 import { completeSpeakSession, getSpeakSession, listSpeak, missSpeakStep } from '@/api/speak'
 import AppShell from '@/components/layout/app-shell.vue'
 import HandsFreeRun from '@/components/speak/hands-free-run.vue'
@@ -108,6 +109,17 @@ async function onFinished(run: { gotIt: number, total: number }) {
     toast.error('Could not save this run — it still counts, try again later.')
   }
   await findNext(s.code)
+}
+
+/**
+ * A hands-free run played to the end. It cannot be scored — there is no
+ * self-check — so it does not mark the session done, but listening through a
+ * session is still a day's study.
+ */
+function onListened() {
+  const s = session.value
+  if (s?.published)
+    void recordActivity({ kind: 'speak-listen', refId: s.code }, lang.code)
 }
 
 /** The session after this one in the course, so "done" leads on. */
@@ -234,6 +246,7 @@ function again() {
             :title="session.titleEn"
             :number="session.number"
             :think-scale="thinkScale"
+            @finished="onListened"
           />
         </div>
       </template>

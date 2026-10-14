@@ -9,6 +9,7 @@ import { Languages, Pause, Play, RotateCcw } from 'lucide-vue-next'
 import { computed, onMounted, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 
+import { recordActivity } from '@/api/activities'
 import { getReading, listReadings } from '@/api/readings'
 import { saveWord } from '@/api/study'
 import WordMeaning from '@/components/ja/word-meaning.vue'
@@ -60,6 +61,9 @@ async function onEnd() {
   const r = reading.value
   if (!r)
     return
+  // A draft previewed from the review queue is not something the learner read.
+  if (r.published !== false)
+    void recordActivity({ kind: 'reading', refId: r.code }, lang.code)
   try {
     const { readings } = await listReadings(lang.code, r.level)
     const at = readings.findIndex(x => x.code === r.code)

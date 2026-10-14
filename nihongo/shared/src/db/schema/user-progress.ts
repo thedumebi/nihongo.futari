@@ -165,6 +165,43 @@ export const streakFreezes = pgTable('streak_freezes', {
 }))
 
 /**
+ * Everything a learner does besides answering a review — finishing a lesson, a
+ * Speak session, a crossword, a conversation, a speech.
+ *
+ * Append-only, like the review log, and for the same reason: the streak and
+ * XP are folds over what happened, so what happened must never be overwritten.
+ * The tables these activities already write (`lesson_views`,
+ * `speak_progress`, `crossword_results`) keep only the LATEST run, so they
+ * could not say which days a learner studied — and the streak counted review
+ * days alone: a day of Speak and lessons "didn't happen".
+ *
+ * `id` is minted by the client (UUIDv7) so a queued offline record can be
+ * flushed twice for free. `(user, kind, refId, localDate)` is unique too: the
+ * same lesson finished twice in a day counts once, from any device.
+ * `localDate` is computed at write time in the learner's own zone, 4am
+ * boundary — never re-derived later, which would rewrite history if they move.
+ */
+export const learningActivities = pgTable('learning_activities', {
+  id: text('id').primaryKey(),
+  userId: text('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  languageId: text('language_id').notNull().references(() => languages.id, { onDelete: 'cascade' }),
+  /** ACTIVITY_KINDS. */
+  kind: text('kind').notNull(),
+  /** What was done: a lesson slug, a session code, a puzzle key… */
+  refId: text('ref_id').notNull(),
+  occurredAt: timestamp('occurred_at', { withTimezone: true }).notNull(),
+  localDate: date('local_date').notNull(),
+  timezone: text('timezone').notNull(),
+  score: integer('score'),
+  total: integer('total'),
+  durationMs: integer('duration_ms'),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow()
+}, t => ({
+  oncePerDay: uniqueIndex('learning_activities_once_per_day').on(t.userId, t.kind, t.refId, t.localDate),
+  dayIdx: index('learning_activities_day_idx').on(t.userId, t.languageId, t.localDate)
+}))
+
+/**
  * XP is event-sourced with `unique(userId, source, refId)`.
  *
  * That unique constraint is not decoration — it is what stops a review replay

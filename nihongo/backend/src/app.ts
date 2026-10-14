@@ -5,6 +5,7 @@ import { cors } from 'hono/cors'
 import configureOpenAPI from './lib/configure-open-api.js'
 import createApp from './lib/create-app.js'
 import { standardLimiter } from './middlewares/rate-limit.js'
+import activities from './routes/activities/activities.index.js'
 import attribution from './routes/attribution/attribution.index.js'
 import auth from './routes/auth.js'
 import crossword from './routes/crossword/crossword.index.js'
@@ -61,6 +62,7 @@ const routes = [
   readings,
   speak,
   crossword,
+  activities,
   today,
   grammar,
   lessons,

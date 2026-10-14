@@ -4,6 +4,7 @@ import db from '@nihongo/shared/db'
 import { srsCards } from '@nihongo/shared/db/schema'
 import { inArray } from 'drizzle-orm'
 
+import { recordActivityFor } from './activities.service.js'
 import { recomputeProgress } from './progress.service.js'
 import { submitAnswer } from './srs.service.js'
 
@@ -52,6 +53,22 @@ export async function applyMutations(userId: string, input: SyncMutationsInput):
         id: mutation.id,
         reason: err instanceof Error ? err.message : 'Could not be applied'
       })
+    }
+  }
+
+  // Queued writes besides answers. Each goes through the same service as its
+  // online route, so idempotency and the habit recompute come with it.
+  for (const action of input.actions ?? []) {
+    try {
+      const { type: _type, languageCode, ...activity } = action
+      const result = await recordActivityFor(userId, languageCode, activity)
+      if (!result)
+        rejected.push({ id: action.id, reason: 'No such language' })
+      else if (result.recorded)
+        accepted.push(action.id)
+      else duplicates.push(action.id)
+    } catch (err) {
+      rejected.push({ id: action.id, reason: err instanceof Error ? err.message : 'Could not be applied' })
     }
   }
 

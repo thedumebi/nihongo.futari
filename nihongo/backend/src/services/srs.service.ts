@@ -545,6 +545,14 @@ export async function saveSpeakStep(userId: string, speakStepId: string): Promis
   return cardFirstFacet(userId, eq(studyItems.speakStepId, speakStepId), 'speak-miss')
 }
 
+/**
+ * Put one study item into review by id — used when a kana lesson is finished,
+ * so the characters just taught come back while they are fresh.
+ */
+export async function saveStudyItem(userId: string, studyItemId: string, origin: CardOrigin): Promise<SaveWordResult | null> {
+  return cardFirstFacet(userId, eq(studyItems.id, studyItemId), origin)
+}
+
 /** One card, at state 1 and due now, on the first facet of the one published item `target` picks. */
 async function cardFirstFacet(userId: string, target: SQL, origin: CardOrigin): Promise<SaveWordResult | null> {
   const facets = await db
