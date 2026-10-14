@@ -44,3 +44,18 @@ export function fromFsrsCard(card: Card): CardState {
 export function emptyCardState(now: Date): CardState {
   return fromFsrsCard(createEmptyCard(now))
 }
+
+/**
+ * The state to schedule an answer from.
+ *
+ * Some cards exist before their first review — a finished lesson, a saved
+ * word, a Speak prompt missed in a session all create one so it shows up as
+ * due. They carry no log, so they are placeholders: `reps` 0, never reviewed.
+ * Scheduling an answer onto that placeholder took the learning path while a
+ * replay of the same history starts from an empty card, so the two could
+ * disagree about the card's state. A placeholder is treated as the empty card
+ * it stands for, which is what a replay will always start from.
+ */
+export function effectiveCardState(cached: CardState, at: Date): CardState {
+  return cached.reps === 0 && !cached.lastReview ? emptyCardState(at) : cached
+}

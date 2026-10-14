@@ -243,8 +243,8 @@ export function xpToLevel(totalXp: number): number {
 }
 
 /** Headline numbers for the progress page. All scoped to one user. */
-export async function getSummary(userId: string): Promise<ProgressSummary> {
-  const [language] = await db.select({ id: languages.id }).from(languages).where(eq(languages.code, 'ja')).limit(1)
+export async function getSummary(userId: string, languageCode = 'ja'): Promise<ProgressSummary> {
+  const [language] = await db.select({ id: languages.id }).from(languages).where(eq(languages.code, languageCode)).limit(1)
   const empty: ProgressSummary = {
     totalXp: 0,
     level: 1,

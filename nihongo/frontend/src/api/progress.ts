@@ -6,8 +6,8 @@ import client from './client'
 
 export type { ProgressSummary }
 
-export async function getSummary(): Promise<ProgressSummary> {
-  const { data } = await client.get<ProgressSummary>(API_ENDPOINTS.PROGRESS.SUMMARY)
+export async function getSummary(languageCode = 'ja'): Promise<ProgressSummary> {
+  const { data } = await client.get<ProgressSummary>(API_ENDPOINTS.PROGRESS.SUMMARY, { params: { languageCode } })
   return data
 }
 

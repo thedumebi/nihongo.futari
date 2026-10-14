@@ -6,7 +6,7 @@
  * computes. Divergence is then a bug in one place rather than something the
  * architecture has to tolerate.
  */
-export { emptyCardState, fromFsrsCard, toFsrsCard } from './card.js'
+export { effectiveCardState, emptyCardState, fromFsrsCard, toFsrsCard } from './card.js'
 export type { ClampOptions, ClampResult } from './clock.js'
 export { clampReviewedAt } from './clock.js'
 export type { GhostDecision, GhostInput } from './ghost.js'

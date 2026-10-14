@@ -51,12 +51,13 @@ import {
   applyReview,
   canFastForward,
   clampReviewedAt,
+  effectiveCardState,
   emptyCardState,
   evaluateGhost,
   replay
 } from '@nihongo/shared/lib'
 import { ghostPolicySchema } from '@nihongo/shared/types'
-import { and, asc, eq, gt, inArray, isNotNull, isNull, lt, lte, or, sql } from 'drizzle-orm'
+import { and, asc, desc, eq, gt, inArray, isNotNull, isNull, lt, lte, or, sql } from 'drizzle-orm'
 
 import { assetUrl, withAssetUrls, withDialogueAudio, withSpeakAudio } from '@/lib/assets.js'
 
@@ -313,10 +314,12 @@ export async function submitAnswer(userId: string, input: SubmitAnswerInput): Pr
       ...(input.clientId ? { clientId: input.clientId } : {})
     }
 
-    const cached = toCardState(card)
+    const cached = effectiveCardState(toCardState(card), event.reviewedAt)
     const fast = canFastForward(cached, [event])
     let next: CardState
     let replayed = false
+    /** On a replay, the card's ratings in order, superseded ones left out. */
+    let replayedRatings: number[] | null = null
 
     if (fast) {
       next = applyReview(cached, event, fsrsParams).state
@@ -344,6 +347,8 @@ export async function submitAnswer(userId: string, input: SubmitAnswerInput): Pr
       )
       next = folded.state
       replayed = true
+      const superseded = new Set(folded.supersededIds)
+      replayedRatings = history.filter(h => !superseded.has(h.id)).map(h => h.rating)
 
       if (folded.supersededIds.length > 0) {
         await tx
@@ -354,14 +359,31 @@ export async function submitAnswer(userId: string, input: SubmitAnswerInput): Pr
     }
 
     const wasCorrect = input.rating !== 1
-    const consecutiveCorrect = wasCorrect ? card.consecutiveCorrect + 1 : 0
+    // Counters follow the history. On the fast path this answer is the newest,
+    // so adding to the stored counts is exact; after a replay an older answer
+    // may have landed in the middle, so they are re-derived from the fold.
+    const counters = replayedRatings
+      ? {
+          consecutiveCorrect: replayedRatings.length - 1 - replayedRatings.lastIndexOf(1),
+          totalCorrect: replayedRatings.filter(r => r !== 1).length,
+          totalReviews: replayedRatings.length
+        }
+      : {
+          consecutiveCorrect: wasCorrect ? card.consecutiveCorrect + 1 : 0,
+          totalCorrect: card.totalCorrect + (wasCorrect ? 1 : 0),
+          totalReviews: card.totalReviews + 1
+        }
+    const { consecutiveCorrect } = counters
 
-    const recent = await tx
+    // The NEWEST ratings — the ghost check is about how the card is going now.
+    // This read the oldest ones, so a card that had come good was still judged
+    // on its first stumbles, and one going bad was judged on its good start.
+    const recent = (await tx
       .select({ rating: srsReviewLogs.rating })
       .from(srsReviewLogs)
-      .where(and(eq(srsReviewLogs.userId, userId), eq(srsReviewLogs.cardId, card.id)))
-      .orderBy(asc(srsReviewLogs.reviewedAt))
-      .limit(policy.recentWindow)
+      .where(and(eq(srsReviewLogs.userId, userId), eq(srsReviewLogs.cardId, card.id), eq(srsReviewLogs.superseded, false)))
+      .orderBy(desc(srsReviewLogs.reviewedAt), desc(srsReviewLogs.id))
+      .limit(policy.recentWindow)).reverse()
 
     const decision = evaluateGhost({
       ghost: card.ghost,
@@ -378,9 +400,7 @@ export async function submitAnswer(userId: string, input: SubmitAnswerInput): Pr
         ghost: decision.ghost,
         ...(decision.event === 'flagged' ? { ghostSince: receivedAt } : {}),
         ...(decision.reason ? { ghostReason: decision.reason } : {}),
-        consecutiveCorrect,
-        totalCorrect: card.totalCorrect + (wasCorrect ? 1 : 0),
-        totalReviews: card.totalReviews + 1,
+        ...counters,
         ...(wasCorrect ? { lastCorrectAt: receivedAt } : {}),
         lastAppliedLogId: input.id,
         historyVersion: card.historyVersion + 1,

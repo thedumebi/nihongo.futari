@@ -200,3 +200,34 @@ describe('canFastForward', () => {
     expect(canFastForward(replay([]).state, makeEvents([3]))).toBe(true)
   })
 })
+
+describe('effectiveCardState', () => {
+  it('schedules the first answer on a placeholder card exactly as a replay of that answer would', async () => {
+    const { applyReview } = await import('./schedule.js')
+    const { effectiveCardState } = await import('./card.js')
+    // What a finished lesson or a saved word leaves behind: due now, state 1, never reviewed.
+    const placeholder = {
+      due: new Date(BASE - DAY),
+      stability: 0,
+      difficulty: 0,
+      elapsedDays: 0,
+      scheduledDays: 0,
+      learningSteps: 0,
+      reps: 0,
+      lapses: 0,
+      state: 1,
+      lastReview: null
+    }
+    for (const rating of [1, 2, 3, 4] as const) {
+      const [event] = makeEvents([rating])
+      const fast = applyReview(effectiveCardState(placeholder, event!.reviewedAt), event!).state
+      expect(fast, `rating ${rating}`).toEqual(replay([event!]).state)
+    }
+  })
+
+  it('leaves a card that has been reviewed alone', async () => {
+    const { effectiveCardState } = await import('./card.js')
+    const reviewed = replay(makeEvents([3, 3])).state
+    expect(effectiveCardState(reviewed, new Date(BASE + 9 * DAY))).toBe(reviewed)
+  })
+})

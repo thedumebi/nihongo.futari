@@ -164,6 +164,16 @@ function submit() {
     missed.value.add(q.id)
 }
 
+/**
+ * Whether pressing on asks this question again. A miss comes back once — the
+ * second miss moves on — so on the last question "Next" is only true for a
+ * first miss; a second one finishes the lesson and must say so.
+ */
+const willRetry = computed(() => {
+  const q = queue.value[0]
+  return !correct.value && q !== undefined && (attempts.value.get(q.id) ?? 0) + 1 < 2
+})
+
 function next() {
   const q = queue.value.shift()
   if (!q)
@@ -316,7 +326,7 @@ onMounted(async () => {
               v-model="answer"
               :disabled="revealed"
               placeholder="Your answer"
-              autocomplete="off"
+              answer
             />
 
             <p v-if="revealed" class="text-center font-semibold" :class="correct ? 'text-[var(--color-success)]' : 'text-[var(--color-danger)]'">
@@ -336,7 +346,7 @@ onMounted(async () => {
             </p>
 
             <Button type="submit" variant="primary">
-              {{ revealed ? (queue.length > 1 || !correct ? 'Next' : 'Finish') : 'Check' }}
+              {{ revealed ? (queue.length > 1 || willRetry ? 'Next' : 'Finish') : 'Check' }}
             </Button>
           </form>
         </div>

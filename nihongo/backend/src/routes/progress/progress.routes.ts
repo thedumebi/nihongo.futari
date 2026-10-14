@@ -13,6 +13,7 @@ export const summary = createSecuredRoute({
   method: 'get',
   summary: 'Streak, XP and item counts',
   middleware: [authMiddleware],
+  request: { query: z.object({ languageCode: z.string().min(2).default('ja') }) },
   responses: {
     [HttpStatusCodes.OK]: jsonContent(progressSummarySchema, 'Progress summary')
   }

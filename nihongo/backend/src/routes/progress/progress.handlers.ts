@@ -8,7 +8,8 @@ import type { KnownKanjiRoute, ReadinessRoute, SummaryRoute } from './progress.r
 
 export const summary: AppRouteHandler<SummaryRoute> = async (c) => {
   const user = c.get('user')!
-  return c.json(await getSummary(user.id), HttpStatusCodes.OK)
+  const { languageCode } = c.req.valid('query')
+  return c.json(await getSummary(user.id, languageCode), HttpStatusCodes.OK)
 }
 
 export const knownKanji: AppRouteHandler<KnownKanjiRoute> = async (c) => {
