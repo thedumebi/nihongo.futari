@@ -10,6 +10,7 @@
 export * from './api-errors.js'
 export * from './crossword/index.js'
 export * from './enrichment/index.js'
+export * from './games/index.js'
 export * from './grading/index.js'
 export * from './handwriting/index.js'
 export * from './imagery/index.js'

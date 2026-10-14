@@ -21,7 +21,7 @@ import {
   userXp,
   xpEvents
 } from '@nihongo/shared/db/schema'
-import { aggregateReviews, computeStreak, QUEST_XP, questProgress, questsFor, studyDateFor, studyDayRange } from '@nihongo/shared/lib'
+import { aggregateReviews, computeStreak, QUEST_XP, questProgress, questsFor, studyDateFor, studyDayRange, xpToLevel } from '@nihongo/shared/lib'
 import { and, eq, gte, inArray, isNull, sql } from 'drizzle-orm'
 
 import { recomputeAchievements } from './achievements.service.js'
@@ -313,11 +313,6 @@ async function persistStreak(
     })
 
   return streak
-}
-
-/** Level curve: each level costs 100 XP more than the last. */
-export function xpToLevel(totalXp: number): number {
-  return Math.max(1, Math.floor((Math.sqrt(1 + (8 * totalXp) / 100) - 1) / 2) + 1)
 }
 
 /** Whether the learner has done anything counted today, in their own study day. */

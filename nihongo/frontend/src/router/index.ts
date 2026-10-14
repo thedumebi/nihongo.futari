@@ -87,6 +87,30 @@ const router = createRouter({
       meta: { requiresAuth: true }
     },
     {
+      path: ROUTES.GAMES,
+      name: 'games',
+      component: () => import('@/views/games.vue'),
+      meta: { requiresAuth: true }
+    },
+    {
+      path: ROUTES.GAME_LISTENING,
+      name: 'listening-game',
+      component: () => import('@/views/listening-game.vue'),
+      meta: { requiresAuth: true }
+    },
+    {
+      path: ROUTES.GAME_KANJI_BUILD,
+      name: 'kanji-build',
+      component: () => import('@/views/kanji-build.vue'),
+      meta: { requiresAuth: true }
+    },
+    {
+      path: ROUTES.GAME_GHOST_BOSS,
+      name: 'ghost-boss',
+      component: () => import('@/views/ghost-boss.vue'),
+      meta: { requiresAuth: true }
+    },
+    {
       path: ROUTES.CROSSWORD,
       name: 'crossword',
       component: () => import('@/views/crossword.vue'),

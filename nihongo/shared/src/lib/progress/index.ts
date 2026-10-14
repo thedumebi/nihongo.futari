@@ -11,6 +11,8 @@ export type { AchievementDef, AchievementState } from './achievements.js'
  */
 export type { AggregateOptions } from './aggregate.js'
 export { aggregateReviews } from './aggregate.js'
+export { LEVEL_STEP_XP, levelProgress, xpForLevel, xpToLevel } from './level.js'
+export type { LevelProgress } from './level.js'
 export { QUEST_POOL, QUEST_XP, questProgress, questsFor } from './quests.js'
 export type { QuestDef, QuestProgress } from './quests.js'
 export type { StreakOptions } from './streak.js'

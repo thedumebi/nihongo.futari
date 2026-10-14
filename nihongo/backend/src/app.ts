@@ -11,6 +11,7 @@ import auth from './routes/auth.js'
 import crossword from './routes/crossword/crossword.index.js'
 import dialogues from './routes/dialogues/dialogues.index.js'
 import dictionary from './routes/dictionary/dictionary.index.js'
+import games from './routes/games/games.index.js'
 import grammar from './routes/grammar/grammar.index.js'
 import index from './routes/index/index.route.js'
 import invites from './routes/invites/invites.index.js'
@@ -65,6 +66,7 @@ const routes = [
   crossword,
   activities,
   recall,
+  games,
   today,
   grammar,
   lessons,

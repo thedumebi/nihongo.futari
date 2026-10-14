@@ -34,6 +34,7 @@ export const ROUTE_BASE_PATHS = {
   TODAY: '/today',
   ACTIVITIES: '/activities',
   RECALL: '/recall',
+  GAMES: '/games',
   STUDY: '/study',
   SYNC: '/sync',
   PROGRESS: '/progress',
@@ -280,6 +281,12 @@ export const RECALL_ROUTES = {
   GET: '/'
 } as const
 
+export const GAMES_ROUTES = {
+  LISTENING: '/listening',
+  KANJI_BUILD: '/kanji-build',
+  GHOST_BOSS: '/ghost-boss'
+} as const
+
 export const ACTIVITY_ROUTES = {
   RECORD: '/'
 } as const
@@ -502,6 +509,11 @@ export const API_ENDPOINTS = {
   },
   RECALL: {
     GET: `${ROUTE_BASE_PATHS.RECALL}${RECALL_ROUTES.GET}`
+  },
+  GAMES: {
+    LISTENING: `${ROUTE_BASE_PATHS.GAMES}${GAMES_ROUTES.LISTENING}`,
+    KANJI_BUILD: `${ROUTE_BASE_PATHS.GAMES}${GAMES_ROUTES.KANJI_BUILD}`,
+    GHOST_BOSS: `${ROUTE_BASE_PATHS.GAMES}${GAMES_ROUTES.GHOST_BOSS}`
   },
   ACTIVITIES: {
     RECORD: `${ROUTE_BASE_PATHS.ACTIVITIES}${ACTIVITY_ROUTES.RECORD}`

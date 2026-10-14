@@ -19,6 +19,11 @@ export const ROUTES = {
   /** Hands-free, Pimsleur style: hear the English, say the Japanese, over what is shaky. */
   RECALL: '/recall',
   CROSSWORD: '/crossword',
+  /** Listening, build-a-kanji, the ghost boss and the crossword, together. */
+  GAMES: '/games',
+  GAME_LISTENING: '/games/listening',
+  GAME_KANJI_BUILD: '/games/kanji-build',
+  GAME_GHOST_BOSS: '/games/ghost-boss',
   SPEAK_SESSION: (code: string) => `/speak/${encodeURIComponent(code)}`,
   STUDY_SESSION: '/study/session',
   /** The list of what is due, as opposed to a session that hands it over one card at a time. */

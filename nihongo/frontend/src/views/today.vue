@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { levelProgress } from '@nihongo/shared/lib'
 import { BookOpen, Check, Flame, Grid3x3, Headphones, Layers, Mic, RotateCcw, ScrollText, Target } from 'lucide-vue-next'
 import { computed, onMounted, ref } from 'vue'
 
@@ -63,7 +64,9 @@ onMounted(async () => {
           <template v-else>
             {{ today.streak.current }}-day streak — study today to keep it.
           </template>
-          <span class="ml-auto text-sm">Level {{ today.xp.level }}</span>
+          <router-link :to="ROUTES.PROGRESS" class="ml-auto text-sm underline-offset-4 hover:underline">
+            Level {{ today.xp.level }} · {{ levelProgress(today.xp.total).toNext }} XP to {{ today.xp.level + 1 }}
+          </router-link>
         </p>
 
         <!-- 1. Reviews: keep what you have. -->
@@ -189,14 +192,14 @@ onMounted(async () => {
             </p>
           </router-link>
           <router-link
-            :to="ROUTES.CROSSWORD"
+            :to="ROUTES.GAMES"
             class="rounded-xl border border-[var(--color-border)] p-5 transition hover:border-[var(--color-text)]"
           >
             <div class="flex items-center gap-2 text-sm text-[var(--color-muted)]">
-              <Grid3x3 class="h-4 w-4" /> Crossword
+              <Grid3x3 class="h-4 w-4" /> Games
             </div>
             <p class="mt-2 font-semibold">
-              Today's puzzle
+              Today's crossword, listening, build a kanji
             </p>
           </router-link>
         </div>

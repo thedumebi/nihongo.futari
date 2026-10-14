@@ -9,6 +9,7 @@ import type { ProgressSummary } from '@/api/progress'
 import { getReadiness, getSummary, listAchievements } from '@/api/progress'
 import AppShell from '@/components/layout/app-shell.vue'
 import AchievementCard from '@/components/progress/achievement-card.vue'
+import LevelCard from '@/components/progress/level-card.vue'
 import Dropdown from '@/components/ui/dropdown.vue'
 import Tooltip from '@/components/ui/tooltip.vue'
 import { useLevel } from '@/composables/use-level'
@@ -182,6 +183,8 @@ onMounted(async () => {
           </component>
         </Tooltip>
       </dl>
+
+      <LevelCard v-if="summary" class="mt-8" :total-xp="summary.totalXp" />
 
       <section class="mt-10">
         <div class="flex items-baseline justify-between gap-4">

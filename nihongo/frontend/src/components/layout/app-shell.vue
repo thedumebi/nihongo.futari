@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { levelProgress } from '@nihongo/shared/lib'
 import { Flame, Globe, Menu, X } from 'lucide-vue-next'
 import { computed, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
@@ -113,7 +114,7 @@ const secondary = computed(() => {
     { label: 'Due', to: ROUTES.DUE },
     { label: 'Writing', to: ROUTES.WRITING },
     { label: 'Sounds', to: ROUTES.SOUND_SERIES },
-    { label: 'Crossword', to: ROUTES.CROSSWORD },
+    { label: 'Games', to: ROUTES.GAMES },
     { label: 'Grammar', to: ROUTES.GRAMMAR }
   ]
 })
@@ -125,7 +126,8 @@ const secondary = computed(() => {
  */
 function isActive(to: string): boolean {
   const [path, query] = to.split('?')
-  if (route.path !== path)
+  // A page inside a section (/games/listening) keeps the section lit.
+  if (route.path !== path && !(path && path !== '/' && route.path.startsWith(`${path}/`)))
     return false
   const mode = new URLSearchParams(query ?? '').get('mode')
   return mode === null || route.query.mode === mode || (mode === 'new' && route.query.mode === undefined)
@@ -222,7 +224,7 @@ async function signOut() {
                 :to="ROUTES.PROGRESS"
                 class="flex items-center gap-1 whitespace-nowrap tabular-nums transition hover:text-[var(--color-text)]"
                 :class="todayStore.today.streak.studiedToday ? 'text-[var(--color-accent)]' : 'text-[var(--color-muted)]'"
-                :title="`${todayStore.today.streak.current}-day streak${todayStore.today.streak.studiedToday ? ' — today counts' : ' — study today to keep it'} · level ${todayStore.today.xp.level}`"
+                :title="`${todayStore.today.streak.current}-day streak${todayStore.today.streak.studiedToday ? ' — today counts' : ' — study today to keep it'} · level ${todayStore.today.xp.level}, ${levelProgress(todayStore.today.xp.total).toNext} XP to the next`"
               >
                 <Flame class="h-4 w-4" />{{ todayStore.today.streak.current }}
                 <span class="ml-1 hidden text-xs text-[var(--color-muted)] sm:inline">Lv {{ todayStore.today.xp.level }}</span>
