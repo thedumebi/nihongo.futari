@@ -1,10 +1,11 @@
 <script setup lang="ts">
-import type { ReadingSummary } from '@nihongo/shared/types'
+import type { ReadingListResponse } from '@nihongo/shared/types'
 
-import { ChevronRight } from 'lucide-vue-next'
+import { Check, ChevronRight } from 'lucide-vue-next'
 import { computed, onMounted, ref, watch } from 'vue'
 
 import { listReadings } from '@/api/readings'
+import CoverageBadge from '@/components/ja/coverage-badge.vue'
 import AppShell from '@/components/layout/app-shell.vue'
 import { useLevel } from '@/composables/use-level'
 import { ROUTES } from '@/constants'
@@ -25,7 +26,7 @@ const lang = useLanguageStore()
 const { level: studyLevel, loadLevel } = useLevel()
 
 // ============ Reactive State ============
-const readings = ref<ReadingSummary[]>([])
+const readings = ref<ReadingListResponse['readings']>([])
 const loading = ref(true)
 const errorMsg = ref('')
 /** The tab the reader picked here; empty until they pick one. */
@@ -128,6 +129,8 @@ async function load() {
                 {{ r.titleEn }} &middot; {{ r.lineCount }} lines
               </p>
             </div>
+            <CoverageBadge :coverage="r.coverage" />
+            <Check v-if="r.read" class="h-4 w-4 shrink-0 text-[var(--color-success)]" aria-label="Read" />
             <ChevronRight class="h-4 w-4 shrink-0 text-[var(--color-muted)]" />
           </router-link>
         </li>

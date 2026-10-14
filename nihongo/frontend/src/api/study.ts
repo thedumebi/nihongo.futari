@@ -1,4 +1,4 @@
-import type { AnswerResult, LessonSeenResult, SaveWordResult, StudyDecksResponse, StudyQueueResponse, SubmitAnswerInput } from '@nihongo/shared/types'
+import type { AnswerResult, LessonSeenResult, SaveWordResult, StudyDecksResponse, StudyQueueResponse, SubmitAnswerInput, WordStatus } from '@nihongo/shared/types'
 
 import { API_ENDPOINTS } from '@nihongo/shared/constants'
 
@@ -36,5 +36,11 @@ export async function markLessonSeen(studyItemId: string): Promise<LessonSeenRes
 /** Put a word met while reading into review. `added` is false if it already was. */
 export async function saveWord(wordId: string): Promise<SaveWordResult> {
   const { data } = await client.post<SaveWordResult>(API_ENDPOINTS.STUDY.SAVE_WORD, { wordId })
+  return data
+}
+
+/** Where a word stands in this learner's reviews. */
+export async function getWordStatus(wordId: string): Promise<WordStatus> {
+  const { data } = await client.get<WordStatus>(API_ENDPOINTS.STUDY.WORD_STATUS(wordId))
   return data
 }

@@ -1,3 +1,4 @@
+import { z } from '@hono/zod-openapi'
 import { HttpStatusCodes, STUDY_ROUTES } from '@nihongo/shared/constants'
 import { createSecuredRoute, ErrorSchema, jsonContent, jsonContentRequired } from '@nihongo/shared/openapi'
 import {
@@ -12,7 +13,8 @@ import {
   studyDecksResponseSchema,
   studyQueueQuerySchema,
   studyQueueResponseSchema,
-  submitAnswerSchema
+  submitAnswerSchema,
+  wordStatusSchema
 } from '@nihongo/shared/types'
 
 import authMiddleware from '@/middlewares/auth.js'
@@ -133,3 +135,16 @@ export const saveWord = createSecuredRoute({
   }
 })
 export type SaveWordRoute = typeof saveWord
+
+export const wordStatus = createSecuredRoute({
+  tags,
+  path: STUDY_ROUTES.WORD_STATUS,
+  method: 'get',
+  summary: 'Where a word stands in this learner\'s reviews',
+  middleware: [authMiddleware],
+  request: { params: z.object({ wordId: z.string().min(1) }) },
+  responses: {
+    [HttpStatusCodes.OK]: jsonContent(wordStatusSchema, 'In review or not, when due')
+  }
+})
+export type WordStatusRoute = typeof wordStatus

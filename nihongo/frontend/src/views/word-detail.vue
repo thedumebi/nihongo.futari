@@ -1,7 +1,8 @@
 <script setup lang="ts">
 import type { WordDetail } from '@nihongo/shared/types'
 
-import { onMounted, ref, watch } from 'vue'
+import { Check, Plus } from 'lucide-vue-next'
+import { computed, onMounted, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 
 import { getWord } from '@/api/words'
@@ -10,6 +11,7 @@ import PitchAccent from '@/components/ja/pitch-accent.vue'
 import AppShell from '@/components/layout/app-shell.vue'
 import { playAudio } from '@/composables/use-audio'
 import { useFurigana } from '@/composables/use-furigana'
+import { useWordReview } from '@/composables/use-word-review'
 import { ROUTES } from '@/constants'
 
 /**
@@ -26,11 +28,29 @@ const { mode: furiganaMode, knownKanji, loadKnownKanji, loadSettings } = useFuri
 const word = ref<WordDetail | null>(null)
 const loading = ref(true)
 const errorMsg = ref('')
+const review = useWordReview(computed(() => word.value?.id), computed(() => word.value?.form ?? ''))
+
+/**
+ * Remember this look-up for the dictionary's empty state — the words you
+ * looked up are the ones you most likely want again. On this device only.
+ */
+function rememberLookup(w: WordDetail) {
+  try {
+    const KEY = 'go-recent-lookups'
+    const entry = { id: w.id, form: w.form, reading: w.reading, meaning: w.senses[0]?.glosses[0] ?? '' }
+    const list = (JSON.parse(localStorage.getItem(KEY) ?? '[]') as Array<typeof entry>).filter(e => e.id !== w.id)
+    localStorage.setItem(KEY, JSON.stringify([entry, ...list].slice(0, 12)))
+  } catch {
+    // Without storage there is simply no history.
+  }
+}
+
 async function load() {
   loading.value = true
   errorMsg.value = ''
   try {
     word.value = await getWord(String(route.params.id))
+    rememberLookup(word.value)
   } catch {
     errorMsg.value = 'No such word.'
     word.value = null
@@ -78,6 +98,19 @@ watch(() => route.params.id, load)
               &middot; common
             </template>
           </p>
+          <p v-if="review.status.value?.inReview" class="mt-3 flex items-center gap-1 text-sm text-[var(--color-muted)]">
+            <Check class="h-4 w-4" />
+            In your reviews{{ review.status.value.ghost ? ' · keeps slipping' : '' }} · {{ review.dueText.value }}
+          </p>
+          <button
+            v-else-if="review.status.value?.reviewable"
+            type="button"
+            class="mt-3 inline-flex items-center gap-1 rounded-lg border border-[var(--color-border)] px-3 py-1.5 text-sm transition hover:border-[var(--color-text)] disabled:opacity-50"
+            :disabled="review.saving.value"
+            @click="review.add"
+          >
+            <Plus class="h-4 w-4" /> Add to reviews
+          </button>
         </header>
 
         <section v-if="word.pitch" class="mt-6 rounded-xl border border-[var(--color-border)] p-5">

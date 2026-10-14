@@ -60,7 +60,12 @@ export const readingListQuerySchema = z.object({
 export type ReadingListQuery = z.infer<typeof readingListQuerySchema>
 
 export const readingListResponseSchema = z.object({
-  readings: z.array(readingSummarySchema)
+  readings: z.array(readingSummarySchema.extend({
+    /** Share of its words this learner knows, 0–1 — null when it has none to know. */
+    coverage: z.number().nullable(),
+    /** Read to the end at least once. */
+    read: z.boolean()
+  }))
 }).openapi('ReadingList')
 
 export type ReadingListResponse = z.infer<typeof readingListResponseSchema>

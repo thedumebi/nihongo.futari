@@ -1,9 +1,10 @@
 import type { ReadingLineView, ReadingListResponse, ReadingView } from '@nihongo/shared/types'
 
 import db from '@nihongo/shared/db'
-import { languageLevels, languages, readingLines, readings } from '@nihongo/shared/db/schema'
+import { languageLevels, languages, learningActivities, readingLines, readings } from '@nihongo/shared/db/schema'
 import { and, asc, count, eq } from 'drizzle-orm'
 
+import { coverageOf, knownWordIds, readingWords } from './coverage.service.js'
 import { glossary, glossLine } from './glossary.service.js'
 
 /**
@@ -13,9 +14,10 @@ import { glossary, glossLine } from './glossary.service.js'
  * only once its author has marked it approved, so a draft that a model wrote
  * cannot reach a reader by any path through this file.
  */
-export async function listReadings(languageCode: string, levelCode?: string): Promise<ReadingListResponse> {
+export async function listReadings(languageCode: string, levelCode: string | undefined, userId: string): Promise<ReadingListResponse> {
   const rows = await db
     .select({
+      id: readings.id,
       code: readings.code,
       title: readings.title,
       titleEn: readings.titleEn,
@@ -34,7 +36,16 @@ export async function listReadings(languageCode: string, levelCode?: string): Pr
     .groupBy(readings.id, languageLevels.code, languageLevels.rank)
     .orderBy(asc(languageLevels.rank), asc(readings.sortIndex))
 
-  return { readings: rows }
+  // What this learner knows, and which speeches they have read to the end.
+  const [known, readRows] = await Promise.all([
+    knownWordIds(userId),
+    db.selectDistinct({ code: learningActivities.refId }).from(learningActivities).where(and(eq(learningActivities.userId, userId), eq(learningActivities.kind, 'reading')))
+  ])
+  const read = new Set(readRows.map(r => r.code))
+  const out = []
+  for (const { id, ...r } of rows)
+    out.push({ ...r, coverage: coverageOf(known, await readingWords(languageCode, id)), read: read.has(r.code) })
+  return { readings: out }
 }
 
 /**

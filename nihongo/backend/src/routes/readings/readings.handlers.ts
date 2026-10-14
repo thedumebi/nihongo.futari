@@ -9,7 +9,7 @@ import type { GetByCodeRoute, ListRoute } from './readings.routes.js'
 
 export const list: AppRouteHandler<ListRoute> = async (c) => {
   const { languageCode, level } = c.req.valid('query')
-  return c.json(await listReadings(languageCode, level), HttpStatusCodes.OK)
+  return c.json(await listReadings(languageCode, level, c.get('user')!.id), HttpStatusCodes.OK)
 }
 
 export const getByCode: AppRouteHandler<GetByCodeRoute> = async (c) => {

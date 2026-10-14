@@ -31,6 +31,11 @@ export const todaySchema = z.object({
     progress: z.number().int(),
     done: z.boolean()
   })),
+  /**
+   * A speech to read: the unread one whose words the learner knows best — the
+   * most within reach right now. Null when every speech has been read.
+   */
+  suggestedReading: z.object({ code: z.string(), title: z.string(), titleEn: z.string(), level: z.string(), coverage: z.number().nullable() }).nullable(),
   /** Achievements unlocked but not yet celebrated — shown once, then marked seen. */
   unseenAchievements: z.array(z.object({ code: z.string(), title: z.string(), description: z.string() }))
 }).openapi('Today')

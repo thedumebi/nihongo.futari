@@ -8,6 +8,7 @@ import {
   dialogueTurns,
   languageLevels,
   languages,
+  learningActivities,
   srsCards,
   studyItemFacets,
   studyItems
@@ -16,6 +17,7 @@ import { and, asc, eq, inArray } from 'drizzle-orm'
 
 import { assetUrl } from '../lib/assets.js'
 import { dialogueAudioPath, VOICE_LEARNER, VOICE_OTHER } from '../lib/audio-key.js'
+import { coverageOf, dialogueWords, knownWordIds } from './coverage.service.js'
 import { glossary, glossLine } from './glossary.service.js'
 
 /**
@@ -29,6 +31,7 @@ import { glossary, glossLine } from './glossary.service.js'
 export async function listDialogues(languageCode: string, userId: string): Promise<DialogueListResponse> {
   const rows = await db
     .select({
+      id: dialogues.id,
       code: dialogues.code,
       title: dialogues.title,
       situation: dialogues.situation,
@@ -50,7 +53,17 @@ export async function listDialogues(languageCode: string, userId: string): Promi
     .where(and(eq(languages.code, languageCode), eq(dialogues.published, true)))
     .orderBy(asc(dialogues.sortIndex))
 
-  const digest = await turnDigest()
+  const [digest, known, practisedRows] = await Promise.all([
+    turnDigest(),
+    knownWordIds(userId),
+    db.selectDistinct({ code: learningActivities.refId }).from(learningActivities).where(and(eq(learningActivities.userId, userId), eq(learningActivities.kind, 'conversation')))
+  ])
+  const practised = new Set(practisedRows.map(r => r.code))
+  const coverage = new Map<string, number | null>()
+  for (const r of rows) {
+    if (!coverage.has(r.code))
+      coverage.set(r.code, coverageOf(known, await dialogueWords(languageCode, r.id)))
+  }
 
   return {
     dialogues: rows.map(r => ({
@@ -67,7 +80,9 @@ export async function listDialogues(languageCode: string, userId: string): Promi
       keywords: digest.get(r.code)?.keywords ?? '',
       // Graduated past the learning steps, the same bar the rest of the app
       // uses for "learned".
-      learned: (r.cardState ?? 0) >= 2
+      learned: (r.cardState ?? 0) >= 2,
+      coverage: coverage.get(r.code) ?? null,
+      practised: practised.has(r.code)
     }))
   }
 }

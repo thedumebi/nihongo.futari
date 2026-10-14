@@ -87,6 +87,13 @@ watch(() => route.params.slug, load)
         <p class="mt-2 text-lg text-[var(--color-muted)]">
           {{ point.meaningShort }}
         </p>
+        <!-- The same topic as a lesson: read this, then be taught and quizzed on it. -->
+        <router-link
+          :to="ROUTES.LESSON_DETAIL(String(route.params.slug))"
+          class="mt-3 inline-flex items-center gap-1 rounded-lg border border-[var(--color-border)] px-3 py-1.5 text-sm transition hover:border-[var(--color-text)]"
+        >
+          Take the lesson &rarr;
+        </router-link>
         <p class="mt-1 text-sm text-[var(--color-muted)]">
           <FuriganaText :text="point.pattern" :segments="point.furigana.pattern" :mode="mode" :known-kanji="knownKanji" />
           <template v-if="point.register">

@@ -1,7 +1,8 @@
 <script setup lang="ts">
-import { BookOpen, Check, Flame, Grid3x3, Layers, Mic, RotateCcw, Target } from 'lucide-vue-next'
+import { BookOpen, Check, Flame, Grid3x3, Layers, Mic, RotateCcw, ScrollText, Target } from 'lucide-vue-next'
 import { computed, onMounted, ref } from 'vue'
 
+import CoverageBadge from '@/components/ja/coverage-badge.vue'
 import AppShell from '@/components/layout/app-shell.vue'
 import Button from '@/components/ui/button.vue'
 import { ROUTES } from '@/constants'
@@ -158,6 +159,22 @@ onMounted(async () => {
             </div>
             <p class="mt-2 font-semibold">
               {{ today.nextSpeak.titleEn }}
+            </p>
+          </router-link>
+          <router-link
+            v-if="today.suggestedReading"
+            :to="ROUTES.READING_DETAIL(today.suggestedReading.code)"
+            class="rounded-xl border border-[var(--color-border)] p-5 transition hover:border-[var(--color-text)]"
+          >
+            <div class="flex items-center gap-2 text-sm text-[var(--color-muted)]">
+              <ScrollText class="h-4 w-4" /> Read aloud · {{ today.suggestedReading.level }}
+              <CoverageBadge class="ml-auto" :coverage="today.suggestedReading.coverage" />
+            </div>
+            <p class="mt-2 font-semibold" style="font-family: var(--font-jp)">
+              {{ today.suggestedReading.title }}
+            </p>
+            <p class="text-sm text-[var(--color-muted)]">
+              {{ today.suggestedReading.titleEn }}
             </p>
           </router-link>
           <router-link

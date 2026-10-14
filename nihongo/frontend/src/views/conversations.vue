@@ -6,6 +6,7 @@ import { Check, Search } from 'lucide-vue-next'
 import { computed, onMounted, ref, watch } from 'vue'
 
 import { listDialogues } from '@/api/dialogues'
+import CoverageBadge from '@/components/ja/coverage-badge.vue'
 import AppShell from '@/components/layout/app-shell.vue'
 import { ROUTES } from '@/constants'
 import { useLanguageStore } from '@/store/language'
@@ -146,8 +147,9 @@ onMounted(load)
                 <span class="block font-medium">{{ d.title }}</span>
                 <span class="block text-sm text-[var(--color-muted)]">{{ d.situation }}</span>
               </span>
-              <span class="shrink-0 text-xs text-[var(--color-muted)]">{{ d.turnCount }} turns</span>
-              <Check v-if="d.learned" class="h-4 w-4 shrink-0 text-[var(--color-success)]" />
+              <span class="shrink-0 text-xs text-[var(--color-muted)]">{{ d.level ? `${d.level} · ` : '' }}{{ d.turnCount }} turns</span>
+              <CoverageBadge :coverage="d.coverage" />
+              <Check v-if="d.learned || d.practised" class="h-4 w-4 shrink-0 text-[var(--color-success)]" :aria-label="d.learned ? 'Learned' : 'Practised'" />
             </router-link>
           </li>
         </ul>

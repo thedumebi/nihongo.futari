@@ -4,14 +4,12 @@ import type { ReadingView, WordGloss } from '@nihongo/shared/types'
 
 import { FURIGANA_MODES } from '@nihongo/shared/constants'
 import { useLocalStorage } from '@vueuse/core'
-import { isAxiosError } from 'axios'
 import { Languages, Pause, Play, RotateCcw } from 'lucide-vue-next'
 import { computed, onMounted, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 
 import { recordActivity } from '@/api/activities'
 import { getReading, listReadings } from '@/api/readings'
-import { saveWord } from '@/api/study'
 import WordMeaning from '@/components/ja/word-meaning.vue'
 import AppShell from '@/components/layout/app-shell.vue'
 import Teleprompter from '@/components/reader/teleprompter.vue'
@@ -19,7 +17,6 @@ import Button from '@/components/ui/button.vue'
 import Segmented from '@/components/ui/segmented.vue'
 import Slider from '@/components/ui/slider.vue'
 import { FURIGANA_MODE_LABELS, useFurigana } from '@/composables/use-furigana'
-import { useToast } from '@/composables/use-toast'
 import { ROUTES } from '@/constants'
 import { useLanguageStore } from '@/store/language'
 
@@ -38,7 +35,6 @@ const lang = useLanguageStore()
 
 // ============ Composables ============
 const { mode, knownKanji, loadKnownKanji, loadSettings } = useFurigana()
-const toast = useToast()
 
 // ============ Reactive State ============
 const reading = ref<ReadingView | null>(null)
@@ -79,9 +75,6 @@ const aid = ref<FuriganaMode | null>(null)
 const speedStep = useLocalStorage('go-reader-speed', 4)
 const showTranslation = ref(false)
 const word = ref<WordGloss | null>(null)
-const saving = ref(false)
-/** Words added (or found already there) this visit, so the button can say so. */
-const inReviews = ref(new Set<string>())
 const prompter = ref<InstanceType<typeof Teleprompter> | null>(null)
 
 // ============ Computed Properties ============
@@ -131,23 +124,6 @@ function restart() {
 function closeWord() {
   word.value = null
   prompter.value?.clearPick()
-}
-
-async function addToReviews(target: WordGloss) {
-  if (!target.wordId)
-    return
-  saving.value = true
-  try {
-    const { added } = await saveWord(target.wordId)
-    inReviews.value = new Set(inReviews.value).add(target.wordId)
-    toast.success(added ? `${target.form} added to your reviews` : `${target.form} is already in your reviews`)
-  } catch (e) {
-    toast.error(isAxiosError(e) && e.response?.status === 404
-      ? `${target.form} cannot be reviewed yet`
-      : 'Could not add that word — try again')
-  } finally {
-    saving.value = false
-  }
 }
 </script>
 
@@ -226,17 +202,7 @@ async function addToReviews(target: WordGloss) {
           </div>
         </div>
 
-        <WordMeaning v-if="word" :word="word" @close="closeWord">
-          <Button
-            v-if="word.wordId"
-            variant="ghost"
-            :loading="saving"
-            :disabled="inReviews.has(word.wordId)"
-            @click="addToReviews(word)"
-          >
-            {{ inReviews.has(word.wordId) ? 'In your reviews' : 'Add to reviews' }}
-          </Button>
-        </WordMeaning>
+        <WordMeaning v-if="word" :word="word" @close="closeWord" />
         <p class="mt-3 text-center text-sm text-[var(--color-muted)]">
           Tap a word for its meaning. Press and hold a line for its English.
         </p>

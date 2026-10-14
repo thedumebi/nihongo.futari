@@ -362,7 +362,11 @@ export const dialogueListResponseSchema = z.object({
      */
     keywords: z.string(),
     /** How many of its learner turns you have already met, for the list. */
-    learned: z.boolean()
+    learned: z.boolean(),
+    /** Share of its words this learner knows, 0–1 — null when it has none to know. */
+    coverage: z.number().nullable(),
+    /** Practised to the end at least once. */
+    practised: z.boolean()
   }))
 }).openapi('DialogueList')
 
@@ -654,3 +658,18 @@ export const saveWordResultSchema = z.object({
 }).openapi('SaveWordResult')
 
 export type SaveWordResult = z.infer<typeof saveWordResultSchema>
+
+/** Where a word stands in this learner's reviews — for the word sheet and the dictionary. */
+export const wordStatusSchema = z.object({
+  /** False when the word has no study item, so it cannot be reviewed at all. */
+  reviewable: z.boolean(),
+  inReview: z.boolean(),
+  /** The soonest any of its cards is due; null when not in review. */
+  due: z.iso.datetime().nullable(),
+  /** Past the learning steps on at least one card. */
+  learned: z.boolean(),
+  /** Keeps being forgotten. */
+  ghost: z.boolean()
+}).openapi('WordStatus')
+
+export type WordStatus = z.infer<typeof wordStatusSchema>

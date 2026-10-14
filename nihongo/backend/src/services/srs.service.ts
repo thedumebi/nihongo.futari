@@ -17,7 +17,8 @@ import type {
   StudyQueueItem,
   StudyQueueQuery,
   StudyQueueResponse,
-  SubmitAnswerInput
+  SubmitAnswerInput,
+  WordStatus
 } from '@nihongo/shared/types'
 import type { SQL, SQLWrapper } from 'drizzle-orm'
 
@@ -531,6 +532,25 @@ export async function markLessonSeen(userId: string, studyItemId: string): Promi
  */
 export async function saveWord(userId: string, wordId: string): Promise<SaveWordResult | null> {
   return cardFirstFacet(userId, eq(studyItems.wordId, wordId), 'saved')
+}
+
+/** Where one word stands in this learner's reviews. */
+export async function wordStatus(userId: string, wordId: string): Promise<WordStatus> {
+  const rows = await db
+    .select({ cardId: srsCards.id, due: srsCards.due, state: srsCards.state, ghost: srsCards.ghost })
+    .from(studyItems)
+    .innerJoin(studyItemFacets, eq(studyItemFacets.studyItemId, studyItems.id))
+    .leftJoin(srsCards, and(eq(srsCards.facetId, studyItemFacets.id), eq(srsCards.userId, userId)))
+    .where(and(eq(studyItems.wordId, wordId), eq(studyItems.published, true), eq(studyItems.active, true)))
+  const cards = rows.filter(r => r.cardId !== null)
+  const soonest = cards.map(c => c.due!).sort((a, b) => a.getTime() - b.getTime())[0]
+  return {
+    reviewable: rows.length > 0,
+    inReview: cards.length > 0,
+    due: soonest ? soonest.toISOString() : null,
+    learned: cards.some(c => (c.state ?? 0) >= 2),
+    ghost: cards.some(c => c.ghost === true)
+  }
 }
 
 /**

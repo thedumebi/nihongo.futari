@@ -25,6 +25,14 @@ const hits = ref<SearchHit[]>([])
 const loading = ref(false)
 const searched = ref(false)
 
+/** Words looked up before, newest first — what the page shows before you type. */
+const recent = ref<Array<{ id: string, form: string, reading: string, meaning: string }>>([])
+try {
+  recent.value = JSON.parse(localStorage.getItem('go-recent-lookups') ?? '[]')
+} catch {
+  recent.value = []
+}
+
 async function run() {
   const q = query.value.trim()
   // Keep the URL in step so a search can be shared or reloaded.
@@ -96,6 +104,21 @@ const KIND_LABEL: Record<SearchHit['kind'], string> = {
       <p v-else-if="searched && hits.length === 0" class="mt-6 text-sm text-[var(--color-muted)]">
         Nothing found for &ldquo;{{ query }}&rdquo;.
       </p>
+
+      <section v-else-if="!query.trim() && recent.length" class="mt-6">
+        <p class="text-sm text-[var(--color-muted)]">
+          Looked up recently
+        </p>
+        <ul class="mt-2 divide-y divide-[var(--color-border)]">
+          <li v-for="r in recent" :key="r.id">
+            <router-link :to="ROUTES.WORD_DETAIL(r.id)" class="flex items-baseline gap-3 py-3">
+              <span class="text-2xl" style="font-family: var(--font-jp)">{{ r.form }}</span>
+              <span class="text-sm text-[var(--color-muted)]" style="font-family: var(--font-jp)">{{ r.reading }}</span>
+              <span class="flex-1 truncate text-sm">{{ r.meaning }}</span>
+            </router-link>
+          </li>
+        </ul>
+      </section>
 
       <ul v-else class="mt-4 divide-y divide-[var(--color-border)]">
         <li v-for="hit in hits" :key="`${hit.kind}-${hit.key}`">

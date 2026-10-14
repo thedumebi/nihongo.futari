@@ -7,6 +7,7 @@ import { eq } from 'drizzle-orm'
 import { unseenAchievements } from './achievements.service.js'
 import { listLessons } from './lesson.service.js'
 import { getSummary, studiedToday, todayQuests } from './progress.service.js'
+import { listReadings } from './readings.service.js'
 import { listSpeak } from './speak.service.js'
 import { countDue, newCardsToday } from './srs.service.js'
 import { getSettings } from './users.service.js'
@@ -23,7 +24,7 @@ export async function getToday(userId: string, languageCode: string): Promise<To
   if (!language)
     return null
 
-  const [due, newToday, lessons, speak, summary, today, settings, quests, unseen] = await Promise.all([
+  const [due, newToday, lessons, speak, summary, today, settings, quests, unseen, readings] = await Promise.all([
     countDue(userId, language.id),
     newCardsToday(userId, language.id, new Date()),
     listLessons(userId, languageCode),
@@ -32,8 +33,15 @@ export async function getToday(userId: string, languageCode: string): Promise<To
     studiedToday(userId, language.id),
     getSettings(userId),
     todayQuests(userId, language.id),
-    unseenAchievements(userId)
+    unseenAchievements(userId),
+    listReadings(languageCode, undefined, userId)
   ])
+
+  // The unread speech most within reach; ties go to the easier level, which
+  // the list is already ordered by.
+  const suggested = readings.readings
+    .filter(r => !r.read)
+    .reduce<typeof readings.readings[number] | null>((best, r) => !best || (r.coverage ?? 0) > (best.coverage ?? 0) ? r : best, null)
 
   const nextSpeak = speak.next ? speak.sessions.find(s => s.code === speak.next) : undefined
 
@@ -46,6 +54,9 @@ export async function getToday(userId: string, languageCode: string): Promise<To
     streak: { current: summary.currentStreak, longest: summary.longestStreak, studiedToday: today },
     xp: { total: summary.totalXp, level: summary.level },
     quests: quests.quests,
+    suggestedReading: suggested
+      ? { code: suggested.code, title: suggested.title, titleEn: suggested.titleEn, level: suggested.level, coverage: suggested.coverage }
+      : null,
     unseenAchievements: unseen
   }
 }

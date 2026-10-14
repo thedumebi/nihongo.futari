@@ -2,8 +2,10 @@
 import type { WordGloss } from '@nihongo/shared/types'
 
 import { kanaLineToRomaji } from '@nihongo/shared/lib'
-import { X } from 'lucide-vue-next'
-import { nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { Check, Plus, X } from 'lucide-vue-next'
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+
+import { useWordReview } from '@/composables/use-word-review'
 
 /**
  * The word you tapped, in a sheet pinned to the bottom of the screen.
@@ -18,8 +20,11 @@ import { nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
  * Non-modal: the page stays live underneath, so tapping the next word swaps
  * the sheet straight over. A tap anywhere else, or Escape, closes it.
  *
- * The default slot holds actions for this word — the reader puts "Add to
- * reviews" there.
+ * "Add to reviews" is built in, for any word the dictionary can review, and
+ * says where the word already stands when it is in review. It used to be an
+ * action only the reader passed in, so the same word tapped in a conversation,
+ * a lesson or a review card could be looked up but never kept. The default
+ * slot is still there for anything else a page wants beside it.
  */
 defineOptions({ inheritAttrs: false })
 
@@ -28,6 +33,7 @@ const props = defineProps<{ word: WordGloss }>()
 const emit = defineEmits<{ (e: 'close'): void }>()
 
 const sheet = ref<HTMLElement | null>(null)
+const { status, saving, add, dueText } = useWordReview(computed(() => props.word.wordId), computed(() => props.word.form))
 
 const WORD_BUTTON = 'button[aria-label^="What does"]'
 
@@ -135,8 +141,21 @@ onBeforeUnmount(() => {
             <X class="h-4 w-4" />
           </button>
         </div>
-        <div v-if="$slots.default" class="mt-3 flex justify-end">
+        <div v-if="$slots.default || status?.reviewable" class="mt-3 flex items-center justify-end gap-3">
           <slot />
+          <p v-if="status?.inReview" class="flex items-center gap-1 text-sm text-[var(--color-muted)]">
+            <Check class="h-4 w-4" />
+            In your reviews{{ status.ghost ? ' · keeps slipping' : '' }} · {{ dueText }}
+          </p>
+          <button
+            v-else-if="status?.reviewable"
+            type="button"
+            class="inline-flex items-center gap-1 rounded-lg border border-[var(--color-border)] px-3 py-1.5 text-sm transition hover:border-[var(--color-text)] disabled:opacity-50"
+            :disabled="saving"
+            @click="add"
+          >
+            <Plus class="h-4 w-4" /> Add to reviews
+          </button>
         </div>
       </div>
     </div>
