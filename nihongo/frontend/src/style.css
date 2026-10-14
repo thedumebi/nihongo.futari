@@ -23,6 +23,9 @@
   --color-line: #e3e6e4;
   --color-success: #3f8f5b;
   --color-danger: #c0392b;
+  /* Your own voice in shadowing, against the speaker's grey: warm, so the two
+     curves can never be mistaken for each other. */
+  --color-you: #c4685a;
 
   /* Decorative accent tokens. */
   --color-cloud: #dce6ec;
@@ -80,6 +83,7 @@
   --color-accent: #8fb4c8;
   --color-text: #eef2f4;
   --color-muted: #93a3ad;
+  --color-you: #e8a093;
   --color-bg: #16212a;
   --color-card: #1e2b35;
   --color-border: rgba(238, 242, 244, 0.14);

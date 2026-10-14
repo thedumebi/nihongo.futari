@@ -47,12 +47,12 @@ function path(track: Array<number | null>): string {
   <figure>
     <svg :viewBox="`0 0 ${WIDTH} ${HEIGHT}`" class="h-24 w-full" preserveAspectRatio="none" role="img" aria-label="Pitch of the speaker and of your recording">
       <line x1="0" :x2="WIDTH" :y1="HEIGHT / 2" :y2="HEIGHT / 2" stroke="var(--color-border)" stroke-dasharray="3 4" vector-effect="non-scaling-stroke" />
-      <path :d="speakerPath" fill="none" stroke="var(--color-muted)" stroke-width="3" vector-effect="non-scaling-stroke" stroke-linecap="round" stroke-linejoin="round" />
-      <path v-if="minePath" :d="minePath" fill="none" stroke="var(--color-accent)" stroke-width="2" vector-effect="non-scaling-stroke" stroke-linecap="round" stroke-linejoin="round" />
+      <path :d="speakerPath" fill="none" stroke="var(--color-muted)" stroke-opacity="0.55" stroke-width="5" vector-effect="non-scaling-stroke" stroke-linecap="round" stroke-linejoin="round" />
+      <path v-if="minePath" :d="minePath" fill="none" stroke="var(--color-you)" stroke-width="2.5" vector-effect="non-scaling-stroke" stroke-linecap="round" stroke-linejoin="round" />
     </svg>
     <figcaption class="mt-1 flex gap-4 text-xs text-[var(--color-muted)]">
-      <span class="flex items-center gap-1.5"><span class="inline-block h-0.5 w-4 bg-[var(--color-muted)]" /> Speaker</span>
-      <span v-if="mine" class="flex items-center gap-1.5"><span class="inline-block h-0.5 w-4 bg-[var(--color-accent)]" /> You</span>
+      <span class="flex items-center gap-1.5"><span class="inline-block h-1.5 w-5 rounded-full bg-[var(--color-muted)] opacity-55" /> Speaker</span>
+      <span v-if="mine" class="flex items-center gap-1.5"><span class="inline-block h-1 w-5 rounded-full bg-[var(--color-you)]" /> You</span>
     </figcaption>
   </figure>
 </template>
