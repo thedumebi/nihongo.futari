@@ -5,6 +5,7 @@ import { useRoute, useRouter } from 'vue-router'
 import ConfirmDialog from '@/components/ui/confirm-dialog.vue'
 import ToastNotification from '@/components/ui/toast-notification.vue'
 import { setupServiceWorker } from '@/offline/register-sw'
+import { startSync } from '@/offline/sync'
 import { useUiStore } from '@/store/ui'
 
 const ui = useUiStore()
@@ -50,6 +51,8 @@ function applyIfCalm(justNavigated = false): void {
 
 onMounted(() => {
   document.documentElement.dataset.theme = ui.theme
+  // Anything queued offline — answers, lessons, Speak runs — goes up from any page.
+  startSync()
   applyUpdate = setupServiceWorker(() => {
     updateReady = true
     applyIfCalm()

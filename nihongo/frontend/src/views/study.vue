@@ -23,7 +23,6 @@ import { VueFinalModal } from 'vue-final-modal'
 import { useRoute, useRouter } from 'vue-router'
 
 import type { DropdownOption } from '@/components/ui/dropdown.vue'
-import type { SyncState } from '@/offline/sync'
 
 import { getDecks, getQueue, markLessonSeen } from '@/api/study'
 import FuriganaText from '@/components/ja/furigana-text.vue'
@@ -44,7 +43,7 @@ import { useFurigana } from '@/composables/use-furigana'
 import { useLevel } from '@/composables/use-level'
 import { ROUTES } from '@/constants'
 import { cacheBundle, enqueueAnswer, readBundle, requestPersistence } from '@/offline/db'
-import { flush, onSyncChange, startSync } from '@/offline/sync'
+import { flush } from '@/offline/sync'
 import { useLanguageStore } from '@/store/language'
 
 const route = useRoute()
@@ -191,12 +190,6 @@ const deckOptions = computed<DropdownOption[]>(() => {
 })
 
 const deckIcon = Layers
-
-// Offline state, shown in the header strip so a queued answer is never a
-// silent mystery.
-const sync = ref<SyncState>({ pending: 0, dead: 0, online: navigator.onLine, syncing: false, lastSyncedAt: null })
-let stopSync: (() => void) | undefined
-let stopSyncListener: (() => void) | undefined
 
 const items = ref<StudyQueueItem[]>([])
 const index = ref(0)
@@ -1322,17 +1315,11 @@ onMounted(async () => {
   void requestPersistence()
   void loadKnownKanji(lang.code)
   void loadSettings()
-  stopSyncListener = onSyncChange((next) => {
-    sync.value = next
-  })
-  stopSync = startSync()
   await loadDecks()
   await load()
 })
 onUnmounted(() => {
   window.removeEventListener('keydown', onKey)
-  stopSync?.()
-  stopSyncListener?.()
 })
 watch(() => lang.code, async () => {
   await loadDecks()
@@ -1441,16 +1428,6 @@ watch(() => lang.code, async () => {
         </Tooltip>
         <span v-if="sessionSeen > 0" class="ml-auto text-sm text-[var(--color-muted)]">
           {{ sessionCorrect }}/{{ sessionSeen }} this session
-        </span>
-        <span
-          v-if="!sync.online || sync.pending > 0 || sync.dead > 0"
-          class="rounded-full border px-2.5 py-1 text-xs"
-          :class="sync.dead > 0 ? 'border-[var(--color-danger)] text-[var(--color-danger)]' : 'border-[var(--color-border)] text-[var(--color-muted)]'"
-        >
-          <template v-if="sync.dead > 0">{{ sync.dead }} couldn't sync</template>
-          <template v-else-if="!sync.online">Offline &middot; {{ sync.pending }} saved here</template>
-          <template v-else-if="sync.syncing">Syncing…</template>
-          <template v-else>{{ sync.pending }} to sync</template>
         </span>
       </div>
       <p v-if="focused" class="mb-6 text-sm text-[var(--color-muted)]">

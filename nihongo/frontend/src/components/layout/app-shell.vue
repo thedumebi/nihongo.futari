@@ -9,6 +9,7 @@ import type { DropdownOption } from '@/components/ui/dropdown.vue'
 
 import { markAchievementsSeen } from '@/api/progress'
 import NavMenu from '@/components/layout/nav-menu.vue'
+import SyncStatus from '@/components/layout/sync-status.vue'
 import Dropdown from '@/components/ui/dropdown.vue'
 import { useToast } from '@/composables/use-toast'
 import { ROUTES } from '@/constants'
@@ -236,6 +237,7 @@ async function signOut() {
             />
 
             <template v-if="auth.isAuthenticated">
+              <SyncStatus />
               <!-- The streak, and the level XP adds up to — always in sight, so a
                    day kept or lost is felt where it happens, not on Progress. -->
               <router-link

@@ -153,7 +153,17 @@ async function scheduleRetryIfNeeded() {
  * `visibilitychange` is the important one on iOS: with no Background Sync, the
  * moment the user returns to the tab is the only reliable opportunity.
  */
+let started: (() => void) | null = null
+
+/**
+ * Start the background sync loop: flush now, on reconnect, and on returning
+ * to the app. Called once for the whole app (app.vue) — it used to start only
+ * with the Study page, so work queued elsewhere waited for a visit there.
+ * Safe to call again: a second call returns the first one's stop.
+ */
 export function startSync(): () => void {
+  if (started)
+    return started
   const onOnline = () => {
     backoffMs = 5000
     void flush()
@@ -170,9 +180,11 @@ export function startSync(): () => void {
   void flush()
   void emit()
 
-  return () => {
+  started = () => {
     window.removeEventListener('online', onOnline)
     document.removeEventListener('visibilitychange', onVisible)
     window.clearTimeout(retryTimer)
+    started = null
   }
+  return started
 }
