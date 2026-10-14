@@ -33,6 +33,8 @@
     "audio:sentences": "tsx src/pipeline/generate-audio.ts sentences",
     "audio:dialogues": "tsx src/pipeline/generate-audio.ts dialogues",
     "audio:speak": "tsx src/pipeline/generate-audio.ts speak",
+    "audio:readings": "tsx src/pipeline/generate-audio.ts readings",
+    "audio:glosses": "tsx src/pipeline/generate-audio.ts glosses",
     "audio:all": "tsx src/pipeline/generate-audio.ts all",
     "check:examples": "tsx src/pipeline/check-examples.ts",
     "tokenise:authored": "tsx src/pipeline/tokenise-authored.ts",

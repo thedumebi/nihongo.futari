@@ -9,7 +9,9 @@ import { recordActivity } from '@/api/activities'
 import { getDialogue, listDialogues } from '@/api/dialogues'
 import AppShell from '@/components/layout/app-shell.vue'
 import DialogueCard from '@/components/study/dialogue-card.vue'
+import ShadowingPanel from '@/components/study/shadowing-panel.vue'
 import Button from '@/components/ui/button.vue'
+import Segmented from '@/components/ui/segmented.vue'
 import { useFurigana } from '@/composables/use-furigana'
 import { ROUTES } from '@/constants'
 import { useLanguageStore } from '@/store/language'
@@ -34,6 +36,18 @@ const result = ref<{ correct: number, total: number } | null>(null)
 /** Bumped to remount the card, which is how "try again" restarts it. */
 const attempt = ref(0)
 const card = ref<InstanceType<typeof DialogueCard> | null>(null)
+/** Practise the conversation as an exercise, or shadow its lines one by one. */
+const view = ref<'practise' | 'shadow'>('practise')
+const VIEWS = [
+  { value: 'practise' as const, label: 'Practise' },
+  { value: 'shadow' as const, label: 'Shadow' }
+]
+
+/** A line recorded and compared: shadowing is a day's study too. */
+function onShadowed() {
+  if (dialogue.value)
+    void recordActivity({ kind: 'shadowing', refId: dialogue.value.code }, lang.code)
+}
 
 async function load() {
   loading.value = true
@@ -123,7 +137,13 @@ watch(() => route.params.code, load)
           </button>
         </div>
 
-        <div class="mt-8 rounded-xl border border-[var(--color-border)] p-6">
+        <Segmented v-model="view" class="mt-6" label="Mode" :options="VIEWS" />
+
+        <div v-if="view === 'shadow'" class="mt-4">
+          <ShadowingPanel :turns="dialogue.turns" @practised="onShadowed" />
+        </div>
+
+        <div v-show="view === 'practise'" class="mt-4 rounded-xl border border-[var(--color-border)] p-6">
           <DialogueCard
             ref="card"
             :key="attempt"
@@ -135,7 +155,7 @@ watch(() => route.params.code, load)
           />
         </div>
 
-        <div v-if="result" class="mt-6 text-center">
+        <div v-if="result && view === 'practise'" class="mt-6 text-center">
           <p class="text-lg font-semibold">
             {{ result.correct }} of {{ result.total }} right.
           </p>

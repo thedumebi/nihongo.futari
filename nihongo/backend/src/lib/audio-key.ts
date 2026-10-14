@@ -77,3 +77,18 @@ export function dialogueAudioPath(text: string, voice: string): string {
 export function speakAudioPath(text: string, voice: string): string {
   return `/audio/speak/${audioKeyFor(text, voice)}.m4a`
 }
+
+/** A speech's line, read in the main Japanese voice. Content-named, as above. */
+export function readingAudioPath(text: string): string {
+  return `/audio/readings/${audioKeyFor(text, VOICE_OTHER)}.m4a`
+}
+
+/** The English prompt for a word in a Recall session — one teacher voice for all. */
+export const VOICE_RECALL = VOICES_ENGLISH[0]
+
+export function glossAudioPath(text: string): string {
+  return `/audio/glosses/${audioKeyFor(text, VOICE_RECALL)}.m4a`
+}
+
+/** Levels whose words have Recall prompts recorded; raising it means one more audio run. */
+export const GLOSS_AUDIO_LEVELS = ['N5', 'N4'] as const

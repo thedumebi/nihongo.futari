@@ -23,7 +23,9 @@ export const readingLineViewSchema = z.object({
   reading: z.string(),
   translation: z.string(),
   /** The line cut into tappable words. Joining every `t` rebuilds `text`. */
-  tokens: z.array(glossedTokenSchema)
+  tokens: z.array(glossedTokenSchema),
+  /** The line read aloud — a model to hear before reading it yourself. */
+  audio: z.string()
 }).openapi('ReadingLine')
 
 export type ReadingLineView = z.infer<typeof readingLineViewSchema>

@@ -21,6 +21,7 @@ import notifications from './routes/notifications/notifications.index.js'
 import phonetics from './routes/phonetics/phonetics.index.js'
 import progress from './routes/progress/progress.index.js'
 import readings from './routes/readings/readings.index.js'
+import recall from './routes/recall/recall.index.js'
 import reviewQueue from './routes/review-queue/review-queue.index.js'
 import speak from './routes/speak/speak.index.js'
 import study from './routes/study/study.index.js'
@@ -63,6 +64,7 @@ const routes = [
   speak,
   crossword,
   activities,
+  recall,
   today,
   grammar,
   lessons,

@@ -4,8 +4,8 @@ import type { ReadingView, WordGloss } from '@nihongo/shared/types'
 
 import { FURIGANA_MODES } from '@nihongo/shared/constants'
 import { useLocalStorage } from '@vueuse/core'
-import { Languages, Pause, Play, RotateCcw } from 'lucide-vue-next'
-import { computed, onMounted, ref, watch } from 'vue'
+import { Languages, Pause, Play, RotateCcw, Volume2 } from 'lucide-vue-next'
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 
 import { recordActivity } from '@/api/activities'
@@ -16,6 +16,7 @@ import Teleprompter from '@/components/reader/teleprompter.vue'
 import Button from '@/components/ui/button.vue'
 import Segmented from '@/components/ui/segmented.vue'
 import Slider from '@/components/ui/slider.vue'
+import { playAudioQueue, stopAudio } from '@/composables/use-audio'
 import { FURIGANA_MODE_LABELS, useFurigana } from '@/composables/use-furigana'
 import { ROUTES } from '@/constants'
 import { useLanguageStore } from '@/store/language'
@@ -76,6 +77,10 @@ const speedStep = useLocalStorage('go-reader-speed', 4)
 const showTranslation = ref(false)
 const word = ref<WordGloss | null>(null)
 const prompter = ref<InstanceType<typeof Teleprompter> | null>(null)
+const showListen = ref(false)
+/** The line being spoken, as "stanza:line", or null when silent. */
+const speaking = ref<string | null>(null)
+let listenRun = 0
 
 // ============ Computed Properties ============
 const shownMode = computed<FuriganaMode>(() => aid.value ?? mode.value)
@@ -100,6 +105,8 @@ onMounted(() => {
   void load()
 })
 
+onBeforeUnmount(stopListening)
+
 // ============ Methods ============
 async function load() {
   loading.value = true
@@ -119,6 +126,42 @@ async function load() {
 function restart() {
   prompter.value?.restart()
   playing.value = true
+}
+
+/** Pause after each line, and a longer one between stanzas, when listening through. */
+const LINE_GAP_MS = 500
+const STANZA_GAP_MS = 1100
+
+/**
+ * Hear the speech before reading it — every line from `from` on, in order. The
+ * same recording a tapped line plays, so listening through and dipping in agree.
+ */
+async function listenFrom(stanza: number, line: number, once = false) {
+  const r = reading.value
+  if (!r)
+    return
+  const mine = ++listenRun
+  stopAudio()
+  for (let s = stanza; s < r.stanzas.length; s++) {
+    const lines = r.stanzas[s]!
+    for (let l = s === stanza ? line : 0; l < lines.length; l++) {
+      speaking.value = `${s}:${l}`
+      await playAudioQueue([lines[l]!.audio, { pauseMs: l === lines.length - 1 ? STANZA_GAP_MS : LINE_GAP_MS }], { silentPauses: true })
+      if (mine !== listenRun)
+        return
+      if (once) {
+        speaking.value = null
+        return
+      }
+    }
+  }
+  speaking.value = null
+}
+
+function stopListening() {
+  listenRun++
+  stopAudio()
+  speaking.value = null
 }
 
 function closeWord() {
@@ -213,12 +256,50 @@ function closeWord() {
         </div>
 
         <div class="mt-8 border-t border-[var(--color-border)] pt-6">
-          <Button variant="ghost" @click="showTranslation = !showTranslation">
-            <Languages class="h-4 w-4" />
-            {{ showTranslation ? 'Hide translation' : 'Show translation' }}
-          </Button>
+          <div class="flex flex-wrap gap-2">
+            <Button variant="ghost" @click="showListen = !showListen">
+              <Volume2 class="h-4 w-4" />
+              {{ showListen ? 'Hide listening' : 'Listen first' }}
+            </Button>
+            <Button variant="ghost" @click="showTranslation = !showTranslation">
+              <Languages class="h-4 w-4" />
+              {{ showTranslation ? 'Hide translation' : 'Show translation' }}
+            </Button>
+          </div>
 
-          <div v-if="showTranslation" class="mt-4 space-y-4 leading-relaxed">
+          <div v-if="showListen" class="mt-4">
+            <div class="flex items-center gap-3">
+              <Button v-if="speaking === null" @click="listenFrom(0, 0)">
+                <Play class="h-4 w-4" /> Play it all
+              </Button>
+              <Button v-else variant="ghost" @click="stopListening">
+                <Pause class="h-4 w-4" /> Stop
+              </Button>
+              <p class="text-sm text-[var(--color-muted)]">
+                Or tap a line to hear just that one.
+              </p>
+            </div>
+            <div class="mt-4 space-y-4">
+              <div v-for="(stanza, s) in reading.stanzas" :key="s" class="space-y-1">
+                <button
+                  v-for="(line, l) in stanza"
+                  :key="l"
+                  type="button"
+                  class="block w-full rounded-lg px-3 py-2 text-left transition hover:bg-[var(--color-card)]"
+                  :class="speaking === `${s}:${l}` ? 'bg-[var(--color-card)] ring-1 ring-[var(--color-accent)]' : ''"
+                  @click="listenFrom(s, l, true)"
+                >
+                  <span class="block text-lg" style="font-family: var(--font-jp)">{{ line.text }}</span>
+                  <span v-if="showTranslation" class="block text-sm text-[var(--color-muted)]">{{ line.translation }}</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="mt-6">
+          <!-- With the lines open, each carries its own English instead. -->
+          <div v-if="showTranslation && !showListen" class="space-y-4 leading-relaxed">
             <p v-for="(stanza, s) in reading.stanzas" :key="s">
               {{ stanza.map(line => line.translation).join(' ') }}
             </p>

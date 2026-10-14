@@ -4,6 +4,8 @@ import db from '@nihongo/shared/db'
 import { languageLevels, languages, learningActivities, readingLines, readings } from '@nihongo/shared/db/schema'
 import { and, asc, count, eq } from 'drizzle-orm'
 
+import { assetUrl } from '../lib/assets.js'
+import { readingAudioPath } from '../lib/audio-key.js'
 import { coverageOf, knownWordIds, readingWords } from './coverage.service.js'
 import { glossary, glossLine } from './glossary.service.js'
 
@@ -97,7 +99,7 @@ export async function getReading(languageCode: string, code: string, { includeDr
       stanzas.push([])
       current = stanza
     }
-    stanzas.at(-1)!.push({ ...line, tokens: glossLine(line.text, g, line.reading, { regroupKana: true }) })
+    stanzas.at(-1)!.push({ ...line, tokens: glossLine(line.text, g, line.reading, { regroupKana: true }), audio: assetUrl(readingAudioPath(line.text)) })
   }
 
   const { id: _id, ...rest } = row

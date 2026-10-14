@@ -1,15 +1,16 @@
 /* eslint-disable no-console */
 import db, { connection } from '@nihongo/shared/db'
-import { dialogueReplies, dialogues, dialogueTurns, kana, sentences, words } from '@nihongo/shared/db/schema'
-import { speakSegments, speakSpoken } from '@nihongo/shared/lib'
-import { asc, eq } from 'drizzle-orm'
+import { dialogueReplies, dialogues, dialogueTurns, kana, languageLevels, sentences, studyItems, words, wordSenses } from '@nihongo/shared/db/schema'
+import { recallGloss, speakSegments, speakSpoken } from '@nihongo/shared/lib'
+import { and, asc, eq, inArray } from 'drizzle-orm'
 import { execFile } from 'node:child_process'
 import { readFile, unlink } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import path, { basename } from 'node:path'
 import { promisify } from 'node:util'
 
-import { audioKeyFor, englishVoiceFor, VOICE_LEARNER as LEARNER_VOICE, VOICE_OTHER } from '../lib/audio-key.js'
+import { audioKeyFor, englishVoiceFor, GLOSS_AUDIO_LEVELS, VOICE_LEARNER as LEARNER_VOICE, VOICE_OTHER, VOICE_RECALL } from '../lib/audio-key.js'
+import { READINGS } from './data/readings/index.js'
 import { SPEAK } from './data/speak/index.js'
 import { CONTENT_TYPES, listKeys, putAsset } from './lib/bucket.js'
 
@@ -103,7 +104,7 @@ if (process.argv.some(a => a === '--redo' || a.startsWith('--redo=')) && redo.si
   process.exit(1)
 }
 
-type AudioKind = 'kana' | 'words' | 'sentences' | 'dialogues' | 'speak'
+type AudioKind = 'kana' | 'words' | 'sentences' | 'dialogues' | 'speak' | 'readings' | 'glosses'
 
 async function generate(kind: AudioKind) {
   // One listing for the run rather than a HEAD per clip: at eleven thousand
@@ -131,6 +132,34 @@ async function generate(kind: AudioKind) {
       .from(sentences)
       .where(eq(sentences.published, true)))
       .map(r => ({ name: r.id, text: r.text }))
+  } else if (kind === 'readings') {
+    // Every line of every speech, from the authored data — a speech is
+    // approved by listening to it, so its audio exists before it is published.
+    const lines = new Map<string, { text: string, voice: string }>()
+    for (const reading of READINGS) {
+      for (const stanza of reading.stanzas) {
+        for (const line of stanza)
+          lines.set(audioKeyFor(line.t, VOICE), { text: line.t, voice: VOICE })
+      }
+    }
+    targets = [...lines].map(([name, line]) => ({ name, ...line }))
+  } else if (kind === 'glosses') {
+    // The English prompt for each word a Recall session can ask: words at the
+    // recorded levels that have a study item, said by one teacher voice.
+    const rows = await db
+      .select({ glosses: wordSenses.glosses })
+      .from(words)
+      .innerJoin(languageLevels, eq(languageLevels.id, words.levelId))
+      .innerJoin(wordSenses, and(eq(wordSenses.wordId, words.id), eq(wordSenses.sortIndex, 0)))
+      .innerJoin(studyItems, and(eq(studyItems.wordId, words.id), eq(studyItems.published, true)))
+      .where(and(eq(words.published, true), inArray(languageLevels.code, [...GLOSS_AUDIO_LEVELS])))
+    const lines = new Map<string, { text: string, voice: string }>()
+    for (const r of rows) {
+      const text = recallGloss(r.glosses.filter(g => g.lang === 'en').map(g => g.text))
+      if (text)
+        lines.set(audioKeyFor(text, VOICE_RECALL), { text, voice: VOICE_RECALL })
+    }
+    targets = [...lines].map(([name, line]) => ({ name, ...line }))
   } else if (kind === 'speak') {
     // From the authored data, not the database: a session is unpublished until
     // it is approved, and its clips have to exist BEFORE that, so the reviewer
@@ -191,7 +220,7 @@ async function generate(kind: AudioKind) {
     // different file instead of inheriting one recorded for the sentence that
     // used to sit at this index. Everything else is keyed by a stable id whose
     // content genuinely never changes.
-    const key = kind === 'dialogues' || kind === 'speak'
+    const key = kind === 'dialogues' || kind === 'speak' || kind === 'readings' || kind === 'glosses'
       ? `audio/${kind}/${audioKeyFor(t.text, t.voice ?? VOICE)}.m4a`
       : `audio/${kind}/${t.name}.m4a`
     // `--redo` re-records a clip that is already in the bucket.
@@ -219,7 +248,7 @@ async function generate(kind: AudioKind) {
   }
 }
 
-const KINDS: AudioKind[] = ['kana', 'words', 'sentences', 'dialogues', 'speak']
+const KINDS: AudioKind[] = ['kana', 'words', 'sentences', 'dialogues', 'speak', 'readings', 'glosses']
 
 // The first argument that is not a flag. `--redo` takes a value, so reading
 // argv[2] positionally let `--redo sent-ex-desu-3` occupy the kind slot and the

@@ -93,6 +93,17 @@ async function load() {
           </Button>
         </div>
 
+        <router-link
+          :to="ROUTES.RECALL"
+          class="mt-4 flex items-center gap-3 rounded-xl border border-[var(--color-border)] p-4 transition hover:border-[var(--color-text)]"
+        >
+          <Headphones class="h-5 w-5 shrink-0 text-[var(--color-muted)]" />
+          <span>
+            <span class="block font-semibold">Recall</span>
+            <span class="block text-sm text-[var(--color-muted)]">The same method over your own shaky words and missed prompts, hands-free.</span>
+          </span>
+        </router-link>
+
         <section v-for="group in groups" :key="group.level" class="mt-8">
           <h2 class="text-sm uppercase tracking-wide text-[var(--color-muted)]">
             {{ group.level }}

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { BookOpen, Check, Flame, Grid3x3, Layers, Mic, RotateCcw, ScrollText, Target } from 'lucide-vue-next'
+import { BookOpen, Check, Flame, Grid3x3, Headphones, Layers, Mic, RotateCcw, ScrollText, Target } from 'lucide-vue-next'
 import { computed, onMounted, ref } from 'vue'
 
 import CoverageBadge from '@/components/ja/coverage-badge.vue'
@@ -175,6 +175,17 @@ onMounted(async () => {
             </p>
             <p class="text-sm text-[var(--color-muted)]">
               {{ today.suggestedReading.titleEn }}
+            </p>
+          </router-link>
+          <router-link
+            :to="ROUTES.RECALL"
+            class="rounded-xl border border-[var(--color-border)] p-5 transition hover:border-[var(--color-text)]"
+          >
+            <div class="flex items-center gap-2 text-sm text-[var(--color-muted)]">
+              <Headphones class="h-4 w-4" /> Recall · hands-free
+            </div>
+            <p class="mt-2 font-semibold">
+              Say the shaky words out loud
             </p>
           </router-link>
           <router-link

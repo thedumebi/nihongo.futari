@@ -33,6 +33,7 @@ export const ROUTE_BASE_PATHS = {
   CROSSWORD: '/crossword',
   TODAY: '/today',
   ACTIVITIES: '/activities',
+  RECALL: '/recall',
   STUDY: '/study',
   SYNC: '/sync',
   PROGRESS: '/progress',
@@ -275,6 +276,10 @@ export const ACHIEVEMENT_KINDS = [
 ] as const
 export type AchievementKind = typeof ACHIEVEMENT_KINDS[number]
 
+export const RECALL_ROUTES = {
+  GET: '/'
+} as const
+
 export const ACTIVITY_ROUTES = {
   RECORD: '/'
 } as const
@@ -494,6 +499,9 @@ export const API_ENDPOINTS = {
   READINGS: {
     LIST: ROUTE_BASE_PATHS.READINGS,
     GET_BY_CODE: (code: string) => `${ROUTE_BASE_PATHS.READINGS}/${encodeURIComponent(code)}`
+  },
+  RECALL: {
+    GET: `${ROUTE_BASE_PATHS.RECALL}${RECALL_ROUTES.GET}`
   },
   ACTIVITIES: {
     RECORD: `${ROUTE_BASE_PATHS.ACTIVITIES}${ACTIVITY_ROUTES.RECORD}`

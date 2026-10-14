@@ -16,6 +16,8 @@ export const ROUTES = {
   READING_DETAIL: (code: string) => `/read/${encodeURIComponent(code)}`,
   /** The build-up course: hear the English, say the Japanese. */
   SPEAK: '/speak',
+  /** Hands-free, Pimsleur style: hear the English, say the Japanese, over what is shaky. */
+  RECALL: '/recall',
   CROSSWORD: '/crossword',
   SPEAK_SESSION: (code: string) => `/speak/${encodeURIComponent(code)}`,
   STUDY_SESSION: '/study/session',
