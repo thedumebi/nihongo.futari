@@ -1,7 +1,7 @@
 import type { GamesQuery, GhostBoss, GhostBossEntry, KanjiBuildGame, KanjiBuildRound, ListeningGame } from '@nihongo/shared/types'
 
 import db from '@nihongo/shared/db'
-import { findMinimalPairs, hasKatakana, lookAlikes, parseIds, studyDateFor } from '@nihongo/shared/lib'
+import { findMinimalPairs, hasKanji, hasKatakana, lookAlikes, parseIds, studyDateFor } from '@nihongo/shared/lib'
 import { sql } from 'drizzle-orm'
 import { DateTime } from 'luxon'
 
@@ -262,9 +262,34 @@ export async function getGhostBoss(userId: string, languageCode: string): Promis
     }
   })
 
-  const rounds = ghosts
+  const kanjiRounds = ghosts
     .filter(g => g.kind === 'kanji' && g.lookAlikes.length > 0 && g.meaning)
     .map(g => ({ meaning: g.meaning, answer: g.text, options: shuffle([g.text, ...g.lookAlikes.map(l => l.character)]) }))
+
+  // Words: the real spelling against the same word with one kanji swapped for
+  // a look-alike — 待つ against 持つ and 時つ. Most ghosts are words, and the
+  // usual slip is exactly a part misread.
+  const wordGhosts = ghosts.filter(g => g.kind === 'word' && g.meaning)
+  const chars = [...new Set(wordGhosts.flatMap(g => [...g.text].filter(ch => hasKanji(ch))))]
+  const swaps = chars.length === 0
+    ? []
+    : (await db.execute<{ character: string, confusable: string }>(sql`
+        select a.character, b.character as confusable
+        from kanji_confusables kc
+        join kanji a on a.id = kc.kanji_id
+        join kanji b on b.id = kc.confusable_id
+        where a.character in ${chars}
+        order by kc.score desc
+      `)).rows
+  const wordRounds = wordGhosts.flatMap((g) => {
+    const variants = [...new Set([...g.text].flatMap((ch, i) => swaps
+      .filter(s => s.character === ch)
+      .map(s => [...g.text].map((c, j) => j === i ? s.confusable : c).join(''))))]
+      .slice(0, 3)
+    return variants.length > 0 ? [{ meaning: g.meaning, answer: g.text, options: shuffle([g.text, ...variants]) }] : []
+  })
+
+  const rounds = [...kanjiRounds, ...wordRounds]
 
   return { week, ghosts, rounds }
 }

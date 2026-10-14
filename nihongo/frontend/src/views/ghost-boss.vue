@@ -164,11 +164,14 @@ function detailLink(g: GhostBoss['ghosts'][number]): string {
               v-for="o in round.options"
               :key="o"
               type="button"
-              class="rounded-xl border py-6 text-5xl transition"
-              :class="!picked
-                ? 'border-[var(--color-border)] hover:border-[var(--color-text)]'
-                : o === round.answer ? 'border-[var(--color-success)] bg-[var(--color-card)]'
-                  : o === picked ? 'border-[var(--color-danger)]' : 'border-[var(--color-border)] opacity-60'"
+              class="rounded-xl border py-6 transition"
+              :class="[
+                o.length > 1 ? 'text-3xl' : 'text-5xl',
+                !picked
+                  ? 'border-[var(--color-border)] hover:border-[var(--color-text)]'
+                  : o === round.answer ? 'border-[var(--color-success)] bg-[var(--color-card)]'
+                    : o === picked ? 'border-[var(--color-danger)]' : 'border-[var(--color-border)] opacity-60',
+              ]"
               :disabled="Boolean(picked)"
               @click="pick(o)"
             >
