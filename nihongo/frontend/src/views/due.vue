@@ -216,7 +216,7 @@ onUnmounted(() => {
     <div class="mx-auto max-w-3xl px-6 py-12">
       <div class="flex flex-wrap items-baseline gap-3">
         <h1 class="text-3xl font-semibold">
-          Due now
+          Review
         </h1>
         <span class="text-[var(--color-muted)]">
           {{ total }} {{ total === 1 ? 'item' : 'items' }}
@@ -224,14 +224,14 @@ onUnmounted(() => {
         </span>
         <router-link v-if="total > 0" :to="`${ROUTES.STUDY}?mode=due`" class="ml-auto">
           <Button variant="primary">
-            Review these
+            Start reviewing
           </Button>
         </router-link>
       </div>
 
       <p class="mt-2 text-sm text-[var(--color-muted)]">
-        Everything the scheduler wants back, oldest first &mdash; the ones waiting longest are
-        closest to being forgotten.
+        What is due now, oldest first &mdash; the ones waiting longest are closest to being
+        forgotten. Start reviewing to go through them one at a time.
       </p>
 
       <div v-if="byKind.length > 1" class="mt-6 flex flex-wrap gap-2">

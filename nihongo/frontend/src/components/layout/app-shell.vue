@@ -83,7 +83,8 @@ const links = computed(() => {
     // Review kept taking new material while the backlog grew unseen.
     { label: 'Today', to: ROUTES.TODAY },
     { label: 'Learn', to: ROUTES.LEARN },
-    { label: 'Review', to: ROUTES.REVIEW, ...(due > 0 ? { badge: due } : {}) },
+    // Review opens the list of what is due; "Start reviewing" there starts the session.
+    { label: 'Review', to: ROUTES.DUE, ...(due > 0 ? { badge: due } : {}) },
     { label: 'Lessons', to: ROUTES.LESSONS },
     { label: 'Conversations', to: ROUTES.CONVERSATIONS },
     { label: 'Read', to: ROUTES.READ },
@@ -100,7 +101,7 @@ const links = computed(() => {
 /**
  * The rest, reachable without cluttering the main five.
  *
- * Course, Due, Writing and Sounds left the primary nav when it went from eight
+ * Course, Writing and Sounds left the primary nav when it went from eight
  * tabs to five, but nothing about them was retired — losing a route because a
  * tab moved would be a regression dressed as a tidy-up. On a phone they sit in
  * the same drawer; on a desk they are a quieter second row.
@@ -111,7 +112,6 @@ const secondary = computed(() => {
   return [
     { label: 'Progress', to: ROUTES.PROGRESS },
     { label: 'Course', to: ROUTES.COURSE },
-    { label: 'Due', to: ROUTES.DUE },
     { label: 'Writing', to: ROUTES.WRITING },
     { label: 'Sounds', to: ROUTES.SOUND_SERIES },
     { label: 'Games', to: ROUTES.GAMES },
@@ -125,6 +125,9 @@ const secondary = computed(() => {
  * is active — both would light up — so this compares the mode itself.
  */
 function isActive(to: string): boolean {
+  // Review is the due list AND the review session it starts.
+  if (to === ROUTES.DUE && route.path === ROUTES.STUDY && route.query.mode === 'due')
+    return true
   const [path, query] = to.split('?')
   // A page inside a section (/games/listening) keeps the section lit.
   if (route.path !== path && !(path && path !== '/' && route.path.startsWith(`${path}/`)))

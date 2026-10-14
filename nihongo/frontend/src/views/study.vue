@@ -1455,6 +1455,9 @@ watch(() => lang.code, async () => {
       </div>
       <p v-if="focused" class="mb-6 text-sm text-[var(--color-muted)]">
         {{ focusHint }}
+        <router-link v-if="mode === 'due'" :to="ROUTES.DUE" class="ml-1 underline underline-offset-4">
+          See the list
+        </router-link>
       </p>
       <p v-else-if="activeDeck?.description" class="mb-6 text-sm text-[var(--color-muted)]">
         {{ activeDeck.description }}
