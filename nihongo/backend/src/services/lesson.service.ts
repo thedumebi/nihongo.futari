@@ -26,6 +26,7 @@ import {
   users,
   userSettings
 } from '@nihongo/shared/db/schema'
+import { DEFAULT_DAY_BOUNDARY_HOUR } from '@nihongo/shared/lib'
 import { and, asc, eq, inArray, isNull, sql } from 'drizzle-orm'
 import { DateTime } from 'luxon'
 
@@ -547,7 +548,7 @@ async function nextDayBoundary(userId: string, now: Date): Promise<Date> {
     .limit(1)
 
   const zone = row?.timezone ?? 'UTC'
-  const hour = row?.hour ?? 4
+  const hour = row?.hour ?? DEFAULT_DAY_BOUNDARY_HOUR
   const local = DateTime.fromJSDate(now, { zone })
   if (!local.isValid)
     return new Date(now.getTime() + 20 * 60 * 60 * 1000)

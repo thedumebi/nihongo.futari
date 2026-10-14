@@ -112,8 +112,12 @@ pnpm 9 + Turbo 2 monorepo. Node 22.17.0.
   substring of the input, and every `sourceId` must be one that was passed in;
   otherwise auto-reject. Nothing AI-generated reaches a user unreviewed.
 - **Furigana is precomputed at import**, never aligned at render time.
-- **Timezones**: store IANA zone on the user, compute local date at write time
-  with luxon, day boundary is 4am local.
+- **Timezones**: store IANA zone on the user (kept in step with the device, so
+  it follows them when they travel), compute local date at write time with
+  luxon. The day runs **midnight to midnight local** by default
+  (`DEFAULT_DAY_BOUNDARY_HOUR`); a learner may choose a later hour in Settings
+  → Your day, and every computation reads their own `dayBoundaryHour`. Never
+  hard-code a boundary.
 
 ## Auth
 

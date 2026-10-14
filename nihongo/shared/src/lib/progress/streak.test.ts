@@ -132,8 +132,12 @@ describe('studyDateFor', () => {
     expect(studyDateFor(new Date('2026-03-10T20:00:00Z'), 'Europe/London')).toBe('2026-03-10')
   })
 
-  it('maps a 2am review to the previous day', () => {
-    expect(studyDateFor(new Date('2026-03-11T02:00:00Z'), 'Europe/London')).toBe('2026-03-10')
+  it('puts a 2am review on its own calendar day by default', () => {
+    expect(studyDateFor(new Date('2026-03-11T02:00:00Z'), 'Europe/London')).toBe('2026-03-11')
+  })
+
+  it('maps a 2am review to the previous day for a learner with a 4am boundary', () => {
+    expect(studyDateFor(new Date('2026-03-11T02:00:00Z'), 'Europe/London', 4)).toBe('2026-03-10')
   })
 
   it('is timezone-aware', () => {
@@ -164,14 +168,14 @@ describe('date helpers', () => {
 })
 
 describe('studyDayRange', () => {
-  it('covers 4am-to-4am local', () => {
+  it('covers midnight to midnight local by default', () => {
     const { start, end } = studyDayRange('2026-03-10', 'Europe/London')
-    expect(start.toISOString()).toBe('2026-03-10T04:00:00.000Z')
-    expect(end.toISOString()).toBe('2026-03-11T04:00:00.000Z')
+    expect(start.toISOString()).toBe('2026-03-10T00:00:00.000Z')
+    expect(end.toISOString()).toBe('2026-03-11T00:00:00.000Z')
   })
 
-  it('contains an evening review and the following 2am, but not the prior 2am', () => {
-    const { start, end } = studyDayRange('2026-03-10', 'Europe/London')
+  it('with a 4am boundary, contains an evening review and the following 2am, but not the prior 2am', () => {
+    const { start, end } = studyDayRange('2026-03-10', 'Europe/London', 4)
     const evening = new Date('2026-03-10T20:00:00Z')
     const after2am = new Date('2026-03-11T02:00:00Z')
     const before2am = new Date('2026-03-10T02:00:00Z')
@@ -189,7 +193,7 @@ describe('studyDayRange', () => {
 
   it('shifts with the timezone', () => {
     expect(studyDayRange('2026-03-10', 'Asia/Tokyo').start.toISOString())
-      .toBe('2026-03-09T19:00:00.000Z') // 04:00 JST = 19:00 UTC previous day
+      .toBe('2026-03-09T15:00:00.000Z') // 00:00 JST = 15:00 UTC previous day
   })
 
   it('throws on an invalid zone', () => {

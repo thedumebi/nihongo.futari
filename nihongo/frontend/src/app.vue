@@ -2,13 +2,20 @@
 import { onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 
+import { syncTimezone } from '@/api/notifications'
 import ConfirmDialog from '@/components/ui/confirm-dialog.vue'
 import ToastNotification from '@/components/ui/toast-notification.vue'
 import { setupServiceWorker } from '@/offline/register-sw'
 import { startSync } from '@/offline/sync'
+import { useAuthStore } from '@/store/auth'
+import { useLanguageStore } from '@/store/language'
+import { useTodayStore } from '@/store/today'
 import { useUiStore } from '@/store/ui'
 
 const ui = useUiStore()
+const auth = useAuthStore()
+const lang = useLanguageStore()
+const todayStore = useTodayStore()
 const route = useRoute()
 const router = useRouter()
 
@@ -67,7 +74,16 @@ onMounted(() => {
   })
   // Moving to another page is a natural break: nothing on the old page is lost.
   router.afterEach(() => applyIfCalm(true))
-  document.addEventListener('visibilitychange', () => applyIfCalm())
+  document.addEventListener('visibilitychange', () => {
+    applyIfCalm()
+    // Back from a trip: the day follows the phone's timezone, and Today with it.
+    if (document.visibilityState === 'visible' && auth.isAuthenticated) {
+      void syncTimezone().then((changed) => {
+        if (changed)
+          void todayStore.refresh(lang.code, true)
+      })
+    }
+  })
   // A tapped notification, when the app is already open: the service worker
   // asks the router to go where the notification points. Only app paths.
   navigator.serviceWorker?.addEventListener('message', (event: MessageEvent<{ type?: string, url?: string }>) => {

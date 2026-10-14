@@ -26,7 +26,7 @@ export const users = pgTable('users', {
   username: text('username').unique(),
   role: text('role').notNull().default('user'),
   active: boolean('active').notNull().default(true),
-  /** IANA zone, e.g. Europe/London. Drives the 4am-local day boundary. */
+  /** IANA zone, e.g. Europe/London, kept current from the device. Drives the local day boundary. */
   timezone: text('timezone').notNull().default('UTC'),
   locale: text('locale').notNull().default('en'),
   activeLanguageId: text('active_language_id')

@@ -475,7 +475,7 @@ export const studyQueueResponseSchema = z.object({
     /** Items never studied that the curriculum will release next. */
     newAvailable: z.number().int(),
     ghost: z.number().int(),
-    /** New cards the queue has introduced in this study day (4am to 4am, the learner's time). */
+    /** New cards the queue has introduced in this study day (midnight to midnight in the learner's time, or their own boundary hour). */
     newToday: z.number().int(),
     /** The learner's daily new-card limit (Settings). */
     newLimit: z.number().int()

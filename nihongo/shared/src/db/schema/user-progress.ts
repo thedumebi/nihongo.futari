@@ -42,10 +42,11 @@ export const userSettings = pgTable('user_settings', {
   audioSpeed: numeric('audio_speed', { precision: 3, scale: 2 }).notNull().default('1.00'),
   theme: text('theme').notNull().default('system'),
   /**
-   * Local hour a "day" rolls over. 4am, not midnight — people study before bed
-   * and a midnight boundary breaks their streak mid-session.
+   * Local hour a "day" rolls over: midnight unless the learner picks a later
+   * hour in Settings (a session past midnight then counts for the evening it
+   * began in). Same value as DEFAULT_DAY_BOUNDARY_HOUR in the shared lib.
    */
-  dayBoundaryHour: integer('day_boundary_hour').notNull().default(4),
+  dayBoundaryHour: integer('day_boundary_hour').notNull().default(0),
   reminderEmailEnabled: boolean('reminder_email_enabled').notNull().default(true),
   reminderPushEnabled: boolean('reminder_push_enabled').notNull().default(false),
   reminderHour: integer('reminder_hour').notNull().default(19),
@@ -188,7 +189,7 @@ export const streakFreezes = pgTable('streak_freezes', {
  * `id` is minted by the client (UUIDv7) so a queued offline record can be
  * flushed twice for free. `(user, kind, refId, localDate)` is unique too: the
  * same lesson finished twice in a day counts once, from any device.
- * `localDate` is computed at write time in the learner's own zone, 4am
+ * `localDate` is computed at write time in the learner's own zone and day
  * boundary — never re-derived later, which would rewrite history if they move.
  */
 export const learningActivities = pgTable('learning_activities', {

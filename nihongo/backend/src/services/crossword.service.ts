@@ -202,7 +202,7 @@ export async function getCrossword(userId: string, query: CrosswordQuery): Promi
 
   if (source === 'daily') {
     // The same puzzle for everyone on the same study day — the learner's own
-    // day, which turns over at 4am local, not at midnight UTC.
+    // day, which turns over at the learner's own boundary, not at midnight UTC.
     const { timezone, dayBoundaryHour } = await loadUserContext(userId)
     seed = seedFrom(`${query.level}:${studyDateFor(new Date(), timezone, dayBoundaryHour)}`)
     chosen = pool.filter(w => w.script === 'hiragana')

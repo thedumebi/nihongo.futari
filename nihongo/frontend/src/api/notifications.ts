@@ -36,18 +36,26 @@ export async function savePrefs(prefs: NotificationPrefs): Promise<NotificationP
  * it fired at the wrong time of day or never at all.
  *
  * Detected rather than asked for: the browser already knows, and a timezone
- * picker is a question nobody should have to answer. Sent unconditionally on
- * every session load — it is one small request, it is idempotent, and deciding
- * whether to send it cost more code than sending it.
+ * picker is a question nobody should have to answer. Sent on every session
+ * load AND whenever the app comes back to the foreground with a different
+ * zone: a phone resumes an installed app from memory, so after a flight the
+ * day would otherwise keep running on the old zone until a full restart.
+ *
+ * Resolves true when the zone changed, so the caller can refresh "today".
  */
-export async function syncTimezone(): Promise<void> {
+let lastSent: string | null = null
+
+export async function syncTimezone(): Promise<boolean> {
   const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone
-  if (!timezone)
-    return
+  if (!timezone || timezone === lastSent)
+    return false
   try {
     await client.patch(API_ENDPOINTS.NOTIFICATIONS.TIMEZONE, { timezone })
+    const changed = lastSent !== null
+    lastSent = timezone
+    return changed
   } catch {
-    // Never block the app on this. The reminder stays where it was until the
-    // next load, which is where it already was.
+    // Never block the app on this. The next foregrounding tries again.
+    return false
   }
 }

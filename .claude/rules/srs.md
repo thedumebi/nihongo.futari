@@ -74,9 +74,12 @@ per card, which replay depends on.
 
 ## Timezones
 
-Store the IANA zone on the user. Compute the local date with luxon **at write
-time** and store it on the stats row. The day boundary is **4am local**, not
-midnight — people study before bed. Never derive "today" from the server clock.
+Store the IANA zone on the user, kept in step with the device. Compute the
+local date with luxon **at write time** and store it on the stats row. The day
+runs **midnight to midnight local** by default (`DEFAULT_DAY_BOUNDARY_HOUR` in
+the shared lib); the learner can pick a later hour in Settings, so always pass
+their own `dayBoundaryHour` — never a literal. Never derive "today" from the
+server clock.
 
 ## Ghost reviews
 

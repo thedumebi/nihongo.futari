@@ -83,22 +83,16 @@ describe('aggregateReviews — day bucketing', () => {
     expect(result.affectedDates).toEqual(['2026-03-01', '2026-03-02', '2026-03-04', '2026-03-05'])
   })
 
-  it('counts a late-night review as the PREVIOUS day (4am boundary)', () => {
-    // 01:30 local on the 6th is still the 5th's study session.
-    const late = [ev('n', '2026-03-06T01:30:00Z', 3)]
-    expect(aggregateReviews(late, { timezone: TZ }).daily[0]!.localDate).toBe('2026-03-05')
-  })
-
-  it('rolls over at 4am, not midnight', () => {
-    const before = aggregateReviews([ev('n', '2026-03-06T03:59:00Z', 3)], { timezone: TZ })
-    const after = aggregateReviews([ev('n', '2026-03-06T04:01:00Z', 3)], { timezone: TZ })
+  it('rolls over at midnight local by default — a calendar day', () => {
+    const before = aggregateReviews([ev('n', '2026-03-05T23:59:00Z', 3)], { timezone: TZ })
+    const after = aggregateReviews([ev('n', '2026-03-06T00:01:00Z', 3)], { timezone: TZ })
     expect(before.daily[0]!.localDate).toBe('2026-03-05')
     expect(after.daily[0]!.localDate).toBe('2026-03-06')
   })
 
-  it('honours a custom boundary hour', () => {
-    const r = aggregateReviews([ev('n', '2026-03-06T01:30:00Z', 3)], { timezone: TZ, dayBoundaryHour: 0 })
-    expect(r.daily[0]!.localDate).toBe('2026-03-06')
+  it('honours a later boundary the learner chose: 01:30 then still counts for the day before', () => {
+    const r = aggregateReviews([ev('n', '2026-03-06T01:30:00Z', 3)], { timezone: TZ, dayBoundaryHour: 4 })
+    expect(r.daily[0]!.localDate).toBe('2026-03-05')
   })
 
   it('respects the user timezone, not the server', () => {

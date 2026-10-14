@@ -3,7 +3,7 @@ import type { AggregateEvent, AggregateResult, DailyStat, XpAward } from '@/type
 import { xpForReview } from '@/types/progress.js'
 import { SRS_RATINGS } from '@/types/srs.js'
 
-import { studyDateFor } from './study-day.js'
+import { DEFAULT_DAY_BOUNDARY_HOUR, studyDateFor } from './study-day.js'
 
 export interface AggregateOptions {
   timezone: string
@@ -34,7 +34,7 @@ export function aggregateReviews(
   events: readonly AggregateEvent[],
   options: AggregateOptions
 ): AggregateResult {
-  const { timezone, dayBoundaryHour = 4 } = options
+  const { timezone, dayBoundaryHour = DEFAULT_DAY_BOUNDARY_HOUR } = options
 
   const byDate = new Map<string, DailyStat>()
   const xp: XpAward[] = []

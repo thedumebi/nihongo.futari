@@ -13,7 +13,7 @@ import {
 } from '@nihongo/shared/db/schema'
 import SendMail from '@nihongo/shared/emails'
 import env from '@nihongo/shared/env'
-import { studyDateFor } from '@nihongo/shared/lib'
+import { DEFAULT_DAY_BOUNDARY_HOUR, studyDateFor } from '@nihongo/shared/lib'
 import { and, desc, eq, gte, or, sql } from 'drizzle-orm'
 import { DateTime } from 'luxon'
 
@@ -99,7 +99,7 @@ async function findCandidates(): Promise<Candidate[]> {
   return rows.map(r => ({
     ...r,
     name: r.name,
-    dayBoundaryHour: r.dayBoundaryHour ?? 4,
+    dayBoundaryHour: r.dayBoundaryHour ?? DEFAULT_DAY_BOUNDARY_HOUR,
     reminderHour: r.reminderHour ?? 19,
     reminderMinute: r.reminderMinute ?? 0
   }))
@@ -524,7 +524,7 @@ export async function runNudges(now = new Date()): Promise<ReminderRunResult> {
     if (!local.isValid)
       continue
     const firstQuarter = local.minute < 15
-    const localDate = studyDateFor(now, r.timezone, r.dayBoundaryHour ?? 4)
+    const localDate = studyDateFor(now, r.timezone, r.dayBoundaryHour ?? DEFAULT_DAY_BOUNDARY_HOUR)
 
     if (r.streakRisk && firstQuarter && local.hour === STREAK_RISK_HOUR) {
       result.considered++

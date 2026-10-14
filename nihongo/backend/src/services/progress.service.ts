@@ -21,7 +21,7 @@ import {
   userXp,
   xpEvents
 } from '@nihongo/shared/db/schema'
-import { aggregateReviews, computeStreak, QUEST_XP, questProgress, questsFor, studyDateFor, studyDayRange, xpToLevel } from '@nihongo/shared/lib'
+import { aggregateReviews, computeStreak, DEFAULT_DAY_BOUNDARY_HOUR, QUEST_XP, questProgress, questsFor, studyDateFor, studyDayRange, xpToLevel } from '@nihongo/shared/lib'
 import { and, eq, gte, inArray, isNull, sql } from 'drizzle-orm'
 
 import { recomputeAchievements } from './achievements.service.js'
@@ -59,7 +59,7 @@ export async function loadUserContext(userId: string): Promise<UserContext> {
 
   return {
     timezone: row?.timezone ?? 'UTC',
-    dayBoundaryHour: row?.dayBoundaryHour ?? 4
+    dayBoundaryHour: row?.dayBoundaryHour ?? DEFAULT_DAY_BOUNDARY_HOUR
   }
 }
 

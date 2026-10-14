@@ -2,7 +2,7 @@ import type { AddFriendInput, FriendRequestView, FriendSettings, FriendsResponse
 
 import db from '@nihongo/shared/db'
 import { crosswordResults, friendProfiles, friendships, languageLevels, users, userSettings } from '@nihongo/shared/db/schema'
-import { daysThisWeek, friendCodeFrom, normaliseFriendCode, pairStreak, studyDateFor, studyDayRange, uuidv7 } from '@nihongo/shared/lib'
+import { daysThisWeek, DEFAULT_DAY_BOUNDARY_HOUR, friendCodeFrom, normaliseFriendCode, pairStreak, studyDateFor, studyDayRange, uuidv7 } from '@nihongo/shared/lib'
 import { and, eq, gte, inArray, lt, or, sql } from 'drizzle-orm'
 import { randomBytes } from 'node:crypto'
 
@@ -227,7 +227,7 @@ export async function listFriends(userId: string): Promise<FriendsResponse> {
     .where(eq(users.id, userId))
     .limit(1)
   const now = new Date()
-  const myToday = studyDateFor(now, meUser?.timezone ?? 'UTC', meUser?.dayBoundaryHour ?? 4)
+  const myToday = studyDateFor(now, meUser?.timezone ?? 'UTC', meUser?.dayBoundaryHour ?? DEFAULT_DAY_BOUNDARY_HOUR)
   const days = await studyDaysFor([userId, ...acceptedIds])
   const myDays = days.get(userId) ?? []
 
@@ -238,7 +238,7 @@ export async function listFriends(userId: string): Promise<FriendsResponse> {
     if (!p)
       continue
     const tz = p.timezone ?? 'UTC'
-    const boundary = p.dayBoundaryHour ?? 4
+    const boundary = p.dayBoundaryHour ?? DEFAULT_DAY_BOUNDARY_HOUR
     const theirToday = studyDateFor(now, tz, boundary)
     const theirDays = days.get(otherId) ?? []
 

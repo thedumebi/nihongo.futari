@@ -27,7 +27,7 @@ const stats = computed(() => {
     {
       label: 'Day streak',
       value: s.currentStreak,
-      tip: 'Consecutive days you reviewed something. The day rolls over at 4am local, not midnight, so a late-night session still counts for that day.',
+      tip: 'Consecutive days you studied. A day runs midnight to midnight in your own timezone, or from the hour you chose in Settings → Your day.',
       to: null
     },
     {

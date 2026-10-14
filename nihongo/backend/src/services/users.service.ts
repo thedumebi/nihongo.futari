@@ -3,6 +3,7 @@ import type { StudySettings, StudySettingsPatch } from '@nihongo/shared/types'
 
 import db from '@nihongo/shared/db'
 import { users, userSettings } from '@nihongo/shared/db/schema'
+import { DEFAULT_DAY_BOUNDARY_HOUR } from '@nihongo/shared/lib'
 import { eq } from 'drizzle-orm'
 
 /**
@@ -28,7 +29,8 @@ export async function getSettings(userId: string): Promise<StudySettings> {
     .select({
       furiganaMode: userSettings.furiganaMode,
       studyLevel: userSettings.studyLevel,
-      dailyNewLimit: userSettings.dailyNewLimit
+      dailyNewLimit: userSettings.dailyNewLimit,
+      dayBoundaryHour: userSettings.dayBoundaryHour
     })
     .from(userSettings)
     .where(eq(userSettings.userId, userId))
@@ -39,7 +41,8 @@ export async function getSettings(userId: string): Promise<StudySettings> {
     // Empty string is the app's own word for "every level", so a user with no
     // row yet gets the same thing as a user who chose All.
     studyLevel: row?.studyLevel ?? '',
-    dailyNewLimit: row?.dailyNewLimit ?? 10
+    dailyNewLimit: row?.dailyNewLimit ?? 10,
+    dayBoundaryHour: row?.dayBoundaryHour ?? DEFAULT_DAY_BOUNDARY_HOUR
   }
 }
 
@@ -55,7 +58,8 @@ export async function updateSettings(userId: string, patch: StudySettingsPatch):
   const changes = {
     ...(patch.furiganaMode !== undefined ? { furiganaMode: patch.furiganaMode } : {}),
     ...(patch.studyLevel !== undefined ? { studyLevel: patch.studyLevel } : {}),
-    ...(patch.dailyNewLimit !== undefined ? { dailyNewLimit: patch.dailyNewLimit } : {})
+    ...(patch.dailyNewLimit !== undefined ? { dailyNewLimit: patch.dailyNewLimit } : {}),
+    ...(patch.dayBoundaryHour !== undefined ? { dayBoundaryHour: patch.dayBoundaryHour } : {})
   }
 
   // An empty patch is a read, not a write. Without this the insert below would

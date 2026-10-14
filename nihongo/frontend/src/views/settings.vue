@@ -18,9 +18,13 @@ import { useToast } from '@/composables/use-toast'
 import { authClient } from '@/lib/auth-client'
 import { enablePush, pushSupport } from '@/offline/push'
 import { useAuthStore } from '@/store/auth'
+import { useLanguageStore } from '@/store/language'
+import { useTodayStore } from '@/store/today'
 
 const toast = useToast()
 const auth = useAuthStore()
+const lang = useLanguageStore()
+const todayStore = useTodayStore()
 
 // --- Account ---------------------------------------------------------------
 //
@@ -131,6 +135,30 @@ const { mode: furiganaMode, loadSettings } = useFurigana()
 const dailyNewLimit = ref<number | null>(null)
 const DAILY_OPTIONS = ['5', '10', '15', '20', '30'].map(n => ({ value: n, label: n }))
 
+/**
+ * When a new study day starts, in the learner's own timezone: midnight unless
+ * they choose a later hour, so a session past midnight counts for the evening
+ * it began in. Applied at once — the server reads it on every request — and
+ * Today is refreshed so quests, new words and the streak move straight away.
+ */
+const dayBoundaryHour = ref<number | null>(null)
+const BOUNDARY_OPTIONS = [0, 1, 2, 3, 4, 5, 6].map(h => ({ value: String(h), label: h === 0 ? 'Midnight' : `${h}am` }))
+/** The device's zone — the one the server is kept in step with. */
+const deviceTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone
+
+async function setDayBoundary(value: string) {
+  const next = Number(value)
+  const before = dayBoundaryHour.value
+  dayBoundaryHour.value = next
+  try {
+    await updateStudySettings({ dayBoundaryHour: next })
+    void todayStore.refresh(lang.code, true)
+  } catch {
+    dayBoundaryHour.value = before
+    toast.error('Could not save that — try again.')
+  }
+}
+
 async function setDailyLimit(value: string) {
   const next = Number(value)
   const before = dailyNewLimit.value
@@ -149,6 +177,7 @@ onMounted(() => {
   displayName.value = auth.user?.name ?? ''
   void getStudySettings().then((s) => {
     dailyNewLimit.value = s.dailyNewLimit
+    dayBoundaryHour.value = s.dayBoundaryHour
   }).catch(() => {})
 })
 
@@ -277,6 +306,26 @@ async function turnOnPush() {
           :model-value="String(dailyNewLimit)"
           :options="DAILY_OPTIONS"
           @update:model-value="setDailyLimit"
+        />
+      </CollapsibleCard>
+
+      <CollapsibleCard
+        class="mt-4"
+        title="Your day"
+        :summary="dayBoundaryHour === null ? '' : `Starts at ${dayBoundaryHour === 0 ? 'midnight' : `${dayBoundaryHour}am`} · ${deviceTimezone}`"
+      >
+        <p class="mt-1 text-sm text-[var(--color-muted)]">
+          When a new day starts for quests, new words and your streak. It follows the timezone your
+          phone is in &mdash; now {{ deviceTimezone }} &mdash; so travelling moves it with you. Pick a
+          later hour if you often study past midnight and want that to count for the evening before.
+        </p>
+        <Segmented
+          v-if="dayBoundaryHour !== null"
+          class="mt-4"
+          label="A new day starts at"
+          :model-value="String(dayBoundaryHour)"
+          :options="BOUNDARY_OPTIONS"
+          @update:model-value="setDayBoundary"
         />
       </CollapsibleCard>
 
