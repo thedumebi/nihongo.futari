@@ -19,6 +19,12 @@ defineProps<{
   chosen: string
   /** After the answer is shown, every button locks and colours. */
   revealed: boolean
+  /**
+   * How to show an option, when that differs from the value it answers with —
+   * a series reading is graded as キョウ but shown as きょう to a reader in
+   * hiragana mode.
+   */
+  label?: (option: string) => string
 }>()
 
 defineEmits<{ (e: 'choose', option: string): void }>()
@@ -40,7 +46,7 @@ defineEmits<{ (e: 'choose', option: string): void }>()
       :disabled="revealed"
       @click="$emit('choose', option)"
     >
-      {{ option }}
+      {{ label ? label(option) : option }}
     </button>
   </div>
 </template>

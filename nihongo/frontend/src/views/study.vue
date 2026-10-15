@@ -4,6 +4,7 @@ import type {
   FuriganaSegment,
   GlossedToken,
   HandwritingGrade,
+  PhoneticSeriesView,
   ReferenceStroke,
   SpeakPrompt,
   StageCelebration,
@@ -15,7 +16,7 @@ import type {
   WordGloss
 } from '@nihongo/shared/types'
 
-import { describeScript, gradeAnswer, gradeHandwriting, ratingFromGrade, samplePath, scriptOf, uuidv7 } from '@nihongo/shared/lib'
+import { describeScript, gradeAnswer, gradeHandwriting, ratingFromGrade, samplePath, scriptOf, seriesReading, uuidv7 } from '@nihongo/shared/lib'
 import { useLocalStorage } from '@vueuse/core'
 import { GraduationCap, Layers } from 'lucide-vue-next'
 import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
@@ -33,6 +34,7 @@ import ClozePrompt from '@/components/study/cloze-prompt.vue'
 import DialogueCard from '@/components/study/dialogue-card.vue'
 import GrammarLesson from '@/components/study/grammar-lesson.vue'
 import OrderInput from '@/components/study/order-input.vue'
+import SeriesCard from '@/components/study/series-card.vue'
 import SpeakCard from '@/components/study/speak-card.vue'
 import Button from '@/components/ui/button.vue'
 import Dropdown from '@/components/ui/dropdown.vue'
@@ -653,6 +655,13 @@ const isOrdering = computed(() => current.value?.inputMode === 'ordering')
  * vocabulary test with extra steps.
  */
 const isSeries = computed(() => current.value?.prompt?.kind === 'sound-series')
+/** The series itself, attached by the server: its kanji, parts, readings and words. */
+const seriesView = computed(() => isSeries.value ? (current.value?.prompt?.series as PhoneticSeriesView | undefined) ?? null : null)
+/** A series answer in the reader's script: きょう for キョウ in hiragana mode. */
+function seriesChoice(option: string): string {
+  const { main, sub } = seriesReading(option, furiganaMode.value)
+  return sub ? `${main} · ${sub}` : main
+}
 
 /**
  * A scripted conversation.
@@ -1615,64 +1624,68 @@ watch(() => lang.code, async () => {
               @done="lessonDone"
             />
             <template v-else>
-              <p class="text-sm text-[var(--color-muted)]">
-                Something new — here it is first.
-              </p>
-              <p v-if="intro.subject" class="mt-6 text-6xl leading-tight" style="font-family: var(--font-jp)">
-                {{ intro.subject }}
-              </p>
-              <p v-if="intro.reading" class="mt-3 text-lg text-[var(--color-muted)]" style="font-family: var(--font-jp)">
-                {{ intro.reading }}
-              </p>
-              <p v-if="intro.meaning" class="mx-auto mt-4 max-w-sm text-xl">
-                {{ intro.meaning }}
-              </p>
-              <!-- Met in use, not as an isolated flashcard. -->
-              <p
-                v-if="intro.sentence"
-                class="mx-auto mt-6 max-w-sm text-base leading-relaxed text-[var(--color-muted)]"
-                style="font-family: var(--font-jp)"
-              >
-                {{ intro.sentence }}
-              </p>
-              <p v-if="intro.sentenceMeaning" class="mx-auto mt-1 max-w-sm text-sm text-[var(--color-muted)]">
-                {{ intro.sentenceMeaning }}
-              </p>
+              <!-- A sound series teaches a pattern, not a word: its own layout. -->
+              <SeriesCard v-if="seriesView" :series="seriesView" mode="teach" :script="furiganaMode" />
+              <template v-else>
+                <p class="text-sm text-[var(--color-muted)]">
+                  Something new — here it is first.
+                </p>
+                <p v-if="intro.subject" class="mt-6 text-6xl leading-tight" style="font-family: var(--font-jp)">
+                  {{ intro.subject }}
+                </p>
+                <p v-if="intro.reading" class="mt-3 text-lg text-[var(--color-muted)]" style="font-family: var(--font-jp)">
+                  {{ intro.reading }}
+                </p>
+                <p v-if="intro.meaning" class="mx-auto mt-4 max-w-sm text-xl">
+                  {{ intro.meaning }}
+                </p>
+                <!-- Met in use, not as an isolated flashcard. -->
+                <p
+                  v-if="intro.sentence"
+                  class="mx-auto mt-6 max-w-sm text-base leading-relaxed text-[var(--color-muted)]"
+                  style="font-family: var(--font-jp)"
+                >
+                  {{ intro.sentence }}
+                </p>
+                <p v-if="intro.sentenceMeaning" class="mx-auto mt-1 max-w-sm text-sm text-[var(--color-muted)]">
+                  {{ intro.sentenceMeaning }}
+                </p>
 
-              <!--
+                <!--
               What the card is about to ask for. A form named and not explained
               is a term from a grammar book handed to someone who has not read
               one.
             -->
-              <div v-if="formHelp" class="mx-auto mt-6 max-w-sm rounded-lg border border-[var(--color-border)] p-4 text-left">
-                <p class="text-sm leading-relaxed">
-                  {{ formHelp.what }}
-                </p>
-                <p v-if="formHelp.classNote" class="mt-2 text-sm leading-relaxed text-[var(--color-muted)]">
-                  {{ formHelp.classNote }}
-                </p>
-                <p class="mt-2 text-sm text-[var(--color-muted)]" style="font-family: var(--font-jp)">
-                  {{ formHelp.example }}
-                </p>
-              </div>
-              <div v-if="audioSrc || wordAudioSrc" class="mt-6 flex flex-wrap justify-center gap-2">
-                <button
-                  v-if="wordAudioSrc"
-                  type="button"
-                  class="rounded-full border border-[var(--color-border)] px-4 py-2 text-sm text-[var(--color-muted)] transition hover:text-[var(--color-text)]"
-                  @click="playWord"
-                >
-                  Hear the word
-                </button>
-                <button
-                  v-if="audioSrc"
-                  type="button"
-                  class="rounded-full border border-[var(--color-border)] px-4 py-2 text-sm text-[var(--color-muted)] transition hover:text-[var(--color-text)]"
-                  @click="play"
-                >
-                  {{ wordAudioSrc ? 'Hear the sentence' : 'Hear it' }}
-                </button>
-              </div>
+                <div v-if="formHelp" class="mx-auto mt-6 max-w-sm rounded-lg border border-[var(--color-border)] p-4 text-left">
+                  <p class="text-sm leading-relaxed">
+                    {{ formHelp.what }}
+                  </p>
+                  <p v-if="formHelp.classNote" class="mt-2 text-sm leading-relaxed text-[var(--color-muted)]">
+                    {{ formHelp.classNote }}
+                  </p>
+                  <p class="mt-2 text-sm text-[var(--color-muted)]" style="font-family: var(--font-jp)">
+                    {{ formHelp.example }}
+                  </p>
+                </div>
+                <div v-if="audioSrc || wordAudioSrc" class="mt-6 flex flex-wrap justify-center gap-2">
+                  <button
+                    v-if="wordAudioSrc"
+                    type="button"
+                    class="rounded-full border border-[var(--color-border)] px-4 py-2 text-sm text-[var(--color-muted)] transition hover:text-[var(--color-text)]"
+                    @click="playWord"
+                  >
+                    Hear the word
+                  </button>
+                  <button
+                    v-if="audioSrc"
+                    type="button"
+                    class="rounded-full border border-[var(--color-border)] px-4 py-2 text-sm text-[var(--color-muted)] transition hover:text-[var(--color-text)]"
+                    @click="play"
+                  >
+                    {{ wordAudioSrc ? 'Hear the sentence' : 'Hear it' }}
+                  </button>
+                </div>
+              </template>
               <div class="mt-8">
                 <Button variant="primary" @click="introDone">
                   Got it — ask me
@@ -1725,7 +1738,15 @@ watch(() => lang.code, async () => {
               {{ clozeTranslation }}
             </p>
 
-            <div v-if="isSeries" class="mt-4 text-center">
+            <SeriesCard
+              v-if="seriesView"
+              class="mt-4"
+              :series="seriesView"
+              mode="ask"
+              :revealed="revealed"
+              :script="furiganaMode"
+            />
+            <div v-else-if="isSeries" class="mt-4 text-center">
               <p class="text-2xl tracking-widest text-[var(--color-muted)]" style="font-family: var(--font-jp)">
                 {{ seriesExampleText }}
               </p>
@@ -1749,7 +1770,7 @@ watch(() => lang.code, async () => {
             </template>
 
             <p
-              v-else-if="!isOrdering && character"
+              v-else-if="!isOrdering && character && !seriesView"
               class="mt-8 text-center leading-none [word-break:keep-all]"
               :class="characterSize"
               style="font-family: var(--font-jp)"
@@ -1869,6 +1890,7 @@ watch(() => lang.code, async () => {
               <ChoiceInput
                 v-if="isChoice"
                 :options="choices"
+                :label="seriesView ? seriesChoice : undefined"
                 :correct="current.answer.primary"
                 :chosen="answer"
                 :revealed="revealed"

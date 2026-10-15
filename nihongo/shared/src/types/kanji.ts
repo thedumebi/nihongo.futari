@@ -35,7 +35,13 @@ export const phoneticSeriesMemberSchema = z.object({
   followsSeries: z.boolean(),
   exceptionNote: z.string().nullable(),
   strokeCount: z.number().int().nullable(),
-  grade: z.number().int().nullable()
+  grade: z.number().int().nullable(),
+  /** Its parts in reading order — 供 is 亻 and 共 — so the shared one can be shown. */
+  parts: z.array(z.string()),
+  /** A common word with the kanji in it, using the series reading where one does. */
+  word: z.object({ form: z.string(), reading: z.string(), meaning: z.string().nullable() }).nullable(),
+  /** Whether the learner already knows this kanji. Always false where no one is signed in. */
+  known: z.boolean()
 }).openapi('PhoneticSeriesMember')
 
 export const phoneticSeriesViewSchema = z.object({

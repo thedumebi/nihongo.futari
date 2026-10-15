@@ -67,6 +67,7 @@ import { assetUrl, withAssetUrls, withDialogueAudio, withSpeakAudio } from '@/li
 
 import { glossary, withDialogueTokens, withPromptTokens } from './glossary.service.js'
 import { hintFromLesson, loadLessons } from './grammar.service.js'
+import { loadSeries } from './phonetics.service.js'
 import { loadUserContext, recomputeProgress } from './progress.service.js'
 
 /**
@@ -678,7 +679,10 @@ function stageRollup(userId: string, languageId: string) {
       --
       -- Speak prompts neither: they become cards only by being missed in a
       -- session, so they are never material a stage is waiting on.
-      and si.kind not in ('grammar', 'speak')
+      --
+      -- Nor sound series: one is offered only once its kanji are known (see
+      -- seriesReady), so a stage must not wait on it.
+      and si.kind not in ('grammar', 'speak', 'phonetic-series')
     group by 1, 2, 3
   `
 }
@@ -876,6 +880,64 @@ function lessonOpened(userId: string): SQL {
  * or serves NEW material applies this, so none of them advertises a Speak card
  * the queue would never give.
  */
+/** How many kanji that follow a series a learner must know before the series is taught. */
+const SERIES_KNOWN_MIN = 2
+
+/**
+ * A sound series is only worth teaching once its kanji are familiar.
+ *
+ * "共 is read キョウ in 供 and 恭" means nothing to someone who has met neither,
+ * and the card arrived regardless — three unknown kanji and a rule about them.
+ * So a series is offered only when the learner already knows (has graduated a
+ * card for) at least two kanji that follow it. Anything else passes.
+ */
+function seriesReady(userId: string): SQL {
+  return sql`(
+    ${studyItems.phoneticSeriesId} is null
+    or (
+      select count(distinct m.kanji_id)
+      from phonetic_series_members m
+      join study_items ki on ki.kanji_id = m.kanji_id
+      join study_item_facets kf on kf.study_item_id = ki.id
+      join srs_cards kc on kc.facet_id = kf.id and kc.user_id = ${userId} and kc.state >= 2
+      where m.series_id = ${studyItems.phoneticSeriesId} and m.follows_series
+    ) >= ${SERIES_KNOWN_MIN}
+  )`
+}
+
+/**
+ * Give each sound-series card the series itself: its kanji split into their
+ * parts, their readings, meanings and a word that uses each, and which of them
+ * this learner knows. The card used to carry only the part and a few grey
+ * kanji, and nothing tied them together.
+ */
+async function withSeries(items: StudyQueueItem[], userId: string, languageId: string): Promise<StudyQueueItem[]> {
+  const components = [...new Set(items
+    .filter(i => i.prompt?.kind === 'sound-series' && typeof i.prompt.component === 'string')
+    .map(i => String(i.prompt.component)))]
+  if (components.length === 0)
+    return items
+  const known = await knownKanjiCharacters(userId, languageId)
+  const series = await loadSeries(languageId, components, known)
+  return items.map((item) => {
+    const view = item.prompt?.kind === 'sound-series' ? series.get(String(item.prompt.component)) : undefined
+    return view ? { ...item, prompt: { ...item.prompt, series: view } } : item
+  })
+}
+
+/** Kanji this learner has graduated a card for. */
+async function knownKanjiCharacters(userId: string, languageId: string): Promise<Set<string>> {
+  const rows = await db.execute<{ character: string }>(sql`
+    select distinct k.character
+    from srs_cards sc
+    join study_item_facets f on f.id = sc.facet_id
+    join study_items si on si.id = f.study_item_id
+    join kanji k on k.id = si.kanji_id
+    where sc.user_id = ${userId} and sc.language_id = ${languageId} and sc.state >= 2
+  `)
+  return new Set(rows.rows.map(r => r.character))
+}
+
 function introducedByQueue(): SQL {
   return sql`${studyItems.kind} <> 'speak'`
 }
@@ -1209,6 +1271,7 @@ export async function getQueue(userId: string, query: StudyQueueQuery): Promise<
           firstUncardedFacet(userId),
           lessonOpened(userId),
           introducedByQueue(),
+          seriesReady(userId),
           ...withinCurriculum,
           ...kindFilter,
           ...unitFilter,
@@ -1399,6 +1462,7 @@ export async function getQueue(userId: string, query: StudyQueueQuery): Promise<
       oneEach.set(item.studyItemId, item)
   }
   items = [...oneEach.values()]
+  items = await withSeries(items, userId, language.id)
 
   shuffle(items)
 
@@ -1539,6 +1603,7 @@ export async function getQueue(userId: string, query: StudyQueueQuery): Promise<
       eq(studyItemFacets.enabled, true),
       isNull(srsCards.id),
       introducedByQueue(),
+      seriesReady(userId),
       ...withinCurriculum,
       ...kindFilter,
       ...unitFilter,
@@ -2010,6 +2075,8 @@ function curriculumPredicate(ceilings: Map<string, number>): string {
     -- the double gate the exclusion was meant to remove survived here. The
     -- lesson gate in \`getQueue\` is the whole of it now.
     or study_items.kind = 'grammar'
+    -- A sound series is admitted by knowing its kanji, not by the curriculum.
+    or study_items.kind = 'phonetic-series'
     or study_items.sort_index <= (case study_items.level_id ${arms} end)
   )`
 }
@@ -2150,7 +2217,7 @@ async function stageSamples(languageId: string): Promise<Map<string, string[]>> 
       where si.published and si.active and si.language_id = ${languageId}
         -- Same reason as the rollup: grammar is not in a stage any more, so it
         -- cannot be what a stage is about. Speak prompts, likewise.
-        and si.kind not in ('grammar', 'speak')
+        and si.kind not in ('grammar', 'speak', 'phonetic-series')
     )
     select level, stage, subject from numbered
     where n <= 4 and subject <> ''

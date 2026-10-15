@@ -5,6 +5,7 @@ import { onMounted, ref } from 'vue'
 
 import { listSeries } from '@/api/phonetics'
 import AppShell from '@/components/layout/app-shell.vue'
+import SeriesExplainer from '@/components/study/series-explainer.vue'
 import { ROUTES } from '@/constants'
 
 const series = ref<PhoneticSeriesListResponse['series']>([])
@@ -30,6 +31,7 @@ onMounted(async () => {
         Most kanji are 形声文字 — a meaning part plus a <em>sound</em> part. Learn that
         青 is セイ, and 晴・清・請・精・静 stop being five separate things to memorise.
       </p>
+      <SeriesExplainer class="mt-4 max-w-xl" open />
 
       <p v-if="loading" class="mt-8 text-[var(--color-muted)]">
         Loading…

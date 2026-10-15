@@ -1,8 +1,10 @@
+import type { WordCandidate } from '@nihongo/shared/lib'
 import type { PhoneticSeriesListResponse, PhoneticSeriesView } from '@nihongo/shared/types'
 
 import db from '@nihongo/shared/db'
 import { kanji, languages, phoneticSeries, phoneticSeriesMembers } from '@nihongo/shared/db/schema'
-import { and, asc, desc, eq, gte, sql } from 'drizzle-orm'
+import { exampleWord, kanjiParts, orderMembers } from '@nihongo/shared/lib'
+import { and, asc, desc, eq, gte, inArray, sql } from 'drizzle-orm'
 
 /**
  * Phonetic series — "sound series".
@@ -53,7 +55,26 @@ export async function listSeries(languageCode: string, minMembers = 2): Promise<
 }
 
 export async function getSeries(languageCode: string, component: string): Promise<PhoneticSeriesView | null> {
-  const [series] = await db
+  const [language] = await db.select({ id: languages.id }).from(languages).where(eq(languages.code, languageCode)).limit(1)
+  if (!language)
+    return null
+  return (await loadSeries(language.id, [component], new Set())).get(component) ?? null
+}
+
+/**
+ * Series by their component, with everything a learner needs to see the
+ * pattern: each kanji's parts, reading and meaning, a common word that uses
+ * the reading, and — given what the learner knows — the familiar kanji first.
+ *
+ * Shared by the Sound series page and the review card, so both teach it the
+ * same way.
+ */
+export async function loadSeries(languageId: string, components: readonly string[], known: ReadonlySet<string>): Promise<Map<string, PhoneticSeriesView>> {
+  const out = new Map<string, PhoneticSeriesView>()
+  if (components.length === 0)
+    return out
+
+  const seriesRows = await db
     .select({
       id: phoneticSeries.id,
       component: phoneticSeries.componentCharacter,
@@ -64,49 +85,87 @@ export async function getSeries(languageCode: string, component: string): Promis
       meanings: kanji.meanings
     })
     .from(phoneticSeries)
-    .innerJoin(languages, eq(languages.id, phoneticSeries.languageId))
     .leftJoin(kanji, eq(kanji.id, phoneticSeries.componentKanjiId))
     .where(and(
-      eq(languages.code, languageCode),
-      eq(phoneticSeries.componentCharacter, component),
+      eq(phoneticSeries.languageId, languageId),
+      inArray(phoneticSeries.componentCharacter, [...components]),
       eq(phoneticSeries.published, true)
     ))
-    .limit(1)
-
-  if (!series)
-    return null
+  if (seriesRows.length === 0)
+    return out
 
   const members = await db
     .select({
+      seriesId: phoneticSeriesMembers.seriesId,
+      kanjiId: kanji.id,
       character: kanji.character,
       reading: phoneticSeriesMembers.reading,
       followsSeries: phoneticSeriesMembers.followsSeries,
       exceptionNote: phoneticSeriesMembers.exceptionNote,
       strokeCount: kanji.strokeCount,
       grade: kanji.grade,
-      meanings: kanji.meanings
+      meanings: kanji.meanings,
+      // The kanji's own split, e.g. ⿰亻共.
+      ids: sql<string | null>`(select kc.ids_expression from kanji_components kc where kc.parent_kanji_id = ${kanji.id} and kc.ids_expression is not null limit 1)`
     })
     .from(phoneticSeriesMembers)
     .innerJoin(kanji, eq(kanji.id, phoneticSeriesMembers.kanjiId))
-    .where(eq(phoneticSeriesMembers.seriesId, series.id))
-    // Followers first, then exceptions; within each, easiest kanji first.
-    .orderBy(desc(phoneticSeriesMembers.followsSeries), asc(sql`coalesce(${kanji.grade}, 99)`))
+    .where(inArray(phoneticSeriesMembers.seriesId, seriesRows.map(r => r.id)))
+    // Easiest kanji first; orderMembers then puts followers and known ones ahead.
+    .orderBy(asc(sql`coalesce(${kanji.grade}, 99)`), asc(phoneticSeriesMembers.sortIndex))
 
-  return {
-    component: series.component,
-    primaryReading: series.primaryReading,
-    alternateReadings: series.alternateReadings,
-    memberCount: series.memberCount,
-    reliability: Number(series.reliability ?? 0),
-    componentMeaning: meaningOf(series.meanings),
-    members: members.map(m => ({
-      character: m.character,
-      reading: m.reading,
-      meaning: meaningOf(m.meanings),
-      followsSeries: m.followsSeries,
-      exceptionNote: m.exceptionNote,
-      strokeCount: m.strokeCount,
-      grade: m.grade
-    }))
+  // A handful of common words per kanji to choose an example from.
+  const characters = [...new Set(members.map(m => m.character))]
+  const wordRows = characters.length === 0
+    ? []
+    : (await db.execute<{ character: string, form: string, reading: string, rank: number | null, meaning: string | null }>(sql`
+        select c.character, w.form, w.reading, w.rank, w.meaning
+        from unnest(string_to_array(${characters.join(',')}, ',')) as c(character)
+        cross join lateral (
+          select w.primary_form as form, w.primary_reading as reading, w.frequency_rank as rank,
+            (select ws.glosses->0->>'text' from word_senses ws where ws.word_id = w.id order by ws.sort_index limit 1) as meaning
+          from words w
+          where w.language_id = ${languageId} and w.published and w.is_common
+            and w.primary_form like '%' || c.character || '%'
+            and char_length(w.primary_form) between 2 and 4
+          order by w.frequency_rank nulls last
+          limit 12
+        ) w
+      `)).rows
+  const wordsFor = new Map<string, WordCandidate[]>()
+  for (const w of wordRows) {
+    const list = wordsFor.get(w.character) ?? []
+    list.push({ form: w.form, reading: w.reading, meaning: w.meaning, frequencyRank: w.rank })
+    wordsFor.set(w.character, list)
   }
+
+  for (const series of seriesRows) {
+    const mine = members
+      .filter(m => m.seriesId === series.id)
+      .map((m) => {
+        const word = exampleWord(wordsFor.get(m.character) ?? [], m.character, m.followsSeries ? series.primaryReading : m.reading, m.followsSeries)
+        return {
+          character: m.character,
+          reading: m.reading,
+          meaning: meaningOf(m.meanings),
+          followsSeries: m.followsSeries,
+          exceptionNote: m.exceptionNote,
+          strokeCount: m.strokeCount,
+          grade: m.grade,
+          parts: kanjiParts(m.ids),
+          word: word ? { form: word.form, reading: word.reading, meaning: word.meaning } : null,
+          known: known.has(m.character)
+        }
+      })
+    out.set(series.component, {
+      component: series.component,
+      primaryReading: series.primaryReading,
+      alternateReadings: series.alternateReadings,
+      memberCount: series.memberCount,
+      reliability: Number(series.reliability ?? 0),
+      componentMeaning: meaningOf(series.meanings),
+      members: orderMembers(mine, known)
+    })
+  }
+  return out
 }
