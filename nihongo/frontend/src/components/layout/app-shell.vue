@@ -111,7 +111,7 @@ const practiseMenu: NavMenuItem[] = [
 ]
 
 const accountMenu = computed<NavMenuItem[]>(() => [
-  { label: 'Progress', to: ROUTES.PROGRESS, hint: 'Your level, streak and JLPT coverage' },
+  { label: 'Progress', to: ROUTES.PROGRESS, hint: 'Your level, streak and course coverage' },
   { label: 'Achievements', to: ROUTES.ACHIEVEMENTS, hint: 'What you have earned, and what is next' },
   { label: 'Friends', to: ROUTES.FRIENDS, hint: 'Study alongside friends, if you turn it on' },
   { label: 'Settings', to: ROUTES.SETTINGS, hint: 'Reminders, reading aids, your account' },

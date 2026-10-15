@@ -137,7 +137,10 @@ export const progressSummarySchema = z.object({
   dueCards: z.number().int(),
   /** Cards still on the short learning steps. Counted apart from `due`. */
   learning: z.number().int(),
-  newAvailable: z.number().int()
+  /** Items New words can still hand out at `newLevel` — words, kanji, kana, sentences. */
+  newAvailable: z.number().int(),
+  /** The study level that count is for; empty means every level. */
+  newLevel: z.string()
 }).openapi('ProgressSummary')
 
 export type ProgressSummary = z.infer<typeof progressSummarySchema>
@@ -176,7 +179,13 @@ export const readinessSchema = z.object({
     /** Cards past FSRS's learning steps — genuinely retained, not just seen. */
     known: z.number().int(),
     /** Seen at least once but not yet graduated. */
-    learning: z.number().int()
+    learning: z.number().int(),
+    /**
+     * What is counted. `cards` for what Review teaches; `done` for what is
+     * practised rather than reviewed — conversations practised, Speak
+     * sessions finished — where `known` is how many are done.
+     */
+    unit: z.enum(['cards', 'done'])
   })),
   /** Weighted share of the level known, 0-100. */
   percent: z.number(),

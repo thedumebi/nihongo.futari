@@ -353,7 +353,8 @@ export async function getSummary(userId: string, languageCode = 'ja'): Promise<P
     due: 0,
     dueCards: 0,
     learning: 0,
-    newAvailable: 0
+    newAvailable: 0,
+    newLevel: ''
   }
   if (!language)
     return empty
@@ -393,18 +394,23 @@ export async function getSummary(userId: string, languageCode = 'ja'): Promise<P
   // The canonical count, in items, exactly as the due list and Study report it.
   const due = await countDue(userId, language.id)
 
-  const [unseen] = await db
-    .select({ total: sql<number>`count(*)`.mapWith(Number) })
-    .from(studyItemFacets)
-    .innerJoin(studyItems, eq(studyItems.id, studyItemFacets.studyItemId))
-    .leftJoin(srsCards, and(eq(srsCards.facetId, studyItemFacets.id), eq(srsCards.userId, userId)))
-    .where(and(
-      eq(studyItems.languageId, language.id),
-      eq(studyItems.published, true),
-      eq(studyItems.active, true),
-      eq(studyItemFacets.enabled, true),
-      isNull(srsCards.id)
-    ))
+  // What New words can still hand out, at the learner's level, in ITEMS. It
+  // was every card at every level — 33,691 — including kinds New words never
+  // gives (grammar comes through lessons, Speak through its sessions), which
+  // said nothing anyone could act on.
+  const [settings] = await db.select({ level: userSettings.studyLevel }).from(userSettings).where(eq(userSettings.userId, userId)).limit(1)
+  const newLevel = settings?.level ?? ''
+  const unseenRows = await db.execute<{ total: number }>(sql`
+    select count(*)::int as total
+    from study_items si
+    left join language_levels l on l.id = si.level_id
+    where si.language_id = ${language.id} and si.published and si.active
+      and si.kind not in ('grammar', 'speak')
+      and (${newLevel} = '' or l.code = ${newLevel})
+      and not exists (
+        select 1 from study_item_facets f join srs_cards c on c.facet_id = f.id
+        where f.study_item_id = si.id and c.user_id = ${userId})`)
+  const unseen = unseenRows.rows[0]
 
   return {
     totalXp: xp?.totalXp ?? 0,
@@ -416,7 +422,8 @@ export async function getSummary(userId: string, languageCode = 'ja'): Promise<P
     due: due.items,
     dueCards: due.cards,
     learning: cards?.learning ?? 0,
-    newAvailable: unseen?.total ?? 0
+    newAvailable: Number(unseen?.total ?? 0),
+    newLevel
   }
 }
 
@@ -504,15 +511,43 @@ export async function getReadiness(userId: string, languageCode: string, levelCo
     ))
     .groupBy(studyItems.kind)
 
-  const coverage = rows.map(r => ({
-    kind: r.kind,
-    total: Number(r.total),
-    known: Number(r.known),
-    learning: Number(r.learning)
-  }))
+  // Conversations and Speak are practised, not reviewed: doing one makes no
+  // review card, so counting cards said "0 conversations" beside a
+  // Conversations page full of ticks. Those two count what was done instead.
+  const [dialogueDone, speakDone] = await Promise.all([
+    db.execute<{ total: number, done: number }>(sql`
+      select count(*)::int as total,
+        count(*) filter (where exists (
+          select 1 from learning_activities a
+          where a.user_id = ${userId} and a.kind = 'conversation' and a.ref_id = d.code))::int as done
+      from dialogues d where d.language_id = ${language.id} and d.level_id = ${level.id} and d.published`),
+    db.execute<{ total: number, done: number }>(sql`
+      select count(*)::int as total,
+        count(*) filter (where exists (
+          select 1 from speak_progress p where p.user_id = ${userId} and p.session_id = s.id))::int as done
+      from speak_sessions s where s.language_id = ${language.id} and s.level_id = ${level.id} and s.published`)
+  ])
+  const practised = (kind: string, r?: { total: number, done: number }) =>
+    ({ kind, total: Number(r?.total ?? 0), known: Number(r?.done ?? 0), learning: 0, unit: 'done' as const })
 
-  const total = coverage.reduce((a, c) => a + c.total, 0)
-  const known = coverage.reduce((a, c) => a + c.known, 0)
+  const coverage = [
+    ...rows
+      .filter(r => r.kind !== 'dialogue' && r.kind !== 'speak')
+      .map(r => ({
+        kind: r.kind,
+        total: Number(r.total),
+        known: Number(r.known),
+        learning: Number(r.learning),
+        unit: 'cards' as const
+      })),
+    practised('dialogue', dialogueDone.rows[0]),
+    practised('speak', speakDone.rows[0])
+  ].filter(c => c.total > 0).sort((a, b) => a.kind.localeCompare(b.kind))
+
+  // The percentage is of cards: sessions and conversations are another unit.
+  const cards = coverage.filter(c => c.unit === 'cards')
+  const total = cards.reduce((a, c) => a + c.total, 0)
+  const known = cards.reduce((a, c) => a + c.known, 0)
 
   // The weakest AREA, not the smallest count: a kind with 3 of 10 is worse off
   // than one with 200 of 1000, and telling someone to study the bigger pile

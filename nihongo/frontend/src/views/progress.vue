@@ -48,7 +48,7 @@ const stats = computed(() => {
     {
       label: 'Cards learned',
       value: s.learned,
-      tip: 'Cards that graduated past the short learning steps, so they are genuinely retained rather than seen once. This is the number the JLPT coverage below counts, and it is in cards for the same reason that panel is.',
+      tip: 'Cards that graduated past the short learning steps, so they are genuinely retained rather than seen once. This is the number the course coverage below counts for words, kanji and the rest.',
       to: null
     },
     {
@@ -64,9 +64,9 @@ const stats = computed(() => {
       to: ROUTES.DUE
     },
     {
-      label: 'Cards not yet seen',
+      label: s.newLevel ? `Not started yet · ${s.newLevel}` : 'Not started yet',
       value: s.newAvailable,
-      tip: 'Cards in the curriculum you have never met. Click to learn new ones only. Introduced a few a day rather than all at once, so reviews stay manageable.',
+      tip: `Words, kanji, kana and sentences${s.newLevel ? ` at ${s.newLevel}` : ''} you have not met yet — what New words still has for you, counted as things rather than cards. Click to learn some. Introduced a few a day, so reviews stay manageable.`,
       to: `${ROUTES.STUDY}?mode=new`
     },
     {
@@ -112,6 +112,13 @@ function coverageLink(kind: string, lvl: string): { label: string, to: string | 
     case 'kana': return deck('Kana')
     default: return deck(kind)
   }
+}
+
+/** What a coverage row counts: cards learned, or conversations and sessions done. */
+function unitLabel(c: { kind: string, unit: 'cards' | 'done' }): string {
+  if (c.unit === 'cards')
+    return 'cards'
+  return c.kind === 'dialogue' ? 'practised' : 'sessions done'
 }
 
 const LEVELS = ['N5', 'N4', 'N3', 'N2', 'N1']
@@ -201,7 +208,7 @@ onMounted(async () => {
       <section class="mt-10">
         <div class="flex items-baseline justify-between gap-4">
           <h2 class="text-xs uppercase tracking-wide text-[var(--color-muted)]">
-            JLPT coverage
+            Course coverage
           </h2>
           <Dropdown
             v-model="level"
@@ -229,7 +236,7 @@ onMounted(async () => {
                     {{ coverageLink(c.kind, level).label }}
                     <ChevronRight class="h-3.5 w-3.5 text-[var(--color-muted)] transition group-hover:translate-x-0.5" />
                   </span>
-                  <span class="text-[var(--color-muted)]">{{ c.known }} / {{ c.total }} cards</span>
+                  <span class="text-[var(--color-muted)]">{{ c.known }} / {{ c.total }} {{ unitLabel(c) }}</span>
                 </div>
                 <div class="mt-1 h-1.5 overflow-hidden rounded-full bg-[var(--color-washi)]">
                   <div
