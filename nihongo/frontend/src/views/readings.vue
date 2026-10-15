@@ -87,6 +87,10 @@ async function load() {
         Short speeches that scroll up the screen at your pace. Read them out loud &mdash; nobody is
         listening but you. Tap any word for its meaning.
       </p>
+      <p class="mt-2 text-sm text-[var(--color-muted)]">
+        Under each one: how many of its words you already know. It rises as you learn, whether or
+        not you have opened it &mdash; around 90% it reads easily.
+      </p>
 
       <LevelTabs class="mt-8" :model-value="active" :levels="LEVELS" :counts="counts" @update:model-value="picked = $event" />
 
@@ -113,9 +117,11 @@ async function load() {
               <p class="text-sm text-[var(--color-muted)]">
                 {{ r.titleEn }} &middot; {{ r.lineCount }} lines
               </p>
+              <CoverageBadge class="mt-1" :coverage="r.coverage" />
             </div>
-            <CoverageBadge :coverage="r.coverage" />
-            <Check v-if="r.read" class="h-4 w-4 shrink-0 text-[var(--color-success)]" aria-label="Read" />
+            <span v-if="r.read" class="inline-flex shrink-0 items-center gap-1 rounded-full bg-[var(--color-card)] px-2 py-0.5 text-xs text-[var(--color-success)]">
+              <Check class="h-3.5 w-3.5" aria-hidden="true" /> Read
+            </span>
             <ChevronRight class="h-4 w-4 shrink-0 text-[var(--color-muted)]" />
           </router-link>
         </li>

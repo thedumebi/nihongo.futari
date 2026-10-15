@@ -104,6 +104,10 @@ onMounted(load)
         Short exchanges you work through a turn at a time. Pick a reply and find out whether it
         works &mdash; and if not, why not.
       </p>
+      <p class="mt-2 text-sm text-[var(--color-muted)]">
+        Under each one: how many of its words you already know. It rises as you learn, whether or
+        not you have opened it.
+      </p>
 
       <div v-if="!loading && !errorMsg" class="relative mt-6 max-w-sm">
         <Search class="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--color-muted)]" />
@@ -164,10 +168,12 @@ onMounted(load)
               <span class="min-w-0 flex-1">
                 <span class="block font-medium">{{ d.title }}</span>
                 <span class="block text-sm text-[var(--color-muted)]">{{ d.situation }}</span>
+                <CoverageBadge class="mt-1" :coverage="d.coverage" />
               </span>
               <span class="shrink-0 text-xs text-[var(--color-muted)]">{{ d.level ? `${d.level} · ` : '' }}{{ d.turnCount }} turns</span>
-              <CoverageBadge :coverage="d.coverage" />
-              <Check v-if="d.learned || d.practised" class="h-4 w-4 shrink-0 text-[var(--color-success)]" :aria-label="d.learned ? 'Learned' : 'Practised'" />
+              <span v-if="d.learned || d.practised" class="inline-flex shrink-0 items-center gap-1 rounded-full bg-[var(--color-card)] px-2 py-0.5 text-xs text-[var(--color-success)]">
+                <Check class="h-3.5 w-3.5" aria-hidden="true" /> {{ d.learned ? 'Learned' : 'Practised' }}
+              </span>
             </router-link>
           </li>
         </ul>
