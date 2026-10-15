@@ -15,6 +15,7 @@ import Input from '@/components/ui/input.vue'
 import Segmented from '@/components/ui/segmented.vue'
 import { FURIGANA_MODE_LABELS, useFurigana } from '@/composables/use-furigana'
 import { useToast } from '@/composables/use-toast'
+import { ROUTES } from '@/constants'
 import { authClient } from '@/lib/auth-client'
 import { enablePush, pushSupport } from '@/offline/push'
 import { useAuthStore } from '@/store/auth'
@@ -294,7 +295,19 @@ async function turnOnPush() {
         Settings
       </h1>
 
-      <CollapsibleCard class="mt-8" title="New words a day" :summary="dailyNewLimit === null ? '' : `${dailyNewLimit} a day`">
+      <!-- The welcome questions, again: new answers re-tailor everything below. -->
+      <router-link
+        :to="ROUTES.WELCOME"
+        class="mt-6 flex items-center justify-between gap-3 rounded-xl border border-[var(--color-border)] p-4 transition hover:border-[var(--color-text)]"
+      >
+        <span>
+          <span class="block font-medium">Tailor go to you</span>
+          <span class="block text-sm text-[var(--color-muted)]">Answer the welcome questions again — your level, pace, reading help and first-week plan.</span>
+        </span>
+        <span aria-hidden="true">→</span>
+      </router-link>
+
+      <CollapsibleCard class="mt-4" title="New words a day" :summary="dailyNewLimit === null ? '' : `${dailyNewLimit} a day`">
         <p class="mt-1 text-sm text-[var(--color-muted)]">
           How many new cards Learn gives you each day. More now means more reviews in a few days —
           10 is a steady pace. You can always ask for a few more on the day.

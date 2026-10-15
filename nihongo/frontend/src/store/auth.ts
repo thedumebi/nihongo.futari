@@ -4,6 +4,8 @@ import { computed, ref } from 'vue'
 import { syncTimezone } from '@/api/notifications'
 import { authClient } from '@/lib/auth-client'
 
+import { useOnboardingStore } from './onboarding'
+
 interface SessionUser {
   id: string
   email: string
@@ -64,6 +66,8 @@ export const useAuthStore = defineStore('auth', () => {
     ready.value = true
     // This learner's cached API responses must not outlive their session.
     navigator.serviceWorker?.controller?.postMessage({ type: 'CLEAR_USER_CACHES' })
+    // Nor where they were with onboarding: the next person here is someone else.
+    useOnboardingStore().reset()
   }
 
   return { user, isAuthenticated, isAdmin, ready, syncSession, logout }

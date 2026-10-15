@@ -20,6 +20,7 @@ import kanjiRoutes from './routes/kanji/kanji.index.js'
 import languages from './routes/languages/languages.index.js'
 import lessons from './routes/lessons/lessons.index.js'
 import notifications from './routes/notifications/notifications.index.js'
+import onboarding from './routes/onboarding/onboarding.index.js'
 import phonetics from './routes/phonetics/phonetics.index.js'
 import progress from './routes/progress/progress.index.js'
 import readings from './routes/readings/readings.index.js'
@@ -70,6 +71,7 @@ const routes = [
   games,
   friends,
   today,
+  onboarding,
   grammar,
   lessons,
   invites,

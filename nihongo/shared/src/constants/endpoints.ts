@@ -32,6 +32,7 @@ export const ROUTE_BASE_PATHS = {
   SPEAK: '/speak',
   CROSSWORD: '/crossword',
   TODAY: '/today',
+  ONBOARDING: '/onboarding',
   ACTIVITIES: '/activities',
   RECALL: '/recall',
   GAMES: '/games',
@@ -136,6 +137,26 @@ export const REVIEW_KIND_TABLES: Record<ReviewKind, string> = {
  * conversation line's reading — rather than new content to publish. Nothing
  * changes until it is approved. These are the tables one can point at.
  */
+/**
+ * Onboarding: where a new learner is starting from, what for, and how long a
+ * day. The answers tailor their settings and a first-week guide.
+ */
+export const ONBOARDING_STARTS = ['new', 'some-kana', 'kana', 'studied'] as const
+export type OnboardingStart = typeof ONBOARDING_STARTS[number]
+export const ONBOARDING_GOALS = ['travel', 'media', 'work', 'family', 'exam', 'living'] as const
+export type OnboardingGoal = typeof ONBOARDING_GOALS[number]
+export const ONBOARDING_MINUTES = [5, 15, 30, 60] as const
+export type OnboardingMinutes = typeof ONBOARDING_MINUTES[number]
+/**
+ * Where a learner is with onboarding. `pending`: a new account, sent to the
+ * welcome flow. `offer`: an account from before onboarding existed, offered it
+ * on Today. `done` and `skipped` are final; either can be re-run from Settings.
+ */
+export const ONBOARDING_STATUSES = ['pending', 'offer', 'done', 'skipped'] as const
+export type OnboardingStatus = typeof ONBOARDING_STATUSES[number]
+export const JLPT_LEVELS = ['N5', 'N4', 'N3', 'N2', 'N1'] as const
+export type JlptLevel = typeof JLPT_LEVELS[number]
+
 export const CORRECTION_TABLES = ['sentences', 'dialogue_turns', 'dialogue_replies'] as const
 export type CorrectionTable = typeof CORRECTION_TABLES[number]
 
@@ -320,6 +341,14 @@ export const ACTIVITY_ROUTES = {
  */
 export const CARD_ORIGINS = ['queue', 'lesson', 'kana-lesson', 'saved', 'speak-miss'] as const
 export type CardOrigin = typeof CARD_ORIGINS[number]
+
+export const ONBOARDING_ROUTES = {
+  GET: '/',
+  SUBMIT: '/',
+  SKIP: '/skip',
+  DISMISS_GUIDE: '/guide/dismiss',
+  PLACEMENT: '/placement'
+} as const
 
 export const TODAY_ROUTES = {
   GET: '/'
@@ -553,6 +582,13 @@ export const API_ENDPOINTS = {
   },
   ACTIVITIES: {
     RECORD: `${ROUTE_BASE_PATHS.ACTIVITIES}${ACTIVITY_ROUTES.RECORD}`
+  },
+  ONBOARDING: {
+    GET: `${ROUTE_BASE_PATHS.ONBOARDING}${ONBOARDING_ROUTES.GET}`,
+    SUBMIT: `${ROUTE_BASE_PATHS.ONBOARDING}${ONBOARDING_ROUTES.SUBMIT}`,
+    SKIP: `${ROUTE_BASE_PATHS.ONBOARDING}${ONBOARDING_ROUTES.SKIP}`,
+    DISMISS_GUIDE: `${ROUTE_BASE_PATHS.ONBOARDING}${ONBOARDING_ROUTES.DISMISS_GUIDE}`,
+    PLACEMENT: `${ROUTE_BASE_PATHS.ONBOARDING}${ONBOARDING_ROUTES.PLACEMENT}`
   },
   TODAY: {
     GET: `${ROUTE_BASE_PATHS.TODAY}${TODAY_ROUTES.GET}`

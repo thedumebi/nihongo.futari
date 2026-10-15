@@ -183,6 +183,13 @@
       "when": 1792013176275,
       "tag": "0025_open_surge",
       "breakpoints": true
+    },
+    {
+      "idx": 26,
+      "version": "7",
+      "when": 1792023766555,
+      "tag": "0026_mean_susan_delgado",
+      "breakpoints": true
     }
   ]
 }

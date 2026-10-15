@@ -74,6 +74,16 @@ export const userSettings = pgTable('user_settings', {
   ghostThreshold: integer('ghost_threshold').notNull().default(4),
   ghostIntervalFactor: numeric('ghost_interval_factor', { precision: 3, scale: 2 }).notNull().default('0.50'),
   handwritingTolerance: numeric('handwriting_tolerance', { precision: 3, scale: 2 }).notNull().default('0.50'),
+  /**
+   * Where the learner is with onboarding — ONBOARDING_STATUSES in constants.
+   * A new account starts `pending` and is sent to the welcome flow; accounts
+   * from before onboarding existed were set to `offer` (seed 175).
+   */
+  onboardingStatus: text('onboarding_status').notNull().default('pending'),
+  /** What they answered, as onboardingAnswersSchema; null until they have. */
+  onboardingAnswers: jsonb('onboarding_answers').$type<Record<string, unknown>>(),
+  /** When they put the first-week guide away; null while it is on Today. */
+  guideDismissedAt: timestamp('guide_dismissed_at'),
   ...timestamps
 })
 

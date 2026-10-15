@@ -5,6 +5,7 @@ import { computed, onMounted, ref } from 'vue'
 
 import CoverageBadge from '@/components/ja/coverage-badge.vue'
 import AppShell from '@/components/layout/app-shell.vue'
+import GettingStarted from '@/components/onboarding/getting-started.vue'
 import Button from '@/components/ui/button.vue'
 import { ROUTES } from '@/constants'
 import { useAuthStore } from '@/store/auth'
@@ -85,6 +86,9 @@ onMounted(async () => {
             Level {{ today.xp.level }} · {{ levelProgress(today.xp.total).toNext }} XP to {{ today.xp.level + 1 }}
           </router-link>
         </p>
+
+        <!-- Onboarding: the offer, or the first-week guide while it lasts. -->
+        <GettingStarted />
 
         <!-- 1. Reviews: keep what you have. -->
         <section class="mt-6 rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] p-5">

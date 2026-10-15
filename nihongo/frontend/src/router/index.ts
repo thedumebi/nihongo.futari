@@ -2,6 +2,7 @@ import { createRouter, createWebHistory } from 'vue-router'
 
 import { ROUTES } from '@/constants'
 import { useAuthStore } from '@/store/auth'
+import { useOnboardingStore } from '@/store/onboarding'
 
 const router = createRouter({
   history: createWebHistory(),
@@ -18,6 +19,12 @@ const router = createRouter({
       path: ROUTES.TODAY,
       name: 'today',
       component: () => import('@/views/today.vue'),
+      meta: { requiresAuth: true }
+    },
+    {
+      path: ROUTES.WELCOME,
+      name: 'welcome',
+      component: () => import('@/views/welcome.vue'),
       meta: { requiresAuth: true }
     },
     {
@@ -279,6 +286,14 @@ router.beforeEach(async (to) => {
     return { name: 'login', query: { redirect: to.fullPath } }
   if (to.meta.isAdmin && !auth.isAdmin)
     return { name: 'home' }
+
+  // A new account starts with the welcome flow, once. Someone who skipped it,
+  // finished it, or had an account before it existed is never sent there.
+  if (to.name !== 'welcome' && !to.meta.isAdmin) {
+    const onboarding = await useOnboardingStore().load()
+    if (onboarding?.status === 'pending')
+      return { name: 'welcome' }
+  }
 
   return true
 })

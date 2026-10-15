@@ -6,6 +6,7 @@ export const ROUTES = {
   COURSE: '/course',
   STUDY: '/study',
   TODAY: '/today',
+  WELCOME: '/welcome',
   LEARN: '/study?mode=new',
   REVIEW: '/study?mode=due',
   /** Scripted conversations, browsable rather than only scheduled. */
