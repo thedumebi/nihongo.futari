@@ -1,5 +1,6 @@
 import type { ReminderRunResult } from '@nihongo/shared/types'
 
+import { pino } from '@nihongo/shared'
 import { GAMES_ROUTES, ROUTE_BASE_PATHS } from '@nihongo/shared/constants'
 import db from '@nihongo/shared/db'
 import {
@@ -451,6 +452,25 @@ async function claim(userId: string, kind: string, dedupeKey: string, channel: '
     .onConflictDoNothing({ target: notificationLog.dedupeKey })
     .returning({ id: notificationLog.id })
   return row !== undefined
+}
+
+/**
+ * A one-off push about something that just happened — a friend request, a
+ * request accepted — to whoever has push reminders on. Claimed on its key
+ * first, so a retried request never pushes twice. Never throws: a push that
+ * fails must not fail what caused it.
+ */
+export async function pushEvent(userId: string, kind: string, dedupeKey: string, message: { title: string, body: string, url: string }): Promise<void> {
+  try {
+    if (!pushConfigured())
+      return
+    const [prefs] = await db.select({ push: userSettings.reminderPushEnabled }).from(userSettings).where(eq(userSettings.userId, userId)).limit(1)
+    if (!prefs?.push || !(await claim(userId, kind, `${dedupeKey}:push`, 'push')))
+      return
+    await pushToUser(userId, message)
+  } catch (err) {
+    pino.warn({ err, kind }, '[push] event failed')
+  }
 }
 
 /**

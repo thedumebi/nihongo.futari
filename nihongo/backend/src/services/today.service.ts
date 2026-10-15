@@ -5,6 +5,7 @@ import { languages } from '@nihongo/shared/db/schema'
 import { eq } from 'drizzle-orm'
 
 import { unseenAchievements } from './achievements.service.js'
+import { pendingRequestCount } from './friends.service.js'
 import { listLessons } from './lesson.service.js'
 import { getSummary, studiedToday, todayQuests } from './progress.service.js'
 import { listReadings } from './readings.service.js'
@@ -24,7 +25,7 @@ export async function getToday(userId: string, languageCode: string): Promise<To
   if (!language)
     return null
 
-  const [due, nextDueAt, newToday, lessons, speak, summary, today, settings, quests, unseen, readings] = await Promise.all([
+  const [due, nextDueAt, newToday, lessons, speak, summary, today, settings, quests, unseen, readings, friendRequests] = await Promise.all([
     countDue(userId, language.id),
     nextDueAfter(userId, language.id, new Date()),
     newCardsToday(userId, language.id, new Date()),
@@ -35,7 +36,8 @@ export async function getToday(userId: string, languageCode: string): Promise<To
     getSettings(userId),
     todayQuests(userId, language.id),
     unseenAchievements(userId),
-    listReadings(languageCode, undefined, userId)
+    listReadings(languageCode, undefined, userId),
+    pendingRequestCount(userId)
   ])
 
   // The unread speech most within reach; ties go to the easier level, which
@@ -59,6 +61,7 @@ export async function getToday(userId: string, languageCode: string): Promise<To
     suggestedReading: suggested
       ? { code: suggested.code, title: suggested.title, titleEn: suggested.titleEn, level: suggested.level, coverage: suggested.coverage }
       : null,
-    unseenAchievements: unseen
+    unseenAchievements: unseen,
+    friendRequests
   }
 }

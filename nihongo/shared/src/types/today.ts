@@ -39,7 +39,9 @@ export const todaySchema = z.object({
    */
   suggestedReading: z.object({ code: z.string(), title: z.string(), titleEn: z.string(), level: z.string(), coverage: z.number().nullable() }).nullable(),
   /** Achievements unlocked but not yet celebrated — shown once, then marked seen. */
-  unseenAchievements: z.array(z.object({ code: z.string(), title: z.string(), description: z.string() }))
+  unseenAchievements: z.array(z.object({ code: z.string(), title: z.string(), description: z.string() })),
+  /** Friend requests waiting for this learner to accept — the menu shows the count. */
+  friendRequests: z.number().int()
 }).openapi('Today')
 
 export type Today = z.infer<typeof todaySchema>

@@ -110,10 +110,13 @@ const practiseMenu: NavMenuItem[] = [
   { label: 'Games', to: ROUTES.GAMES, hint: 'Crossword, listening, build a kanji' }
 ]
 
+/** Friend requests waiting to be accepted. */
+const friendRequests = computed(() => todayStore.today?.friendRequests ?? 0)
+
 const accountMenu = computed<NavMenuItem[]>(() => [
   { label: 'Progress', to: ROUTES.PROGRESS, hint: 'Your level, streak and course coverage' },
   { label: 'Achievements', to: ROUTES.ACHIEVEMENTS, hint: 'What you have earned, and what is next' },
-  { label: 'Friends', to: ROUTES.FRIENDS, hint: 'Study alongside friends, if you turn it on' },
+  { label: 'Friends', to: ROUTES.FRIENDS, hint: 'Study alongside friends, if you turn it on', ...(friendRequests.value > 0 ? { badge: friendRequests.value } : {}) },
   { label: 'Settings', to: ROUTES.SETTINGS, hint: 'Reminders, reading aids, your account' },
   // An admin is an ordinary account with a role, so the admin entry is an
   // addition to the normal menu rather than a separate area you log into.
@@ -296,7 +299,10 @@ async function signOut() {
                 :aria-label="menuOpen ? 'Close menu' : 'Open menu'"
                 @click="menuOpen = !menuOpen"
               >
-                <component :is="menuOpen ? X : Menu" class="h-5 w-5" />
+                <span class="relative block">
+                  <component :is="menuOpen ? X : Menu" class="h-5 w-5" />
+                  <span v-if="friendRequests > 0 && !menuOpen" class="absolute -right-0.5 -top-0.5 h-2 w-2 rounded-full bg-[var(--color-primary)]" />
+                </span>
               </button>
             </template>
             <router-link v-else :to="ROUTES.LOGIN" class="underline underline-offset-4">
@@ -372,7 +378,10 @@ async function signOut() {
                 :aria-expanded="drawerOpen === sec.key"
                 @click="toggleSection(sec.key)"
               >
-                <span class="truncate">{{ sec.title }}</span>
+                <span class="flex min-w-0 items-center gap-2">
+                  <span class="truncate">{{ sec.title }}</span>
+                  <span v-if="sec.items.some(i => i.badge)" class="h-2 w-2 shrink-0 rounded-full bg-[var(--color-primary)]" />
+                </span>
                 <ChevronDown class="h-4 w-4 shrink-0 transition" :class="drawerOpen === sec.key ? 'rotate-180' : ''" />
               </button>
               <!-- Indented, with a rule down the side, so what belongs to the section is plain. -->
@@ -384,7 +393,10 @@ async function signOut() {
                   class="block rounded-lg px-2 py-1.5 transition hover:text-[var(--color-text)]"
                   :class="isActive(item.to) ? 'text-[var(--color-text)]' : 'text-[var(--color-muted)]'"
                 >
-                  <span class="block text-sm" :class="isActive(item.to) ? 'font-medium' : ''">{{ item.label }}</span>
+                  <span class="flex items-center justify-between text-sm" :class="isActive(item.to) ? 'font-medium' : ''">
+                    {{ item.label }}
+                    <span v-if="item.badge" class="rounded-full bg-[var(--color-primary)] px-1.5 text-xs font-semibold text-[var(--color-bg)]">{{ item.badge }}</span>
+                  </span>
                   <span v-if="item.hint" class="block text-xs leading-snug text-[var(--color-muted)] opacity-80">{{ item.hint }}</span>
                 </router-link>
                 <button

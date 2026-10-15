@@ -1,10 +1,13 @@
 import type { AddFriendInput, FriendRequestView, FriendSettings, FriendsResponse, FriendView, UpdateFriendSettingsInput } from '@nihongo/shared/types'
 
+import { ROUTE_BASE_PATHS } from '@nihongo/shared/constants'
 import db from '@nihongo/shared/db'
 import { crosswordResults, friendProfiles, friendships, languageLevels, users, userSettings } from '@nihongo/shared/db/schema'
 import { daysThisWeek, DEFAULT_DAY_BOUNDARY_HOUR, friendCodeFrom, normaliseFriendCode, pairStreak, studyDateFor, studyDayRange, uuidv7 } from '@nihongo/shared/lib'
-import { and, eq, gte, inArray, lt, or, sql } from 'drizzle-orm'
+import { and, count, eq, gte, inArray, lt, or, sql } from 'drizzle-orm'
 import { randomBytes } from 'node:crypto'
+
+import { pushEvent } from './reminders.service.js'
 
 /**
  * Friends: opt-in, connected by code, sharing only what each person switched
@@ -133,13 +136,36 @@ export async function addFriend(userId: string, input: AddFriendInput): Promise<
   if (existing) {
     if (existing.status === 'pending' && existing.addresseeId === userId) {
       await db.update(friendships).set({ status: 'accepted', acceptedAt: new Date(), updatedAt: new Date() }).where(eq(friendships.id, existing.id))
+      void notifyAccepted(existing.id, them.userId, me.displayName)
       return { ok: true, displayName: them.displayName, status: 'accepted' }
     }
     return { ok: true, displayName: them.displayName, status: existing.status as 'pending' | 'accepted' }
   }
 
-  await db.insert(friendships).values({ id: uuidv7(), requesterId: userId, addresseeId: them.userId }).onConflictDoNothing()
+  const [created] = await db.insert(friendships).values({ id: uuidv7(), requesterId: userId, addresseeId: them.userId }).onConflictDoNothing().returning({ id: friendships.id })
+  if (created) {
+    void pushEvent(them.userId, 'friend-request', `friend-request:${created.id}`, {
+      title: `${me.displayName} wants to be friends`,
+      body: 'Open Friends to accept.',
+      url: ROUTE_BASE_PATHS.FRIENDS
+    })
+  }
   return { ok: true, displayName: them.displayName, status: 'pending' }
+}
+
+/** Tell whoever asked that their request was accepted. */
+function notifyAccepted(friendshipId: string, requesterId: string, accepterName: string) {
+  return pushEvent(requesterId, 'friend-accepted', `friend-accepted:${friendshipId}`, {
+    title: `${accepterName} accepted your friend request`,
+    body: 'See how you are both doing in Friends.',
+    url: ROUTE_BASE_PATHS.FRIENDS
+  })
+}
+
+/** Requests waiting for this person to accept — the count the menu shows. */
+export async function pendingRequestCount(userId: string): Promise<number> {
+  const [row] = await db.select({ n: count() }).from(friendships).where(and(eq(friendships.addresseeId, userId), eq(friendships.status, 'pending')))
+  return row?.n ?? 0
 }
 
 /** Accept a request sent to you. */
@@ -147,7 +173,12 @@ export async function acceptFriend(userId: string, id: string): Promise<boolean>
   const rows = await db.update(friendships)
     .set({ status: 'accepted', acceptedAt: new Date(), updatedAt: new Date() })
     .where(and(eq(friendships.id, id), eq(friendships.addresseeId, userId), eq(friendships.status, 'pending')))
-    .returning({ id: friendships.id })
+    .returning({ id: friendships.id, requesterId: friendships.requesterId })
+  const [accepted] = rows
+  if (accepted) {
+    const me = await profileOf(userId)
+    void notifyAccepted(accepted.id, accepted.requesterId, me?.displayName ?? 'A friend')
+  }
   return rows.length > 0
 }
 

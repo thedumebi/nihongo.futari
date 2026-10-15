@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ChevronDown } from 'lucide-vue-next'
-import { onBeforeUnmount, ref, watch } from 'vue'
+import { computed, onBeforeUnmount, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 
 /**
@@ -14,6 +14,8 @@ export interface NavMenuItem {
   to: string
   /** A quieter line under the label, saying what the page is for. */
   hint?: string
+  /** Something waiting there — friend requests — shown as a count. */
+  badge?: number
 }
 
 interface Props {
@@ -24,10 +26,12 @@ interface Props {
   alignRight?: boolean
 }
 
-withDefaults(defineProps<Props>(), { active: false, alignRight: false })
+const props = withDefaults(defineProps<Props>(), { active: false, alignRight: false })
 
 const route = useRoute()
 const open = ref(false)
+/** Anything waiting inside, so the closed menu still says so. */
+const waiting = computed(() => props.items.some(i => (i.badge ?? 0) > 0))
 const root = ref<HTMLElement | null>(null)
 
 watch(() => route.fullPath, () => {
@@ -73,6 +77,7 @@ onBeforeUnmount(() => {
       <slot name="label">
         {{ label }}
       </slot>
+      <span v-if="waiting" class="ml-0.5 h-2 w-2 rounded-full bg-[var(--color-primary)]" aria-label="Something waiting" />
       <ChevronDown class="h-3.5 w-3.5 transition" :class="open ? 'rotate-180' : ''" />
     </button>
     <div
@@ -88,7 +93,10 @@ onBeforeUnmount(() => {
         role="menuitem"
         class="block rounded-lg px-3 py-2 transition hover:bg-[var(--color-card)]"
       >
-        <span class="block text-sm text-[var(--color-text)]">{{ item.label }}</span>
+        <span class="flex items-center justify-between gap-2 text-sm text-[var(--color-text)]">
+          {{ item.label }}
+          <span v-if="item.badge" class="rounded-full bg-[var(--color-primary)] px-1.5 text-xs font-semibold text-[var(--color-bg)]">{{ item.badge }}</span>
+        </span>
         <span v-if="item.hint" class="block text-xs text-[var(--color-muted)]">{{ item.hint }}</span>
       </router-link>
       <slot name="footer" />

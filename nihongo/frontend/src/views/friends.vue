@@ -12,6 +12,7 @@ import Input from '@/components/ui/input.vue'
 import { useConfirm } from '@/composables/use-confirm'
 import { useToast } from '@/composables/use-toast'
 import { ROUTES } from '@/constants'
+import { useTodayStore } from '@/store/today'
 
 /**
  * Friends: who studied today, streaks kept together, crossword times, and a
@@ -20,9 +21,11 @@ import { ROUTES } from '@/constants'
  */
 
 // ============ Stores ============
-const route = useRoute()
+const todayStore = useTodayStore()
 
 // ============ Composables ============
+const route = useRoute()
+
 const toast = useToast()
 const { showConfirm } = useConfirm()
 
@@ -40,6 +43,8 @@ onMounted(load)
 async function load() {
   try {
     data.value = await getFriends()
+    // Accepting or declining moves the request count the menu shows.
+    void todayStore.refresh(undefined, true)
   } catch {
     data.value = null
   } finally {
