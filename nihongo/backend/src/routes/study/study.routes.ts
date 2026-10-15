@@ -14,6 +14,8 @@ import {
   studyQueueQuerySchema,
   studyQueueResponseSchema,
   submitAnswerSchema,
+  wordStatusesQuerySchema,
+  wordStatusesSchema,
   wordStatusSchema
 } from '@nihongo/shared/types'
 
@@ -148,3 +150,16 @@ export const wordStatus = createSecuredRoute({
   }
 })
 export type WordStatusRoute = typeof wordStatus
+
+export const wordStatuses = createSecuredRoute({
+  tags,
+  path: STUDY_ROUTES.WORD_STATUSES,
+  method: 'get',
+  summary: 'Several words at once: reviewable, and already in review',
+  middleware: [authMiddleware],
+  request: { query: wordStatusesQuerySchema },
+  responses: {
+    [HttpStatusCodes.OK]: jsonContent(wordStatusesSchema, 'By word id')
+  }
+})
+export type WordStatusesRoute = typeof wordStatuses

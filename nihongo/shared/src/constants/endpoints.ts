@@ -414,6 +414,8 @@ export const STUDY_ROUTES = {
   LESSON_SEEN: '/lesson-seen',
   SAVE_WORD: '/save-word',
   WORD_STATUS: '/word-status/:wordId',
+  /** Several words at once — a page of dictionary results. */
+  WORD_STATUSES: '/word-statuses',
   BUNDLE: '/bundle',
   ANSWER: '/answer',
   UNDO: '/undo',
@@ -637,6 +639,7 @@ export const API_ENDPOINTS = {
     QUEUE: `${ROUTE_BASE_PATHS.STUDY}${STUDY_ROUTES.QUEUE}`,
     LESSON_SEEN: `${ROUTE_BASE_PATHS.STUDY}${STUDY_ROUTES.LESSON_SEEN}`,
     SAVE_WORD: `${ROUTE_BASE_PATHS.STUDY}${STUDY_ROUTES.SAVE_WORD}`,
+    WORD_STATUSES: `${ROUTE_BASE_PATHS.STUDY}${STUDY_ROUTES.WORD_STATUSES}`,
     WORD_STATUS: (wordId: string) => `${ROUTE_BASE_PATHS.STUDY}${STUDY_ROUTES.WORD_STATUS.replace(':wordId', encodeURIComponent(wordId))}`,
     DUE: `${ROUTE_BASE_PATHS.STUDY}${STUDY_ROUTES.DUE}`,
     COURSE: `${ROUTE_BASE_PATHS.STUDY}${STUDY_ROUTES.COURSE}`,

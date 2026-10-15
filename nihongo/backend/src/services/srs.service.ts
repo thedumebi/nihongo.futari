@@ -47,7 +47,8 @@ import {
   studyItemFacets,
   studyItems,
   userSettings,
-  words
+  words,
+  wordSenses
 } from '@nihongo/shared/db/schema'
 import {
   applyReview,
@@ -535,6 +536,27 @@ export async function saveWord(userId: string, wordId: string): Promise<SaveWord
   return cardFirstFacet(userId, eq(studyItems.wordId, wordId), 'saved')
 }
 
+/** Several words at once — a page of dictionary results: reviewable, and in review. */
+export async function wordStatuses(userId: string, wordIds: readonly string[]): Promise<Record<string, { reviewable: boolean, inReview: boolean }>> {
+  if (wordIds.length === 0)
+    return {}
+  const rows = await db
+    .select({ wordId: studyItems.wordId, cardId: srsCards.id })
+    .from(studyItems)
+    .innerJoin(studyItemFacets, eq(studyItemFacets.studyItemId, studyItems.id))
+    .leftJoin(srsCards, and(eq(srsCards.facetId, studyItemFacets.id), eq(srsCards.userId, userId)))
+    .where(and(inArray(studyItems.wordId, [...wordIds]), eq(studyItems.published, true), eq(studyItems.active, true)))
+  const out: Record<string, { reviewable: boolean, inReview: boolean }> = {}
+  for (const r of rows) {
+    if (!r.wordId)
+      continue
+    const s = out[r.wordId] ?? { reviewable: true, inReview: false }
+    s.inReview ||= r.cardId !== null
+    out[r.wordId] = s
+  }
+  return out
+}
+
 /** Where one word stands in this learner's reviews. */
 export async function wordStatus(userId: string, wordId: string): Promise<WordStatus> {
   const rows = await db
@@ -925,6 +947,38 @@ async function withSeries(items: StudyQueueItem[], userId: string, languageId: s
   })
 }
 
+/** At most this many meanings are listed under a word: the common ones lead. */
+const SENSES_SHOWN = 6
+
+/**
+ * Every meaning of each word card's word, in the dictionary's order, so the
+ * card can say "also means …" once answered. A word asked as "softly" is also
+ * "gently" and "quietly", and a learner who only ever meets the first meaning
+ * is surprised by the rest in a sentence.
+ */
+async function withSenses(items: StudyQueueItem[]): Promise<StudyQueueItem[]> {
+  const ids = [...new Set(items.filter(i => i.kind === 'word').map(i => i.studyItemId))]
+  if (ids.length === 0)
+    return items
+  const rows = await db
+    .select({ studyItemId: studyItems.id, glosses: wordSenses.glosses })
+    .from(studyItems)
+    .innerJoin(wordSenses, eq(wordSenses.wordId, studyItems.wordId))
+    .where(inArray(studyItems.id, ids))
+    .orderBy(asc(wordSenses.sortIndex))
+  const senses = new Map<string, string[]>()
+  for (const r of rows) {
+    const text = r.glosses.filter(g => !g.lang || g.lang === 'en' || g.lang === 'eng').map(g => g.text).join(', ')
+    const list = senses.get(r.studyItemId) ?? []
+    if (text && list.length < SENSES_SHOWN)
+      list.push(text)
+    senses.set(r.studyItemId, list)
+  }
+  return items.map(item => senses.has(item.studyItemId)
+    ? { ...item, prompt: { ...item.prompt, senses: senses.get(item.studyItemId) } }
+    : item)
+}
+
 /** Kanji this learner has graduated a card for. */
 async function knownKanjiCharacters(userId: string, languageId: string): Promise<Set<string>> {
   const rows = await db.execute<{ character: string }>(sql`
@@ -1089,7 +1143,11 @@ export async function getQueue(userId: string, query: StudyQueueQuery): Promise<
   // meet a wall of reviews on day three. Only cards the queue introduced count
   // — a finished lesson or a saved word was the learner's own choice.
   const newToday = await newCardsToday(userId, language.id, now)
-  const newRemaining = Math.max(0, newLimit - newToday) + (query.moreNew ?? 0)
+  // "Learn 5 more anyway" raises TODAY's limit. The page sends what it has
+  // been granted today on every request — it used to send it once, so the
+  // next refill counted the day afresh and the wall came straight back.
+  const todayLimit = newLimit + (query.moreNew ?? 0)
+  const newRemaining = Math.max(0, todayLimit - newToday)
 
   // Deck filters. `kind` narrows the content type, `unit` narrows to a
   // curriculum unit — a script (hiragana) or a scenario (at a restaurant).
@@ -1463,6 +1521,7 @@ export async function getQueue(userId: string, query: StudyQueueQuery): Promise<
   }
   items = [...oneEach.values()]
   items = await withSeries(items, userId, language.id)
+  items = await withSenses(items)
 
   shuffle(items)
 
@@ -1634,7 +1693,7 @@ export async function getQueue(userId: string, query: StudyQueueQuery): Promise<
       newAvailable: newAvailable?.total ?? 0,
       ghost: ghosts?.total ?? 0,
       newToday,
-      newLimit
+      newLimit: todayLimit
     },
     serverTime: now.toISOString()
   }

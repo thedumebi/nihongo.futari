@@ -1,4 +1,13 @@
-import type { AnswerResult, LessonSeenResult, SaveWordResult, StudyDecksResponse, StudyQueueResponse, SubmitAnswerInput, WordStatus } from '@nihongo/shared/types'
+import type {
+  AnswerResult,
+  LessonSeenResult,
+  SaveWordResult,
+  StudyDecksResponse,
+  StudyQueueResponse,
+  SubmitAnswerInput,
+  WordStatus,
+  WordStatuses
+} from '@nihongo/shared/types'
 
 import { API_ENDPOINTS } from '@nihongo/shared/constants'
 
@@ -40,6 +49,11 @@ export async function saveWord(wordId: string): Promise<SaveWordResult> {
 }
 
 /** Where a word stands in this learner's reviews. */
+export async function getWordStatuses(wordIds: string[]): Promise<WordStatuses> {
+  const { data } = await client.get<WordStatuses>(API_ENDPOINTS.STUDY.WORD_STATUSES, { params: { ids: wordIds.join(',') } })
+  return data
+}
+
 export async function getWordStatus(wordId: string): Promise<WordStatus> {
   const { data } = await client.get<WordStatus>(API_ENDPOINTS.STUDY.WORD_STATUS(wordId))
   return data

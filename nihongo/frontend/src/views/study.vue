@@ -197,11 +197,23 @@ const items = ref<StudyQueueItem[]>([])
 const index = ref(0)
 const counts = ref({ due: 0, dueCards: 0, learning: 0, newAvailable: 0, ghost: 0, newToday: 0, newLimit: 0 })
 /**
- * New cards past today's limit, asked for on purpose. Used for one load and
- * then cleared — otherwise every refill would quietly hand over five more and
- * the limit would mean nothing again.
+ * New cards past today's limit, asked for on purpose — every "learn 5 more"
+ * pressed today, added up, kept on the device under today's date and sent
+ * with every request. It used to be sent once and cleared, so the next refill
+ * counted the day afresh and the wall came straight back after one card. A
+ * new day has its own key, so it starts from zero.
  */
-const moreNew = ref(0)
+const moreNewKey = () => `go-more-new:${lang.code}:${new Date().toLocaleDateString('en-CA')}`
+/** Held in memory too, for a browser that refuses storage: it then lasts the visit. */
+const moreNewHere = new Map<string, number>()
+function readMoreNew(): number {
+  const key = moreNewKey()
+  try {
+    return Number(localStorage.getItem(key) ?? moreNewHere.get(key) ?? 0) || 0
+  } catch {
+    return moreNewHere.get(key) ?? 0
+  }
+}
 
 /** Today's new cards are done, though more are waiting: say so, honestly. */
 const limitReached = computed(() =>
@@ -209,7 +221,14 @@ const limitReached = computed(() =>
   && counts.value.newToday >= counts.value.newLimit && counts.value.newAvailable > 0)
 
 function learnMore() {
-  moreNew.value = 5
+  const key = moreNewKey()
+  const next = readMoreNew() + 5
+  moreNewHere.set(key, next)
+  try {
+    localStorage.setItem(key, String(next))
+  } catch {
+    // Without storage it still holds for this visit.
+  }
   void load()
 }
 
@@ -537,6 +556,23 @@ const isCanvas = computed(() => current.value?.inputMode === 'canvas')
  * everywhere else. The blank itself never carries ruby, for the obvious reason.
  */
 const isCloze = computed(() => current.value?.prompt?.kind === 'cloze')
+
+/**
+ * A word's other meanings, for after the answer: every sense the dictionary
+ * lists, less the one the card asked. "softly" is also "gently, quietly".
+ */
+const alsoMeans = computed<string[]>(() => {
+  const senses = current.value?.prompt?.senses
+  if (!Array.isArray(senses))
+    return []
+  const asked = String(current.value?.answer?.primary ?? '').toLowerCase()
+  return senses
+    .map(String)
+    .map((sense, i) => i === 0
+      ? sense.split(', ').filter(g => g.toLowerCase() !== asked).join(', ')
+      : sense)
+    .filter(Boolean)
+})
 
 /**
  * Grammar cloze: a pre-blanked sentence rather than before/after halves.
@@ -1025,9 +1061,8 @@ async function load() {
       ...(level ? { level } : {}),
       ...(deck?.kind ? { kind: deck.kind } : {}),
       ...(deck?.unit ? { unit: deck.unit } : {}),
-      ...(moreNew.value ? { moreNew: moreNew.value } : {})
+      ...(readMoreNew() ? { moreNew: readMoreNew() } : {})
     })
-    moreNew.value = 0
     items.value = queue.items
     counts.value = queue.counts
     progress.value = queue.progress
@@ -2026,6 +2061,17 @@ watch(() => lang.code, async () => {
                 <p v-else class="font-semibold text-[var(--color-danger)]">
                   Not quite &mdash; it's <strong>{{ expected }}</strong>
                 </p>
+                <!-- Once answered, the word's other meanings — the card asks one. -->
+                <div v-if="alsoMeans.length" class="mx-auto mt-3 max-w-sm text-left text-sm">
+                  <p class="text-xs uppercase tracking-wide text-[var(--color-muted)]">
+                    Also means
+                  </p>
+                  <ul class="mt-1 list-disc space-y-0.5 pl-5 text-[var(--color-muted)]">
+                    <li v-for="m in alsoMeans" :key="m">
+                      {{ m }}
+                    </li>
+                  </ul>
+                </div>
               </div>
 
               <template v-if="revealed && wasCorrect">

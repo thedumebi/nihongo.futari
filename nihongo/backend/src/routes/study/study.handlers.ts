@@ -2,9 +2,9 @@ import { HttpStatusCodes } from '@nihongo/shared/constants'
 
 import type { AppRouteHandler } from '@/lib/types.js'
 
-import { getCourse, getDecks, getDueList, getQueue, markLessonSeen, saveWord as saveWordForReview, wordStatus as statusOfWord, submitAnswer } from '@/services/srs.service.js'
+import { getCourse, getDecks, getDueList, getQueue, markLessonSeen, saveWord as saveWordForReview, wordStatuses as statusesOfWords, wordStatus as statusOfWord, submitAnswer } from '@/services/srs.service.js'
 
-import type { AnswerRoute, CourseRoute, DecksRoute, DueRoute, LessonSeenRoute, QueueRoute, SaveWordRoute, WordStatusRoute } from './study.routes.js'
+import type { AnswerRoute, CourseRoute, DecksRoute, DueRoute, LessonSeenRoute, QueueRoute, SaveWordRoute, WordStatusesRoute, WordStatusRoute } from './study.routes.js'
 
 export const decks: AppRouteHandler<DecksRoute> = async (c) => {
   const user = c.get('user')!
@@ -61,6 +61,11 @@ export const saveWord: AppRouteHandler<SaveWordRoute> = async (c) => {
   if (!result)
     return c.json({ message: 'No studiable item for this word' }, HttpStatusCodes.NOT_FOUND)
   return c.json(result, HttpStatusCodes.OK)
+}
+
+export const wordStatuses: AppRouteHandler<WordStatusesRoute> = async (c) => {
+  const user = c.get('user')!
+  return c.json({ statuses: await statusesOfWords(user.id, c.req.valid('query').ids) }, HttpStatusCodes.OK)
 }
 
 export const wordStatus: AppRouteHandler<WordStatusRoute> = async (c) => {

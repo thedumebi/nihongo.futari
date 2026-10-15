@@ -112,9 +112,10 @@ export const studyQueueQuerySchema = z.object({
    */
   level: z.string().optional(),
   /**
-   * New cards past today's limit, asked for on purpose — "learn 5 more
-   * anyway". Grants that many for this request only; the next queue counts
-   * the day afresh, so it cannot quietly turn into no limit at all.
+   * New cards past today's limit, asked for on purpose — every "learn 5 more
+   * anyway" pressed TODAY, added up. Raises today's limit by that much; the
+   * page keeps the total for the day and sends it with every request, and a
+   * new day starts from zero.
    */
   moreNew: z.coerce.number().int().min(0).max(50).optional()
 }).openapi('StudyQueueQuery')
@@ -713,5 +714,17 @@ export const wordStatusSchema = z.object({
   /** Keeps being forgotten. */
   ghost: z.boolean()
 }).openapi('WordStatus')
+
+export const wordStatusesQuerySchema = z.object({
+  /** Comma-separated word ids, at most a page of results. */
+  ids: z.string().min(1).transform(s => [...new Set(s.split(',').filter(Boolean))].slice(0, 100))
+})
+
+export const wordStatusesSchema = z.object({
+  /** By word id: whether it can be reviewed, and whether it already is. */
+  statuses: z.record(z.string(), wordStatusSchema.pick({ reviewable: true, inReview: true }))
+}).openapi('WordStatuses')
+
+export type WordStatuses = z.infer<typeof wordStatusesSchema>
 
 export type WordStatus = z.infer<typeof wordStatusSchema>
