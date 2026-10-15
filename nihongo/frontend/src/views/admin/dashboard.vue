@@ -35,9 +35,6 @@ import { ROUTES } from '@/constants'
           </p>
         </li>
       </ul>
-      <p class="mt-6 text-sm text-[var(--color-muted)]">
-        Import runs land here next &mdash; the <code>/imports</code> API exists, the screen doesn't yet.
-      </p>
     </div>
   </AppShell>
 </template>

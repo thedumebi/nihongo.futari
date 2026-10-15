@@ -46,7 +46,6 @@ export const ROUTE_BASE_PATHS = {
   NOTIFICATIONS: '/notifications',
   REVIEW_QUEUE: '/review-queue',
   INVITES: '/invites',
-  IMPORTS: '/imports',
   ATTRIBUTION: '/attribution'
 } as const
 
@@ -462,14 +461,6 @@ export const REVIEW_QUEUE_ROUTES = {
   REJECT: '/:id/reject'
 } as const
 
-export const IMPORT_ROUTES = {
-  LIST_RUNS: '/runs',
-  GET_RUN: '/runs/:id',
-  TRIGGER: '/runs',
-  CONFLICTS: '/conflicts',
-  RESOLVE_CONFLICT: '/conflicts/:id'
-} as const
-
 export const INVITE_ROUTES = {
   /** Public: tells the signup page whether a code is required. */
   SIGNUP_MODE: '/signup-mode',
@@ -695,15 +686,6 @@ export const API_ENDPOINTS = {
     BULK_REJECT: `${ROUTE_BASE_PATHS.REVIEW_QUEUE}${REVIEW_QUEUE_ROUTES.BULK_REJECT}`,
     APPROVE: (id: string) => `${ROUTE_BASE_PATHS.REVIEW_QUEUE}${REVIEW_QUEUE_ROUTES.APPROVE.replace(':id', id)}`,
     REJECT: (id: string) => `${ROUTE_BASE_PATHS.REVIEW_QUEUE}${REVIEW_QUEUE_ROUTES.REJECT.replace(':id', id)}`
-  },
-
-  IMPORTS: {
-    LIST_RUNS: `${ROUTE_BASE_PATHS.IMPORTS}${IMPORT_ROUTES.LIST_RUNS}`,
-    TRIGGER: `${ROUTE_BASE_PATHS.IMPORTS}${IMPORT_ROUTES.TRIGGER}`,
-    CONFLICTS: `${ROUTE_BASE_PATHS.IMPORTS}${IMPORT_ROUTES.CONFLICTS}`,
-    GET_RUN: (id: string) => `${ROUTE_BASE_PATHS.IMPORTS}${IMPORT_ROUTES.GET_RUN.replace(':id', id)}`,
-    RESOLVE_CONFLICT: (id: string) =>
-      `${ROUTE_BASE_PATHS.IMPORTS}${IMPORT_ROUTES.RESOLVE_CONFLICT.replace(':id', id)}`
   },
 
   INVITES: {

@@ -66,7 +66,6 @@ export const ROUTES = {
   ADMIN_GRAMMAR: '/admin/grammar',
   ADMIN_GRAMMAR_EDIT: (id: string) => `/admin/grammar/${id}/edit`,
   ADMIN_WORDS: '/admin/words',
-  ADMIN_IMPORTS: '/admin/imports',
   ADMIN_USERS: '/admin/users',
 
   NOT_FOUND: '/:catchAll(.*)'
