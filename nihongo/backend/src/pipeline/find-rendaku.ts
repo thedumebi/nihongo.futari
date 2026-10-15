@@ -148,7 +148,7 @@ async function main() {
       const claim = `${f.word} shows rendaku: ${f.second} is normally ${f.base}, and voices to ${f.observed} as the second half of a compound.`
       const body = f.violates
         ? `Rendaku usually cannot apply when the second element already contains a voiced sound (Lyman's Law), yet ${f.word} voices anyway. Exceptions like this are real, and worth knowing so the rule does not feel broken when you meet one.`
-        : `${f.base} already begins a word cleanly, so nothing blocks the change. Lyman's Law says rendaku is blocked when the second element already contains a voiced sound — ${f.base} does not, so it voices. Once you can spot that, readings like ${f.reading} stop needing to be memorised one at a time.`
+        : `${f.base} already begins a word cleanly, so nothing blocks the change. Lyman's Law says rendaku is blocked when the second element already contains a voiced sound; ${f.base} does not, so it voices. Once you can spot that, readings like ${f.reading} stop needing to be memorised one at a time.`
 
       const [entry] = await db.insert(etymologyEntries).values({
         languageId: language.id,

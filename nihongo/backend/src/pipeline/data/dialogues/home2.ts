@@ -23,7 +23,7 @@ export const HOME2: Dialogue[] = [
         ['はい、失礼でした。', 'はい、しつれい でした。', 'shitsurei desu/shimasu is the set apology-phrase for entering. deshita on its own just labels something as rude, which is not what you mean.']
       ] },
       { s: 'you', t: 'これ、つまらないものですが。', r: 'これ、つまらない もの です が。', e: 'A small something for you.', wrong: [
-        ['これ、いいものです。', 'これ、いい もの です。', 'Praising your own gift is the opposite of the convention — you play it down, and they insist otherwise.'],
+        ['これ、いいものです。', 'これ、いい もの です。', 'Praising your own gift is the opposite of the convention; you play it down, and they insist otherwise.'],
         ['これをください。', 'これ お ください。', 'kudasai asks THEM for it. You are giving.']
       ] },
       { s: 'other', t: 'ありがとう。気を使わせてごめんね。中で開けてもいい？', r: 'ありがとう。き お つかわせて ごめん ね。なか で あけて も いい？', e: 'Thank you, you should not have. Can I open it inside?' },
@@ -39,7 +39,7 @@ export const HOME2: Dialogue[] = [
       { s: 'other', t: '大丈夫、座ってて。もっと食べてね、遠慮しないで。', r: 'だいじょうぶ、すわってて。もっと たべて ね、えんりょ しないで。', e: 'It is fine, just sit. Eat more, do not be shy.' },
       { s: 'you', t: 'じゃあ、遠慮なくいただきます。', r: 'じゃあ、えんりょ なく いただきます。', e: 'Well then, I will not hold back.', wrong: [
         ['じゃあ、遠慮なくもらいます。', 'じゃあ、えんりょ なく もらいます。', 'moraimasu is plain and fine among friends, but at a meal someone made for you, the humble itadakimasu is what actually gets said.'],
-        ['じゃあ、遠慮なくくれます。', 'じゃあ、えんりょ なく くれます。', 'kuremasu describes someone else giving to you — it cannot describe your own act of eating or receiving here.']
+        ['じゃあ、遠慮なくくれます。', 'じゃあ、えんりょ なく くれます。', 'kuremasu describes someone else giving to you; it cannot describe your own act of eating or receiving here.']
       ] }
     ]
   },
@@ -52,18 +52,18 @@ export const HOME2: Dialogue[] = [
     situation: 'It is getting late and you should go.',
     turns: [
       { s: 'you', t: 'そろそろ失礼します。', r: 'そろそろ しつれいします。', e: 'I should be going.', wrong: [
-        ['そろそろ帰ります。', 'そろそろ かえります。', 'Not wrong, but blunter — it states a fact rather than excusing yourself. shitsurei shimasu is the polite exit.'],
+        ['そろそろ帰ります。', 'そろそろ かえります。', 'Not wrong, but blunter: it states a fact rather than excusing yourself. shitsurei shimasu is the polite exit.'],
         ['そろそろいってきます。', 'そろそろ いってきます。', 'ittekimasu says you are going out and coming back, which is for your own home.']
       ] },
       { s: 'other', t: 'もう？ゆっくりしていってよ。', r: 'もう？ゆっくり して いって よ。', e: 'Already? Stay a while.' },
       { s: 'you', t: 'ありがとう。でも、明日早いので。', r: 'ありがとう。でも、あした はやい ので。', e: 'Thanks, but I have an early start.', wrong: [
         ['ありがとう。でも、明日早いですから。', 'ありがとう。でも、あした はやい です から。', 'Understandable, but kara states a reason bluntly. Trailing off with node is the softer way to decline.'],
-        ['ありがとう。でも、明日は早いでした。', 'ありがとう。でも、あした わ はやい でした。', 'hayai is an i-adjective — and tomorrow has not happened, so the past makes no sense either.']
+        ['ありがとう。でも、明日は早いでした。', 'ありがとう。でも、あした わ はやい でした。', 'hayai is an i-adjective, and tomorrow has not happened, so the past makes no sense either.']
       ] },
       { s: 'other', t: 'そっか、残念。じゃあ駅まで送ろうか。', r: 'そっか、ざんねん。じゃあ えき まで おくろう か。', e: 'Ah, too bad. Should I walk you to the station?' },
       { s: 'you', t: 'いいよ、すぐそこだから。', r: 'いい よ、すぐ そこ だ から。', e: 'No need, it is right there.', wrong: [
-        ['大丈夫よ、すぐそこだから。', 'だいじょうぶ よ、すぐ そこ だ から。', 'daijoubu answers a question about your condition or an offer of help with a slightly different nuance — among close friends turning down a small offer like this, ii yo is the natural, casual line.'],
-        ['いいよ、すぐそこにする。', 'いい よ、すぐ そこ に する。', 'suru means "to decide on" or "to make into" — it cannot attach to a plain location like "right there" as a reason.']
+        ['大丈夫よ、すぐそこだから。', 'だいじょうぶ よ、すぐ そこ だ から。', 'daijoubu answers a question about your condition or an offer of help with a slightly different nuance; among close friends turning down a small offer like this, ii yo is the natural, casual line.'],
+        ['いいよ、すぐそこにする。', 'いい よ、すぐ そこ に する。', 'suru means "to decide on" or "to make into"; it cannot attach to a plain location like "right there" as a reason.']
       ] },
       { s: 'other', t: '本当に？暗いから気をつけてね。', r: 'ほんとう に？くらい から き お つけて ね。', e: 'Really? It is dark, so be careful.' },
       { s: 'you', t: 'うん、大丈夫。忘れ物ないかな。', r: 'うん、だいじょうぶ。わすれもの ない か な。', e: 'Yeah, I will be fine. Did I forget anything?', wrong: [
@@ -72,13 +72,13 @@ export const HOME2: Dialogue[] = [
       ] },
       { s: 'other', t: 'あ、携帯忘れてるよ。', r: 'あ、けいたい わすれてる よ。', e: 'Oh, you left your phone.' },
       { s: 'you', t: 'あ、ほんとだ。危なかった、ありがとう。', r: 'あ、ほんと だ。あぶなかった、ありがとう。', e: 'Oh, you are right. That was close, thanks.', wrong: [
-        ['あ、ほんとだ。危ないだった、ありがとう。', 'あ、ほんと だ。あぶない だった、ありがとう。', 'abunai is an i-adjective — its past is abunakatta, not abunai + datta.'],
+        ['あ、ほんとだ。危ないだった、ありがとう。', 'あ、ほんと だ。あぶない だった、ありがとう。', 'abunai is an i-adjective: its past is abunakatta, not abunai + datta.'],
         ['あ、ほんとだ。危なそうだった、ありがとう。', 'あ、ほんと だ。あぶなそう だった、ありがとう。', 'abunasou describes something that LOOKS dangerous. You mean the situation actually was close, which is just abunakatta.']
       ] },
       { s: 'other', t: 'そっか。また来てね。', r: 'そっか。また きて ね。', e: 'All right. Come again.' },
       { s: 'you', t: '今日はありがとう。おやすみ。', r: 'きょう わ ありがとう。おやすみ。', e: 'Thanks for today. Good night.', wrong: [
         ['今日はありがとう。おやすみなさい。', 'きょう わ ありがとう。おやすみなさい。', 'Not wrong exactly, but oyasumi nasai is what you say to someone about to sleep in the same place as you. Leaving for the night, close friends just trade the plain oyasumi.'],
-        ['今日はありがとう。お休みでした。', 'きょう わ ありがとう。おやすみ でした。', 'oyasumi as a parting phrase is fixed — adding deshita turns it into a statement about a day off, not a goodnight.']
+        ['今日はありがとう。お休みでした。', 'きょう わ ありがとう。おやすみ でした。', 'oyasumi as a parting phrase is fixed; adding deshita turns it into a statement about a day off, not a goodnight.']
       ] }
     ]
   },
@@ -98,7 +98,7 @@ export const HOME2: Dialogue[] = [
       { s: 'other', t: '暖房つけようか。', r: 'だんぼう つけよう か。', e: 'Should I turn the heater on?' },
       { s: 'you', t: 'お願いします。足が冷えてきました。', r: 'おねがいします。あし が ひえて きました。', e: 'Please. My feet are getting cold.', wrong: [
         ['お願いします。足が冷えていました。', 'おねがいします。あし が ひえて いました。', 'te imashita describes a past ongoing state that has now ended. Your feet are cold right now and getting colder, which is te kimashita.'],
-        ['お願いします。足を冷えてきました。', 'おねがいします。あし お ひえて きました。', 'hieru is intransitive — nothing is acting on the feet, so they take ga, not o.']
+        ['お願いします。足を冷えてきました。', 'おねがいします。あし お ひえて きました。', 'hieru is intransitive; nothing is acting on the feet, so they take ga, not o.']
       ] },
       { s: 'other', t: '明日は雪だって。', r: 'あした わ ゆき だ って。', e: 'They say snow tomorrow.' },
       { s: 'you', t: '本当ですか。傘を持っていきます。', r: 'ほんとう です か。かさ お もって いきます。', e: 'Really? I will take an umbrella.', wrong: [
@@ -126,7 +126,7 @@ export const HOME2: Dialogue[] = [
     situation: 'You need a charger.',
     turns: [
       { s: 'you', t: 'すみません、充電器を貸してもらえますか。', r: 'すみません、じゅうでんき お かして もらえます か。', e: 'Could I borrow a charger?', wrong: [
-        ['すみません、充電器を借りてもらえますか。', 'すみません、じゅうでんき お かりて もらえます か。', 'kariru is to borrow — that asks them to borrow one. You want them to lend: kasu.'],
+        ['すみません、充電器を借りてもらえますか。', 'すみません、じゅうでんき お かりて もらえます か。', 'kariru is to borrow; that asks them to borrow one. You want them to lend: kasu.'],
         ['すみません、充電器を貸します。', 'すみません、じゅうでんき お かします。', 'That offers to lend them yours.']
       ] },
       { s: 'other', t: 'いいよ。はい、どうぞ。', r: 'いい よ。はい、どうぞ。', e: 'Sure, here.' },
@@ -141,7 +141,7 @@ export const HOME2: Dialogue[] = [
       ] },
       { s: 'other', t: 'よかった。それ、うちのバッテリーけっこう遅いから気をつけて。', r: 'よかった。それ、うち の バッテリー けっこう おそい から き お つけて。', e: 'Good. Careful, that charger of mine is pretty slow.' },
       { s: 'you', t: '分かりました。どれくらい充電にかかりますか。', r: 'わかりました。どれくらい じゅうでん に かかります か。', e: 'Got it. About how long does it take to charge?', wrong: [
-        ['分かりました。どれくらい充電をかかりますか。', 'わかりました。どれくらい じゅうでん お かかります か。', 'kakaru is intransitive — time simply takes, it is not acted on — so the thing it takes for is marked with ni, not o.'],
+        ['分かりました。どれくらい充電をかかりますか。', 'わかりました。どれくらい じゅうでん お かかります か。', 'kakaru is intransitive (time simply takes, it is not acted on), so the thing it takes for is marked with ni, not o.'],
         ['分かりました。どれくらい充電がかけますか。', 'わかりました。どれくらい じゅうでん が かけます か。', 'kakeru is the transitive partner of kakaru and needs an object doing the hanging/spending. Asking how long something takes is kakaru: dore kurai kakarimasu ka.']
       ] },
       { s: 'other', t: '一時間くらいかな。夜まで置いておいていいよ。', r: 'いちじかん くらい か な。よる まで おいて おいて いい よ。', e: 'About an hour, I think. You can leave it out until evening.' },
@@ -161,7 +161,7 @@ export const HOME2: Dialogue[] = [
     turns: [
       { s: 'you', t: 'すみません、少し音を小さくしてもらえますか。', r: 'すみません、すこし おと お ちいさく して もらえます か。', e: 'Could you turn it down a bit?', wrong: [
         ['すみません、少し音を小さいしてもらえますか。', 'すみません、すこし おと お ちいさい して もらえます か。', 'An i-adjective becomes an adverb by dropping i and taking ku: chiisaku.'],
-        ['すみません、少し音が小さくしてもらえますか。', 'すみません、すこし おと が ちいさく して もらえます か。', 'suru takes an object — the sound is what is being made smaller, so o.']
+        ['すみません、少し音が小さくしてもらえますか。', 'すみません、すこし おと が ちいさく して もらえます か。', 'suru takes an object; the sound is what is being made smaller, so o.']
       ] },
       { s: 'other', t: 'あ、ごめん。うるさかった？', r: 'あ、ごめん。うるさかった？', e: 'Oh, sorry. Was it loud?' },
       { s: 'you', t: '少しだけです。明日早く起きなきゃいけないので。', r: 'すこし だけ です。あした はやく おきなきゃ いけない ので。', e: 'Just a bit. I have to get up early tomorrow.', wrong: [
@@ -200,12 +200,12 @@ export const HOME2: Dialogue[] = [
       { s: 'other', t: '簡単だよ。切って、炒めるだけ。', r: 'かんたん だ よ。きって、いためる だけ。', e: 'It is easy. Just chop and fry.' },
       { s: 'you', t: '味付けは何を使っていますか。', r: 'あじつけ わ なに お つかって います か。', e: 'What do you use for the seasoning?', wrong: [
         ['味付けは何を使いますか。', 'あじつけ わ なに お つかいます か。', 'Not wrong, but bare tsukaimasu ka asks in general. tsukatte imasu ka asks specifically what is IN this dish right now.'],
-        ['味付けを何が使っていますか。', 'あじつけ お なに が つかって います か。', 'tsukau takes an object with o — the thing being used, nani, needs o here, and ajitsuke becomes the topic with wa.']
+        ['味付けを何が使っていますか。', 'あじつけ お なに が つかって います か。', 'tsukau takes an object with o; the thing being used, nani, needs o here, and ajitsuke becomes the topic with wa.']
       ] },
       { s: 'other', t: '醤油とみりんと、あとは砂糖を少し。', r: 'しょうゆ と みりん と、あと わ さとう お すこし。', e: 'Soy sauce, mirin, and then a little sugar.' },
       { s: 'you', t: 'どれくらいの量ですか。', r: 'どれ くらい の りょう です か。', e: 'About how much of each?', wrong: [
         ['どれくらいが量ですか。', 'どれ くらい が りょう です か。', 'This asks "how much IS the amount", which is circular. You want to know the quantity of what was just named: dore kurai no ryou desu ka.'],
-        ['どれくらいを量ですか。', 'どれ くらい お りょう です か。', 'ryou desu ka needs no linking particle here — no connects "how much" to "amount" as a modifier, not o.']
+        ['どれくらいを量ですか。', 'どれ くらい お りょう です か。', 'ryou desu ka needs no linking particle here; no connects "how much" to "amount" as a modifier, not o.']
       ] },
       { s: 'other', t: '目分量だから、正確には分からないな。', r: 'めぶんりょう だ から、せいかく に わ わからない な。', e: 'I just eyeball it, so I do not know exactly.' },
       { s: 'you', t: 'なるほど。とりあえず自分でも試してみます。', r: 'なるほど。とりあえず じぶん で も ためして みます。', e: 'I see. I will just try it myself for now.', wrong: [
@@ -229,7 +229,7 @@ export const HOME2: Dialogue[] = [
     turns: [
       { s: 'you', t: 'すみません、醤油はどこにありますか。', r: 'すみません、しょうゆ わ どこ に あります か。', e: 'Excuse me, where is the soy sauce?', wrong: [
         ['すみません、醤油はどこでありますか。', 'すみません、しょうゆ わ どこ で あります か。', 'de is where an action happens. For where something exists, aru takes ni.'],
-        ['すみません、醤油をどこにありますか。', 'すみません、しょうゆ お どこ に あります か。', 'aru is intransitive — nothing acts on the soy sauce.']
+        ['すみません、醤油をどこにありますか。', 'すみません、しょうゆ お どこ に あります か。', 'aru is intransitive; nothing acts on the soy sauce.']
       ] },
       { s: 'other', t: '三番の棚です。調味料のところです。', r: 'さんばん の たな です。ちょうみりょう の ところ です。', e: 'Aisle three. It is in the seasonings section.' },
       { s: 'you', t: 'ありがとうございます。行ってみます。', r: 'ありがとうございます。いって みます。', e: 'Thank you. I will go take a look.', wrong: [
@@ -268,17 +268,17 @@ export const HOME2: Dialogue[] = [
       ] },
       { s: 'other', t: '袋はご利用ですか。', r: 'ふくろ わ ごりよう です か。', e: 'Would you like a bag?' },
       { s: 'you', t: 'いいえ、大丈夫です。持っています。', r: 'いいえ、だいじょうぶ です。もって います。', e: 'No thanks, I have one.', wrong: [
-        ['いいえ、いいです。持ちます。', 'いいえ、いい です。もちます。', 'ii desu is ambiguous at a till — it can mean yes or no. And motsu says you WILL hold one; having one already is motte imasu.'],
-        ['はい、大丈夫です。', 'はい、だいじょうぶ です。', 'hai then a refusal contradicts itself — they will reach for a bag.']
+        ['いいえ、いいです。持ちます。', 'いいえ、いい です。もちます。', 'ii desu is ambiguous at a till; it can mean yes or no. And motsu says you WILL hold one; having one already is motte imasu.'],
+        ['はい、大丈夫です。', 'はい、だいじょうぶ です。', 'hai then a refusal contradicts itself. They will reach for a bag.']
       ] },
       { s: 'other', t: 'かしこまりました。お会計、千二百三十円になります。', r: 'かしこまりました。おかいけい、せんにひゃくさんじゅうえん に なります。', e: 'Certainly. That comes to 1,230 yen.' },
       { s: 'you', t: 'カードで払ってもいいですか。', r: 'カード で はらって も いい です か。', e: 'Can I pay by card?', wrong: [
-        ['カードに払ってもいいですか。', 'カード に はらって も いい です か。', 'harau needs the means marked with de, not ni — de shows what you are paying WITH.'],
-        ['カードを払ってもいいですか。', 'カード お はらって も いい です か。', 'The card is not the thing being paid — the bill is. The card is the method, marked with de.']
+        ['カードに払ってもいいですか。', 'カード に はらって も いい です か。', 'harau needs the means marked with de, not ni; de shows what you are paying WITH.'],
+        ['カードを払ってもいいですか。', 'カード お はらって も いい です か。', 'The card is not the thing being paid; the bill is. The card is the method, marked with de.']
       ] },
       { s: 'other', t: 'はい、大丈夫です。こちらの機械にどうぞ。', r: 'はい、だいじょうぶ です。こちら の きかい に どうぞ。', e: 'Yes, that is fine. Please use this machine.' },
       { s: 'you', t: 'あ、エラーが出ました。もう一度お願いします。', r: 'あ、エラー が でました。もう いちど おねがいします。', e: 'Oh, it gave an error. Once more, please.', wrong: [
-        ['あ、エラーを出ました。もう一度お願いします。', 'あ、エラー お でました。もう いちど おねがいします。', 'deru is intransitive — the error appeared on its own, nothing produced it deliberately, so it takes ga, not o.'],
+        ['あ、エラーを出ました。もう一度お願いします。', 'あ、エラー お でました。もう いちど おねがいします。', 'deru is intransitive; the error appeared on its own, nothing produced it deliberately, so it takes ga, not o.'],
         ['あ、エラーが出しました。もう一度お願いします。', 'あ、エラー が だしました。もう いちど おねがいします。', 'dasu is the transitive partner of deru and needs someone doing the producing. An error just showing up on the screen is deru: dete kimashita.']
       ] },
       { s: 'other', t: 'あ、こちらの操作でした。すみません。もう一度どうぞ。', r: 'あ、こちら の そうさ でした。すみません。もう いちど どうぞ。', e: 'Ah, that was our mistake with the machine. Sorry. Please try again.' },

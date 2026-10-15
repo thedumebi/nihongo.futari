@@ -49,13 +49,13 @@ export const DINING: Dialogue[] = [
       ] },
       { s: 'other', t: 'カウンター席でしたら、すぐにご案内できますが、いかがなさいますか。', r: 'カウンターせき でしたら、すぐ に ごあんない できます が、いかが なさいます か。', e: 'If a counter seat is okay, we can seat you right away. What would you like to do?' },
       { s: 'you', t: 'あ、じゃあカウンターで大丈夫です。', r: 'あ、じゃあ カウンター で だいじょうぶ です。', e: 'Oh, then the counter is fine.', wrong: [
-        ['あ、じゃあカウンターは大丈夫です。', 'あ、じゃあ カウンター わ だいじょうぶ です。', 'wa here reads as contrasting the counter against something else, and daijoubu desu alone usually means no thank you — together it sounds like you are turning the counter down, not taking it.'],
+        ['あ、じゃあカウンターは大丈夫です。', 'あ、じゃあ カウンター わ だいじょうぶ です。', 'wa here reads as contrasting the counter against something else, and daijoubu desu alone usually means no thank you; together it sounds like you are turning the counter down, not taking it.'],
         ['あ、じゃあカウンターでお願いしません。', 'あ、じゃあ カウンター で おねがいしません。', 'onegaishimasen negates a request you never made. Accepting an offered option is X de daijoubu desu, not a negative onegai.']
       ] },
       { s: 'other', t: 'かしこまりました。それでは、お席にご案内いたします。こちらへどうぞ。', r: 'かしこまりました。それでは、おせき に ごあんない いたします。こちら え どうぞ。', e: 'Certainly. Then let me show you to your seat. This way, please.' },
       { s: 'you', t: 'ありがとうございます。', r: 'ありがとうございます。', e: 'Thank you.', wrong: [
         ['ありがとうございました。', 'ありがとうございました。', 'The past tense treats the thanks as closed, as if you were leaving. You are only now being shown to your seat.'],
-        ['どうもすみません。', 'どうも すみません。', 'sumimasen apologises for causing trouble. Being seated is not an inconvenience to apologise for — plain thanks fits: arigatou gozaimasu.']
+        ['どうもすみません。', 'どうも すみません。', 'sumimasen apologises for causing trouble. Being seated is not an inconvenience to apologise for; plain thanks fits: arigatou gozaimasu.']
       ] }
     ]
   },
@@ -83,7 +83,7 @@ export const DINING: Dialogue[] = [
       { s: 'other', t: 'お先にお飲み物だけお伺いしてもよろしいですか。', r: 'おさき に おのみもの だけ おうかがい して も よろしい です か。', e: 'May I just take your drink order first?' },
       { s: 'you', t: 'とりあえず、生三つお願いします。', r: 'とりあえず、なま みっつ おねがいします。', e: 'To start, three draft beers, please.', wrong: [
         ['とりあえず、生三本お願いします。', 'とりあえず、なま さんぼん おねがいします。', 'hon counts long thin objects like bottles. Draft beer glasses take the generic counter tsu: mittsu.'],
-        ['とりあえず、生三個お願いします。', 'とりあえず、なま さんこ おねがいします。', 'ko is the generic counter for small objects, not drinks ordered by the glass — mittsu is the natural count here.']
+        ['とりあえず、生三個お願いします。', 'とりあえず、なま さんこ おねがいします。', 'ko is the generic counter for small objects, not drinks ordered by the glass; mittsu is the natural count here.']
       ] },
       { s: 'other', t: '生三つですね、かしこまりました。少々お待ちください。', r: 'なま みっつ です ね、かしこまりました。しょうしょう おまち ください。', e: 'Three drafts, certainly. One moment please.' },
       { s: 'other', t: 'お待たせしました。生ビールです。あと、こちらお通しになります。', r: 'おまたせ しました。なま ビール です。あと、こちら おとおし に なります。', e: 'Sorry for the wait. Here are your beers. And this is the otoshi.' },
@@ -93,7 +93,7 @@ export const DINING: Dialogue[] = [
       ] },
       { s: 'other', t: 'お料理のご注文がお決まりになりましたら、そちらのボタンでお呼びください。', r: 'おりょうり の ごちゅうもん が おきまり に なりましたら、そちら の ボタン で および ください。', e: 'When you have decided on food, please call us with that button.' },
       { s: 'you', t: 'はーい。', r: 'はーい。', e: 'OK.', wrong: [
-        ['はい、そうです。', 'はい、そう です。', 'sou desu confirms a fact you were told. This was an instruction, not something to affirm — a plain hai fits better.'],
+        ['はい、そうです。', 'はい、そう です。', 'sou desu confirms a fact you were told. This was an instruction, not something to affirm; a plain hai fits better.'],
         ['分かります。', 'わかります。', 'wakarimasu states a general ability to understand. Acknowledging an instruction just given is wakarimashita, or here simply hai.']
       ] }
     ]
@@ -112,7 +112,7 @@ export const DINING: Dialogue[] = [
       { s: 'other', t: 'ご注文がお決まりになりましたら、そちらのボタンでお呼びください。', r: 'ごちゅうもん が おきまり に なりましたら、そちら の ボタン で および ください。', e: 'When you have decided, please press that button to call us.' },
       { s: 'you', t: 'はい、ありがとうございます。', r: 'はい、ありがとうございます。', e: 'OK, thank you.', wrong: [
         ['はい、ありがとうございました。', 'はい、ありがとうございました。', 'The past tense closes the thanks off as finished, but you have not even ordered yet.'],
-        ['はい、すみません。', 'はい、すみません。', 'sumimasen apologises for a bother. They have just served you politely — plain thanks fits, not an apology.']
+        ['はい、すみません。', 'はい、すみません。', 'sumimasen apologises for a bother. They have just served you politely; plain thanks fits, not an apology.']
       ] },
       { s: 'other', t: 'お待たせいたしました。ご注文をお伺いいたします。', r: 'おまたせ いたしました。ごちゅうもん お おうかがい いたします。', e: 'Sorry to keep you waiting. I will take your order.' },
       { s: 'you', t: 'このチーズインハンバーグを一つと、ミックスグリルを一つお願いします。', r: 'この チーズインハンバーグ お ひとつ と、ミックスグリル お ひとつ おねがいします。', e: 'One of this cheese-stuffed hamburg steak, and one mixed grill, please.', wrong: [
@@ -121,18 +121,18 @@ export const DINING: Dialogue[] = [
       ] },
       { s: 'other', t: 'チーズインハンバーグがお一つ、ミックスグリルがお一つですね。ドリンクバーはお付けしますか。', r: 'チーズインハンバーグ が おひとつ、ミックスグリル が おひとつ です ね。ドリンクバー わ おつけ します か。', e: 'One cheese hamburg, one mixed grill. Shall I add the drink bar?' },
       { s: 'you', t: 'お願いします。二つで。', r: 'おねがいします。ふたつ で。', e: 'Yes please. Two.', wrong: [
-        ['お願いします。二つを。', 'おねがいします。ふたつ お。', 'A bare quantity answering "how many" is stated with de, not left dangling on o with nothing for it to attach to — futatsu de is the clipped answer pattern.'],
+        ['お願いします。二つを。', 'おねがいします。ふたつ お。', 'A bare quantity answering "how many" is stated with de, not left dangling on o with nothing for it to attach to: futatsu de is the clipped answer pattern.'],
         ['お願いします。二つが。', 'おねがいします。ふたつ が。', 'The same clipped-answer shape takes de here, not ga, with nothing following it.']
       ] },
       { s: 'other', t: 'かしこまりました。ご注文は以上でよろしいでしょうか。', r: 'かしこまりました。ごちゅうもん わ いじょう で よろしい でしょう か。', e: 'Certainly. Will that be all?' },
       { s: 'you', t: 'はい、以上で。', r: 'はい、いじょう で。', e: 'Yes, that is all.', wrong: [
-        ['はい、以上を。', 'はい、いじょう お。', 'ijou is not something being acted on here — it is the state you are affirming, marked with de like other short customer answers, not o.'],
-        ['はい、以上です、ください。', 'はい、いじょう です、ください。', 'Tacking kudasai onto a completed statement asks for nothing in particular — ijou de alone is the whole, standard closing answer.']
+        ['はい、以上を。', 'はい、いじょう お。', 'ijou is not something being acted on here; it is the state you are affirming, marked with de like other short customer answers, not o.'],
+        ['はい、以上です、ください。', 'はい、いじょう です、ください。', 'Tacking kudasai onto a completed statement asks for nothing in particular; ijou de alone is the whole, standard closing answer.']
       ] },
       { s: 'other', t: 'ご注文を繰り返します。チーズインハンバーグがお一つ、ミックスグリルがお一つ、ドリンクバーがお二つ。以上でお間違いないでしょうか。', r: 'ごちゅうもん お くりかえします。チーズインハンバーグ が おひとつ、ミックスグリル が おひとつ、ドリンクバー が おふたつ。いじょう で おまちがい ない でしょう か。', e: 'I will repeat your order back: one cheese hamburg, one mixed grill, two drink bars. Is everything correct?' },
       { s: 'you', t: 'はい、大丈夫です。', r: 'はい、だいじょうぶ です。', e: 'Yes, that is right.', wrong: [
         ['はい、大丈夫でした。', 'はい、だいじょうぶ でした。', 'The past tense makes it sound like something that was fine earlier but might not be now. Confirming the order right now is the plain daijoubu desu.'],
-        ['はい、大丈夫します。', 'はい、だいじょうぶ します。', 'daijoubu is a na-adjective, not a verb — it pairs with desu, never with suru.']
+        ['はい、大丈夫します。', 'はい、だいじょうぶ します。', 'daijoubu is a na-adjective, not a verb; it pairs with desu, never with suru.']
       ] },
       { s: 'other', t: 'かしこまりました。少々お待ちくださいませ。', r: 'かしこまりました。しょうしょう おまち ください ませ。', e: 'Certainly. Please wait a moment.' }
     ]
@@ -169,7 +169,7 @@ export const DINING: Dialogue[] = [
       ] },
       { s: 'other', t: 'お飲み物は食後になさいますか。', r: 'おのみもの わ しょくご に なさいます か。', e: 'Would you like your drink after the meal?' },
       { s: 'you', t: '食後でお願いします。', r: 'しょくご で おねがいします。', e: 'After the meal, please.', wrong: [
-        ['食後をお願いします。', 'しょくご お おねがいします。', 'Choosing when, among the offered timings, is marked with de, the same short pattern as hotto de — not o.'],
+        ['食後をお願いします。', 'しょくご お おねがいします。', 'Choosing when, among the offered timings, is marked with de, the same short pattern as hotto de, not o.'],
         ['食後にお願いします。', 'しょくご に おねがいします。', 'ni would mark a destination or a specific point being requested. Picking between two offered timings uses de.']
       ] },
       { s: 'other', t: 'かしこまりました。ご注文を繰り返します。サバの塩焼き定食、ライス大盛り、食後にホットコーヒー。以上でよろしいでしょうか。', r: 'かしこまりました。ごちゅうもん お くりかえします。サバ の しおやき ていしょく、ライス おおもり、しょくご に ホットコーヒー。いじょう で よろしい でしょう か。', e: 'Certainly. I will repeat your order: grilled mackerel set, large rice, hot coffee after the meal. Will that be all?' },
@@ -207,7 +207,7 @@ export const DINING: Dialogue[] = [
       ] },
       { s: 'other', t: '申し訳ございません、ソースの辛さはお変えできないんです。', r: 'もうしわけ ございません、ソース の からさ わ おかえ できない ん です。', e: 'I am very sorry, we cannot change the spiciness of the sauce.' },
       { s: 'you', t: '分かりました。じゃあ、アラビアータはやめて、カルボナーラにします。', r: 'わかりました。じゃあ、アラビアータ わ やめて、カルボナーラ に します。', e: 'I see. Then instead of the arrabbiata I will have the carbonara.', wrong: [
-        ['分かりました。じゃあ、アラビアータをやめて、カルボナーラをします。', 'わかりました。じゃあ、アラビアータ お やめて、カルボナーラ お します。', 'Naming the dish you are settling on uses ni suru, to decide on it, not o suru — carbonara ni shimasu.'],
+        ['分かりました。じゃあ、アラビアータをやめて、カルボナーラをします。', 'わかりました。じゃあ、アラビアータ お やめて、カルボナーラ お します。', 'Naming the dish you are settling on uses ni suru, to decide on it, not o suru: carbonara ni shimasu.'],
         ['分かりました。じゃあ、アラビアータが辞めて、カルボナーラにします。', 'わかりました。じゃあ、アラビアータ が やめて、カルボナーラ に します。', 'yameru is a plain transitive verb. What you are dropping takes o, not ga: arabiaata o yamete.']
       ] },
       { s: 'other', t: 'かしこまりました。以上でよろしいでしょうか。', r: 'かしこまりました。いじょう で よろしい でしょう か。', e: 'Certainly. Will that be all?' },
@@ -239,7 +239,7 @@ export const DINING: Dialogue[] = [
       ] },
       { s: 'other', t: 'お冷とお茶はセルフサービスになってます。', r: 'おひや と おちゃ わ セルフサービス に なって ます。', e: 'Water and tea are self-service.' },
       { s: 'you', t: 'はい。', r: 'はい。', e: 'OK.', wrong: [
-        ['はい、そうです。', 'はい、そう です。', 'sou desu confirms a fact you already knew, but they just told you something new — a plain hai fits better than affirming it as known.'],
+        ['はい、そうです。', 'はい、そう です。', 'sou desu confirms a fact you already knew, but they just told you something new; a plain hai fits better than affirming it as known.'],
         ['分かります。', 'わかります。', 'wakarimasu is a general statement of ability to understand. Acknowledging an instruction just given is wakarimashita, or simply hai.']
       ] },
       { s: 'other', t: 'お待たせしました。ラーメンです。', r: 'おまたせ しました。ラーメン です。', e: 'Here is your ramen.' },
@@ -292,7 +292,7 @@ export const DINING: Dialogue[] = [
       ] },
       { s: 'other', t: 'お砂糖とミルクはお使いになりますか。', r: 'おさとう と ミルク わ おつかい に なります か。', e: 'Will you use sugar and milk?' },
       { s: 'you', t: 'ミルクだけお願いします。', r: 'ミルク だけ おねがいします。', e: 'Just milk, please.', wrong: [
-        ['ミルクだけでお願いします。', 'ミルク だけ で おねがいします。', 'dake already narrows it to milk alone. Adding de on top of dake is not how this request is built — the item simply takes o or is left bare before onegaishimasu.'],
+        ['ミルクだけでお願いします。', 'ミルク だけ で おねがいします。', 'dake already narrows it to milk alone. Adding de on top of dake is not how this request is built; the item simply takes o or is left bare before onegaishimasu.'],
         ['ミルクしかお願いします。', 'ミルク しか おねがいします。', 'shika must pair with a negative verb, as in shika arimasen or shika irimasen. It cannot end a sentence in onegaishimasu on its own.']
       ] },
       { s: 'other', t: '以上でよろしいでしょうか。お会計、六百八十円でございます。', r: 'いじょう で よろしい でしょう か。おかいけい、ろっぴゃく はちじゅう えん で ございます。', e: 'Will that be all? That is 680 yen.' },

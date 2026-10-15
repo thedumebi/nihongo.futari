@@ -21,7 +21,7 @@ export const LIFE: Dialogue[] = [
       ] },
       { s: 'other', t: 'お部屋の鍵をお預かりします。', r: 'おへや の かぎ お おあずかり します。', e: 'I will take your room key.' },
       { s: 'you', t: '荷物を夕方まで預かってもらえますか。', r: 'にもつ お ゆうがた まで あずかって もらえます か。', e: 'Could you hold my bags until this evening?', wrong: [
-        ['荷物を夕方まで預けてもらえますか。', 'にもつ お ゆうがた まで あずけて もらえます か。', 'azukeru is to hand something over for safekeeping — that is what YOU do. Them holding it is azukaru.'],
+        ['荷物を夕方まで預けてもらえますか。', 'にもつ お ゆうがた まで あずけて もらえます か。', 'azukeru is to hand something over for safekeeping; that is what YOU do. Them holding it is azukaru.'],
         ['荷物を夕方までに預かってもらえますか。', 'にもつ お ゆうがた まで に あずかって もらえます か。', 'made ni is a deadline by which something happens. A stretch of time you want it held FOR is plain made.']
       ] },
       { s: 'other', t: 'かしこまりました。こちらの札をお持ちください。', r: 'かしこまりました。こちら の ふだ お おもち ください。', e: 'Certainly. Please keep this tag.' },
@@ -85,7 +85,7 @@ export const LIFE: Dialogue[] = [
       { s: 'other', t: 'はい、フロントで二百円でお貸ししています。', r: 'はい、フロント で にひゃくえん で おかし して います。', e: 'Yes, we rent them at the front desk for two hundred yen.' },
       { s: 'you', t: 'タトゥーがあっても入れますか。', r: 'タトゥー が あって も はいれます か。', e: 'Can I enter even with a tattoo?', wrong: [
         ['タトゥーがあっても入りますか。', 'タトゥー が あって も はいります か。', 'hairimasu just states future fact ("will I enter"). Asking whether it is ALLOWED needs the potential hairemasu.'],
-        ['タトゥーをあっても入れますか。', 'タトゥー お あって も はいれます か。', 'aru is intransitive — existence takes ga, not o.']
+        ['タトゥーをあっても入れますか。', 'タトゥー お あって も はいれます か。', 'aru is intransitive; existence takes ga, not o.']
       ] },
       { s: 'other', t: '申し訳ございませんが、タトゥーがある方はご遠慮いただいております。シールでお隠しいただければ大丈夫です。', r: 'もうしわけ ございません が、タトゥー が ある かた わ ごえんりょ いただいて おります。シール で おかくし いただければ だいじょうぶ です。', e: 'I am sorry, but guests with tattoos are asked to refrain. If you cover it with a patch, that is fine.' },
       { s: 'you', t: 'タオルは持って入ってもいいですか。', r: 'タオル わ もって はいって も いい です か。', e: 'May I take a towel in?', wrong: [
@@ -113,7 +113,7 @@ export const LIFE: Dialogue[] = [
     turns: [
       { s: 'other', t: 'ただいま、〇〇線は人身事故の影響で運転を見合わせております。', r: 'ただいま、まるまるせん わ じんしん じこ の えいきょう で うんてん お みあわせて おります。', e: 'Right now, the XX line has suspended service due to a person-related accident.' },
       { s: 'you', t: 'すみません、電車はいつ動きますか。', r: 'すみません、でんしゃ わ いつ うごきます か。', e: 'Excuse me, when will the trains run?', wrong: [
-        ['すみません、電車をいつ動きますか。', 'すみません、でんしゃ お いつ うごきます か。', 'ugoku is intransitive — the train moves by itself.'],
+        ['すみません、電車をいつ動きますか。', 'すみません、でんしゃ お いつ うごきます か。', 'ugoku is intransitive; the train moves by itself.'],
         ['すみません、電車はいつ動かしますか。', 'すみません、でんしゃ わ いつ うごかします か。', 'ugokasu means to move something. The train moving is ugoku.']
       ] },
       { s: 'other', t: '一時間ほどかかる見込みです。', r: 'いちじかん ほど かかる みこみ です。', e: 'About an hour, we expect.' },
@@ -186,7 +186,7 @@ export const LIFE: Dialogue[] = [
       ] },
       { s: 'other', t: '休みの日は何をしていますか。', r: 'やすみ の ひ わ なに お して います か。', e: 'What do you do on your days off?' },
       { s: 'you', t: '料理をするのが好きです。', r: 'りょうり お する の が すき です。', e: 'I like cooking.', wrong: [
-        ['料理をするのを好きです。', 'りょうり お する の お すき です。', 'suki is an adjective — what you like takes ga.'],
+        ['料理をするのを好きです。', 'りょうり お する の お すき です。', 'suki is an adjective; what you like takes ga.'],
         ['料理をするが好きです。', 'りょうり お する が すき です。', 'A verb needs no to become a noun before ga.']
       ] },
       { s: 'other', t: 'いいですね。何を作るんですか。', r: 'いい です ね。なに お つくる ん です か。', e: 'Nice. What do you make?' },
@@ -248,13 +248,13 @@ export const LIFE: Dialogue[] = [
     turns: [
       { s: 'other', t: 'あの、さっき送ってもらったファイル、中身が違うみたいなんですが。', r: 'あの、さっき おくって もらった ファイル、なかみ が ちがう みたい な ん です が。', e: 'Um, the file you sent earlier, the contents seem different.' },
       { s: 'you', t: 'ファイルを間違えてしまいました。申し訳ありません。', r: 'ファイル お まちがえて しまいました。もうしわけ ありません。', e: 'I sent the wrong file. I am very sorry.', wrong: [
-        ['ファイルが間違えてしまいました。', 'ファイル が まちがえて しまいました。', 'machigaeru is transitive — YOU mistook it, so the file takes o.'],
+        ['ファイルが間違えてしまいました。', 'ファイル が まちがえて しまいました。', 'machigaeru is transitive; YOU mistook it, so the file takes o.'],
         ['ファイルを間違いました。', 'ファイル お まちがいました。', 'machigai is the noun. The verb is machigaeru: machigaemashita.']
       ] },
       { s: 'other', t: '大丈夫ですよ。正しいものを送ってください。', r: 'だいじょうぶ です よ。ただしい もの お おくって ください。', e: 'It is fine. Send the right one.' },
       { s: 'you', t: 'すぐにお送りします。', r: 'すぐに おおくりします。', e: 'I will send it right away.', wrong: [
         ['すぐにお送りになります。', 'すぐに おおくり に なります。', 'o-...-ni naru elevates the OTHER person. Humbling yourself is o-...-suru.'],
-        ['すぐに送っていただきます。', 'すぐに おくって いただきます。', 'te-itadaku is receiving a favour — that says they will send it for you.']
+        ['すぐに送っていただきます。', 'すぐに おくって いただきます。', 'te-itadaku is receiving a favour; that says they will send it for you.']
       ] },
       { s: 'other', t: '急がなくて大丈夫ですよ。今日中で構いません。', r: 'いそがなくて だいじょうぶ です よ。きょうじゅう で かまいません。', e: 'No need to rush. Sometime today is fine.' },
       { s: 'you', t: 'ありがとうございます。今後は送る前に確認いたします。', r: 'ありがとう ございます。こんご わ おくる まえ に かくにん いたします。', e: 'Thank you. From now on, I will double check before sending.', wrong: [
@@ -351,7 +351,7 @@ export const LIFE: Dialogue[] = [
     turns: [
       { s: 'other', t: 'あれ、今日の宿題出してませんね。', r: 'あれ、きょう の しゅくだい だしてません ね。', e: 'Huh, you have not handed in the homework for today.' },
       { s: 'you', t: '宿題が遅れてすみません。', r: 'しゅくだい が おくれて すみません。', e: 'Sorry the homework is late.', wrong: [
-        ['宿題を遅れてすみません。', 'しゅくだい お おくれて すみません。', 'okureru is intransitive — the homework is late by itself.'],
+        ['宿題を遅れてすみません。', 'しゅくだい お おくれて すみません。', 'okureru is intransitive; the homework is late by itself.'],
         ['宿題が遅らせてすみません。', 'しゅくだい が おくらせて すみません。', 'okuraseru is to delay something deliberately. Being late is okureru.']
       ] },
       { s: 'other', t: 'どうしたんですか。', r: 'どう した ん です か。', e: 'What happened?' },
@@ -367,7 +367,7 @@ export const LIFE: Dialogue[] = [
       { s: 'other', t: '次からは気をつけてくださいね。明日の朝までに出してください。', r: 'つぎ から わ き お つけて ください ね。あした の あさ まで に だして ください。', e: 'Be careful from now on. Please submit it by tomorrow morning.' },
       { s: 'you', t: 'はい、気をつけます。', r: 'はい、き お つけます。', e: 'Yes, I will.', wrong: [
         ['はい、気をつけました。', 'はい、き お つけました。', 'The past says you already were careful, which contradicts the apology.'],
-        ['はい、気がつけます。', 'はい、き が つけます。', 'The set phrase is ki o tsukeru — ki ga tsuku means to notice something, a different idiom entirely.']
+        ['はい、気がつけます。', 'はい、き が つけます。', 'The set phrase is ki o tsukeru; ki ga tsuku means to notice something, a different idiom entirely.']
       ] },
       { s: 'other', t: 'じゃあ、今日はゆっくり休んでくださいね。', r: 'じゃあ、きょう わ ゆっくり やすんで ください ね。', e: 'Then rest well today.' },
       { s: 'you', t: 'ありがとうございます。明日、必ず出します。', r: 'ありがとう ございます。あした、かならず だします。', e: 'Thank you. I will definitely submit it tomorrow.', wrong: [
@@ -473,7 +473,7 @@ export const LIFE: Dialogue[] = [
       ] },
       { s: 'other', t: 'うん、行ってきます。', r: 'うん、いって きます。', e: 'Right, off I go.' },
       { s: 'you', t: 'いってらっしゃーい!忘れ物がないようにね!', r: 'いってらっしゃーい! わすれもの が ない よう に ね!', e: 'See you later! Make sure you do not forget anything!', wrong: [
-        ['いってらっしゃーい!忘れ物をないようにね!', 'いってらっしゃーい! わすれもの お ない よう に ね!', 'nai is the negative of aru, an existence verb — it cannot take a direct object marked with o.'],
+        ['いってらっしゃーい!忘れ物をないようにね!', 'いってらっしゃーい! わすれもの お ない よう に ね!', 'nai is the negative of aru, an existence verb; it cannot take a direct object marked with o.'],
         ['いってらっしゃーい!忘れ物がしないようにね!', 'いってらっしゃーい! わすれもの が しない よう に ね!', 'shinai needs a person doing the not-forgetting; mono ga shinai makes the belongings themselves the doer. Say wasuremono ga nai you ni instead.']
       ] }
     ]

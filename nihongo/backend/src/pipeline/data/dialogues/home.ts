@@ -21,12 +21,12 @@ export const HOME: Dialogue[] = [
       { s: 'other', t: '朝ごはんは？', r: 'あさごはん わ？', e: 'Breakfast?' },
       { s: 'you', t: 'いただきます。', r: 'いただきます。', e: 'Thank you, I will.', wrong: [
         ['ごちそうさまでした。', 'ごちそうさまでした。', 'That closes a meal. You have not started one.'],
-        ['おいしいです。', 'おいしい です。', 'You have not tasted it yet — this is the moment for itadakimasu.']
+        ['おいしいです。', 'おいしい です。', 'You have not tasted it yet; this is the moment for itadakimasu.']
       ] },
       { s: 'other', t: '今日は卵焼きだよ。たくさん食べてね。', r: 'きょう わ たまごやき だ よ。たくさん たべて ね。', e: "It's rolled omelette today. Eat plenty." },
       { s: 'you', t: 'わあ、大好きです。ありがとうございます。', r: 'わあ、だいすき です。ありがとうございます。', e: 'Wow, I love it. Thank you.', wrong: [
         ['わあ、大好きでした。ありがとうございます。', 'わあ、だいすき でした。ありがとうございます。', 'daisuki is a na-adjective, and deshita puts it in the past as if you no longer feel that way. Your liking it is a present fact, so it stays daisuki desu.'],
-        ['わあ、大好きします。ありがとうございます。', 'わあ、だいすき します。ありがとうございます。', 'daisuki is a na-adjective, not a verb — it never takes suru. It pairs with desu.']
+        ['わあ、大好きします。ありがとうございます。', 'わあ、だいすき します。ありがとうございます。', 'daisuki is a na-adjective, not a verb; it never takes suru. It pairs with desu.']
       ] },
       { s: 'other', t: 'あ、そうだ。牛乳がもうないの。帰りに買ってきてくれる？', r: 'あ、そう だ。ぎゅうにゅう が もう ない の。かえり に かって きて くれる？', e: "Oh, that reminds me. There's no milk left. Can you buy some on your way back?" },
       { s: 'you', t: 'はい、分かりました。買ってきます。', r: 'はい、わかりました。かって きます。', e: "Sure, got it. I'll buy some.", wrong: [
@@ -53,7 +53,7 @@ export const HOME: Dialogue[] = [
       ] },
       { s: 'other', t: '分かった。晩ご飯はいらないね。', r: 'わかった。ばんごはん わ いらない ね。', e: "Got it. So you won't need dinner here." },
       { s: 'you', t: 'いってきます。', r: 'いってきます。', e: "I'm off.", wrong: [
-        ['さようなら。', 'さようなら。', 'sayounara is a real parting — it carries the sense of not meeting again soon. Leaving your own house for the day does not.'],
+        ['さようなら。', 'さようなら。', 'sayounara is a real parting; it carries the sense of not meeting again soon. Leaving your own house for the day does not.'],
         ['いってらっしゃい。', 'いってらっしゃい。', 'That is the reply, said BY the person staying. The one leaving says ittekimasu.']
       ] },
       { s: 'other', t: 'いってらっしゃい。気をつけて。', r: 'いってらっしゃい。き お つけて。', e: 'Off you go. Take care.' },
@@ -129,13 +129,13 @@ export const HOME: Dialogue[] = [
       ] },
       { s: 'other', t: '電気、消してから寝てね。', r: 'でんき、けして から ねて ね。', e: 'Turn off the light before you sleep, OK?' },
       { s: 'you', t: 'はい、消しておきます。', r: 'はい、けして おきます。', e: "OK, I'll turn it off.", wrong: [
-        ['はい、消えておきます。', 'はい、きえて おきます。', 'kieru is intransitive — a light going out on its own. Switching it off yourself needs the transitive kesu.'],
+        ['はい、消えておきます。', 'はい、きえて おきます。', 'kieru is intransitive: a light going out on its own. Switching it off yourself needs the transitive kesu.'],
         ['はい、消しています。', 'はい、けして います。', 'te-imasu reports the action happening now. This is a plan for before sleeping, which needs te-okimasu, not the progressive.']
       ] },
       { s: 'other', t: '玄関の鍵、閉めた？', r: 'げんかん の かぎ、しめた？', e: 'Did you lock the front door?' },
       { s: 'you', t: 'あ、まだでした。今から閉めます。', r: 'あ、まだ でした。いま から しめます。', e: "Oh, not yet. I'll lock it now.", wrong: [
-        ['あ、まだでした。今から閉まります。', 'あ、まだ でした。いま から しまります。', 'shimaru is intransitive — a door closing on its own. Locking it yourself is an action you do, which needs the transitive shimeru.'],
-        ['あ、まだでした。今から閉めています。', 'あ、まだ でした。いま から しめて います。', 'te-imasu describes an action already in progress. You have not started yet — plain shimemasu.']
+        ['あ、まだでした。今から閉まります。', 'あ、まだ でした。いま から しまります。', 'shimaru is intransitive: a door closing on its own. Locking it yourself is an action you do, which needs the transitive shimeru.'],
+        ['あ、まだでした。今から閉めています。', 'あ、まだ でした。いま から しめて います。', 'te-imasu describes an action already in progress. You have not started yet: plain shimemasu.']
       ] },
       { s: 'other', t: 'お願い。あと、明日は何時に起きるの？', r: 'おねがい。あと、あした わ なんじ に おきる の？', e: 'Thanks. Also, what time are you getting up tomorrow?' },
       { s: 'you', t: '六時に起きます。アラームをかけておきます。', r: 'ろくじ に おきます。アラーム お かけて おきます。', e: "I'll get up at six. I'll set an alarm.", wrong: [
@@ -163,11 +163,11 @@ export const HOME: Dialogue[] = [
       { s: 'other', t: 'テーブルの上にあるよ。', r: 'テーブル の うえ に ある よ。', e: 'It is on the table.' },
       { s: 'you', t: 'ありがとうございます。', r: 'ありがとうございます。', e: 'Thank you.', wrong: [
         ['どういたしまして。', 'どういたしまして。', 'That is the reply TO thanks. You are the one being helped.'],
-        ['すみませんでした。', 'すみません でした。', 'An apology, not thanks — it suggests you did something wrong by asking.']
+        ['すみませんでした。', 'すみません でした。', 'An apology, not thanks; it suggests you did something wrong by asking.']
       ] },
       { s: 'other', t: 'また携帯探してたの？よく忘れるね。', r: 'また けいたい さがしてた の？よく わすれる ね。', e: 'Looking for your phone again? You lose it a lot.' },
       { s: 'you', t: 'すみません、気をつけます。', r: 'すみません、き お つけます。', e: "Sorry, I'll be more careful.", wrong: [
-        ['すみません、気がつけます。', 'すみません、き が つけます。', 'ki o tsukeru is a set phrase — the object ki takes o, not ga.'],
+        ['すみません、気がつけます。', 'すみません、き が つけます。', 'ki o tsukeru is a set phrase; the object ki takes o, not ga.'],
         ['すみません、気をつきます。', 'すみません、き お つきます。', 'The set phrase pairs ki with tsukeru, a transitive verb. tsuku is the intransitive counterpart and does not fit here.']
       ] },
       { s: 'other', t: 'あ、そういえば、リモコンも見当たらないんだけど。', r: 'あ、そう いえば、リモコン も みあたらない ん だ けど。', e: "Oh, come to think of it, I can't find the remote either." },
@@ -182,7 +182,7 @@ export const HOME: Dialogue[] = [
       ] },
       { s: 'other', t: 'あ、そうだ。掃除機の後ろも見てくれる？そこによく物が挟まるから。', r: 'あ、そう だ。そうじき の うしろ も みて くれる？そこ に よく もの が はさまる から。', e: 'Oh right. Can you check behind the vacuum too? Things get stuck there a lot.' },
       { s: 'you', t: '分かりました、見てみます。ついでに、電気もつけてもらえますか。暗くて見えません。', r: 'わかりました、みて みます。ついでに、でんき も つけて もらえます か。くらくて みえません。', e: "Got it, I'll take a look. While you're at it, could you turn the light on too? It's too dark to see.", wrong: [
-        ['分かりました、見てみます。ついでに、電気もつけろ。暗くて見えません。', 'わかりました、みて みます。ついでに、でんき も つけろ。くらくて みえません。', 'tsukero is the bare imperative — blunt enough to sound like an order. Asking a housemate for a small favor needs the te-form request tsukete moraemasu ka, not a command.'],
+        ['分かりました、見てみます。ついでに、電気もつけろ。暗くて見えません。', 'わかりました、みて みます。ついでに、でんき も つけろ。くらくて みえません。', 'tsukero is the bare imperative, blunt enough to sound like an order. Asking a housemate for a small favor needs the te-form request tsukete moraemasu ka, not a command.'],
         ['分かりました、見てみます。ついでに、電気もつけてあげますか。暗くて見えません。', 'わかりました、みて みます。ついでに、でんき も つけて あげます か。くらくて みえません。', 'te-agemasu ka asks whether YOU should do it FOR them, reversing who benefits. You are the one asking for help, so it needs moraemasu ka.']
       ] },
       { s: 'other', t: 'そうかも。テレビがつかないと思ってたんだ。', r: 'そう かも。テレビ が つかない と おもってた ん だ。', e: "Maybe so. I was wondering why the TV wouldn't turn on." },
@@ -199,13 +199,13 @@ export const HOME: Dialogue[] = [
     situation: 'Bin day is tomorrow and you are not sure which one.',
     turns: [
       { s: 'you', t: '明日のごみは何ごみですか。', r: 'あした の ごみ わ なんごみ です か。', e: 'Which rubbish is it tomorrow?', wrong: [
-        ['明日のごみは何ですか。', 'あした の ごみ わ なん です か。', 'That asks what rubbish IS. You want which category — nan-gomi.'],
+        ['明日のごみは何ですか。', 'あした の ごみ わ なん です か。', 'That asks what rubbish IS. You want which category: nan-gomi.'],
         ['明日はごみが何ごみですか。', 'あした わ ごみ が なんごみ です か。', 'Two topics fighting. The subject is the rubbish, so ashita modifies it with no: ashita no gomi.']
       ] },
       { s: 'other', t: '燃えるごみです。', r: 'もえる ごみ です。', e: 'Burnable.' },
       { s: 'you', t: '分かりました。出しておきます。', r: 'わかりました。だして おきます。', e: 'Got it. I will put it out.', wrong: [
         ['分かりました。出しています。', 'わかりました。だして います。', 'te-imasu says you are doing it right now. te-okimasu says you will do it in advance and leave it done, which is what putting the bins out is.'],
-        ['分かりました。出しました。', 'わかりました。だしました。', 'Past tense — that claims it is already done.']
+        ['分かりました。出しました。', 'わかりました。だしました。', 'Past tense: that claims it is already done.']
       ] },
       { s: 'other', t: 'ネットも忘れないでね。カラスが来るから。', r: 'ネット も わすれない で ね。カラス が くる から。', e: "Don't forget the net either. The crows come." },
       { s: 'you', t: 'はい、ネットをかけておきます。何時までに出せばいいですか。', r: 'はい、ネット お かけて おきます。なんじ まで に だせば いい です か。', e: "OK, I'll put the net over it. By what time should I put it out?", wrong: [
@@ -268,7 +268,7 @@ export const HOME: Dialogue[] = [
       { s: 'other', t: 'そうしましょう。電話して、来週の火曜日に来てもらうことになったの。', r: 'そう しましょう。でんわ して、らいしゅう の かようび に きて もらう こと に なった の。', e: "Let's do that. I called, and it's been arranged for them to come next Tuesday." },
       { s: 'you', t: '分かりました。火曜日は家にいるようにします。', r: 'わかりました。かようび わ いえ に いる よう に します。', e: "Got it. I'll make sure to be home on Tuesday.", wrong: [
         ['分かりました。火曜日は家にいるようになります。', 'わかりました。かようび わ いえ に いる よう に なります。', 'you naru describes a change that happens on its own over time. A deliberate arrangement to be home needs you ni shimasu, "make it so."'],
-        ['分かりました。火曜日は家にいてあげます。', 'わかりました。かようび わ いえ に いて あげます。', "te-agemasu frames simply staying home as a favor granted to someone. There's no one being done a favor here — it's just your own arrangement."]
+        ['分かりました。火曜日は家にいてあげます。', 'わかりました。かようび わ いえ に いて あげます。', "te-agemasu frames simply staying home as a favor granted to someone. There's no one being done a favor here; it's just your own arrangement."]
       ] }
     ]
   },
@@ -296,7 +296,7 @@ export const HOME: Dialogue[] = [
       { s: 'other', t: 'いえいえ、こちらこそすみません。あ、そういえば、来週から資源ごみの日が変わるんですよ。', r: 'いえいえ、こちら こそ すみません。あ、そう いえば、らいしゅう から しげんごみ の ひ が かわる ん です よ。', e: 'Not at all, sorry for the disturbance myself. Oh, that reminds me, the recycling day is changing from next week.' },
       { s: 'you', t: 'え、知りませんでした。何曜日になるんですか。', r: 'え、しりません でした。なにようび に なる ん です か。', e: "Oh, I didn't know. What day will it become?", wrong: [
         ['え、知っていませんでした。何曜日になるんですか。', 'え、しって いません でした。なにようび に なる ん です か。', 'shirimasen deshita is the standard polite past of "did not know." Stacking shitte imasen deshita double-marks the negative and is not the natural form.'],
-        ['え、知りませんでした。何曜日になっているんですか。', 'え、しりません でした。なにようび に なって いる ん です か。', "natte iru describes a change already complete and in effect now. The day hasn't changed yet — it needs the plain future naru."]
+        ['え、知りませんでした。何曜日になっているんですか。', 'え、しりません でした。なにようび に なって いる ん です か。', "natte iru describes a change already complete and in effect now. The day hasn't changed yet; it needs the plain future naru."]
       ] },
       { s: 'other', t: '木曜日になるそうです。掲示板にも貼ってありますよ。', r: 'もくようび に なる そう です。けいじばん に も はって あります よ。', e: "It's supposed to become Thursday. It's posted on the notice board too." },
       { s: 'you', t: '分かりました。教えてくれて助かりました。', r: 'わかりました。おしえて くれて たすかりました。', e: 'Got it. Thanks for telling me, that helps.', wrong: [

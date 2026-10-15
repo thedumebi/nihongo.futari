@@ -104,7 +104,7 @@ export const N2: AuthoredReading[] = [
       ],
       [
         { t: '携帯を置いて、目の前の人と', r: 'けいたい お おいて、め の まえ の ひと と', e: 'Put down your phone, and the time spent talking' },
-        { t: '話す時間も大事にしましょう。', r: 'はなす じかん も だいじ に しましょう。', e: 'with the person in front of you — let\'s treasure that too.' },
+        { t: '話す時間も大事にしましょう。', r: 'はなす じかん も だいじ に しましょう。', e: 'with the person in front of you, let\'s treasure that too.' },
         { t: '最後まで、ありがとうございました。', r: 'さいご まで、ありがとうございました。', e: 'Thank you for listening to the end.' }
       ]
     ]
@@ -217,7 +217,7 @@ export const N2: AuthoredReading[] = [
       ],
       [
         { t: '人生は、正しい道を選ぶのではなく、', r: 'じんせい わ、ただしい みち お えらぶ の で わ なく、', e: 'Life is not about choosing the right path,' },
-        { t: '選んだ道を正しくしていくものだと', r: 'えらんだ みち お ただしく して いく もの だ と', e: 'but about making the path you chose right —' },
+        { t: '選んだ道を正しくしていくものだと', r: 'えらんだ みち お ただしく して いく もの だ と', e: 'but about making the path you chose right,' },
         { t: '学びました。', r: 'まなびました。', e: 'that is what I learned.' }
       ],
       [
