@@ -19,7 +19,7 @@ export const vapidKey = createPublicRoute({
   path: NOTIFICATION_ROUTES.VAPID_KEY,
   method: 'get',
   summary: 'The public VAPID key',
-  description: 'Null when push is not configured — the client should hide the option rather than fail.',
+  description: 'Null when push is not configured. The client should hide the option rather than fail.',
   responses: {
     [HttpStatusCodes.OK]: jsonContent(vapidKeyResponseSchema, 'Public key or null')
   }

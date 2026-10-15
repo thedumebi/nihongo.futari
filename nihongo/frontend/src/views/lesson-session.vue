@@ -268,7 +268,7 @@ onMounted(async () => {
         <KanaLesson
           v-if="phase === 'teach' && detail.kana"
           :kana="detail.kana"
-          :finish-label="detail.questions.length > 0 ? 'Got it — quiz me' : 'Got it'"
+          :finish-label="detail.questions.length > 0 ? 'Got it, quiz me' : 'Got it'"
           @done="startQuiz"
         />
 
@@ -276,7 +276,7 @@ onMounted(async () => {
           v-else-if="phase === 'teach' && detail.lesson"
           :lesson="detail.lesson"
           :prose="detail.prose"
-          :finish-label="detail.questions.length > 0 ? 'Got it — quiz me' : 'Got it'"
+          :finish-label="detail.questions.length > 0 ? 'Got it, quiz me' : 'Got it'"
           @done="startQuiz"
         />
 
@@ -369,7 +369,7 @@ onMounted(async () => {
             />
 
             <p v-if="revealed" class="text-center font-semibold" :class="correct ? 'text-[var(--color-success)]' : 'text-[var(--color-danger)]'">
-              {{ correct ? 'Correct' : `Not quite — ${question.answer.primary}` }}
+              {{ correct ? 'Correct' : `Not quite: ${question.answer.primary}` }}
             </p>
 
             <!--
@@ -403,7 +403,7 @@ onMounted(async () => {
           </p>
           <p class="mx-auto mt-3 max-w-sm text-sm text-[var(--color-muted)]">
             <template v-if="missed.size > 0">
-              {{ missed.size }} {{ missed.size === 1 ? 'question' : 'questions' }} to see again — you'll get
+              {{ missed.size }} {{ missed.size === 1 ? 'question' : 'questions' }} to see again. You'll get
               {{ missed.size === 1 ? 'it' : 'them' }} first next time this comes round in review.
             </template>
             <template v-else>

@@ -31,7 +31,7 @@ export function pushSupport(): PushSupport {
     return {
       supported: false,
       reason: isIos
-        ? 'On iPhone and iPad, add this app to your Home Screen first — Safari only allows notifications for installed apps.'
+        ? 'On iPhone and iPad, add this app to your Home Screen first. Safari only allows notifications for installed apps.'
         : 'This browser does not support push notifications.'
     }
   }

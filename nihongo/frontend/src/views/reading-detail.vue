@@ -191,7 +191,7 @@ function closeWord() {
             <span
               v-if="!reading.published"
               class="ml-2 rounded border border-[var(--color-border)] px-1.5 py-0.5 normal-case tracking-normal"
-            >Draft — awaiting review</span>
+            >Draft: awaiting review</span>
           </p>
           <h1 class="mt-1 text-3xl font-semibold" style="font-family: var(--font-jp)">
             {{ reading.title }}
@@ -252,7 +252,7 @@ function closeWord() {
 
         <div class="mt-6 grid grid-cols-1 gap-5 sm:grid-cols-2">
           <Slider v-model="speedStep" label="Speed" :min="1" :max="10" :value-text="speedText" />
-          <Segmented v-model="aidModel" label="Reading aid — this speech only" :options="aidOptions" />
+          <Segmented v-model="aidModel" label="Reading aid (this speech only)" :options="aidOptions" />
         </div>
 
         <div class="mt-8 border-t border-[var(--color-border)] pt-6">

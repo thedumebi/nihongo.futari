@@ -269,7 +269,7 @@ export async function runReminders(now = new Date()): Promise<ReminderRunResult>
         // anything due — "0 cards are waiting" is worse than staying silent.
         body: due.items > 0
           ? `${due.items} ${due.items === 1 ? 'item is' : 'items are'} waiting.`
-          : 'Reviews all clear — time to learn something new.',
+          : 'Reviews all clear. Time to learn something new.',
         url: reminderPath(due.items)
       })
       pushed += outcome.sent
@@ -557,7 +557,7 @@ export async function runNudges(now = new Date()): Promise<ReminderRunResult> {
       if (streak && streak.current >= STREAK_RISK_MIN && streak.freezes === 0 && !(await studiedToday(r.userId, streak.languageId, now))) {
         await send(r, 'streak-risk', `${r.userId}:streak-risk:${localDate}`, {
           title: `Keep your ${streak.current}-day streak`,
-          body: 'nothing is studied yet today — a few reviews or one Speak session keeps it going.',
+          body: 'nothing is studied yet today. A few reviews or one Speak session keeps it going.',
           cta: 'Open today',
           url: ROUTE_BASE_PATHS.TODAY
         })
@@ -577,7 +577,7 @@ export async function runNudges(now = new Date()): Promise<ReminderRunResult> {
         // what they get confused with, then a round telling them apart.
         await send(r, 'ghost-alert', `${r.userId}:ghost-alert:${week}`, {
           title: `${n} cards keep slipping away`,
-          body: 'this week\'s ghost boss is ready — a close look at them now saves many reviews later.',
+          body: 'this week\'s ghost boss is ready. A close look at them now saves many reviews later.',
           cta: 'Face the ghost boss',
           url: `${ROUTE_BASE_PATHS.GAMES}${GAMES_ROUTES.GHOST_BOSS}`
         })

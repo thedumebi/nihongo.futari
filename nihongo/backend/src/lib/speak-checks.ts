@@ -33,7 +33,7 @@ export function speakWellFormed(all: AuthoredSpeakSession[]): string[] {
     if (!session.title.trim() || !session.titleEn.trim())
       problems.push(`${at}: missing title`)
     if (!session.steps.some(s => 'q' in s))
-      problems.push(`${at}: no prompts — nothing to say`)
+      problems.push(`${at}: no prompts, nothing to say`)
     if (!('x' in (session.steps[0] ?? {})))
       problems.push(`${at}: must open with the teacher explaining, not a prompt`)
     for (const pattern of session.patterns) {
@@ -42,7 +42,7 @@ export function speakWellFormed(all: AuthoredSpeakSession[]): string[] {
     }
 
     if (session.steps.some(st => 's' in st) && session.kind !== 'story')
-      problems.push(`${at}: narration is for stories — set kind: 'story'`)
+      problems.push(`${at}: narration is for stories, set kind: 'story'`)
 
     for (const [i, step] of session.steps.entries()) {
       const where = `${at} step ${i}`
@@ -50,7 +50,7 @@ export function speakWellFormed(all: AuthoredSpeakSession[]): string[] {
         if (!step.s.trim() || !step.r.trim() || !step.e.trim())
           problems.push(`${where}: a narration needs its Japanese, reading and English`)
         if (hasKanji(step.r))
-          problems.push(`${where}: reading contains kanji — "${step.r}"`)
+          problems.push(`${where}: reading contains kanji: "${step.r}"`)
         continue
       }
       const line = teacherLine(step)
@@ -62,10 +62,10 @@ export function speakWellFormed(all: AuthoredSpeakSession[]): string[] {
         if (!step.t.trim() || !step.r.trim())
           problems.push(`${where}: a prompt needs its answer and reading`)
         if (hasKanji(step.r))
-          problems.push(`${where}: reading contains kanji — "${step.r}"`)
+          problems.push(`${where}: reading contains kanji: "${step.r}"`)
         // A note is shown, not spoken, and not cut into runs.
         if (step.n && /[{}]/.test(step.n))
-          problems.push(`${where}: a note is shown as written — no {braces}`)
+          problems.push(`${where}: a note is shown as written, no {braces}`)
       }
     }
   }

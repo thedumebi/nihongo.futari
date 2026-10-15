@@ -96,7 +96,7 @@ async function add(hit: SearchHit) {
       toast.success(`${hit.headword} will be added to your reviews when you are back online`)
       return
     }
-    toast.error('Could not add that word — try again')
+    toast.error('Could not add that word. Try again')
   } finally {
     adding.value = ''
   }

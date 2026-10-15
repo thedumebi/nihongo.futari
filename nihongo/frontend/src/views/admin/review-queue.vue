@@ -116,7 +116,7 @@ async function decide(action: 'approve' | 'reject') {
       </div>
       <p class="mt-2 text-sm text-[var(--color-muted)]">
         Nothing here reaches a reader until you approve it. Etymology is checked against its
-        sources; grammar prose just needs a read. A correction changes something already live —
+        sources; grammar prose just needs a read. A correction changes something already live:
         approving it applies the change everywhere it appears.
       </p>
 

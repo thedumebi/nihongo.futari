@@ -170,7 +170,7 @@ function setState(state: MediaSessionPlaybackState) {
         Loading…
       </p>
       <p v-else-if="failed" class="mt-10 text-center text-[var(--color-muted)]">
-        Could not load a session — check your connection.
+        Could not load a session. Check your connection.
       </p>
 
       <div v-else-if="session && session.items.length === 0" class="mt-8 rounded-xl border border-[var(--color-border)] p-6 text-center">
@@ -198,7 +198,7 @@ function setState(state: MediaSessionPlaybackState) {
             <p class="mt-2 text-lg">
               {{ item.prompt }}
               <!-- When the English could be more than one of your words, its first sound. -->
-              <span v-if="item.hint" class="ml-1 text-[var(--color-muted)]">— starts with <span style="font-family: var(--font-jp)">{{ item.hint }}</span></span>
+              <span v-if="item.hint" class="ml-1 text-[var(--color-muted)]">(starts with <span style="font-family: var(--font-jp)">{{ item.hint }}</span>)</span>
             </p>
             <div class="mt-6 text-center transition-opacity" :class="answered ? 'opacity-100' : 'opacity-0'" :aria-hidden="!answered">
               <p class="text-2xl" style="font-family: var(--font-jp)">

@@ -37,11 +37,11 @@ describe('tokenProblems', () => {
 
   it('warns, without failing, on two single kanji side by side', () => {
     expect(tokenProblems([{ t: '田', w: gloss('田') }, { t: '中', w: gloss('中') }], false))
-      .toEqual({ problems: [], warnings: ['two single kanji adjacent — a split compound, or just two words? 田|中'] })
+      .toEqual({ problems: [], warnings: ['two single kanji adjacent: a split compound, or just two words? 田|中'] })
   })
 
   it('reports a line glossed with a reading that produced no per-token readings', () => {
     expect(tokenProblems([{ t: '猫', w: gloss('猫') }], true).problems)
-      .toEqual(['no per-token readings — romaji mode cannot space the words'])
+      .toEqual(['no per-token readings, so romaji mode cannot space the words'])
   })
 })

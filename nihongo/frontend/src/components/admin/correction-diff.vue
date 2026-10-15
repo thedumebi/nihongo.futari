@@ -38,11 +38,11 @@ function bracketed(segments: readonly FuriganaSegment[]): string {
       <ul class="space-y-1">
         <li v-for="c in correction.tokens" :key="c.index">
           <span style="font-family: var(--font-jp)">{{ bracketed(c.from) }} → <strong>{{ bracketed(c.to) }}</strong></span>
-          <span class="text-[var(--color-muted)]"> — {{ c.why }}</span>
+          <span class="text-[var(--color-muted)]">: {{ c.why }}</span>
         </li>
         <li v-for="g in correction.gaps" :key="g.at">
           <span style="font-family: var(--font-jp)">{{ g.t }} (no reading) → <strong>{{ g.t }}[{{ g.reading }}]</strong></span>
-          <span class="text-[var(--color-muted)]"> — {{ g.why }}</span>
+          <span class="text-[var(--color-muted)]">: {{ g.why }}</span>
         </li>
       </ul>
     </template>

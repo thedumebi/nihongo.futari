@@ -53,7 +53,7 @@ let env: envType
 
 try {
   if (process.env.DOCKER_BUILD === '1') {
-    console.warn('⚠️  DOCKER_BUILD=1 — skipping full env validation. Env will be validated at runtime.')
+    console.warn('⚠️  DOCKER_BUILD=1, skipping full env validation. Env will be validated at runtime.')
     env = process.env as any
   } else {
     env = EnvSchema.parse(process.env)

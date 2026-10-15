@@ -32,10 +32,10 @@ const morae = computed(() => {
 })
 
 const PATTERN_LABEL: Record<string, string> = {
-  heiban: '平板 heiban — stays high, and the particle stays high too',
-  atamadaka: '頭高 atamadaka — drops after the first mora',
-  nakadaka: '中高 nakadaka — drops in the middle',
-  odaka: '尾高 odaka — drops on the following particle'
+  heiban: '平板 heiban: stays high, and the particle stays high too',
+  atamadaka: '頭高 atamadaka: drops after the first mora',
+  nakadaka: '中高 nakadaka: drops in the middle',
+  odaka: '尾高 odaka: drops on the following particle'
 }
 </script>
 

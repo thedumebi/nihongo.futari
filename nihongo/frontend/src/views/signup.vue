@@ -215,7 +215,7 @@ async function verifyCode() {
             Continue with Google
           </Button>
           <p class="text-center text-xs text-[var(--color-muted)]">
-            Use {{ reservedFor }} — that is the address your invite is held for.
+            Use {{ reservedFor }}. That is the address your invite is held for.
           </p>
         </div>
       </div>

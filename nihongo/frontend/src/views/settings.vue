@@ -119,7 +119,7 @@ async function finishPassword() {
     passwordStep.value = 'idle'
     passwordOtp.value = ''
     newPassword.value = ''
-    toast.success(hasPassword.value ? 'Password changed' : 'Password set — you can now sign in with it')
+    toast.success(hasPassword.value ? 'Password changed' : 'Password set. You can now sign in with it')
     hasPassword.value = true
   } finally {
     passwordBusy.value = false
@@ -156,7 +156,7 @@ async function setDayBoundary(value: string) {
     void todayStore.refresh(lang.code, true)
   } catch {
     dayBoundaryHour.value = before
-    toast.error('Could not save that — try again.')
+    toast.error('Could not save that. Try again.')
   }
 }
 
@@ -168,7 +168,7 @@ async function setDailyLimit(value: string) {
     await updateStudySettings({ dailyNewLimit: next })
   } catch {
     dailyNewLimit.value = before
-    toast.error('Could not save that — try again.')
+    toast.error('Could not save that. Try again.')
   }
 }
 
@@ -302,14 +302,14 @@ async function turnOnPush() {
       >
         <span>
           <span class="block font-medium">Tailor go to you</span>
-          <span class="block text-sm text-[var(--color-muted)]">Answer the welcome questions again — your level, pace, reading help and first-week plan.</span>
+          <span class="block text-sm text-[var(--color-muted)]">Answer the welcome questions again: your level, pace, reading help and first-week plan.</span>
         </span>
         <span aria-hidden="true">→</span>
       </router-link>
 
       <CollapsibleCard class="mt-4" title="New words a day" :summary="dailyNewLimit === null ? '' : `${dailyNewLimit} a day`">
         <p class="mt-1 text-sm text-[var(--color-muted)]">
-          How many new cards Learn gives you each day. More now means more reviews in a few days —
+          How many new cards Learn gives you each day. More now means more reviews in a few days.
           10 is a steady pace. You can always ask for a few more on the day.
         </p>
         <Segmented
@@ -329,7 +329,7 @@ async function turnOnPush() {
       >
         <p class="mt-1 text-sm text-[var(--color-muted)]">
           When a new day starts for quests, new words and your streak. It follows the timezone your
-          phone is in &mdash; now {{ deviceTimezone }} &mdash; so travelling moves it with you. Pick a
+          phone is in (now {{ deviceTimezone }}), so travelling moves it with you. Pick a
           later hour if you often study past midnight and want that to count for the evening before.
         </p>
         <Segmented
@@ -389,7 +389,7 @@ async function turnOnPush() {
             we email you a code first.
           </p>
           <p v-else-if="hasPassword === false" class="mt-1 text-sm text-[var(--color-muted)]">
-            There is no password on this account yet — you sign in with an emailed code.
+            There is no password on this account yet. You sign in with an emailed code.
             Set one if you would rather sign in with it.
           </p>
 

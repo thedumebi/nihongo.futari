@@ -110,7 +110,7 @@ async function onFinished(run: { gotIt: number, total: number }) {
     if (isNetworkError(e))
       await queueAction({ type: 'speakComplete', languageCode: lang.code, code: s.code, gotIt: run.gotIt, total: run.total })
     else
-      toast.error('Could not save this run — it still counts, try again later.')
+      toast.error('Could not save this run. It still counts, try again later.')
   }
   await findNext(s.code)
 }
@@ -154,7 +154,7 @@ async function onMissed(index: number) {
     const { added } = await missSpeakStep(s.code, index, lang.code)
     if (added && !toldAboutReviews) {
       toldAboutReviews = true
-      toast.success('Added to your reviews — prompts you miss will come back.')
+      toast.success('Added to your reviews. Prompts you miss will come back.')
     }
   } catch (e) {
     // Offline, the miss is queued so the prompt still reaches reviews.
@@ -190,7 +190,7 @@ function again() {
             <span
               v-if="!session.published"
               class="ml-2 rounded border border-[var(--color-border)] px-1.5 py-0.5 normal-case tracking-normal"
-            >Draft — awaiting review</span>
+            >Draft: awaiting review</span>
           </p>
           <h1 class="mt-1 text-3xl font-semibold">
             {{ session.titleEn }}
@@ -204,7 +204,7 @@ function again() {
           <Segmented v-model="view" label="How" :options="VIEWS" />
           <Slider
             v-model="paceStep"
-            label="Pace — slower gives more time to answer"
+            label="Pace (slower gives more time to answer)"
             :min="0"
             :max="PACES.length - 1"
             :value-text="pace.label"
@@ -220,7 +220,7 @@ function again() {
               <p class="mt-2 text-[var(--color-muted)]">
                 {{ result.gotIt }} of {{ result.total }} the first time.
                 <template v-if="result.gotIt < result.total">
-                  The ones you missed came round again — that is how it sticks.
+                  The ones you missed came round again. That is how it sticks.
                 </template>
               </p>
               <div class="mt-5 flex justify-center gap-3">

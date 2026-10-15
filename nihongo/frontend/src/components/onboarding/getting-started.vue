@@ -51,7 +51,7 @@ onMounted(() => void onboarding.load(true))
         Tailor go to you
       </p>
       <p class="mt-1 text-sm text-[var(--color-muted)]">
-        A minute of questions — where you are, what for, how long a day — and a first-week plan to match.
+        A minute of questions (where you are, what for, how long a day) and a first-week plan to match.
       </p>
       <div class="mt-3 flex flex-wrap gap-4 text-sm">
         <router-link :to="ROUTES.WELCOME" class="font-medium underline underline-offset-4">

@@ -13,7 +13,7 @@ export const get = createSecuredRoute({
   path: CROSSWORD_ROUTES.GET,
   method: 'get',
   summary: 'A kana crossword: the puzzle of the day, or a new one from the words chosen',
-  description: 'Sent whole, answers included — the phone checks each kana as it is typed. `source=known` with too few known words answers 422 with how many there are.',
+  description: 'Sent whole, answers included. The phone checks each kana as it is typed. `source=known` with too few known words answers 422 with how many there are.',
   middleware: [authMiddleware],
   request: { query: crosswordQuerySchema },
   responses: {

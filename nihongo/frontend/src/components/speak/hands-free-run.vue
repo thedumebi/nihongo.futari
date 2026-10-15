@@ -160,7 +160,7 @@ function setState(state: MediaSessionPlaybackState) {
   <div>
     <p class="text-sm text-[var(--color-muted)]">
       Plays straight through: the English, a pause for you to say it, then the answer. Works with the
-      screen off. Pause during the silence to take as long as you need — play again gives the answer. Listening does not mark the session done — run it on screen to check yourself.
+      screen off. Pause during the silence to take as long as you need. Play again gives the answer. Listening does not mark the session done, so run it on screen to check yourself.
     </p>
 
     <div class="mt-6 min-h-[12rem] rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] p-6">
@@ -168,7 +168,7 @@ function setState(state: MediaSessionPlaybackState) {
         {{ finished ? 'Finished' : `${current + 1} of ${steps.length}` }}
       </p>
       <p v-if="heldInThinking && !playing" class="mt-1 text-sm text-[var(--color-muted)]">
-        Paused — take as long as you need. Play gives the answer.
+        Paused. Take as long as you need. Play gives the answer.
       </p>
       <template v-if="step && !finished">
         <TeacherLine :say="step.say" class="mt-2 text-lg" />

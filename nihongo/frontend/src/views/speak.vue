@@ -106,7 +106,7 @@ async function load() {
         Speak
       </h1>
       <p class="mt-2 text-[var(--color-muted)]">
-        Say Japanese out loud, built up a piece at a time. Nothing to memorise &mdash; just say it.
+        Say Japanese out loud, built up a piece at a time. Nothing to memorise: just say it.
       </p>
 
       <p v-if="loading" class="mt-10 text-center text-[var(--color-muted)]">

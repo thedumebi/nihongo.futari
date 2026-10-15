@@ -22,7 +22,7 @@ export const list = createSecuredRoute({
   summary: 'Every lesson, by level',
   description:
     'One row per topic, grouped by curriculum unit where the level defines them. '
-    + '`exampleCount` of zero means a short lesson — the explanation and a single question — '
+    + '`exampleCount` of zero means a short lesson (the explanation and a single question), '
     + 'which is most of N4-N1 until the sentences are authored.',
   middleware: [authMiddleware],
   request: { query: languageQuery },
@@ -56,7 +56,7 @@ export const complete = createSecuredRoute({
   method: 'post',
   summary: 'Finish a lesson',
   description:
-    'Records the completion and the questions missed. Admits the topic to review — the queue '
+    'Records the completion and the questions missed. Admits the topic to review. The queue '
     + 'will not offer a grammar item until its lesson has been opened. Writes no review history.',
   middleware: [authMiddleware, writeLimiter],
   request: {

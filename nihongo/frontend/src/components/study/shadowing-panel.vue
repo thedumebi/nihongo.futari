@@ -126,7 +126,7 @@ function compare() {
   <div>
     <p class="text-sm text-[var(--color-muted)]">
       Pick a line and hear it, then record yourself saying it the same way. You will hear the two
-      back to back, with both melodies drawn — match where it rises and falls. Nothing you record
+      back to back, with both melodies drawn. Match where it rises and falls. Nothing you record
       leaves this phone.
     </p>
 

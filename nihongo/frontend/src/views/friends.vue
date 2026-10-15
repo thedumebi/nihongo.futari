@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { ActivityCounts, FriendsResponse, FriendView } from '@nihongo/shared/types'
 
-import { Check, ChevronDown, Flame, Grid3x3, Info, UserPlus, X } from 'lucide-vue-next'
+import { Check, ChevronDown, Flame, Grid3x3, UserPlus, X } from 'lucide-vue-next'
 import { onMounted, ref } from 'vue'
 import { useRoute } from 'vue-router'
 
@@ -53,7 +53,7 @@ const COUNTS: Array<{ key: keyof ActivityCounts, label: string }> = [
   { key: 'games', label: 'Games' }
 ]
 const BOTH_STUDIED_HELP = 'Days in a row that you and this friend both studied. It counts once you both share "Studied today" in Settings, and today counts once you have both studied.'
-const BOARD_HELP = 'The last seven days. Ranked by how many days each of you studied — turning up is what counts — and a tie goes to whoever earned more XP. Only friends who share their week are on it.'
+const BOARD_HELP = 'The last seven days. Ranked by how many days each of you studied, because turning up is what counts. A tie goes to whoever earned more XP. Only friends who share their week are on it.'
 
 // ============ Lifecycle Hooks ============
 onMounted(load)
@@ -80,7 +80,7 @@ async function add() {
     await load()
   } catch (e) {
     const message = (e as { response?: { data?: { message?: string } } }).response?.data?.message
-    toast.error(message ?? 'Could not send that — check the code.')
+    toast.error(message ?? 'Could not send that. Check the code.')
   } finally {
     adding.value = false
   }
@@ -151,8 +151,8 @@ function minutes(seconds: number): string {
           </Button>
         </form>
         <p class="mt-2 text-sm text-[var(--color-muted)]">
-          Your code is <span class="font-mono tracking-widest text-[var(--color-text)]">{{ data.settings.code }}</span> —
-          share it or the link from <router-link :to="ROUTES.SETTINGS" class="underline underline-offset-4">
+          Your code is <span class="font-mono tracking-widest text-[var(--color-text)]">{{ data.settings.code }}</span>.
+          Share it or the link from <router-link :to="ROUTES.SETTINGS" class="underline underline-offset-4">
             Settings
           </router-link>.
         </p>
@@ -216,8 +216,8 @@ function minutes(seconds: number): string {
                 </div>
                 <div>
                   <Tooltip :content="BOTH_STUDIED_HELP">
-                    <dt class="cursor-help text-[var(--color-muted)]">
-                      <Flame class="inline h-3.5 w-3.5 align-[-2px]" /> Both studied <Info class="inline h-3 w-3 align-[-1px]" aria-hidden="true" />
+                    <dt class="text-[var(--color-muted)] underline decoration-dotted underline-offset-4">
+                      <Flame class="inline h-3.5 w-3.5 align-[-2px]" /> Both studied
                     </dt>
                   </Tooltip>
                   <dd>{{ bothStudied(f) }}</dd>
@@ -262,8 +262,8 @@ function minutes(seconds: number): string {
         <!-- The weekly board: days studied first, XP to break a tie. -->
         <section v-if="data.board.length > 1" class="mt-8">
           <Tooltip :content="BOARD_HELP">
-            <h2 class="flex w-fit cursor-help items-center gap-1 text-xs uppercase tracking-wide text-[var(--color-muted)]">
-              Last 7 days · days studied <Info class="h-3 w-3" aria-hidden="true" />
+            <h2 class="w-fit text-xs uppercase tracking-wide text-[var(--color-muted)] underline decoration-dotted underline-offset-4">
+              Last 7 days · days studied
             </h2>
           </Tooltip>
           <ol class="mt-3 space-y-2">

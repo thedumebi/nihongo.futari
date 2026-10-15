@@ -42,7 +42,7 @@ const progress = computed(() => levelProgress(props.totalXp))
 const earning = computed(() => [
   { label: 'Learn a new card', xp: XP_RULES.NEW_ITEM },
   { label: 'Get a review right', xp: XP_RULES.CORRECT },
-  { label: 'Get a review wrong — showing up counts', xp: XP_RULES.INCORRECT },
+  { label: 'Get a review wrong (showing up counts)', xp: XP_RULES.INCORRECT },
   { label: 'Complete a daily quest', xp: QUEST_XP },
   ...(Object.entries(ACTIVITY_LABELS) as Array<[ActivityKind, string]>)
     .map(([kind, label]) => ({ label, xp: XP_FOR_ACTIVITY[kind] }))

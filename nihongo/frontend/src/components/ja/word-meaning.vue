@@ -126,7 +126,7 @@ onBeforeUnmount(() => {
                   <span style="font-family: var(--font-jp)">{{ part.form }}</span>
                   <span v-if="part.reading" class="text-xs text-[var(--color-muted)]">{{ kanaLineToRomaji(part.reading) }}</span>
                   <span :class="part.meanings.length ? '' : 'text-[var(--color-muted)]'">
-                    {{ part.meanings.length ? part.meanings.slice(0, 2).join('; ') : '—' }}
+                    {{ part.meanings.length ? part.meanings.slice(0, 2).join('; ') : '-' }}
                   </span>
                 </li>
               </ul>

@@ -81,7 +81,7 @@ onMounted(async () => {
         <Segmented v-model="show" class="mt-6" label="Show" :options="SHOW_OPTIONS" />
 
         <p v-if="groups.length === 0" class="mt-8 text-[var(--color-muted)]">
-          {{ show === 'unlocked' ? 'Nothing unlocked yet — your first comes with your first review.' : 'Nothing here.' }}
+          {{ show === 'unlocked' ? 'Nothing unlocked yet. Your first comes with your first review.' : 'Nothing here.' }}
         </p>
         <section v-for="g in groups" :key="g.category" class="mt-8">
           <h2 class="text-xs uppercase tracking-wide text-[var(--color-muted)]">

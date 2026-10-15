@@ -105,7 +105,7 @@ watch(() => route.params.slug, load)
         </p>
 
         <p v-if="point.inReview" class="mt-4 rounded-lg border border-[var(--color-border)] px-3 py-2 text-xs text-[var(--color-muted)]">
-          Draft — this explanation hasn't been signed off yet.
+          Draft: this explanation hasn't been signed off yet.
         </p>
 
         <p v-if="point.meaningLong" class="mt-6 whitespace-pre-line leading-relaxed">

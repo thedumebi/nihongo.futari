@@ -96,9 +96,9 @@ onMounted(load)
         The order <router-link :to="ROUTES.LEARN" class="underline underline-offset-4">
           New words
         </router-link>
-        deals cards in &mdash; kana, words, kanji, sentences and conversations, one stage at a
+        deals cards in: kana, words, kanji, sentences and conversations, one stage at a
         time. The next stage opens once most of this one has stuck. You do not study here: New
-        words gives you today's cards from your current stage. Grammar is not staged &mdash; it is
+        words gives you today's cards from your current stage. Grammar is not staged: it is
         taught in <router-link :to="ROUTES.LESSONS" class="underline underline-offset-4">
           Lessons
         </router-link>,
@@ -134,7 +134,7 @@ onMounted(load)
           </p>
           <p v-if="currentStage" class="mt-1 text-sm text-[var(--color-muted)]">
             <template v-if="currentStage.total > currentStage.started">
-              {{ currentStage.total - currentStage.started }} still to start — New words brings a few each day.
+              {{ currentStage.total - currentStage.started }} still to start. New words brings a few each day.
             </template>
             Stage {{ (current.currentStage ?? 0) + 1 }} opens at {{ Math.round(STAGE_PASS * 100) }}% learned
             ({{ Math.ceil(currentStage.total * STAGE_PASS) }} cards). A card counts as learned once it
@@ -200,7 +200,7 @@ onMounted(load)
                   stage has stuck, in the same unit the study header uses.
                 -->
                   <Tooltip
-                    :content="`${stage.learned} of ${stage.total} CARDS in this stage have graduated. Every item has several cards — recognising a kana and writing it are counted separately — so this number is larger than the ${describe(stage)} above it. Most of them must graduate before the next stage opens; a card you have suspended is not counted either way.`"
+                    :content="`${stage.learned} of ${stage.total} CARDS in this stage have graduated. Every item has several cards (recognising a kana and writing it are counted separately), so this number is larger than the ${describe(stage)} above it. Most of them must graduate before the next stage opens; a card you have suspended is not counted either way.`"
                     position="left"
                   >
                     <span class="shrink-0 text-xs text-[var(--color-muted)]">

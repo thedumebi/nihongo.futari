@@ -49,7 +49,7 @@ describe('seriesCard', () => {
 
   it('once answered, shows readings in the reader\'s script, a word using it, and the exceptions', () => {
     const text = mount(SeriesCard, { props: { series, mode: 'ask', revealed: true, script: 'kana' } }).text()
-    expect(text).toContain('Read きょう — 2 of 3 kanji with 共')
+    expect(text).toContain('Read きょう (2 of 3 kanji with 共)')
     expect(text).toContain('提供（ていきょう）')
     expect(text).toContain('Break the pattern')
     expect(text).toContain('洪')

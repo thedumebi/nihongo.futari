@@ -253,7 +253,7 @@ defineExpose({ restart, prompts })
           />
         </svg>
         <p class="text-sm text-[var(--color-muted)]">
-          {{ held ? 'Paused — take as long as you need' : 'Say it out loud' }}
+          {{ held ? 'Paused. Take as long as you need' : 'Say it out loud' }}
         </p>
       </div>
 

@@ -77,10 +77,10 @@ onMounted(async () => {
             Start a streak today.
           </template>
           <template v-else-if="today.streak.studiedToday">
-            {{ today.streak.current }}-day streak — today counts.
+            {{ today.streak.current }}-day streak. Today counts.
           </template>
           <template v-else>
-            {{ today.streak.current }}-day streak — study today to keep it.
+            {{ today.streak.current }}-day streak. Study today to keep it.
           </template>
           <router-link :to="ROUTES.PROGRESS" class="ml-auto text-sm underline-offset-4 hover:underline">
             Level {{ today.xp.level }} · {{ levelProgress(today.xp.total).toNext }} XP to {{ today.xp.level + 1 }}
@@ -100,7 +100,7 @@ onMounted(async () => {
               {{ today.due }} {{ today.due === 1 ? 'item is' : 'items are' }} waiting
             </p>
             <p class="mt-1 text-sm text-[var(--color-muted)]">
-              Do these first — they are what keeps the words you have learned.
+              Do these first. They are what keeps the words you have learned.
             </p>
             <Button class="mt-4" :to="ROUTES.REVIEW">
               Review now
@@ -235,7 +235,7 @@ onMounted(async () => {
       </template>
 
       <p v-else class="mt-10 text-center text-[var(--color-muted)]">
-        Could not load today — check your connection.
+        Could not load today. Check your connection.
       </p>
     </div>
   </AppShell>

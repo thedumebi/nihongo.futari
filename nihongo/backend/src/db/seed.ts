@@ -92,14 +92,14 @@ async function main() {
     // Numbered prefixes order the whole set, whatever the extension.
     files = [...sql, ...byName.values()].sort()
   } catch {
-    console.log(`No seeds directory at ${seedsDir} — nothing to do`)
+    console.log(`No seeds directory at ${seedsDir}, nothing to do`)
     return
   }
 
   for (const file of files) {
     const name = historyName(file)
     if (applied.has(name)) {
-      console.log(`↷ seed "${name}" already applied — skipping`)
+      console.log(`↷ seed "${name}" already applied, skipping`)
       continue
     }
     console.log(`▶ applying seed "${file}"…`)

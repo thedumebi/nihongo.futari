@@ -18,7 +18,7 @@ const auth = useAuthStore()
       {{ SITE_TAGLINE }}
     </h1>
     <p class="max-w-lg text-lg text-[var(--color-muted)]">
-      Not just <em>what</em> a word means, but where it came from &mdash; sourced, cited,
+      Not just <em>what</em> a word means, but where it came from: sourced, cited,
       and never confused with an invented mnemonic.
     </p>
     <div class="flex gap-4">

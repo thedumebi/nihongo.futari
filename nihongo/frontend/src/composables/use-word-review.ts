@@ -49,7 +49,7 @@ export function useWordReview(wordId: Ref<string | undefined | null>, label: Ref
         toast.success(`${label.value} will be added to your reviews when you are back online`)
         return
       }
-      toast.error(isAxiosError(e) && e.response?.status === 404 ? `${label.value} cannot be reviewed yet` : 'Could not add that word — try again')
+      toast.error(isAxiosError(e) && e.response?.status === 404 ? `${label.value} cannot be reviewed yet` : 'Could not add that word. Try again')
     } finally {
       saving.value = false
     }

@@ -230,7 +230,7 @@ onUnmounted(() => {
       </div>
 
       <p class="mt-2 text-sm text-[var(--color-muted)]">
-        What is due now, oldest first &mdash; the ones waiting longest are closest to being
+        What is due now, oldest first: the ones waiting longest are closest to being
         forgotten. Start reviewing to go through them one at a time.
       </p>
 

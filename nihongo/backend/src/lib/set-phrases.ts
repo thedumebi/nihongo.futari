@@ -31,20 +31,20 @@ const PHRASES: Array<[form: string, reading: string, meaning: string]> = [
   ['さようなら', 'さようなら', 'goodbye'],
   ['おやすみ', 'おやすみ', 'good night (casual)'],
   ['おやすみなさい', 'おやすみなさい', 'good night'],
-  ['はじめまして', 'はじめまして', 'how do you do — on first meeting'],
+  ['はじめまして', 'はじめまして', 'how do you do (on first meeting)'],
 
   // Thanks and apologies.
   ['ありがとう', 'ありがとう', 'thank you (casual)'],
   ['ありがとうございます', 'ありがとうございます', 'thank you'],
-  ['ありがとうございました', 'ありがとうございました', 'thank you — for something now finished'],
+  ['ありがとうございました', 'ありがとうございました', 'thank you (for something now finished)'],
   ['どうもありがとうございます', 'どうもありがとうございます', 'thank you very much'],
   ['どういたしまして', 'どういたしまして', "you're welcome"],
   ['ごめんなさい', 'ごめんなさい', 'sorry'],
-  ['失礼します', 'しつれいします', 'excuse me — on entering or leaving'],
+  ['失礼します', 'しつれいします', 'excuse me (on entering or leaving)'],
 
   // Coming and going.
-  ['いってきます', 'いってきます', "I'm off — said when leaving home"],
-  ['いってらっしゃい', 'いってらっしゃい', 'see you — said to someone leaving'],
+  ['いってきます', 'いってきます', "I'm off (said when leaving home)"],
+  ['いってらっしゃい', 'いってらっしゃい', 'see you (said to someone leaving)'],
   ['ただいま', 'ただいま', "I'm home"],
   ['おかえりなさい', 'おかえりなさい', 'welcome back'],
 
@@ -55,8 +55,8 @@ const PHRASES: Array<[form: string, reading: string, meaning: string]> = [
 
   // The polite verb the rest are built on, so a phrase this list does not hold
   // still comes apart into two pieces rather than seven.
-  ['ございます', 'ございます', 'to be — polite'],
-  ['ございました', 'ございました', 'was — polite'],
+  ['ございます', 'ございます', 'to be (polite)'],
+  ['ございました', 'ございました', 'was (polite)'],
 
   // The polite tails.
   //
@@ -68,8 +68,8 @@ const PHRASES: Array<[form: string, reading: string, meaning: string]> = [
   ['ました', 'ました', 'polite past'],
   ['ません', 'ません', 'polite negative'],
   ['ませんでした', 'ませんでした', 'polite negative past'],
-  ['ましょう', 'ましょう', "let's — polite"],
-  ['でした', 'でした', 'was — polite'],
+  ['ましょう', 'ましょう', "let's (polite)"],
+  ['でした', 'でした', 'was (polite)'],
   // The i-adjective past, with the meaning it actually has.
   //
   // The pattern indexer takes this off whichever topic reaches it first, and
@@ -81,7 +81,7 @@ const PHRASES: Array<[form: string, reading: string, meaning: string]> = [
   ['そうですか', 'そうですか', 'I see, is that so'],
   ['そうですね', 'そうですね', "that's right, let me think"],
   ['お願いします', 'おねがいします', 'please'],
-  ['よろしくお願いします', 'よろしくおねがいします', 'please — on making a request or an introduction']
+  ['よろしくお願いします', 'よろしくおねがいします', 'please (on making a request or an introduction)']
 ]
 
 /** Every phrase, longest first so the fuller form is claimed before its start. */

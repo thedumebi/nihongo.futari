@@ -93,7 +93,7 @@ onMounted(load)
       <p class="mt-2 text-sm text-[var(--color-muted)]">
         Sign-up mode is <strong>{{ signupMode }}</strong>.
         <template v-if="signupMode === 'open'">
-          Anyone can register without a code &mdash; these are optional.
+          Anyone can register without a code. These are optional.
         </template>
         <template v-else-if="signupMode === 'closed'">
           Self-signup is off entirely, so codes won't work until you change <code>SIGNUP_MODE</code>.

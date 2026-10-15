@@ -27,7 +27,7 @@ export const pitches = createPublicRoute({
   path: WORD_ROUTES.PITCH,
   method: 'get',
   summary: 'Pitch accent for several words at once',
-  description: 'For drawing every word of a line — shadowing shows the dictionary pattern under the two curves.',
+  description: 'For drawing every word of a line. Shadowing shows the dictionary pattern under the two curves.',
   request: { query: wordPitchesQuerySchema },
   responses: {
     [HttpStatusCodes.OK]: jsonContent(wordPitchesResponseSchema, 'Pitch by word id')

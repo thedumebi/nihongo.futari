@@ -30,7 +30,7 @@ const unauthorizedResponse = {
 }
 
 const forbiddenResponse = {
-  [HttpStatusCodes.FORBIDDEN]: jsonContent(ErrorSchema, 'Forbidden — admin access required')
+  [HttpStatusCodes.FORBIDDEN]: jsonContent(ErrorSchema, 'Forbidden: admin access required')
 }
 
 type RouteConfig = Parameters<typeof createRoute>[0]

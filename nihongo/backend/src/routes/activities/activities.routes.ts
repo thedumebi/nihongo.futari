@@ -12,7 +12,7 @@ export const record = createSecuredRoute({
   tags,
   path: ACTIVITY_ROUTES.RECORD,
   method: 'post',
-  summary: 'Record a finished activity — a conversation, a speech, a game',
+  summary: 'Record a finished activity: a conversation, a speech, a game',
   description: 'Counts toward the streak and earns XP once per thing per study day. Retrying changes nothing.',
   middleware: [authMiddleware, writeLimiter],
   request: {

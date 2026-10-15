@@ -2,7 +2,7 @@
 import { computed, nextTick, onBeforeUnmount, ref } from 'vue'
 
 /**
- * Hover tooltip, ported from ofuma — and a tap tooltip on a phone, where
+ * Hover tooltip, ported from ofuma, and a tap tooltip on a phone, where
  * there is no hover: a tap on the trigger opens it, a tap anywhere else or a
  * scroll closes it. A tap on a link or button inside the trigger does what
  * that control does instead, so wrapping one in a tooltip changes nothing.
@@ -54,6 +54,13 @@ function hideTooltip() {
   stopListening()
 }
 
+/** How the last press began, so a click can tell a mouse from a finger. */
+let lastPointer = 'mouse'
+
+function onPointerDown(event: PointerEvent) {
+  lastPointer = event.pointerType
+}
+
 function onPointerEnter(event: PointerEvent) {
   if (event.pointerType === 'mouse')
     showTooltip()
@@ -64,12 +71,23 @@ function onPointerLeave(event: PointerEvent) {
     hideTooltip()
 }
 
-/** Touch and pen: a tap toggles it. */
-function onTap(event: PointerEvent) {
-  if (event.pointerType === 'mouse' || props.disabled || !props.content)
+/**
+ * A click on the trigger: with a mouse it shows the tip at once (hovering
+ * already does, after a moment); with a finger it toggles it, and a tap
+ * anywhere else or a scroll closes it.
+ */
+function onClick(event: MouseEvent) {
+  if (props.disabled || !props.content)
     return
   if ((event.target as HTMLElement | null)?.closest('a, button, input, select, textarea, label'))
     return
+  if (lastPointer === 'mouse') {
+    if (showTimeout)
+      clearTimeout(showTimeout)
+    isVisible.value = true
+    void nextTick(calculatePosition)
+    return
+  }
   if (isVisible.value) {
     hideTooltip()
     return
@@ -193,9 +211,11 @@ const arrowFillClasses = computed(() => {
   <div
     ref="triggerRef"
     style="display: contents;"
+    class="tooltip-trigger"
+    @pointerdown="onPointerDown"
     @pointerenter="onPointerEnter"
     @pointerleave="onPointerLeave"
-    @pointerup="onTap"
+    @click="onClick"
   >
     <slot />
   </div>
@@ -223,3 +243,17 @@ const arrowFillClasses = computed(() => {
     </Transition>
   </Teleport>
 </template>
+
+<style>
+/*
+ * iOS Safari only sends a click to plain text when it looks tappable, so on a
+ * touch screen the trigger gets a pointer cursor (which nobody sees there).
+ * A mouse keeps the normal cursor.
+ */
+@media (hover: none) {
+  .tooltip-trigger > * {
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+  }
+}
+</style>

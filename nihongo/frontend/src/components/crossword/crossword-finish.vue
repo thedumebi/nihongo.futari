@@ -57,7 +57,7 @@ async function add(word: CrosswordEntry | CrosswordBonus) {
   } catch (e) {
     toast.error(isAxiosError(e) && e.response?.status === 404
       ? `${word.form} cannot be reviewed yet`
-      : 'Could not add that word — try again')
+      : 'Could not add that word. Try again')
   } finally {
     saving.value = null
   }

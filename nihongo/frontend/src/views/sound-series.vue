@@ -28,7 +28,7 @@ onMounted(async () => {
         Sound series
       </h1>
       <p class="mt-2 max-w-xl text-[var(--color-muted)]">
-        Most kanji are 形声文字 — a meaning part plus a <em>sound</em> part. Learn that
+        Most kanji are 形声文字: a meaning part plus a <em>sound</em> part. Learn that
         青 is セイ, and 晴・清・請・精・静 stop being five separate things to memorise.
       </p>
       <SeriesExplainer class="mt-4 max-w-xl" open />

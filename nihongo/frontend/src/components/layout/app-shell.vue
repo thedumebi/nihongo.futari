@@ -34,7 +34,7 @@ watch(() => todayStore.today?.unseenAchievements, (unseen) => {
     return
   const [first, ...rest] = unseen
   toast.success(rest.length === 0
-    ? `Achievement unlocked: ${first!.title} — ${first!.description}`
+    ? `Achievement unlocked: ${first!.title}. ${first!.description}`
     : `${unseen.length} achievements unlocked: ${unseen.map(a => a.title).join(', ')}`, 6000)
   void markAchievementsSeen(unseen.map(a => a.code)).catch(() => {})
   todayStore.today!.unseenAchievements = []
@@ -58,8 +58,8 @@ const languageOptions = computed<DropdownOption[]>(() => lang.languages.map(l =>
   label: l.nativeName,
   hint: l.itemCount === 0 ? 'empty' : `${l.itemCount}`,
   tooltip: l.itemCount === 0
-    ? `${l.name} — no content imported yet`
-    : `${l.name} — ${l.itemCount} items, ${l.levels.map(v => v.code).join(' · ')}`,
+    ? `${l.name}: no content imported yet`
+    : `${l.name}: ${l.itemCount} items, ${l.levels.map(v => v.code).join(' · ')}`,
   tooltipPosition: 'bottom' as const,
   // Nothing to study means nothing to switch to.
   disabled: l.itemCount === 0
@@ -134,7 +134,7 @@ function groupActive(items: NavMenuItem[]): boolean {
  */
 const drawerSections = computed(() => [
   { key: 'learn', title: 'Learn', items: learnMenu },
-  { key: 'practise', title: 'Practise', items: practiseMenu },
+  { key: 'practise', title: 'Practice', items: practiseMenu },
   { key: 'account', title: auth.user?.name || 'You', items: accountMenu.value }
 ])
 /** The one drawer section that is open — opening another closes it. */
@@ -239,7 +239,7 @@ async function signOut() {
               >{{ item.badge }}</span>
             </router-link>
             <NavMenu class="hidden lg:block" label="Learn" :items="learnMenu" :active="groupActive(learnMenu)" />
-            <NavMenu class="hidden lg:block" label="Practise" :items="practiseMenu" :active="groupActive(practiseMenu)" />
+            <NavMenu class="hidden lg:block" label="Practice" :items="practiseMenu" :active="groupActive(practiseMenu)" />
             <router-link
               :to="ROUTES.DICTIONARY"
               class="hidden whitespace-nowrap text-sm transition hover:text-[var(--color-text)] lg:inline-flex"
@@ -269,7 +269,7 @@ async function signOut() {
                 :to="ROUTES.PROGRESS"
                 class="flex items-center gap-1 whitespace-nowrap tabular-nums transition hover:text-[var(--color-text)]"
                 :class="todayStore.today.streak.studiedToday ? 'text-[var(--color-accent)]' : 'text-[var(--color-muted)]'"
-                :title="`${todayStore.today.streak.current}-day streak${todayStore.today.streak.studiedToday ? ' — today counts' : ' — study today to keep it'} · level ${todayStore.today.xp.level}, ${levelProgress(todayStore.today.xp.total).toNext} XP to the next`"
+                :title="`${todayStore.today.streak.current}-day streak${todayStore.today.streak.studiedToday ? ', today counts' : ', study today to keep it'} · level ${todayStore.today.xp.level}, ${levelProgress(todayStore.today.xp.total).toNext} XP to the next`"
               >
                 <Flame class="h-4 w-4" />{{ todayStore.today.streak.current }}
                 <span class="ml-1 hidden text-xs text-[var(--color-muted)] sm:inline">Lv {{ todayStore.today.xp.level }}</span>

@@ -33,7 +33,7 @@ describe('speakWellFormed', () => {
     expect(speakWellFormed([session({ steps: [{ q: 'Say it', t: '本です。', r: 'ほん です。' }] })]))
       .toEqual(['n5-01-desu: must open with the teacher explaining, not a prompt'])
     expect(speakWellFormed([session({ steps: [{ x: 'Hello.' }] })]))
-      .toEqual(['n5-01-desu: no prompts — nothing to say'])
+      .toEqual(['n5-01-desu: no prompts, nothing to say'])
   })
 
   it('refuses unbalanced braces and kanji in a reading', () => {
@@ -41,14 +41,14 @@ describe('speakWellFormed', () => {
       steps: [{ x: '"It is" is {です.' }, { q: 'Say "book"', t: '本', r: '本' }]
     })])).toEqual([
       'n5-01-desu step 0: unbalanced {braces} in ""It is" is {です."',
-      'n5-01-desu step 1: reading contains kanji — "本"'
+      'n5-01-desu step 1: reading contains kanji: "本"'
     ])
   })
 
   it('refuses braces in a note, which is shown but never spoken', () => {
     expect(speakWellFormed([session({
       steps: [{ x: 'Hi.' }, { q: 'Say "book"', t: '本です。', r: 'ほん です。', n: 'Not {あなた}.' }]
-    })])).toEqual(['n5-01-desu step 1: a note is shown as written — no {braces}'])
+    })])).toEqual(['n5-01-desu step 1: a note is shown as written, no {braces}'])
   })
 
   it('wants session numbers to run without gaps', () => {
@@ -129,13 +129,13 @@ describe('stories', () => {
     expect(speakWellFormed([story({ steps: [{ x: 'Hi.' }, { q: 'Say it', t: '本です。', r: 'ほん です。' }, { s: '本です。', r: '本 です。', e: '' }] })]))
       .toEqual([
         'n5-story-01 step 2: a narration needs its Japanese, reading and English',
-        'n5-story-01 step 2: reading contains kanji — "本 です。"'
+        'n5-story-01 step 2: reading contains kanji: "本 です。"'
       ])
   })
 
   it('keeps narration to stories', () => {
     expect(speakWellFormed([session({ steps: [{ x: 'Hi.' }, { q: 'Say it', t: '本です。', r: 'ほん です。' }, { s: '本です。', r: 'ほん です。', e: 'A book.' }] })]))
-      .toEqual(['n5-01-desu: narration is for stories — set kind: \'story\''])
+      .toEqual(['n5-01-desu: narration is for stories, set kind: \'story\''])
   })
 
   it('holds narration to the patterns taught so far, like answers', () => {

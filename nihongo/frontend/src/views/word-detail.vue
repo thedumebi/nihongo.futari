@@ -176,7 +176,7 @@ watch(() => route.params.id, load)
             <ul v-if="e.citations.length" class="mt-3 space-y-1 border-t border-[var(--color-border)] pt-3">
               <li v-for="(c, ci) in e.citations" :key="ci" class="text-xs text-[var(--color-muted)]">
                 {{ c.label }}<template v-if="c.locator">
-                  — {{ c.locator }}
+                  ({{ c.locator }})
                 </template>
                 <span v-if="c.quote" class="block italic">&ldquo;{{ c.quote }}&rdquo;</span>
               </li>

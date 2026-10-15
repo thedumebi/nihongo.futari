@@ -51,7 +51,7 @@ async function unsubscribe() {
           You're unsubscribed
         </h1>
         <p class="mt-3 text-[var(--color-muted)]">
-          No more product-update emails. Study reminders are separate — change those in Settings.
+          No more product-update emails. Study reminders are separate. Change those in Settings.
         </p>
       </template>
       <template v-else-if="state === 'invalid'">

@@ -139,7 +139,7 @@ function next() {
         Loading…
       </p>
       <p v-else-if="failed" class="mt-10 text-center text-[var(--color-muted)]">
-        Could not load a game — check your connection.
+        Could not load a game. Check your connection.
       </p>
 
       <GameEnd v-else-if="finished && game" :score="score" :total="game.rounds.length" @again="load" />
@@ -155,7 +155,7 @@ function next() {
             Build the kanji for <span class="font-semibold">“{{ round.meaning }}”</span>
           </p>
           <p class="text-sm text-[var(--color-muted)]">
-            {{ round.parts.length }} parts, {{ LAYOUT_TEXT[round.layout] ?? 'combined' }} — pick them in order ({{ round.layout === '⿱' || round.layout === '⿳' ? 'top first' : round.layout === '⿰' || round.layout === '⿲' ? 'left first' : 'outer first' }}).
+            {{ round.parts.length }} parts, {{ LAYOUT_TEXT[round.layout] ?? 'combined' }}. Pick them in order ({{ round.layout === '⿱' || round.layout === '⿳' ? 'top first' : round.layout === '⿰' || round.layout === '⿲' ? 'left first' : 'outer first' }}).
           </p>
 
           <div class="mt-6 flex items-center justify-center gap-3" style="font-family: var(--font-jp)">

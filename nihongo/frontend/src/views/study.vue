@@ -186,7 +186,7 @@ const deckOptions = computed<DropdownOption[]>(() => {
         d.locked > 0 && d.due === 0 && d.unseen === 0
           ? `${d.locked} of these open further along the course`
           : `${d.total} cards · ${d.due} due · ${d.unseen} ready to start`
-      ].filter(Boolean).join(' — '),
+      ].filter(Boolean).join(' · '),
       tooltipPosition: 'right' as const
     })))
 })
@@ -499,19 +499,19 @@ const intro = computed(() => {
  */
 const FORM_HELP: Record<string, { what: string, example: string }> = {
   masu: {
-    what: 'The polite form — how you would say it to someone you are not close to.',
+    what: 'The polite form: how you would say it to someone you are not close to.',
     example: 'たべる → たべます'
   },
   te: {
-    what: 'The te-form. It does not mean anything on its own; it is the joint that lets a verb connect to what follows — asking, linking, continuing.',
+    what: 'The te-form. It does not mean anything on its own; it is the joint that lets a verb connect to what follows: asking, linking, continuing.',
     example: 'たべる → たべて'
   },
   ta: {
-    what: 'The plain past — it already happened, said casually. Add です・ます register only if you need to be polite.',
+    what: 'The plain past: it already happened, said casually. Add です・ます register only if you need to be polite.',
     example: 'たべる → たべた'
   },
   nai: {
-    what: 'The plain negative — it does not or will not happen, said casually.',
+    what: 'The plain negative: it does not or will not happen, said casually.',
     example: 'たべる → たべない'
   }
 }
@@ -519,7 +519,7 @@ const FORM_HELP: Record<string, { what: string, example: string }> = {
 /** Suru verbs are conjugated through する, which the bare noun does not show. */
 const CLASS_NOTE: Record<string, string> = {
   suru: 'This is a suru-verb: it becomes a verb by taking する, and する is the part that changes.',
-  kuru: 'くる is irregular — it does not follow either regular pattern.',
+  kuru: 'くる is irregular: it does not follow either regular pattern.',
   aru: 'ある is irregular in the negative.'
 }
 
@@ -1122,7 +1122,7 @@ async function load() {
       // gate look like it had no effect — the page kept showing cards the
       // server had stopped returning, and nothing said why.
       errorMsg.value = navigator.onLine
-        ? 'Showing your last saved queue — the server did not respond.'
+        ? 'Showing your last saved queue. The server did not respond.'
         : ''
       await focusInput()
     } else {
@@ -1503,7 +1503,7 @@ watch(() => lang.code, async () => {
             silently mixed scopes and the numbers could not be compared.
           -->
           <Tooltip
-            :content="`${counts.due} item${counts.due === 1 ? '' : 's'} ready to review — ${counts.dueCards} card${counts.dueCards === 1 ? '' : 's'}, since one word is several · ${counts.learning} of those still on the short learning steps · ${counts.newAvailable} never seen. Words, not cards, and the same number Progress, the due list and the reminder show. Counted within the filters shown.`"
+            :content="`${counts.due} item${counts.due === 1 ? '' : 's'} ready to review (${counts.dueCards} card${counts.dueCards === 1 ? '' : 's'}, since one word is several) · ${counts.learning} of those still on the short learning steps · ${counts.newAvailable} never seen. Words, not cards, and the same number Progress, the due list and the reminder show. Counted within the filters shown.`"
             position="bottom"
           >
             <span class="text-sm text-[var(--color-muted)]">
@@ -1577,7 +1577,7 @@ watch(() => lang.code, async () => {
             You've learned {{ counts.newToday }} new {{ counts.newToday === 1 ? 'card' : 'cards' }} today.
           </p>
           <p class="mx-auto mt-3 max-w-md text-sm text-[var(--color-muted)]">
-            Letting them settle beats piling on more — they come back for review soon, and
+            Letting them settle beats piling on more. They come back for review soon, and
             that is what makes them stick. Tomorrow brings the next ones.
           </p>
           <div class="mt-5 flex flex-wrap justify-center gap-3">
@@ -1605,13 +1605,13 @@ watch(() => lang.code, async () => {
           <p class="mx-auto mt-3 max-w-md text-sm text-[var(--color-muted)]">
             Every card in {{ stage?.level }} stage {{ stage?.stage }} has been introduced, and
             {{ stageInProgress }} {{ stageInProgress === 1 ? 'is' : 'are' }} still bedding in.
-            They come back within the hour — that gap is what makes them stick — and
+            They come back within the hour (that gap is what makes them stick), and
             stage {{ (stage?.stage ?? 0) + 1 }} opens once they have.
           </p>
         </template>
         <template v-else-if="gate">
           <p class="text-2xl font-semibold">
-            Not yet — this comes later.
+            Not yet: this comes later.
           </p>
           <p class="mx-auto mt-3 max-w-md text-sm text-[var(--color-muted)]">
             {{ gateSentence }}
@@ -1632,8 +1632,8 @@ watch(() => lang.code, async () => {
           </router-link>
         </p>
         <p v-if="counts.learning > 0 && !gate" class="mx-auto mt-3 max-w-md text-sm text-[var(--color-muted)]">
-          {{ counts.learning }} {{ counts.learning === 1 ? 'card is' : 'cards are' }} still in learning
-          &mdash; those come back within the hour. That short gap is deliberate: seeing something
+          {{ counts.learning }} {{ counts.learning === 1 ? 'card is' : 'cards are' }} still in learning.
+          Those come back within the hour. That short gap is deliberate: seeing something
           again minutes later is what moves it out of short-term memory.
         </p>
         <template v-if="sessionSeen > 0">
@@ -1703,7 +1703,7 @@ watch(() => lang.code, async () => {
           <!-- Something already taught, asked a new way for the first time: say
                so, or it reads as a quiz on something never shown. -->
           <p v-if="newWay" class="mt-1 text-center text-xs text-[var(--color-muted)]">
-            A new way to practise {{ newWay }} — you've met it before.
+            A new way to practise {{ newWay }}. You've met it before.
           </p>
 
           <!--
@@ -1728,7 +1728,7 @@ watch(() => lang.code, async () => {
               <SeriesCard v-if="seriesView" :series="seriesView" mode="teach" :script="furiganaMode" />
               <template v-else>
                 <p class="text-sm text-[var(--color-muted)]">
-                  Something new — here it is first.
+                  Something new: here it is first.
                 </p>
                 <p v-if="intro.subject" class="mt-6 text-6xl leading-tight" style="font-family: var(--font-jp)">
                   {{ intro.subject }}
@@ -1788,7 +1788,7 @@ watch(() => lang.code, async () => {
               </template>
               <div class="mt-8">
                 <Button variant="primary" @click="introDone">
-                  Got it — ask me
+                  Got it, ask me
                 </Button>
               </div>
             </template>
@@ -1990,7 +1990,7 @@ watch(() => lang.code, async () => {
                     style="font-family: var(--font-jp)"
                   >
                     {{ f.ruleTemplate }}<template v-if="f.example">
-                      — {{ f.example }}
+                      ({{ f.example }})
                     </template>
                   </li>
                 </ul>
@@ -2106,7 +2106,7 @@ watch(() => lang.code, async () => {
                   Correct
                 </p>
                 <p v-else class="font-semibold text-[var(--color-danger)]">
-                  Not quite &mdash; it's <strong>{{ expected }}</strong>
+                  Not quite, it's <strong>{{ expected }}</strong>
                 </p>
                 <!-- Once answered, the word's other meanings — the card asks one. -->
                 <div v-if="alsoMeans.length" class="mx-auto mt-3 max-w-sm text-left text-sm">

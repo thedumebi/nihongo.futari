@@ -34,7 +34,7 @@ function onToggle(event: Event) {
         晴・清・静・精 all contain 青, and all are read セイ (せい).
       </p>
       <p>
-        The reading is the <strong>on-reading</strong> — the one that came from Chinese, used mostly in words
+        The reading is the <strong>on-reading</strong>, the one that came from Chinese, used mostly in words
         of two or more kanji. Dictionaries write it in katakana. It is a strong hint, not a rule.
       </p>
     </div>

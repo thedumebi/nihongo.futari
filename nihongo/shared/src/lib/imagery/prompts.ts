@@ -60,7 +60,7 @@ function frame(subject: string, extra: string[] = []): ImagePrompt {
     'COMPOSITION',
     '',
     'Centre the subject with generous breathing room. Keep the background plain'
-    + ' or near-plain — a single soft ground tone, no scenery competing for'
+    + ' or near-plain: a single soft ground tone, no scenery competing for'
     + ' attention. The image must read instantly at thumbnail size.',
     '',
     'ART DIRECTION',
@@ -103,7 +103,7 @@ export function buildVocabImagePrompt(subject: VocabImageSubject): ImagePrompt {
     `A single ${subject.gloss}. One object, one concept, nothing else in the frame.`,
     [
       '',
-      'Render it as it would appear in Japan — Japanese architecture, packaging,'
+      'Render it as it would appear in Japan: Japanese architecture, packaging,'
       + ' signage shapes, plants and everyday objects rather than a generic'
       + ' Western default.',
       ...(subject.note ? ['', subject.note] : [])

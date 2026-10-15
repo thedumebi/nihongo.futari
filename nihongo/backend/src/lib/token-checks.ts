@@ -71,7 +71,7 @@ export function tokenProblems(tokens: GlossedToken[], hasReading: boolean): Toke
     const a = tokens[i - 1]!
     const b = tokens[i]!
     if (KANJI.test(a.t) && KANJI.test(b.t) && [...a.t].length === 1 && [...b.t].length === 1)
-      warnings.push(`two single kanji adjacent — a split compound, or just two words? ${a.t}|${b.t}`)
+      warnings.push(`two single kanji adjacent: a split compound, or just two words? ${a.t}|${b.t}`)
   }
 
   // A particle glued to the end of a longer token: the gloss is then for a
@@ -90,7 +90,7 @@ export function tokenProblems(tokens: GlossedToken[], hasReading: boolean): Toke
 
   // Romaji falls back to the whole line unless every token has a reading.
   if (hasReading && !tokens.some(t => t.r))
-    problems.push('no per-token readings — romaji mode cannot space the words')
+    problems.push('no per-token readings, so romaji mode cannot space the words')
 
   return { problems, warnings }
 }

@@ -39,7 +39,7 @@ export const ghostBoss = createSecuredRoute({
   path: GAMES_ROUTES.GHOST_BOSS,
   method: 'get',
   summary: 'This week\'s ghost boss: the cards that keep slipping, with sourced explanations and look-alikes',
-  description: 'Preparation only — no review is written and no schedule changes.',
+  description: 'Preparation only: no review is written and no schedule changes.',
   middleware: [authMiddleware],
   request: { query: gamesQuerySchema.pick({ languageCode: true }) },
   responses: {

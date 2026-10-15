@@ -107,7 +107,7 @@ const canPush = computed(() => pushSupport().supported)
 const readingOptions = computed(() => FURIGANA_MODES
   .map(m => ({
     value: m,
-    label: FURIGANA_MODE_LABELS[m].label + (start.value && m === suggestedFurigana(start.value) ? ' — suggested' : ''),
+    label: FURIGANA_MODE_LABELS[m].label + (start.value && m === suggestedFurigana(start.value) ? ' (suggested)' : ''),
     hint: FURIGANA_MODE_LABELS[m].description
   }))
   .sort((a, b) => Number(b.label.endsWith('suggested')) - Number(a.label.endsWith('suggested'))))
@@ -254,7 +254,7 @@ async function skip() {
           Welcome to go
         </h1>
         <p class="mt-3 text-[var(--color-muted)]">
-          A few quick questions so the app starts where you are. About a minute — and you can change any of it later in Settings.
+          A few quick questions so the app starts where you are. About a minute, and you can change any of it later in Settings.
         </p>
       </section>
 

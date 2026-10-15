@@ -84,12 +84,12 @@ async function load() {
         Read aloud
       </h1>
       <p class="mt-2 text-[var(--color-muted)]">
-        Short speeches that scroll up the screen at your pace. Read them out loud &mdash; nobody is
+        Short speeches that scroll up the screen at your pace. Read them out loud. Nobody is
         listening but you. Tap any word for its meaning.
       </p>
       <p class="mt-2 text-sm text-[var(--color-muted)]">
         Under each one: how many of its words you already know. It rises as you learn, whether or
-        not you have opened it &mdash; around 90% it reads easily.
+        not you have opened it. Around 90%, it reads easily.
       </p>
 
       <LevelTabs class="mt-8" :model-value="active" :levels="LEVELS" :counts="counts" @update:model-value="picked = $event" />

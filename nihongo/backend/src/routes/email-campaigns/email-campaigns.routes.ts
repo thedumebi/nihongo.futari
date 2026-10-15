@@ -107,7 +107,7 @@ export const send = createAdminRoute({
   tags,
   path: EMAIL_CAMPAIGN_ROUTES.SEND,
   method: 'post',
-  summary: 'Send a draft to its audience — once',
+  summary: 'Send a draft to its audience, once',
   middleware: adminMiddlewares,
   request: { params: IdParamSchema },
   responses: {

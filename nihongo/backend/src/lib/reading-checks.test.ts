@@ -106,7 +106,7 @@ describe('wellFormed', () => {
   it('refuses kanji in the spoken reading', () => {
     const s = speech('a', ['日本'])
     s.stanzas[0]![0]!.r = '日ほん'
-    expect(wellFormed([s])).toEqual(['a 0.0: reading contains kanji — "日ほん"'])
+    expect(wellFormed([s])).toEqual(['a 0.0: reading contains kanji: "日ほん"'])
   })
 })
 

@@ -170,7 +170,7 @@ function onTouchEnd(e: TouchEvent): void {
     @touchend.passive="onTouchEnd"
   >
     <p class="text-center text-sm text-[var(--color-muted)]">
-      Something new — here it is first.
+      Something new: here it is first.
     </p>
 
     <!-- The point itself stays on screen across every card in the deck, so you
@@ -332,7 +332,7 @@ function onTouchEnd(e: TouchEvent): void {
 
     <div class="mt-8 text-center">
       <Button variant="primary" @click="next">
-        {{ last ? (finishLabel ?? 'Got it — quiz me') : 'Next' }}
+        {{ last ? (finishLabel ?? 'Got it, quiz me') : 'Next' }}
       </Button>
       <p class="mt-4">
         <RouterLink

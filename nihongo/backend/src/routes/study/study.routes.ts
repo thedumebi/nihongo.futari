@@ -128,7 +128,7 @@ export const saveWord = createSecuredRoute({
   summary: 'Put a word met while reading into review',
   description:
     'Idempotent: a word that already has a card is left alone and `added` is false. '
-    + 'No review is logged — tapping a word is not evidence of knowing it.',
+    + 'No review is logged. Tapping a word is not evidence of knowing it.',
   middleware: [authMiddleware, writeLimiter],
   request: { body: jsonContentRequired(saveWordSchema, 'The word to review') },
   responses: {

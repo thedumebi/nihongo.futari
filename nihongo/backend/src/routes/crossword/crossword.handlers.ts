@@ -15,11 +15,11 @@ export const get: AppRouteHandler<GetRoute> = async (c) => {
     return c.json({ message: 'No such level' }, HttpStatusCodes.NOT_FOUND)
   if (puzzle.error === 'learn-more') {
     return c.json({
-      message: `Learn a few more words first — a puzzle from words you know needs ${KNOWN_ENOUGH}.`,
+      message: `Learn a few more words first. A puzzle from words you know needs ${KNOWN_ENOUGH}.`,
       knownCount: puzzle.knownCount
     }, HttpStatusCodes.UNPROCESSABLE_ENTITY)
   }
-  return c.json({ message: 'Could not build a puzzle from these words — try another choice.' }, HttpStatusCodes.UNPROCESSABLE_ENTITY)
+  return c.json({ message: 'Could not build a puzzle from these words. Try another choice.' }, HttpStatusCodes.UNPROCESSABLE_ENTITY)
 }
 
 export const result: AppRouteHandler<ResultRoute> = async (c) => {

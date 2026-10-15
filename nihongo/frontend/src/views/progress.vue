@@ -42,7 +42,7 @@ const stats = computed(() => {
       // against 25 real words. Every number here now names its own unit.
       label: 'Cards started',
       value: s.started,
-      tip: 'Individual cards you have met at least once. A word is three or four cards — recognising it, reading it and hearing it are separate skills — so this is larger than the number of words. Starting a card is not the same as retaining it, which is why the stricter count sits beside it.',
+      tip: 'Individual cards you have met at least once. A word is three or four cards (recognising it, reading it and hearing it are separate skills), so this is larger than the number of words. Starting a card is not the same as retaining it, which is why the stricter count sits beside it.',
       to: null
     },
     {
@@ -59,14 +59,14 @@ const stats = computed(() => {
       label: 'Due now',
       value: s.due,
       tip: s.due > 0
-        ? `${s.due} ${s.due === 1 ? 'item' : 'items'} waiting — ${s.dueCards} ${s.dueCards === 1 ? 'card' : 'cards'} in total, since a word is several. ${s.learning > 0 ? `${s.learning} of them are still on short learning steps. ` : ''}The same number Study and the reminder show. Click to see exactly which ones.`
+        ? `${s.due} ${s.due === 1 ? 'item' : 'items'} waiting: ${s.dueCards} ${s.dueCards === 1 ? 'card' : 'cards'} in total, since a word is several. ${s.learning > 0 ? `${s.learning} of them are still on short learning steps. ` : ''}The same number Study and the reminder show. Click to see exactly which ones.`
         : 'Nothing is due for review right now. New material is still available whenever you want it.',
       to: ROUTES.DUE
     },
     {
       label: s.newLevel ? `Not started yet · ${s.newLevel}` : 'Not started yet',
       value: s.newAvailable,
-      tip: `Words, kanji, kana and sentences${s.newLevel ? ` at ${s.newLevel}` : ''} you have not met yet — what New words still has for you, counted as things rather than cards. Click to learn some. Introduced a few a day, so reviews stay manageable.`,
+      tip: `Words, kanji, kana and sentences${s.newLevel ? ` at ${s.newLevel}` : ''} you have not met yet: what New words still has for you, counted as things rather than cards. Click to learn some. Introduced a few a day, so reviews stay manageable.`,
       to: `${ROUTES.STUDY}?mode=new`
     },
     {

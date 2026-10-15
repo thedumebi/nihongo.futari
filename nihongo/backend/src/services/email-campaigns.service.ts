@@ -113,7 +113,7 @@ async function render(campaign: Content, to: Recipient) {
   const fields = { name: to.name || 'there', appUrl: site() }
   const body = inlineEmailStyles(personalise(sanitizeEmailHtml(campaign.bodyHtml), fields))
   const html = await renderTemplate('announcement', { body, preheader: campaign.preheader, unsubscribeUrl })
-  const text = `${htmlToText(body)}\n\n—\nStop product updates: ${unsubscribeUrl}`
+  const text = `${htmlToText(body)}\n\n-\nStop product updates: ${unsubscribeUrl}`
   return { html, text, oneClickUrl }
 }
 

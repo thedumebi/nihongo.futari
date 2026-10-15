@@ -79,7 +79,7 @@ function read(kana: string) {
 
     <p class="mt-5 font-medium">
       <template v-if="showReadings">
-        Read {{ reading.main }} — {{ followers.length }} of {{ series.members.length }} kanji with {{ series.component }}:
+        Read {{ reading.main }} ({{ followers.length }} of {{ series.members.length }} kanji with {{ series.component }}):
       </template>
       <template v-else>
         These kanji all contain <span style="font-family: var(--font-jp)">{{ series.component }}</span>. What reading do they usually share?

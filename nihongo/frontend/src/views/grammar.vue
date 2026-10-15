@@ -171,7 +171,7 @@ onMounted(async () => {
           {{ visible.length }} {{ visible.length === 1 ? 'pattern' : 'patterns' }}
           <template v-if="withWhy > 0">
             &middot;
-            <Tooltip content="A sourced note on where the pattern came from. Only where a source actually supports one — the rest are described, not explained." position="bottom">
+            <Tooltip content="A sourced note on where the pattern came from. Only where a source actually supports one. The rest are described, not explained." position="bottom">
               <span class="underline decoration-dotted underline-offset-4">{{ withWhy }} with a why note</span>
             </Tooltip>
           </template>

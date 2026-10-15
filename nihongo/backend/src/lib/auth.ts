@@ -246,7 +246,7 @@ export const auth = betterAuth({
         // bill. An address is eligible if it already has an account, or has a
         // live invite reservation waiting.
         if (!await mayReceiveCode(email)) {
-          pino.warn(`[AUTH] ${type} code withheld — no account or invite for that address`)
+          pino.warn(`[AUTH] ${type} code withheld: no account or invite for that address`)
           return
         }
 

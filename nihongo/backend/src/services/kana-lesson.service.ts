@@ -139,7 +139,7 @@ export async function kanaLessonSummaries(userId: string, languageId: string): P
     return {
       slug: slugFor(r.script, r.variant, r.row),
       title: characters.join(''),
-      meaningShort: `${r.script === 'hiragana' ? 'Hiragana' : 'Katakana'} — ${rowLabel(characters, r.row)}`,
+      meaningShort: `${r.script === 'hiragana' ? 'Hiragana' : 'Katakana'}: ${rowLabel(characters, r.row)}`,
       exampleCount: 0,
       questionCount: r.members.length,
       status: weakest(r.members.map(m => statuses.get(m.studyItemId) ?? 'not-started')),

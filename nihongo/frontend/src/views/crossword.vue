@@ -57,7 +57,7 @@ const LEVELS = [
   { value: 'N4' as const, label: 'N4' }
 ]
 const SOURCES = [
-  { value: 'daily' as const, label: 'Today', title: 'The puzzle of the day — the same for everyone' },
+  { value: 'daily' as const, label: 'Today', title: 'The puzzle of the day, the same for everyone' },
   { value: 'new' as const, label: 'New words', title: 'Words you have not met yet' },
   { value: 'known' as const, label: 'Words I know', title: 'Words you have learned in reviews' },
   { value: 'mix' as const, label: 'Mix', title: 'Words you know, topped up with new ones' },
@@ -171,7 +171,7 @@ async function load(fresh = false) {
     if (opening && next.source === 'daily' && next.completed) {
       opening = false
       movingOn = true
-      moved.value = 'You have done today\'s puzzle — here is a new one, from words you know and new ones.'
+      moved.value = 'You have done today\'s puzzle. Here is a new one, from words you know and new ones.'
       source.value = 'mix'
       return
     }
@@ -189,7 +189,7 @@ async function load(fresh = false) {
       errorMsg.value = data.message ?? 'Could not build a puzzle from these words.'
       knownShort.value = data.knownCount ?? null
     } else {
-      errorMsg.value = 'Could not load a puzzle — check your connection and try again.'
+      errorMsg.value = 'Could not load a puzzle. Check your connection and try again.'
     }
   } finally {
     loading.value = false
@@ -352,7 +352,7 @@ const kanjiVisible = computed(() => Boolean(current.value && kanjiShown.value.ha
           {{ puzzle.note }}
         </p>
         <p v-if="puzzle.source === 'loanwords' && source !== 'loanwords'" class="mt-2 text-sm text-[var(--color-muted)]">
-          A loanword puzzle this time — answers in katakana.
+          A loanword puzzle this time: answers in katakana.
         </p>
 
         <div v-if="doneElsewhere" class="mt-6 rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] p-6 text-center">

@@ -44,7 +44,7 @@ export const miss = createSecuredRoute({
   tags,
   path: SPEAK_ROUTES.MISS,
   method: 'post',
-  summary: 'A prompt answered "Not quite" — add it to this learner\'s reviews',
+  summary: 'A prompt answered "Not quite": add it to this learner\'s reviews',
   description: 'Creates one card for the prompt, due now. A prompt already in review is left alone, so retrying changes nothing.',
   middleware: [authMiddleware, writeLimiter],
   request: {

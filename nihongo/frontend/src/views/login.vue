@@ -52,7 +52,7 @@ onMounted(async () => {
  * the likeliest cause by far is an address with no invite behind it.
  */
 const GOOGLE_ERRORS: Record<string, string> = {
-  INVITE_REQUIRED: 'Google sign-in could not finish. This app is invite-only — redeem your invite code on the sign-up page first, then try Google again with the same email address.',
+  INVITE_REQUIRED: 'Google sign-in could not finish. This app is invite-only. Redeem your invite code on the sign-up page first, then try Google again with the same email address.',
   SIGNUPS_CLOSED: 'Sign-ups are closed at the moment. Ask an administrator to create your account.',
   DOMAIN_NOT_ALLOWED: 'That email domain is not allowed to register here.',
   signup_disabled: 'Sign-ups are closed at the moment. Ask an administrator to create your account.',

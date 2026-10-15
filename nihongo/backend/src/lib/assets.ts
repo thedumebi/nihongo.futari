@@ -26,7 +26,7 @@ import { englishVoiceFor, speakAudioPath, VOICE_OTHER } from './audio-key.js'
 const base = (env.R2_PUBLIC_BASE_URL ?? '').replace(/\/$/, '')
 
 if (!base) {
-  const message = 'R2_PUBLIC_BASE_URL is not set — audio and images have no origin to be served from. See DEPLOY.md step 7a.'
+  const message = 'R2_PUBLIC_BASE_URL is not set, so audio and images have no origin to be served from. See DEPLOY.md step 7a.'
   // Fatal in production, where a silent miss means every clip and illustration
   // 404s while the pages around them keep working — the worst kind of failure
   // to notice. Loud but survivable elsewhere, so a test run or a pipeline

@@ -59,7 +59,7 @@ import { loadEtymologies } from './sources/wiktextract.js'
  * recorded on the run for comparison.
  */
 const DEFAULT_MODEL = 'claude-haiku-4-5-20251001'
-const PROMPT_VERSION = 'etymology-word-v1'
+const PROMPT_VERSION = 'etymology-word-v2'
 
 const SYSTEM = `You explain the etymology of Japanese words for a learning app.
 
@@ -71,7 +71,7 @@ Hard rules:
 - If the passages do not actually explain the word's origin, return confidence "unknown" with an empty body. This is a correct and expected answer, not a failure. Do not reach for general knowledge to fill the gap.
 - If the passages disagree, set isDisputed and record the alternatives in competingTheories.
 
-Write for someone learning the word. Lead with the claim in one sentence, then explain why it is useful to know — what it makes predictable, or what confusion it clears up. Do not pad. If the history explains nothing helpful, say so briefly rather than inventing significance.`
+Write for someone learning the word. Lead with the claim in one sentence, then explain why it is useful to know: what it makes predictable, or what confusion it clears up. Do not pad. Never use em dashes (—); use a comma, colon, full stop or brackets instead. If the history explains nothing helpful, say so briefly rather than inventing significance.`
 
 const DRAFT_SCHEMA = {
   type: 'object',

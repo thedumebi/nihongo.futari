@@ -70,10 +70,10 @@ const STEPS: Record<GuideCode, Omit<GuideStep, 'code'>> = {
   grammar: { title: 'Take your first grammar lesson', why: 'A short lesson, then a quiz on what it taught.' },
   speak: { title: 'Do a Speak session', why: 'Say real sentences out loud, built up a piece at a time.' },
   review: { title: 'Come back tomorrow and review', why: 'Reviewing on the day it is due is what makes words stick.' },
-  conversation: { title: 'Practise a conversation', why: 'Everyday exchanges — ordering, asking the way — to try for yourself.' },
+  conversation: { title: 'Practise a conversation', why: 'Everyday exchanges (ordering, asking the way) to try for yourself.' },
   reading: { title: 'Read a speech aloud at your level', why: 'Short passages, with every word tappable.' },
   story: { title: 'Say a Speak story', why: 'A short tale told with what you have learned.' },
-  recall: { title: 'Try Recall, hands-free', why: 'Your shaky words, said aloud — good for a walk or a commute.' }
+  recall: { title: 'Try Recall, hands-free', why: 'Your shaky words, said aloud, good for a walk or a commute.' }
 }
 
 /** What each starting point needs first. */

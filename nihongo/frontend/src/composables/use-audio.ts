@@ -31,7 +31,7 @@ const errors: string[] = []
 
 function record(what: string, err: unknown): void {
   const name = err instanceof Error ? `${err.name}: ${err.message}` : String(err)
-  errors.push(`${what} — ${name}`)
+  errors.push(`${what}: ${name}`)
   if (errors.length > 10)
     errors.shift()
   if (typeof window !== 'undefined')
@@ -221,7 +221,7 @@ async function playClip(audio: HTMLAudioElement, src: string, run: number): Prom
     // remaining clip would be refused too. The caller bails rather than
     // spinning through the whole queue pretending to play it.
     if (err instanceof DOMException && err.name === 'NotAllowedError') {
-      record('queue refused — element not unlocked', err)
+      record('queue refused, element not unlocked', err)
       return 'refused'
     }
     // Anything else is this one clip's problem: step over it.

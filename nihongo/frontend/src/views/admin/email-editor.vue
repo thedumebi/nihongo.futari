@@ -208,7 +208,7 @@ async function remove() {
             {{ isNew ? 'New email' : editable ? 'Edit email' : 'Sent email' }}
           </h1>
           <p v-if="campaign && !editable" class="mt-1 text-sm text-[var(--color-muted)]">
-            {{ campaign.status === 'sending' ? 'Sending' : 'Sent' }} — {{ campaign.sent }} of {{ campaign.recipients }} delivered<template v-if="campaign.failed">
+            {{ campaign.status === 'sending' ? 'Sending' : 'Sent' }}: {{ campaign.sent }} of {{ campaign.recipients }} delivered<template v-if="campaign.failed">
               , {{ campaign.failed }} failed
             </template>.
           </p>
@@ -260,7 +260,7 @@ async function remove() {
           </div>
           <p v-if="preview" class="mt-2 text-sm">
             <span class="font-medium">{{ preview.subject }}</span>
-            <span class="text-[var(--color-muted)]"> — {{ preheader }}</span>
+            <span class="text-[var(--color-muted)]"> ({{ preheader }})</span>
           </p>
           <div v-if="!preview" class="mt-3 rounded-xl border border-dashed border-[var(--color-border)] p-10 text-center text-sm text-[var(--color-muted)]">
             Give it a subject and the preview appears here.

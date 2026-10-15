@@ -39,7 +39,7 @@ onMounted(async () => {
       <p class="mt-2 text-[var(--color-muted)]">
         This app is built on open datasets maintained by other people. Several are
         licensed CC BY-SA or CC BY, which require attribution wherever the data is
-        used &mdash; so this page is part of the licence, not a footnote.
+        used, so this page is part of the licence, not a footnote.
       </p>
 
       <p v-if="loading" class="py-12 text-center text-[var(--color-muted)]">

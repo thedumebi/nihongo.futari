@@ -39,7 +39,7 @@ export const reserve = createPublicRoute({
   summary: 'Claim an invite code for an email address',
   description:
     'Validates the code and binds it to the address for 30 minutes, so the account-creation hook can '
-    + 'authorise either signup path. Does NOT spend the code — an abandoned signup returns it to circulation.',
+    + 'authorise either signup path. Does NOT spend the code: an abandoned signup returns it to circulation.',
   middleware: [strictLimiter],
   request: { body: jsonContentRequired(reserveInviteSchema, 'Code and email') },
   responses: {

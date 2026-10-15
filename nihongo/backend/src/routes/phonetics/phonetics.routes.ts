@@ -27,7 +27,7 @@ export const getByComponent = createPublicRoute({
   path: PHONETIC_ROUTES.GET_BY_COMPONENT,
   method: 'get',
   summary: 'One series and its members',
-  description: 'Exceptions are included and flagged — a rule without them is a half-truth.',
+  description: 'Exceptions are included and flagged. A rule without them is a half-truth.',
   request: {
     params: z.object({ component: z.string().min(1) }),
     query: langQuery.pick({ languageCode: true })

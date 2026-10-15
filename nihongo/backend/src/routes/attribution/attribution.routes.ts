@@ -9,7 +9,7 @@ export const list = createPublicRoute({
   path: ATTRIBUTION_ROUTES.LIST,
   method: 'get',
   summary: 'Data sources and their licences',
-  description: 'Public and unauthenticated — the CC BY-SA attribution notice.',
+  description: 'Public and unauthenticated: the CC BY-SA attribution notice.',
   responses: {
     [HttpStatusCodes.OK]: jsonContent(attributionResponseSchema, 'Sources')
   }

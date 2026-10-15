@@ -162,7 +162,7 @@ export function wellFormed(all: AuthoredReading[]): string[] {
         if (!line.e.trim())
           problems.push(`${where}: empty English`)
         if (KANJI.test(line.r))
-          problems.push(`${where}: reading contains kanji — "${line.r}"`)
+          problems.push(`${where}: reading contains kanji: "${line.r}"`)
       }
     }
   }

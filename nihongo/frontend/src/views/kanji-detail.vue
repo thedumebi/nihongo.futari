@@ -84,7 +84,7 @@ const ASPECT_LABEL: Record<string, string> = {
               On-reading
             </h2>
             <p class="mt-1 text-lg" style="font-family: var(--font-jp)">
-              {{ kanji.readings.on.join('・') || '—' }}
+              {{ kanji.readings.on.join('・') || '-' }}
             </p>
           </div>
           <div>
@@ -92,7 +92,7 @@ const ASPECT_LABEL: Record<string, string> = {
               Kun-reading
             </h2>
             <p class="mt-1 text-lg" style="font-family: var(--font-jp)">
-              {{ kanji.readings.kun.join('・') || '—' }}
+              {{ kanji.readings.kun.join('・') || '-' }}
             </p>
           </div>
         </section>
@@ -166,7 +166,7 @@ const ASPECT_LABEL: Record<string, string> = {
             <ul v-if="entry.citations.length" class="mt-3 space-y-1 border-t border-[var(--color-border)] pt-3">
               <li v-for="(c, ci) in entry.citations" :key="ci" class="text-xs text-[var(--color-muted)]">
                 {{ c.label }}<template v-if="c.locator">
-                  — {{ c.locator }}
+                  ({{ c.locator }})
                 </template>
                 <span v-if="c.quote" class="block italic">&ldquo;{{ c.quote }}&rdquo;</span>
               </li>

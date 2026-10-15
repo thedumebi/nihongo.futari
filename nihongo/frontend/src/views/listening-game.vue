@@ -28,9 +28,9 @@ const lang = useLanguageStore()
 // ============ Constants ============
 const CONTRAST_HINT = {
   'long-vowel': 'Listen for a vowel held longer.',
-  'small-tsu': 'Listen for a tiny pause — a small っ.',
+  'small-tsu': 'Listen for a tiny pause: a small っ.',
   'n': 'Listen for an ん.',
-  'pitch': 'Same sounds — only the pitch differs. Read the shapes.'
+  'pitch': 'Same sounds. Only the pitch differs. Read the shapes.'
 } as const
 
 // ============ Reactive State ============
@@ -102,7 +102,7 @@ function next() {
         Loading…
       </p>
       <p v-else-if="failed" class="mt-10 text-center text-[var(--color-muted)]">
-        Could not load a game — check your connection.
+        Could not load a game. Check your connection.
       </p>
       <p v-else-if="game && game.rounds.length === 0" class="mt-10 text-center text-[var(--color-muted)]">
         No pairs to play yet.

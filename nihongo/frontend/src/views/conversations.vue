@@ -102,7 +102,7 @@ onMounted(load)
       </h1>
       <p class="mt-2 text-[var(--color-muted)]">
         Short exchanges you work through a turn at a time. Pick a reply and find out whether it
-        works &mdash; and if not, why not.
+        works, and if not, why not.
       </p>
       <p class="mt-2 text-sm text-[var(--color-muted)]">
         Under each one: how many of its words you already know. It rises as you learn, whether or

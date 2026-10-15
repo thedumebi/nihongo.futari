@@ -91,10 +91,10 @@ onMounted(async () => {
   <AppShell>
     <div class="mx-auto max-w-3xl px-6 py-12">
       <h1 class="text-3xl font-semibold">
-        Lessons <span class="text-xl font-normal text-[var(--color-muted)]">— kana &amp; grammar</span>
+        Lessons <span class="text-xl font-normal text-[var(--color-muted)]">(kana &amp; grammar)</span>
       </h1>
       <p class="mt-2 text-sm text-[var(--color-muted)]">
-        Learn a kana row or a grammar pattern, then get quizzed on it — in any order. Finishing one
+        Learn a kana row or a grammar pattern, then get quizzed on it, in any order. Finishing one
         puts it into your reviews. Words and kanji come through
         <router-link :to="ROUTES.LEARN" class="underline underline-offset-4">
           New words
@@ -180,7 +180,7 @@ onMounted(async () => {
                 <span
                   v-if="isShort(lesson)"
                   class="shrink-0 text-xs text-[var(--color-muted)] opacity-70"
-                  title="No example sentences yet — this lesson is the explanation and one question."
+                  title="No example sentences yet. This lesson is the explanation and one question."
                 >short</span>
 
                 <span class="w-16 shrink-0 text-right text-xs" :class="STATUS[lesson.status].tone">

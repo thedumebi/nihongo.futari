@@ -104,7 +104,7 @@ function detailLink(g: GhostBoss['ghosts'][number]): string {
         Loading…
       </p>
       <p v-else-if="failed" class="mt-10 text-center text-[var(--color-muted)]">
-        Could not load this week's boss — check your connection.
+        Could not load this week's boss. Check your connection.
       </p>
 
       <div v-else-if="boss && boss.ghosts.length === 0" class="mt-8 rounded-xl border border-[var(--color-border)] p-6 text-center">
@@ -196,7 +196,7 @@ function detailLink(g: GhostBoss['ghosts'][number]): string {
             </Button>
           </div>
           <p class="mt-4 text-center text-sm text-[var(--color-muted)]">
-            {{ boss.ghosts.length === 1 ? 'This card comes' : 'These cards come' }} back in your reviews as usual — you are readier for {{ boss.ghosts.length === 1 ? 'it' : 'them' }} now.
+            {{ boss.ghosts.length === 1 ? 'This card comes' : 'These cards come' }} back in your reviews as usual. You are readier for {{ boss.ghosts.length === 1 ? 'it' : 'them' }} now.
           </p>
         </template>
       </template>

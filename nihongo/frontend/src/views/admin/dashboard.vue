@@ -23,7 +23,7 @@ import { ROUTES } from '@/constants'
             Emails
           </router-link>
           <p class="mt-1 text-sm text-[var(--color-muted)]">
-            Write, preview and send an email to learners — product updates and news.
+            Write, preview and send an email to learners: product updates and news.
           </p>
         </li>
         <li class="p-4">
