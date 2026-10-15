@@ -1625,7 +1625,7 @@ watch(() => lang.code, async () => {
           the same as having nothing to do — and the reader has no way to tell
           unless the empty state says where the rest of the work went.
         -->
-        <p v-if="mode === 'new' && !gate && counts.due > 0" class="mx-auto mt-3 max-w-md text-sm text-[var(--color-muted)]">
+        <p v-if="mode === 'new' && !gate && !limitReached && counts.due > 0" class="mx-auto mt-3 max-w-md text-sm text-[var(--color-muted)]">
           You have met everything available at this level for now.
           <router-link :to="`${ROUTES.STUDY}?mode=due`" class="underline">
             {{ counts.due }} {{ counts.due === 1 ? 'card is' : 'cards are' }} due for review.
@@ -1644,10 +1644,10 @@ watch(() => lang.code, async () => {
             Come back when the next ones are scheduled.
           </p>
         </template>
-        <p v-else-if="!gate" class="mt-3 text-[var(--color-muted)]">
+        <p v-else-if="!gate && !limitReached" class="mt-3 text-[var(--color-muted)]">
           Everything you've learned is still resting. Check back later.
         </p>
-        <Button v-if="!gate" class="mt-6" variant="ghost" @click="load">
+        <Button v-if="!gate && !limitReached" class="mt-6" variant="ghost" @click="load">
           Refresh
         </Button>
 
