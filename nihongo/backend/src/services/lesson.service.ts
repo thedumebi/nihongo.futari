@@ -33,7 +33,7 @@ import { DateTime } from 'luxon'
 import { withAssetUrls } from '../lib/assets.js'
 import { readingFor } from '../lib/token-reading.js'
 import { recordActivity } from './activities.service.js'
-import { glossary, glossLine } from './glossary.service.js'
+import { glossary, glossLine, withPromptTokens, withSpellingVariants } from './glossary.service.js'
 import { loadExamples, loadLessons } from './grammar.service.js'
 import { getKanaLesson, KANA_SLUG_PREFIX, kanaLessonItems, kanaLessonSummaries } from './kana-lesson.service.js'
 import { saveStudyItem } from './srs.service.js'
@@ -336,6 +336,7 @@ export async function getLesson(userId: string, languageCode: string, slug: stri
   const lesson = lessons.get(point.id)
   if (!lesson)
     return null
+  const g = await glossary(languageCode)
 
   // Easiest first: the meaning question introduces, the rest build on it.
   const ordered = [...questions].sort((a, b) => Number(b.firstExposureOnly) - Number(a.firstExposureOnly))
@@ -364,7 +365,14 @@ export async function getLesson(userId: string, languageCode: string, slug: stri
     // and the bucket is the only place they exist. Returning them raw made the
     // lesson's own audio a 404: the dictation question played nothing, which is
     // the fault the play button was added to fix.
-    questions: ordered.map(({ firstExposureOnly: _drop, ...q }) => ({ ...q, assets: withAssetUrls(q.assets) })),
+    // Tokens and readings for each sentence, and every spelling of each word a
+    // dictation accepts — the same treatment the review queue gives them.
+    questions: ordered.map(({ firstExposureOnly: _drop, ...q }) => ({
+      ...q,
+      prompt: withPromptTokens(q.prompt as Record<string, unknown>, g, q.answer) as typeof q.prompt,
+      answer: withSpellingVariants(q.answer as Record<string, unknown>, g) as typeof q.answer,
+      assets: withAssetUrls(q.assets)
+    })),
     status: statusOf(point),
     studyItemId: point.studyItemId
   }

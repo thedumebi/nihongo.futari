@@ -3,7 +3,7 @@ import type { GlossedToken, WordGloss } from '@nihongo/shared/types'
 
 import db from '@nihongo/shared/db'
 import { grammarPoints, languageLevels, languages, wordForms, words, wordSenses } from '@nihongo/shared/db/schema'
-import { buildTokenIndex, classifyVerb, conjugateAll, readLine, toHiragana, tokenise } from '@nihongo/shared/lib'
+import { buildTokenIndex, classifyVerb, conjugateAll, otherSpelling, readLine, splitAround, toHiragana, tokenise } from '@nihongo/shared/lib'
 import { and, asc, eq } from 'drizzle-orm'
 
 import { glueAuthorWords, regroupKana } from '../lib/author-segments.js'
@@ -701,11 +701,36 @@ function segmentsOf(segments: unknown): FuriganaSegment[] | undefined {
  * Readings come from the furigana the importer already computed, used as
  * aligned, so the two can never disagree.
  */
-export function withPromptTokens(prompt: Record<string, unknown>, g: Glossary): Record<string, unknown> {
+export function withPromptTokens(prompt: Record<string, unknown>, g: Glossary, answer?: unknown): Record<string, unknown> {
   // A Speak answer, cut exactly as the session cuts it — the author's reading
   // guides the kana — so a word reads the same in both places.
   if (prompt.kind === 'speak' && typeof prompt.text === 'string' && typeof prompt.reading === 'string')
     return { ...prompt, tokens: glossLine(prompt.text, g, prompt.reading, { regroupKana: true }) }
+  // A grammar cloze stores one sentence with its blank, and the reading of the
+  // whole sentence with the answer filled in. Read whole through the same
+  // aligner as every other line, then cut at the blank — so each half shows
+  // furigana in the reader's mode. Without a reading the words are still cut
+  // and tappable, but carry no reading rather than a guessed one.
+  if (prompt.kind === 'grammar' && typeof prompt.sentence === 'string' && prompt.sentence.includes('＿')) {
+    const sentence = prompt.sentence
+    const from = [...sentence.slice(0, sentence.indexOf('＿'))].length
+    const primary = (answer as { primary?: unknown } | undefined)?.primary
+    const filled = typeof primary === 'string' ? primary : null
+    const reading = typeof prompt.reading === 'string' ? prompt.reading : undefined
+    const blank = /＿+/.exec(sentence)![0]
+    const full = filled ? sentence.replace(blank, filled) : null
+    if (full && reading) {
+      const { before, after } = splitAround(glossLine(full, g, reading, { regroupKana: true }), from, from + [...filled!].length)
+      // The reading spells the answer out, so it is used here and not sent on.
+      const { reading: _answerInside, ...rest } = prompt
+      return { ...rest, beforeTokens: before, afterTokens: after }
+    }
+    return {
+      ...prompt,
+      beforeTokens: glossLine(sentence.slice(0, sentence.indexOf('＿')), g),
+      afterTokens: glossLine(sentence.slice(sentence.lastIndexOf('＿') + 1), g)
+    }
+  }
   if (prompt.kind !== 'cloze')
     return prompt
 
@@ -715,4 +740,31 @@ export function withPromptTokens(prompt: Record<string, unknown>, g: Glossary): 
   if (typeof prompt.after === 'string' && prompt.after)
     out.afterTokens = glossLine(prompt.after, g, segmentsOf(prompt.afterFurigana))
   return out
+}
+
+/**
+ * A dictation answer that accepts each word in any of its spellings.
+ *
+ * The stored answer offers each word as written in the sentence and in kana.
+ * A learner whose keyboard offered 下さい for ください typed the sentence they
+ * heard and was marked wrong. Each spelling is looked up, and the word's other
+ * spelling (otherSpelling) is added beside it.
+ */
+export function withSpellingVariants<T extends Record<string, unknown>>(answer: T, g: Glossary): T {
+  const tokens = answer.tokens
+  if (!Array.isArray(tokens))
+    return answer
+  const widened = tokens.map((options: unknown) => {
+    if (!Array.isArray(options))
+      return options
+    const all = new Set(options.filter((o): o is string => typeof o === 'string'))
+    for (const option of [...all]) {
+      const word = g.byForm.get(option) ?? g.byReading.get(toHiragana(option))
+      const other = word ? otherSpelling(option, word.form, word.reading) : null
+      if (other)
+        all.add(other)
+    }
+    return [...all]
+  })
+  return { ...answer, tokens: widened }
 }

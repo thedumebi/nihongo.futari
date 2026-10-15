@@ -58,3 +58,38 @@ export function recallSchedule(count: number, gaps: readonly number[] = RECALL_G
   }
   return out
 }
+
+/** Small kana that join the one before into a single sound: きょ, しゃ, ティ. */
+const SMALL = new Set([...'ゃゅょぁぃぅぇぉャュョァィゥェォ'])
+
+/**
+ * The first sound of a reading — き in きって, きょ in きょう, ひ in ひとつ.
+ *
+ * The hint when an English prompt could mean more than one word the learner
+ * has: "one" is いち or ひとつ, and "one … ひ" says which is wanted. A leading
+ * small っ or long-vowel mark is not a sound to start on, so none is offered.
+ */
+export function firstMora(reading: string): string {
+  const chars = [...reading.trim()]
+  const first = chars[0]
+  if (!first || first === 'っ' || first === 'ッ' || first === 'ー')
+    return ''
+  return chars[1] && SMALL.has(chars[1]) ? first + chars[1] : first
+}
+
+/**
+ * Which English prompts are ambiguous for this learner: said for two or more
+ * different words they are learning. Compared as said — case and spacing
+ * aside — since that is what the learner hears.
+ */
+export function ambiguousPrompts(prompts: ReadonlyArray<{ word: string, prompt: string }>): Set<string> {
+  const said = (p: string) => p.toLowerCase().replace(/\s+/g, ' ').trim()
+  const words = new Map<string, Set<string>>()
+  for (const { word, prompt } of prompts) {
+    if (!prompt)
+      continue
+    const key = said(prompt)
+    words.set(key, (words.get(key) ?? new Set()).add(word))
+  }
+  return new Set([...words].filter(([, ws]) => ws.size > 1).map(([key]) => key))
+}

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { LessonDetail, LessonQuestion } from '@nihongo/shared/types'
+import type { FuriganaSegment, GlossedToken, LessonDetail, LessonQuestion } from '@nihongo/shared/types'
 
 import { gradeAnswer } from '@nihongo/shared/lib'
 import { Volume2 } from 'lucide-vue-next'
@@ -10,6 +10,7 @@ import { completeLesson, getLesson, getLessons } from '@/api/lessons'
 import { markLessonSeen } from '@/api/study'
 import AppShell from '@/components/layout/app-shell.vue'
 import ChoiceInput from '@/components/study/choice-input.vue'
+import ClozePrompt from '@/components/study/cloze-prompt.vue'
 import GrammarLesson from '@/components/study/grammar-lesson.vue'
 import KanaLesson from '@/components/study/kana-lesson.vue'
 import OrderInput from '@/components/study/order-input.vue'
@@ -93,6 +94,16 @@ const orderTiles = computed(() => {
 })
 const tileFurigana = computed(() =>
   (question.value?.prompt?.tokenFurigana ?? {}) as Record<string, never>)
+
+/** The cloze sentence's words and furigana, attached by the server. */
+const clozeTokens = computed(() => ({
+  before: (question.value?.prompt?.beforeTokens ?? []) as GlossedToken[],
+  after: (question.value?.prompt?.afterTokens ?? []) as GlossedToken[]
+}))
+const clozeSegments = computed(() => ({
+  before: (question.value?.prompt?.beforeFurigana ?? []) as FuriganaSegment[],
+  after: (question.value?.prompt?.afterFurigana ?? []) as FuriganaSegment[]
+}))
 
 const promptText = computed(() => {
   const p = question.value?.prompt ?? {}
@@ -284,6 +295,22 @@ onMounted(async () => {
             {{ promptText.subject }}
           </p>
 
+          <!-- The sentence in the reader's furigana mode, as Review shows it. -->
+          <ClozePrompt
+            v-else-if="(promptText.before || promptText.after) && (clozeTokens.before.length || clozeTokens.after.length || clozeSegments.before.length || clozeSegments.after.length)"
+            :before="promptText.before"
+            :after="promptText.after"
+            :before-tokens="clozeTokens.before"
+            :after-tokens="clozeTokens.after"
+            :before-segments="clozeSegments.before"
+            :after-segments="clozeSegments.after"
+            :answer="question.answer.primary"
+            :revealed="revealed"
+            :mode="mode"
+            :known-kanji="knownKanji"
+            :selected-before="null"
+            :selected-after="null"
+          />
           <p v-else-if="promptText.before || promptText.after" class="text-center text-2xl leading-relaxed" style="font-family: var(--font-jp)">
             {{ promptText.before }}<span
               class="mx-1 inline-block min-w-[3ch] border-b-2 px-2 align-bottom"

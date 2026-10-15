@@ -447,3 +447,64 @@ export function readTokenProblems(token: { t: string, r?: string, f?: readonly F
   }
   return problems
 }
+
+/** A word as shown: surface, reading, aligned furigana. */
+interface ShownToken { t: string, r?: string, f?: FuriganaSegment[] }
+
+/**
+ * Cut a line of read words around a blank.
+ *
+ * A grammar cloze is a whole sentence with one stretch removed — 言って with
+ * its て blanked. The sentence is read whole, where its reading is known, and
+ * then cut: words before the blank, words after it, and any word the blank
+ * cuts through split along its furigana (言っ before, nothing after). A kanji
+ * run is never split; it stays with the side its first character is on.
+ */
+export function splitAround<T extends ShownToken>(tokens: readonly T[], from: number, to: number): { before: T[], after: T[] } {
+  const before: T[] = []
+  const after: T[] = []
+  let pos = 0
+  for (const token of tokens) {
+    const start = pos
+    const end = pos + [...token.t].length
+    pos = end
+    if (end <= from) {
+      before.push(token)
+      continue
+    }
+    if (start >= to) {
+      after.push(token)
+      continue
+    }
+    // The blank cuts this word: keep the pieces either side of it.
+    const head: FuriganaSegment[] = []
+    const tail: FuriganaSegment[] = []
+    let at = start
+    for (const seg of token.f ?? [{ t: token.t }]) {
+      const chars = [...seg.t]
+      const segStart = at
+      at += chars.length
+      if (seg.r) {
+        if (segStart < from)
+          head.push(seg)
+        else if (segStart >= to)
+          tail.push(seg)
+        continue
+      }
+      const pre = chars.slice(0, Math.max(0, from - segStart)).join('')
+      const post = chars.slice(Math.max(0, to - segStart)).join('')
+      if (pre)
+        head.push({ t: pre })
+      if (post)
+        tail.push({ t: post })
+    }
+    // The word's leading space — the author's word break — stays with its front.
+    const lead = /^\s*/.exec(token.r ?? '')![0]
+    const piece = (f: FuriganaSegment[], space: string) => ({ ...token, t: f.map(s => s.t).join(''), r: space + f.map(s => s.r ?? s.t).join(''), f, w: undefined })
+    if (head.length)
+      before.push(piece(head, lead))
+    if (tail.length)
+      after.push(piece(tail, head.length ? '' : lead))
+  }
+  return { before, after }
+}

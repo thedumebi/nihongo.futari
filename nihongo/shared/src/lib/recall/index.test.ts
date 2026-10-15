@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import { RECALL_GAPS, recallGloss, recallSchedule } from './index.js'
+import { ambiguousPrompts, firstMora, RECALL_GAPS, recallGloss, recallSchedule } from './index.js'
 
 describe('recallGloss', () => {
   it('takes the first meaning without its asides', () => {
@@ -44,5 +44,29 @@ describe('recallSchedule', () => {
   it('is the same every time', () => {
     expect(recallSchedule(6)).toEqual(recallSchedule(6))
     expect(recallSchedule(0)).toEqual([])
+  })
+})
+
+describe('firstMora', () => {
+  it('gives the first sound, joining a small kana to the one before', () => {
+    expect(firstMora('ひとつ')).toBe('ひ')
+    expect(firstMora('きょう')).toBe('きょ')
+    expect(firstMora('シャツ')).toBe('シャ')
+  })
+
+  it('offers nothing a word cannot start on', () => {
+    expect(firstMora('っと')).toBe('')
+    expect(firstMora('')).toBe('')
+  })
+})
+
+describe('ambiguousPrompts', () => {
+  it('finds the English said for two different words, and only those', () => {
+    expect(ambiguousPrompts([
+      { word: '一', prompt: 'one' },
+      { word: '一つ', prompt: 'One' },
+      { word: '一つ', prompt: 'one' },
+      { word: '猫', prompt: 'cat' }
+    ])).toEqual(new Set(['one']))
   })
 })

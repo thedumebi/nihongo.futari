@@ -2,6 +2,7 @@ import type { RecallItem, RecallSession } from '@nihongo/shared/types'
 
 import db from '@nihongo/shared/db'
 import {
+  kana,
   languageLevels,
   languages,
   speakSessions,
@@ -13,7 +14,7 @@ import {
   words,
   wordSenses
 } from '@nihongo/shared/db/schema'
-import { recallGloss, recallSchedule } from '@nihongo/shared/lib'
+import { ambiguousPrompts, firstMora, recallGloss, recallSchedule } from '@nihongo/shared/lib'
 import { and, desc, eq, gte, inArray, isNotNull, lt, or, sql } from 'drizzle-orm'
 
 import { assetUrl, speakAnswerAudio, speakSay } from '../lib/assets.js'
@@ -77,18 +78,42 @@ export async function getRecallSession(userId: string, languageCode: string, siz
     // Ghosts first — they cost the most — then whatever is due soonest.
     .orderBy(desc(srsCards.ghost), srsCards.due)
 
+  // English said for more than one word this learner has: "one" is いち and
+  // ひとつ. Those prompts get the answer's first sound as a hint, or there is
+  // no telling which word is wanted.
+  const ambiguous = ambiguousPrompts((await db
+    .selectDistinct({ wordId: words.id, glosses: wordSenses.glosses })
+    .from(srsCards)
+    .innerJoin(studyItemFacets, eq(studyItemFacets.id, srsCards.facetId))
+    .innerJoin(studyItems, eq(studyItems.id, studyItemFacets.studyItemId))
+    .innerJoin(words, eq(words.id, studyItems.wordId))
+    .innerJoin(wordSenses, and(eq(wordSenses.wordId, words.id), eq(wordSenses.sortIndex, 0)))
+    .where(and(eq(srsCards.userId, userId), eq(srsCards.languageId, language.id))))
+    .map(w => ({ word: w.wordId, prompt: recallGloss(w.glosses.filter(g => g.lang === 'en').map(g => g.text)) })))
+  // The clip for a single kana, to say the hint aloud.
+  const kanaClips = new Map((await db.select({ character: kana.character, romaji: kana.romaji, script: kana.script }).from(kana))
+    .map(k => [k.character, assetUrl(`/audio/kana/${k.script}-${k.romaji}.m4a`)]))
+
   const items: RecallItem[] = []
   const seen = new Set<string>()
+  // One word per English prompt in a session: two words both asked as "one"
+  // looked like the same word twice, and could not both be right.
+  const asked = new Set<string>()
   for (const r of wordRows) {
     const prompt = recallGloss(r.glosses.filter(g => g.lang === 'en').map(g => g.text))
-    if (!prompt || seen.has(r.wordId) || items.length >= size)
+    const said = prompt.toLowerCase().replace(/\s+/g, ' ').trim()
+    if (!prompt || seen.has(r.wordId) || asked.has(said) || items.length >= size)
       continue
     seen.add(r.wordId)
+    asked.add(said)
+    const hint = ambiguous.has(said) ? firstMora(r.reading) || null : null
+    const hintClip = hint ? kanaClips.get(hint) : undefined
     items.push({
       key: r.wordId,
       kind: 'word',
       prompt,
-      promptAudio: [assetUrl(glossAudioPath(prompt))],
+      promptAudio: [assetUrl(glossAudioPath(prompt)), ...(hintClip ? [hintClip] : [])],
+      hint,
       text: r.form,
       reading: r.reading,
       answerAudio: assetUrl(`/audio/words/${r.entSeq}.m4a`)
@@ -128,6 +153,7 @@ export async function getRecallSession(userId: string, languageCode: string, siz
       kind: 'speak',
       prompt: say.map(s => s.text).join(' '),
       promptAudio: say.flatMap(s => s.audio ? [s.audio] : []),
+      hint: null,
       text: r.text,
       reading: r.reading,
       answerAudio: speakAnswerAudio(r.text)

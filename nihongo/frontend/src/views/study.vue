@@ -558,6 +558,13 @@ const grammarSentence = computed(() => {
   const value = current.value?.prompt?.sentence
   return typeof value === 'string' ? value : ''
 })
+/** A grammar sentence's text either side of its blank. */
+const grammarHalves = computed(() => {
+  const s = grammarSentence.value
+  return s.includes('＿')
+    ? { before: s.slice(0, s.indexOf('＿')), after: s.slice(s.lastIndexOf('＿') + 1) }
+    : { before: s, after: '' }
+})
 const grammarPoint = computed(() => {
   const value = current.value?.prompt?.point ?? current.value?.prompt?.pattern
   return typeof value === 'string' ? value : ''
@@ -1756,7 +1763,24 @@ watch(() => lang.code, async () => {
             </div>
 
             <template v-else-if="grammarSentence">
-              <p class="mt-8 text-center text-2xl leading-relaxed" style="font-family: var(--font-jp)">
+              <!-- Word by word, in the reader's furigana mode, like a vocabulary cloze. -->
+              <ClozePrompt
+                v-if="clozeBeforeTokens.length || clozeAfterTokens.length"
+                :before="grammarHalves.before"
+                :after="grammarHalves.after"
+                :before-tokens="clozeBeforeTokens"
+                :after-tokens="clozeAfterTokens"
+                :before-segments="[]"
+                :after-segments="[]"
+                :answer="current.answer.primary"
+                :revealed="revealed"
+                :mode="furiganaMode"
+                :known-kanji="knownKanji"
+                :selected-before="selectedIn('before')"
+                :selected-after="selectedIn('after')"
+                @pick="(half, index) => pickWord(half, half === 'before' ? clozeBeforeTokens : clozeAfterTokens, index)"
+              />
+              <p v-else class="mt-8 text-center text-2xl leading-relaxed" style="font-family: var(--font-jp)">
                 {{ grammarSentence }}
               </p>
               <!-- Only AFTER the reveal. For a cloze the point IS what goes in the

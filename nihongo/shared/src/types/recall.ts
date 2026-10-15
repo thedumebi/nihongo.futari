@@ -10,8 +10,13 @@ export const recallItemSchema = z.object({
   kind: z.enum(['word', 'speak']),
   /** What is asked, in English, for the screen. */
   prompt: z.string(),
-  /** The clips that ask it, in order. */
+  /** The clips that ask it, in order — the first sound's clip last, when there is a hint. */
   promptAudio: z.array(z.string()),
+  /**
+   * The answer's first sound (ひ), when the English could mean more than one
+   * word the learner has — "one" is いち or ひとつ. Null when it cannot.
+   */
+  hint: z.string().nullable(),
   /** The answer as written, and in kana for sizing the pause. */
   text: z.string(),
   reading: z.string(),

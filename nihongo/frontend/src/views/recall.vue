@@ -57,6 +57,12 @@ const item = computed(() => {
   const at = s?.order[position.value]
   return s && at !== undefined ? s.items[at] ?? null : null
 })
+/** Whether this word was already asked earlier in the session. */
+const isRepeat = computed(() => {
+  const order = session.value?.order ?? []
+  const at = order[position.value]
+  return at !== undefined && order.slice(0, position.value).includes(at)
+})
 const scale = computed(() => PACES.find(p => p.value === pace.value)?.scale ?? 1.25)
 const total = computed(() => session.value?.order.length ?? 0)
 
@@ -185,10 +191,14 @@ function setState(state: MediaSessionPlaybackState) {
         <div class="mt-6 min-h-[12rem] rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] p-6">
           <p class="text-xs uppercase tracking-wide text-[var(--color-muted)]">
             {{ finished ? 'Finished' : `${position + 1} of ${total}` }}
+            <!-- Words come back on purpose, after 1, 3 and 7 others: say so. -->
+            <span v-if="!finished && isRepeat" class="ml-2 rounded-full border border-[var(--color-border)] px-2 py-0.5 normal-case tracking-normal">again</span>
           </p>
           <template v-if="item && !finished">
             <p class="mt-2 text-lg">
               {{ item.prompt }}
+              <!-- When the English could be more than one of your words, its first sound. -->
+              <span v-if="item.hint" class="ml-1 text-[var(--color-muted)]">— starts with <span style="font-family: var(--font-jp)">{{ item.hint }}</span></span>
             </p>
             <div class="mt-6 text-center transition-opacity" :class="answered ? 'opacity-100' : 'opacity-0'" :aria-hidden="!answered">
               <p class="text-2xl" style="font-family: var(--font-jp)">

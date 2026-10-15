@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import { readLine, readTokenProblems } from './index.js'
+import { readLine, readTokenProblems, splitAround } from './index.js'
 
 const DICT: Record<string, { form: string, reading: string }> = {
   時間: { form: '時間', reading: 'じかん' },
@@ -130,5 +130,28 @@ describe('readTokenProblems', () => {
 
   it('needs nothing for a kana word', () => {
     expect(readTokenProblems({ t: 'です' })).toEqual([])
+  })
+})
+
+describe('splitAround', () => {
+  const tokens = [
+    { t: 'もう', r: 'もう', f: [{ t: 'もう' }] },
+    { t: '言って', r: ' いって', f: [{ t: '言', r: 'い' }, { t: 'って' }] },
+    { t: 'ください', r: ' ください', f: [{ t: 'ください' }] }
+  ]
+
+  it('splits the word the blank cuts through, keeping its reading on the kanji', () => {
+    // もう言って|ください with て (position 4) blanked.
+    const { before, after } = splitAround(tokens, 4, 5)
+    expect(before.map(t => [t.t, t.f])).toEqual([['もう', [{ t: 'もう' }]], ['言っ', [{ t: '言', r: 'い' }, { t: 'っ' }]]])
+    expect(after.map(t => t.t)).toEqual(['ください'])
+    // 言って began a word, so its front keeps the word break.
+    expect(before[1]!.r).toBe(' いっ')
+  })
+
+  it('keeps whole words on each side when the blank falls between them', () => {
+    const { before, after } = splitAround(tokens, 2, 2)
+    expect(before.map(t => t.t)).toEqual(['もう'])
+    expect(after.map(t => t.t)).toEqual(['言って', 'ください'])
   })
 })
