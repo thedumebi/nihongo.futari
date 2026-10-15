@@ -994,6 +994,16 @@ function play() {
   playAudio(audioSrc.value)
 }
 
+/**
+ * The level to narrow the queue to. Not when reviewing what is due: the badge,
+ * Today and the Review list count everything due at every level, so a session
+ * filtered to the study level said "0 due" while they said 1 — a word saved
+ * from a reading above that level was due and could not be reached.
+ */
+function queueLevel(): string {
+  return focused.value && mode.value === 'due' ? '' : levelCode.value
+}
+
 async function load() {
   loading.value = true
   errorMsg.value = ''
@@ -1006,12 +1016,13 @@ async function load() {
     // 3 due and handed over 0, because the deck filter was still on underneath
     // a session the reader had no way of knowing was filtered.
     const deck = focused.value ? undefined : activeDeck.value
-    const cacheKey = `${lang.code}:${mode.value}:${levelCode.value}:${deck?.kind ?? ''}:${deck?.unit ?? ''}`
+    const level = queueLevel()
+    const cacheKey = `${lang.code}:${mode.value}:${level}:${deck?.kind ?? ''}:${deck?.unit ?? ''}`
     const queue = await getQueue({
       languageCode: lang.code,
       mode: mode.value,
       limit: 20,
-      ...(levelCode.value ? { level: levelCode.value } : {}),
+      ...(level ? { level } : {}),
       ...(deck?.kind ? { kind: deck.kind } : {}),
       ...(deck?.unit ? { unit: deck.unit } : {}),
       ...(moreNew.value ? { moreNew: moreNew.value } : {})
@@ -1030,7 +1041,7 @@ async function load() {
     // Offline, or the server is unreachable: fall back to the cached bundle
     // rather than showing an error over a perfectly usable session.
     const deck = focused.value ? undefined : activeDeck.value
-    const cached = await readBundle(`${lang.code}:${mode.value}:${levelCode.value}:${deck?.kind ?? ''}:${deck?.unit ?? ''}`)
+    const cached = await readBundle(`${lang.code}:${mode.value}:${queueLevel()}:${deck?.kind ?? ''}:${deck?.unit ?? ''}`)
     if (cached && cached.items.length > 0) {
       items.value = cached.items
       // A bundle cached before `dueCards` existed has no such field, and the
