@@ -1,8 +1,11 @@
 <script setup lang="ts">
-import { computed, nextTick, ref } from 'vue'
+import { computed, nextTick, onBeforeUnmount, ref } from 'vue'
 
 /**
- * Hover tooltip, ported from ofuma.
+ * Hover tooltip, ported from ofuma — and a tap tooltip on a phone, where
+ * there is no hover: a tap on the trigger opens it, a tap anywhere else or a
+ * scroll closes it. A tap on a link or button inside the trigger does what
+ * that control does instead, so wrapping one in a tooltip changes nothing.
  *
  * Teleported to <body> and positioned against the trigger's first child, so it
  * escapes any `overflow: hidden` ancestor — which is why the wrapper uses
@@ -48,7 +51,51 @@ function hideTooltip() {
     showTimeout = null
   }
   isVisible.value = false
+  stopListening()
 }
+
+function onPointerEnter(event: PointerEvent) {
+  if (event.pointerType === 'mouse')
+    showTooltip()
+}
+
+function onPointerLeave(event: PointerEvent) {
+  if (event.pointerType === 'mouse')
+    hideTooltip()
+}
+
+/** Touch and pen: a tap toggles it. */
+function onTap(event: PointerEvent) {
+  if (event.pointerType === 'mouse' || props.disabled || !props.content)
+    return
+  if ((event.target as HTMLElement | null)?.closest('a, button, input, select, textarea, label'))
+    return
+  if (isVisible.value) {
+    hideTooltip()
+    return
+  }
+  isVisible.value = true
+  void nextTick(calculatePosition)
+  // Next tick, so this tap does not count as the tap outside.
+  setTimeout(() => {
+    document.addEventListener('pointerdown', onOutside)
+    window.addEventListener('scroll', hideTooltip, { passive: true, once: true })
+  })
+}
+
+function onOutside(event: PointerEvent) {
+  const trigger = triggerRef.value
+  if (trigger && Array.from(trigger.children).some(c => c.contains(event.target as Node)))
+    return
+  hideTooltip()
+}
+
+function stopListening() {
+  document.removeEventListener('pointerdown', onOutside)
+  window.removeEventListener('scroll', hideTooltip)
+}
+
+onBeforeUnmount(stopListening)
 
 function calculatePosition() {
   if (!triggerRef.value || !tooltipRef.value)
@@ -146,8 +193,9 @@ const arrowFillClasses = computed(() => {
   <div
     ref="triggerRef"
     style="display: contents;"
-    @mouseenter="showTooltip"
-    @mouseleave="hideTooltip"
+    @pointerenter="onPointerEnter"
+    @pointerleave="onPointerLeave"
+    @pointerup="onTap"
   >
     <slot />
   </div>

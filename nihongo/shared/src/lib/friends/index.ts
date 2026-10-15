@@ -1,3 +1,6 @@
+import type { ActivityKind } from '@/constants/endpoints.js'
+import type { ActivityCounts } from '@/types/friends.js'
+
 import { daysBetween } from '../progress/study-day.js'
 
 /**
@@ -53,4 +56,52 @@ export function daysThisWeek(days: readonly string[], today: string): number {
     const ago = daysBetween(d, today)
     return ago >= 0 && ago < 7
   })).size
+}
+
+/** Which count each kind of activity adds to — grouped as the menu groups them. */
+const ACTIVITY_BUCKET: Record<ActivityKind, keyof ActivityCounts> = {
+  'lesson': 'lessons',
+  'kana-lesson': 'lessons',
+  'conversation': 'conversations',
+  'reading': 'reads',
+  'speak': 'speak',
+  'speak-listen': 'speak',
+  'story': 'speak',
+  'recall': 'recall',
+  'shadowing': 'shadowing',
+  'crossword': 'games',
+  'listening-game': 'games',
+  'kanji-build': 'games',
+  'ghost-boss': 'games'
+}
+
+export function emptyActivityCounts(): ActivityCounts {
+  return { reviews: 0, newWords: 0, lessons: 0, conversations: 0, reads: 0, speak: 0, recall: 0, shadowing: 0, games: 0 }
+}
+
+/**
+ * Add up a stretch of study: the review totals from the daily stats, and each
+ * finished activity in its group. A kind this does not know is left out
+ * rather than guessed into a group.
+ */
+export function activityCounts(
+  stats: ReadonlyArray<{ reviews: number, newWords: number }>,
+  activities: ReadonlyArray<{ kind: string, count: number }>
+): ActivityCounts {
+  const out = emptyActivityCounts()
+  for (const s of stats) {
+    out.reviews += s.reviews
+    out.newWords += s.newWords
+  }
+  for (const a of activities) {
+    const bucket = ACTIVITY_BUCKET[a.kind as ActivityKind] as keyof ActivityCounts | undefined
+    if (bucket)
+      out[bucket] += a.count
+  }
+  return out
+}
+
+/** The weekly board's order: days studied, then XP, then you first on a full tie. */
+export function rankBoard<T extends { days: number, xp: number, isMe: boolean }>(rows: readonly T[]): T[] {
+  return [...rows].sort((a, b) => b.days - a.days || b.xp - a.xp || Number(b.isMe) - Number(a.isMe))
 }

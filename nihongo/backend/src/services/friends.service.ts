@@ -1,10 +1,11 @@
-import type { AddFriendInput, FriendRequestView, FriendSettings, FriendsResponse, FriendView, UpdateFriendSettingsInput } from '@nihongo/shared/types'
+import type { ActivityCounts, AddFriendInput, FriendRequestView, FriendSettings, FriendsResponse, FriendView, UpdateFriendSettingsInput } from '@nihongo/shared/types'
 
 import { ROUTE_BASE_PATHS } from '@nihongo/shared/constants'
 import db from '@nihongo/shared/db'
-import { crosswordResults, friendProfiles, friendships, languageLevels, users, userSettings } from '@nihongo/shared/db/schema'
-import { daysThisWeek, DEFAULT_DAY_BOUNDARY_HOUR, friendCodeFrom, normaliseFriendCode, pairStreak, studyDateFor, studyDayRange, uuidv7 } from '@nihongo/shared/lib'
-import { and, count, eq, gte, inArray, lt, or, sql } from 'drizzle-orm'
+import { crosswordResults, friendProfiles, friendships, languageLevels, users, userSettings, xpEvents } from '@nihongo/shared/db/schema'
+import { activityCounts, daysBetween, daysThisWeek, DEFAULT_DAY_BOUNDARY_HOUR, friendCodeFrom, normaliseFriendCode, pairStreak, rankBoard, studyDateFor, studyDayRange, uuidv7 } from '@nihongo/shared/lib'
+import { and, count, eq, gte, inArray, lt, or, sql, sum } from 'drizzle-orm'
+import { DateTime } from 'luxon'
 import { randomBytes } from 'node:crypto'
 
 import { pushEvent } from './reminders.service.js'
@@ -27,7 +28,8 @@ const DISABLED: FriendSettings = {
   code: null,
   shareStudiedToday: false,
   shareCrossword: false,
-  shareWeekly: false
+  shareWeekly: false,
+  shareActivity: false
 }
 
 function toSettings(p: typeof friendProfiles.$inferSelect | undefined): FriendSettings {
@@ -39,7 +41,8 @@ function toSettings(p: typeof friendProfiles.$inferSelect | undefined): FriendSe
     code: p.code,
     shareStudiedToday: p.shareStudiedToday,
     shareCrossword: p.shareCrossword,
-    shareWeekly: p.shareWeekly
+    shareWeekly: p.shareWeekly,
+    shareActivity: p.shareActivity
   }
 }
 
@@ -73,7 +76,8 @@ export async function updateFriendSettings(userId: string, input: UpdateFriendSe
     ...(input.displayName !== undefined ? { displayName: input.displayName } : {}),
     ...(input.shareStudiedToday !== undefined ? { shareStudiedToday: input.shareStudiedToday } : {}),
     ...(input.shareCrossword !== undefined ? { shareCrossword: input.shareCrossword } : {}),
-    ...(input.shareWeekly !== undefined ? { shareWeekly: input.shareWeekly } : {})
+    ...(input.shareWeekly !== undefined ? { shareWeekly: input.shareWeekly } : {}),
+    ...(input.shareActivity !== undefined ? { shareActivity: input.shareActivity } : {})
   }
 
   if (existing) {
@@ -207,6 +211,55 @@ async function studyDaysFor(userIds: string[]): Promise<Map<string, string[]>> {
   return out
 }
 
+interface Week {
+  today: ActivityCounts
+  week: ActivityCounts
+  xp: number
+}
+
+/**
+ * Each person's last seven study days, today included, in their own day: what
+ * they studied, as counts, and the XP they earned.
+ */
+async function weeksFor(people: Array<{ userId: string, today: string, timezone: string, boundary: number }>): Promise<Map<string, Week>> {
+  const out = new Map<string, Week>()
+  if (people.length === 0)
+    return out
+  const ids = people.map(p => p.userId)
+  // Eight calendar days back covers every timezone's seven study days.
+  const [stats, acts] = await Promise.all([
+    db.execute<{ user_id: string, local_date: string, reviews: number, new_words: number }>(sql`
+      select user_id, local_date::text as local_date, sum(review_count)::int as reviews, sum(new_count)::int as new_words
+      from srs_daily_stats
+      where user_id in ${ids} and local_date >= current_date - 8
+      group by 1, 2`),
+    db.execute<{ user_id: string, local_date: string, kind: string, n: number }>(sql`
+      select user_id, local_date::text as local_date, kind, count(*)::int as n
+      from learning_activities
+      where user_id in ${ids} and local_date >= current_date - 8
+      group by 1, 2, 3`)
+  ])
+  for (const p of people) {
+    const inWeek = (d: string) => {
+      const ago = daysBetween(d, p.today)
+      return ago >= 0 && ago < 7
+    }
+    const mineStats = stats.rows.filter(r => r.user_id === p.userId)
+    const mineActs = acts.rows.filter(r => r.user_id === p.userId)
+    const toStats = (rows: typeof mineStats) => rows.map(r => ({ reviews: r.reviews, newWords: r.new_words }))
+    const toActs = (rows: typeof mineActs) => rows.map(r => ({ kind: r.kind, count: r.n }))
+    const weekStart = DateTime.fromISO(p.today).minus({ days: 6 }).toISODate() ?? p.today
+    const { start } = studyDayRange(weekStart, p.timezone, p.boundary)
+    const [xp] = await db.select({ n: sum(xpEvents.amount).mapWith(Number) }).from(xpEvents).where(and(eq(xpEvents.userId, p.userId), gte(xpEvents.createdAt, start)))
+    out.set(p.userId, {
+      today: activityCounts(toStats(mineStats.filter(r => r.local_date === p.today)), toActs(mineActs.filter(r => r.local_date === p.today))),
+      week: activityCounts(toStats(mineStats.filter(r => inWeek(r.local_date))), toActs(mineActs.filter(r => inWeek(r.local_date)))),
+      xp: xp?.n ?? 0
+    })
+  }
+  return out
+}
+
 export async function listFriends(userId: string): Promise<FriendsResponse> {
   const me = await profileOf(userId)
   if (!me)
@@ -232,6 +285,7 @@ export async function listFriends(userId: string): Promise<FriendsResponse> {
           shareStudiedToday: friendProfiles.shareStudiedToday,
           shareCrossword: friendProfiles.shareCrossword,
           shareWeekly: friendProfiles.shareWeekly,
+          shareActivity: friendProfiles.shareActivity,
           timezone: users.timezone,
           dayBoundaryHour: userSettings.dayBoundaryHour
         })
@@ -261,6 +315,19 @@ export async function listFriends(userId: string): Promise<FriendsResponse> {
   const myToday = studyDateFor(now, meUser?.timezone ?? 'UTC', meUser?.dayBoundaryHour ?? DEFAULT_DAY_BOUNDARY_HOUR)
   const days = await studyDaysFor([userId, ...acceptedIds])
   const myDays = days.get(userId) ?? []
+
+  // Weekly counts and XP, for you and for each friend who shares either.
+  const weeks = await weeksFor([
+    { userId, today: myToday, timezone: meUser?.timezone ?? 'UTC', boundary: meUser?.dayBoundaryHour ?? DEFAULT_DAY_BOUNDARY_HOUR },
+    ...acceptedIds.flatMap((id) => {
+      const p = profileById.get(id)
+      if (!p || !(p.shareWeekly || p.shareActivity))
+        return []
+      const timezone = p.timezone ?? 'UTC'
+      const boundary = p.dayBoundaryHour ?? DEFAULT_DAY_BOUNDARY_HOUR
+      return [{ userId: id, today: studyDateFor(now, timezone, boundary), timezone, boundary }]
+    })
+  ])
 
   const friends: FriendView[] = []
   for (const r of accepted) {
@@ -297,15 +364,17 @@ export async function listFriends(userId: string): Promise<FriendsResponse> {
       studiedToday: p.shareStudiedToday ? theirDays.includes(theirToday) : null,
       pairStreak: p.shareStudiedToday && me.shareStudiedToday ? pairStreak(myDays, theirDays, myToday) : null,
       crossword,
-      weekDays: p.shareWeekly ? daysThisWeek(theirDays, theirToday) : null
+      weekDays: p.shareWeekly ? daysThisWeek(theirDays, theirToday) : null,
+      weekXp: p.shareWeekly ? weeks.get(otherId)?.xp ?? 0 : null,
+      activity: p.shareActivity ? { today: weeks.get(otherId)!.today, week: weeks.get(otherId)!.week } : null
     })
   }
 
-  // The weekly board ranks by days studied, never XP: showing up is the point.
-  const board = [
-    { displayName: me.displayName, days: daysThisWeek(myDays, myToday), isMe: true },
-    ...friends.flatMap(f => f.weekDays === null ? [] : [{ displayName: f.displayName, days: f.weekDays, isMe: false }])
-  ].sort((a, b) => b.days - a.days || Number(b.isMe) - Number(a.isMe))
+  // Ranked by days studied — showing up is the point — and ties by XP.
+  const board = rankBoard([
+    { displayName: me.displayName, days: daysThisWeek(myDays, myToday), xp: weeks.get(userId)?.xp ?? 0, isMe: true },
+    ...friends.flatMap(f => f.weekDays === null ? [] : [{ displayName: f.displayName, days: f.weekDays, xp: f.weekXp ?? 0, isMe: false }])
+  ])
 
   return { settings: toSettings(me), friends: friends.sort((a, b) => a.displayName.localeCompare(b.displayName)), requests, board }
 }

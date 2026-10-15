@@ -157,7 +157,14 @@ async function copyLink() {
           <input type="checkbox" class="mt-1" :checked="settings.shareWeekly" :disabled="busy" @change="change({ shareWeekly: ($event.target as HTMLInputElement).checked })">
           <span>
             <span class="font-medium">How many days I studied this week</span>
-            <span class="block text-sm text-[var(--color-muted)]">Puts you on the weekly board — ranked by days, never by points.</span>
+            <span class="block text-sm text-[var(--color-muted)]">Puts you on the weekly board — ranked by days, with XP to break a tie.</span>
+          </span>
+        </label>
+        <label class="mt-3 flex items-start gap-3">
+          <input type="checkbox" class="mt-1" :checked="settings.shareActivity" :disabled="busy" @change="change({ shareActivity: ($event.target as HTMLInputElement).checked })">
+          <span>
+            <span class="font-medium">What I studied</span>
+            <span class="block text-sm text-[var(--color-muted)]">Counts only — reviews, new words, lessons, conversations and so on. Never which words, never how well.</span>
           </span>
         </label>
 

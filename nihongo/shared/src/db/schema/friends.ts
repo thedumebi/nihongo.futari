@@ -24,6 +24,8 @@ export const friendProfiles = pgTable('friend_profiles', {
   shareStudiedToday: boolean('share_studied_today').notNull().default(false),
   shareCrossword: boolean('share_crossword').notNull().default(false),
   shareWeekly: boolean('share_weekly').notNull().default(false),
+  /** Counts of what was studied — reviews, lessons, conversations… Never which words, never accuracy. */
+  shareActivity: boolean('share_activity').notNull().default(false),
   ...timestamps
 }, t => ({
   codeUnique: uniqueIndex('friend_profiles_code_unique').on(t.code)

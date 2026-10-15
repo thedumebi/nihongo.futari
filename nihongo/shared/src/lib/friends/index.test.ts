@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import { daysThisWeek, friendCodeFrom, normaliseFriendCode, pairStreak } from './index.js'
+import { activityCounts, daysThisWeek, friendCodeFrom, normaliseFriendCode, pairStreak, rankBoard } from './index.js'
 
 describe('friendCodeFrom', () => {
   it('makes eight unambiguous characters', () => {
@@ -39,5 +39,39 @@ describe('pairStreak', () => {
 describe('daysThisWeek', () => {
   it('counts distinct days in the seven ending today', () => {
     expect(daysThisWeek(['2026-10-07', '2026-10-08', '2026-10-14', '2026-10-14', '2026-10-15'], '2026-10-14')).toBe(2)
+  })
+})
+
+describe('activityCounts', () => {
+  it('adds the review totals and groups activities as the menu does', () => {
+    const out = activityCounts(
+      [{ reviews: 30, newWords: 5 }, { reviews: 12, newWords: 0 }],
+      [
+        { kind: 'lesson', count: 1 },
+        { kind: 'kana-lesson', count: 2 },
+        { kind: 'speak-listen', count: 1 },
+        { kind: 'story', count: 1 },
+        { kind: 'crossword', count: 1 },
+        { kind: 'ghost-boss', count: 1 },
+        { kind: 'reading', count: 3 }
+      ]
+    )
+    expect(out).toEqual({ reviews: 42, newWords: 5, lessons: 3, conversations: 0, reads: 3, speak: 2, recall: 0, shadowing: 0, games: 2 })
+  })
+
+  it('leaves out a kind it does not know rather than guessing', () => {
+    expect(activityCounts([], [{ kind: 'something-new', count: 4 }])).toEqual(activityCounts([], []))
+  })
+})
+
+describe('rankBoard', () => {
+  it('ranks by days, then by XP, then puts you first on a full tie', () => {
+    const rows = [
+      { name: 'a', days: 4, xp: 100, isMe: false },
+      { name: 'b', days: 4, xp: 300, isMe: false },
+      { name: 'me', days: 2, xp: 900, isMe: true },
+      { name: 'c', days: 2, xp: 900, isMe: false }
+    ]
+    expect(rankBoard(rows).map(r => r.name)).toEqual(['b', 'a', 'me', 'c'])
   })
 })

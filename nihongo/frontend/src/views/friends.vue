@@ -1,7 +1,7 @@
 <script setup lang="ts">
-import type { FriendsResponse } from '@nihongo/shared/types'
+import type { ActivityCounts, FriendsResponse, FriendView } from '@nihongo/shared/types'
 
-import { Check, Flame, Grid3x3, UserPlus, X } from 'lucide-vue-next'
+import { Check, ChevronDown, Flame, Grid3x3, Info, UserPlus, X } from 'lucide-vue-next'
 import { onMounted, ref } from 'vue'
 import { useRoute } from 'vue-router'
 
@@ -9,14 +9,15 @@ import { acceptFriend, addFriend, getFriends, removeFriend } from '@/api/friends
 import AppShell from '@/components/layout/app-shell.vue'
 import Button from '@/components/ui/button.vue'
 import Input from '@/components/ui/input.vue'
+import Tooltip from '@/components/ui/tooltip.vue'
 import { useConfirm } from '@/composables/use-confirm'
 import { useToast } from '@/composables/use-toast'
 import { ROUTES } from '@/constants'
 import { useTodayStore } from '@/store/today'
 
 /**
- * Friends: who studied today, streaks kept together, crossword times, and a
- * weekly board ranked by days studied. Everything shown is something the
+ * Friends: who studied today, streaks kept together, crossword times, what
+ * each studied (tap a name), and a weekly board ranked by days studied. Everything shown is something the
  * friend switched on; anything they did not reads "not shared".
  */
 
@@ -35,6 +36,24 @@ const loading = ref(true)
 /** A friend's link carries their code: fill it in, ready to send. */
 const code = ref(typeof route.query.code === 'string' ? route.query.code : '')
 const adding = ref(false)
+/** The friend whose card is open, showing what they studied. */
+const openId = ref<string | null>(null)
+
+// ============ Constants ============
+/** What a friend studied, three to a line, grouped as the menu groups them. */
+const COUNTS: Array<{ key: keyof ActivityCounts, label: string }> = [
+  { key: 'reviews', label: 'Reviews' },
+  { key: 'newWords', label: 'New words' },
+  { key: 'lessons', label: 'Lessons' },
+  { key: 'conversations', label: 'Conversations' },
+  { key: 'reads', label: 'Read' },
+  { key: 'speak', label: 'Speak' },
+  { key: 'recall', label: 'Recall' },
+  { key: 'shadowing', label: 'Shadowing' },
+  { key: 'games', label: 'Games' }
+]
+const BOTH_STUDIED_HELP = 'Days in a row that you and this friend both studied. It counts once you both share "Studied today" in Settings, and today counts once you have both studied.'
+const BOARD_HELP = 'The last seven days. Ranked by how many days each of you studied — turning up is what counts — and a tie goes to whoever earned more XP. Only friends who share their week are on it.'
 
 // ============ Lifecycle Hooks ============
 onMounted(load)
@@ -80,6 +99,17 @@ async function remove(id: string, displayName: string, kind: 'friend' | 'request
   }
   await removeFriend(id)
   await load()
+}
+
+function toggle(id: string) {
+  openId.value = openId.value === id ? null : id
+}
+
+/** Why "both studied" is blank, when it is. */
+function bothStudied(f: FriendView): string {
+  if (f.pairStreak !== null)
+    return `${f.pairStreak} ${f.pairStreak === 1 ? 'day' : 'days'}`
+  return data.value?.settings.shareStudiedToday ? 'They don\'t share it' : 'Share "Studied today" to see'
 }
 
 function minutes(seconds: number): string {
@@ -164,7 +194,15 @@ function minutes(seconds: number): string {
                   :class="f.studiedToday === null ? 'bg-[var(--color-border)]' : f.studiedToday ? 'bg-[var(--color-success)]' : 'border border-[var(--color-muted)]'"
                   :title="f.studiedToday === null ? 'Not shared' : f.studiedToday ? 'Studied today' : 'Not yet today'"
                 />
-                <span class="flex-1 font-medium">{{ f.displayName }}</span>
+                <button
+                  type="button"
+                  class="flex flex-1 items-center gap-1 text-left font-medium"
+                  :aria-expanded="openId === f.id"
+                  @click="toggle(f.id)"
+                >
+                  {{ f.displayName }}
+                  <ChevronDown class="h-4 w-4 text-[var(--color-muted)] transition" :class="openId === f.id ? 'rotate-180' : ''" />
+                </button>
                 <button type="button" class="text-sm text-[var(--color-muted)] underline underline-offset-4" @click="remove(f.id, f.displayName, 'friend')">
                   Remove
                 </button>
@@ -177,10 +215,12 @@ function minutes(seconds: number): string {
                   <dd>{{ f.studiedToday === null ? 'Not shared' : f.studiedToday ? 'Studied' : 'Not yet' }}</dd>
                 </div>
                 <div>
-                  <dt class="flex items-center gap-1 text-[var(--color-muted)]">
-                    <Flame class="h-3.5 w-3.5" /> Together
-                  </dt>
-                  <dd>{{ f.pairStreak === null ? 'Not shared' : `${f.pairStreak} ${f.pairStreak === 1 ? 'day' : 'days'}` }}</dd>
+                  <Tooltip :content="BOTH_STUDIED_HELP">
+                    <dt class="cursor-help text-[var(--color-muted)]">
+                      <Flame class="inline h-3.5 w-3.5 align-[-2px]" /> Both studied <Info class="inline h-3 w-3 align-[-1px]" aria-hidden="true" />
+                    </dt>
+                  </Tooltip>
+                  <dd>{{ bothStudied(f) }}</dd>
                 </div>
                 <div>
                   <dt class="flex items-center gap-1 text-[var(--color-muted)]">
@@ -189,15 +229,43 @@ function minutes(seconds: number): string {
                   <dd>{{ f.crossword ? `${minutes(f.crossword.seconds)} · ${f.crossword.level}` : 'Not shared or not played' }}</dd>
                 </div>
               </dl>
+
+              <!-- Opened: what they studied, today and over the week. -->
+              <div v-if="openId === f.id" class="mt-4 border-t border-[var(--color-border)] pt-4">
+                <p v-if="!f.activity" class="text-sm text-[var(--color-muted)]">
+                  {{ f.displayName }} doesn't share what they studied.
+                </p>
+                <template v-else>
+                  <div v-for="span in (['today', 'week'] as const)" :key="span" :class="span === 'week' ? 'mt-4' : ''">
+                    <h3 class="text-xs uppercase tracking-wide text-[var(--color-muted)]">
+                      {{ span === 'today' ? 'Today' : 'Last 7 days' }}<template v-if="span === 'week' && f.weekXp !== null">
+                        · {{ f.weekXp }} XP
+                      </template>
+                    </h3>
+                    <dl class="mt-2 grid grid-cols-3 gap-x-3 gap-y-3 text-sm">
+                      <div v-for="c in COUNTS" :key="c.key" class="min-w-0">
+                        <dt class="truncate text-xs text-[var(--color-muted)]">
+                          {{ c.label }}
+                        </dt>
+                        <dd class="tabular-nums" :class="f.activity[span][c.key] ? 'font-medium' : 'text-[var(--color-muted)]'">
+                          {{ f.activity[span][c.key] }}
+                        </dd>
+                      </div>
+                    </dl>
+                  </div>
+                </template>
+              </div>
             </li>
           </ul>
         </section>
 
-        <!-- The weekly board: days studied, never points. -->
+        <!-- The weekly board: days studied first, XP to break a tie. -->
         <section v-if="data.board.length > 1" class="mt-8">
-          <h2 class="text-xs uppercase tracking-wide text-[var(--color-muted)]">
-            This week · days studied
-          </h2>
+          <Tooltip :content="BOARD_HELP">
+            <h2 class="flex w-fit cursor-help items-center gap-1 text-xs uppercase tracking-wide text-[var(--color-muted)]">
+              Last 7 days · days studied <Info class="h-3 w-3" aria-hidden="true" />
+            </h2>
+          </Tooltip>
           <ol class="mt-3 space-y-2">
             <li v-for="(b, i) in data.board" :key="`${b.displayName}-${i}`" class="flex items-center gap-3">
               <span class="w-5 text-right text-sm tabular-nums text-[var(--color-muted)]">{{ i + 1 }}</span>
@@ -205,7 +273,7 @@ function minutes(seconds: number): string {
               <span class="h-2 flex-1 overflow-hidden rounded-full bg-[var(--color-border)]">
                 <span class="block h-full rounded-full bg-[var(--color-accent)]" :style="{ width: `${b.days / 7 * 100}%` }" />
               </span>
-              <span class="w-8 text-right text-sm tabular-nums">{{ b.days }}/7</span>
+              <span class="w-24 text-right text-sm tabular-nums">{{ b.days }}/7 <span class="text-[var(--color-muted)]">· {{ b.xp }} XP</span></span>
             </li>
           </ol>
         </section>
