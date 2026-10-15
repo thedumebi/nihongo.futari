@@ -167,6 +167,16 @@ async function copyLink() {
             <span class="block text-sm text-[var(--color-muted)]">Counts only: reviews, new words, lessons, conversations and so on. Never which words, never how well.</span>
           </span>
         </label>
+        <p class="mt-6 text-sm font-medium">
+          Tell me
+        </p>
+        <label class="mt-2 flex items-start gap-3">
+          <input type="checkbox" class="mt-1" :checked="settings.notifyBoard" :disabled="busy" @change="change({ notifyBoard: ($event.target as HTMLInputElement).checked })">
+          <span>
+            <span class="font-medium">When a friend passes me on the weekly board</span>
+            <span class="block text-sm text-[var(--color-muted)]">Or comes up close behind. A push notification, during the day only, if notifications are on.</span>
+          </span>
+        </label>
 
         <Button class="mt-6" variant="ghost" :to="ROUTES.FRIENDS">
           Go to friends

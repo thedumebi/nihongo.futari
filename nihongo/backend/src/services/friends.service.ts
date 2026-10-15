@@ -1,14 +1,15 @@
-import type { ActivityCounts, AddFriendInput, FriendRequestView, FriendSettings, FriendsResponse, FriendView, UpdateFriendSettingsInput } from '@nihongo/shared/types'
+import type { ActivityCounts, AddFriendInput, FriendRequestView, FriendSettings, FriendsResponse, FriendView, ReminderRunResult, UpdateFriendSettingsInput } from '@nihongo/shared/types'
 
+import { pino } from '@nihongo/shared'
 import { ROUTE_BASE_PATHS } from '@nihongo/shared/constants'
 import db from '@nihongo/shared/db'
-import { crosswordResults, friendProfiles, friendships, languageLevels, users, userSettings, xpEvents } from '@nihongo/shared/db/schema'
-import { activityCounts, daysBetween, daysThisWeek, DEFAULT_DAY_BOUNDARY_HOUR, friendCodeFrom, normaliseFriendCode, pairStreak, rankBoard, studyDateFor, studyDayRange, uuidv7 } from '@nihongo/shared/lib'
+import { crosswordResults, friendBoardSnapshots, friendProfiles, friendships, languageLevels, users, userSettings, xpEvents } from '@nihongo/shared/db/schema'
+import { activityCounts, boardNudge, daysBetween, daysThisWeek, DEFAULT_DAY_BOUNDARY_HOUR, friendCodeFrom, normaliseFriendCode, pairStreak, rankBoard, studyDateFor, studyDayRange, uuidv7 } from '@nihongo/shared/lib'
 import { and, count, eq, gte, inArray, lt, or, sql, sum } from 'drizzle-orm'
 import { DateTime } from 'luxon'
 import { randomBytes } from 'node:crypto'
 
-import { pushEvent } from './reminders.service.js'
+import { emptyRun, pushEvent } from './reminders.service.js'
 
 /**
  * Friends: opt-in, connected by code, sharing only what each person switched
@@ -29,7 +30,8 @@ const DISABLED: FriendSettings = {
   shareStudiedToday: false,
   shareCrossword: false,
   shareWeekly: false,
-  shareActivity: false
+  shareActivity: false,
+  notifyBoard: false
 }
 
 function toSettings(p: typeof friendProfiles.$inferSelect | undefined): FriendSettings {
@@ -42,7 +44,8 @@ function toSettings(p: typeof friendProfiles.$inferSelect | undefined): FriendSe
     shareStudiedToday: p.shareStudiedToday,
     shareCrossword: p.shareCrossword,
     shareWeekly: p.shareWeekly,
-    shareActivity: p.shareActivity
+    shareActivity: p.shareActivity,
+    notifyBoard: p.notifyBoard
   }
 }
 
@@ -77,7 +80,8 @@ export async function updateFriendSettings(userId: string, input: UpdateFriendSe
     ...(input.shareStudiedToday !== undefined ? { shareStudiedToday: input.shareStudiedToday } : {}),
     ...(input.shareCrossword !== undefined ? { shareCrossword: input.shareCrossword } : {}),
     ...(input.shareWeekly !== undefined ? { shareWeekly: input.shareWeekly } : {}),
-    ...(input.shareActivity !== undefined ? { shareActivity: input.shareActivity } : {})
+    ...(input.shareActivity !== undefined ? { shareActivity: input.shareActivity } : {}),
+    ...(input.notifyBoard !== undefined ? { notifyBoard: input.notifyBoard } : {})
   }
 
   if (existing) {
@@ -377,4 +381,93 @@ export async function listFriends(userId: string): Promise<FriendsResponse> {
   ])
 
   return { settings: toSettings(me), friends: friends.sort((a, b) => a.displayName.localeCompare(b.displayName)), requests, board }
+}
+
+/** Board nudges wait for daytime: between these local hours, or until the next. */
+const BOARD_NUDGE_FROM = 8
+const BOARD_NUDGE_UNTIL = 21
+
+/**
+ * The weekly board, checked on the reminders cron: a push when a friend has
+ * just passed you, or has come up close behind. Compares each pair against
+ * the snapshot from the last check, and only counts a friend's OWN progress
+ * (see boardNudge). At night nothing is sent and the snapshot is left as it
+ * was, so the news arrives in the morning instead of being lost.
+ */
+export async function runBoardNudges(now = new Date()): Promise<ReminderRunResult> {
+  const result = emptyRun()
+  const pairs = await db
+    .select({ a: friendships.requesterId, b: friendships.addresseeId })
+    .from(friendships)
+    .where(eq(friendships.status, 'accepted'))
+  if (pairs.length === 0)
+    return result
+
+  const ids = [...new Set(pairs.flatMap(p => [p.a, p.b]))]
+  const people = await db
+    .select({
+      userId: friendProfiles.userId,
+      displayName: friendProfiles.displayName,
+      shareWeekly: friendProfiles.shareWeekly,
+      notifyBoard: friendProfiles.notifyBoard,
+      timezone: users.timezone,
+      dayBoundaryHour: userSettings.dayBoundaryHour
+    })
+    .from(friendProfiles)
+    .innerJoin(users, eq(users.id, friendProfiles.userId))
+    .leftJoin(userSettings, eq(userSettings.userId, friendProfiles.userId))
+    .where(inArray(friendProfiles.userId, ids))
+  const byId = new Map(people.map(p => [p.userId, { ...p, timezone: p.timezone ?? 'UTC', boundary: p.dayBoundaryHour ?? DEFAULT_DAY_BOUNDARY_HOUR }]))
+  const todays = new Map(people.map(p => [p.userId, studyDateFor(now, p.timezone ?? 'UTC', p.dayBoundaryHour ?? DEFAULT_DAY_BOUNDARY_HOUR)]))
+
+  const [days, weeks, snapshots] = await Promise.all([
+    studyDaysFor(ids),
+    weeksFor([...byId.values()].map(p => ({ userId: p.userId, today: todays.get(p.userId)!, timezone: p.timezone, boundary: p.boundary }))),
+    db.select().from(friendBoardSnapshots).where(inArray(friendBoardSnapshots.userId, ids))
+  ])
+  const scoreOf = (id: string) => ({ days: daysThisWeek(days.get(id) ?? [], todays.get(id)!), xp: weeks.get(id)?.xp ?? 0 })
+  const before = new Map(snapshots.map(s => [`${s.userId}:${s.friendId}`, { me: { days: s.myDays, xp: s.myXp }, friend: { days: s.friendDays, xp: s.friendXp } }]))
+
+  for (const { a, b } of pairs) {
+    for (const [meId, friendId] of [[a, b], [b, a]] as const) {
+      const me = byId.get(meId)
+      const friend = byId.get(friendId)
+      // You only see a friend on the board if they share their week.
+      if (!me || !friend || !friend.shareWeekly)
+        continue
+      result.considered++
+      const current = { me: scoreOf(meId), friend: scoreOf(friendId) }
+      const nudge = me.notifyBoard ? boardNudge(before.get(`${meId}:${friendId}`) ?? null, current) : null
+
+      if (nudge) {
+        pino.info({ userId: meId, friendId, nudge, ...current }, '[board] nudge')
+        const hour = DateTime.fromJSDate(now, { zone: me.timezone }).hour
+        if (hour < BOARD_NUDGE_FROM || hour >= BOARD_NUDGE_UNTIL) {
+          result.skipped++
+          continue
+        }
+        const sent = nudge === 'passed'
+          ? await pushEvent(meId, 'board-passed', `board-passed:${meId}:${friendId}:${current.friend.days}:${current.friend.xp}`, {
+              title: `${friend.displayName} just passed you`,
+              body: `This week: ${friend.displayName} ${current.friend.days}/7 days, ${current.friend.xp} XP. You: ${current.me.days}/7, ${current.me.xp} XP.`,
+              url: ROUTE_BASE_PATHS.FRIENDS
+            })
+          : await pushEvent(meId, 'board-close', `board-close:${meId}:${friendId}:${todays.get(meId)}`, {
+              title: `${friend.displayName} is close behind you`,
+              body: `${current.me.xp - current.friend.xp} XP behind you on this week's board. A few reviews keeps you ahead.`,
+              url: ROUTE_BASE_PATHS.FRIENDS
+            })
+        if (sent)
+          result.pushed++
+      }
+
+      await db.insert(friendBoardSnapshots)
+        .values({ userId: meId, friendId, myDays: current.me.days, myXp: current.me.xp, friendDays: current.friend.days, friendXp: current.friend.xp })
+        .onConflictDoUpdate({
+          target: [friendBoardSnapshots.userId, friendBoardSnapshots.friendId],
+          set: { myDays: current.me.days, myXp: current.me.xp, friendDays: current.friend.days, friendXp: current.friend.xp, updatedAt: now }
+        })
+    }
+  }
+  return result
 }

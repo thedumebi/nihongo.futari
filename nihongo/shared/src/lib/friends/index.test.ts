@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import { activityCounts, daysThisWeek, friendCodeFrom, normaliseFriendCode, pairStreak, rankBoard } from './index.js'
+import { activityCounts, boardNudge, daysThisWeek, friendCodeFrom, normaliseFriendCode, pairStreak, rankBoard } from './index.js'
 
 describe('friendCodeFrom', () => {
   it('makes eight unambiguous characters', () => {
@@ -73,5 +73,32 @@ describe('rankBoard', () => {
       { name: 'c', days: 2, xp: 900, isMe: false }
     ]
     expect(rankBoard(rows).map(r => r.name)).toEqual(['b', 'a', 'me', 'c'])
+  })
+})
+
+describe('boardNudge', () => {
+  const at = (meDays: number, meXp: number, fDays: number, fXp: number) => ({ me: { days: meDays, xp: meXp }, friend: { days: fDays, xp: fXp } })
+
+  it('says passed when a friend who was behind goes ahead by studying', () => {
+    expect(boardNudge(at(4, 300, 4, 280), at(4, 300, 4, 320))).toBe('passed')
+    expect(boardNudge(at(4, 300, 3, 900), at(4, 300, 5, 900))).toBe('passed')
+  })
+
+  it('does not say passed when you fell back but they did nothing', () => {
+    // One of your days left the seven: they lead now, but they did not move.
+    expect(boardNudge(at(4, 300, 4, 280), at(3, 300, 4, 280))).toBeNull()
+  })
+
+  it('says close when they move up level on days and within reach', () => {
+    expect(boardNudge(at(4, 300, 4, 200), at(4, 300, 4, 280))).toBe('close')
+  })
+
+  it('stays quiet when they are still far behind, or already ahead', () => {
+    expect(boardNudge(at(4, 300, 3, 200), at(4, 300, 3, 299))).toBeNull()
+    expect(boardNudge(at(4, 300, 5, 400), at(4, 300, 5, 450))).toBeNull()
+  })
+
+  it('needs an earlier look to compare against', () => {
+    expect(boardNudge(null, at(4, 300, 5, 900))).toBeNull()
   })
 })

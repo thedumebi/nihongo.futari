@@ -55,7 +55,7 @@ function hideTooltip() {
 }
 
 /** How the last press began, so a click can tell a mouse from a finger. */
-let lastPointer = 'mouse'
+let lastPointer = ''
 
 function onPointerDown(event: PointerEvent) {
   lastPointer = event.pointerType
@@ -71,37 +71,41 @@ function onPointerLeave(event: PointerEvent) {
     hideTooltip()
 }
 
+/** A real mouse on a screen that can hover: the tip already follows the pointer. */
+function hoveringMouse(): boolean {
+  return lastPointer === 'mouse' && window.matchMedia('(hover: hover)').matches
+}
+
 /**
- * A click on the trigger: with a mouse it shows the tip at once (hovering
- * already does, after a moment); with a finger it toggles it, and a tap
- * anywhere else or a scroll closes it.
+ * A click or tap on the trigger. With a hovering mouse it just shows the tip
+ * (hover already would, after a moment). Anywhere else, a phone above all, it
+ * toggles, and a press anywhere outside or a scroll closes it. The closing
+ * listeners are set whichever way it opened, so an open tip can always be
+ * dismissed, even when the browser reports a tap as a mouse.
  */
 function onClick(event: MouseEvent) {
   if (props.disabled || !props.content)
     return
   if ((event.target as HTMLElement | null)?.closest('a, button, input, select, textarea, label'))
     return
-  if (lastPointer === 'mouse') {
-    if (showTimeout)
-      clearTimeout(showTimeout)
-    isVisible.value = true
-    void nextTick(calculatePosition)
-    return
+  if (showTimeout) {
+    clearTimeout(showTimeout)
+    showTimeout = null
   }
-  if (isVisible.value) {
+  if (isVisible.value && !hoveringMouse()) {
     hideTooltip()
     return
   }
   isVisible.value = true
   void nextTick(calculatePosition)
-  // Next tick, so this tap does not count as the tap outside.
-  setTimeout(() => {
-    document.addEventListener('pointerdown', onOutside)
-    window.addEventListener('scroll', hideTooltip, { passive: true, once: true })
-  })
+  stopListening()
+  // Capture, and both pointer and touch: some phones send only one of them.
+  document.addEventListener('pointerdown', onOutside, true)
+  document.addEventListener('touchstart', onOutside, true)
+  window.addEventListener('scroll', hideTooltip, { passive: true, once: true })
 }
 
-function onOutside(event: PointerEvent) {
+function onOutside(event: Event) {
   const trigger = triggerRef.value
   if (trigger && Array.from(trigger.children).some(c => c.contains(event.target as Node)))
     return
@@ -109,7 +113,8 @@ function onOutside(event: PointerEvent) {
 }
 
 function stopListening() {
-  document.removeEventListener('pointerdown', onOutside)
+  document.removeEventListener('pointerdown', onOutside, true)
+  document.removeEventListener('touchstart', onOutside, true)
   window.removeEventListener('scroll', hideTooltip)
 }
 

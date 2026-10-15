@@ -7,6 +7,7 @@ import type { AppRouteHandler } from '@/lib/types.js'
 
 import { publicKey } from '@/lib/push.js'
 import { runCampaignQueue } from '@/services/email-campaigns.service.js'
+import { runBoardNudges } from '@/services/friends.service.js'
 import { getPrefs, subscribe as saveSubscription, setTimezone as saveTimezone, setPrefs } from '@/services/notifications.service.js'
 import { runReminders as run, runNudges, runWeeklySummaries } from '@/services/reminders.service.js'
 
@@ -50,7 +51,7 @@ export const runReminders: AppRouteHandler<RunRemindersRoute> = async (c) => {
   // Both run off the same cron tick. Each decides internally whether it is the
   // right local hour, so the scheduler needs to know nothing about timezones,
   // and one endpoint means one secret to keep.
-  const runs = [await run(), await runWeeklySummaries(), await runNudges()]
+  const runs = [await run(), await runWeeklySummaries(), await runNudges(), await runBoardNudges()]
   // And any admin email a restart left half-sent. Not awaited: a large send
   // outlives the cron request, and the queue guards itself against overlap.
   void runCampaignQueue()

@@ -1,5 +1,5 @@
 import { sql } from 'drizzle-orm'
-import { boolean, check, index, pgTable, text, timestamp, uniqueIndex } from 'drizzle-orm/pg-core'
+import { boolean, check, index, integer, pgTable, primaryKey, text, timestamp, uniqueIndex } from 'drizzle-orm/pg-core'
 
 import { users } from './auth.js'
 import { timestamps } from './columns.js'
@@ -26,6 +26,8 @@ export const friendProfiles = pgTable('friend_profiles', {
   shareWeekly: boolean('share_weekly').notNull().default(false),
   /** Counts of what was studied — reviews, lessons, conversations… Never which words, never accuracy. */
   shareActivity: boolean('share_activity').notNull().default(false),
+  /** A push when a friend passes you on the weekly board, or is close behind. On by default. */
+  notifyBoard: boolean('notify_board').notNull().default(true),
   ...timestamps
 }, t => ({
   codeUnique: uniqueIndex('friend_profiles_code_unique').on(t.code)
@@ -48,4 +50,23 @@ export const friendships = pgTable('friendships', {
   notSelf: check('friendships_not_self', sql`${t.requesterId} <> ${t.addresseeId}`),
   pairUnique: uniqueIndex('friendships_pair_unique').on(sql`least(${t.requesterId}, ${t.addresseeId})`, sql`greatest(${t.requesterId}, ${t.addresseeId})`),
   addresseeIdx: index('friendships_addressee_idx').on(t.addresseeId, t.status)
+}))
+
+/**
+ * The weekly board as it last stood between you and one friend: their score
+ * and yours (days studied in the last seven, then XP). The board cron compares
+ * against it to notice a friend passing you, and only when THEIR score went up,
+ * so a day of yours dropping out of the seven never reads as being passed.
+ * A notification cache, nothing more: deleting it costs one missed nudge.
+ */
+export const friendBoardSnapshots = pgTable('friend_board_snapshots', {
+  userId: text('user_id').notNull().references(() => friendProfiles.userId, { onDelete: 'cascade' }),
+  friendId: text('friend_id').notNull().references(() => friendProfiles.userId, { onDelete: 'cascade' }),
+  myDays: integer('my_days').notNull(),
+  myXp: integer('my_xp').notNull(),
+  friendDays: integer('friend_days').notNull(),
+  friendXp: integer('friend_xp').notNull(),
+  updatedAt: timestamp('updated_at').notNull().defaultNow()
+}, t => ({
+  pk: primaryKey({ columns: [t.userId, t.friendId] })
 }))

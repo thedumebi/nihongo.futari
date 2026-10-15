@@ -440,7 +440,7 @@ const GHOST_ALERT_HOUR = 10
 /** Fewer ghosts than this is ordinary forgetting, not something to flag. */
 const GHOST_ALERT_MIN = 5
 
-function emptyRun(): ReminderRunResult {
+export function emptyRun(): ReminderRunResult {
   return { considered: 0, emailed: 0, pushed: 0, skipped: 0, skippedNotDue: 0, skippedAlreadySent: 0, failed: 0, pushFailed: 0, pushNoSubscription: 0, pushNotConfigured: 0 }
 }
 
@@ -460,16 +460,17 @@ async function claim(userId: string, kind: string, dedupeKey: string, channel: '
  * first, so a retried request never pushes twice. Never throws: a push that
  * fails must not fail what caused it.
  */
-export async function pushEvent(userId: string, kind: string, dedupeKey: string, message: { title: string, body: string, url: string }): Promise<void> {
+export async function pushEvent(userId: string, kind: string, dedupeKey: string, message: { title: string, body: string, url: string }): Promise<boolean> {
   try {
     if (!pushConfigured())
-      return
+      return false
     const [prefs] = await db.select({ push: userSettings.reminderPushEnabled }).from(userSettings).where(eq(userSettings.userId, userId)).limit(1)
     if (!prefs?.push || !(await claim(userId, kind, `${dedupeKey}:push`, 'push')))
-      return
-    await pushToUser(userId, message)
+      return false
+    return (await pushToUser(userId, message)).sent > 0
   } catch (err) {
     pino.warn({ err, kind }, '[push] event failed')
+    return false
   }
 }
 

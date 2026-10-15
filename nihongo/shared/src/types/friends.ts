@@ -13,7 +13,9 @@ export const friendSettingsSchema = z.object({
   shareStudiedToday: z.boolean(),
   shareCrossword: z.boolean(),
   shareWeekly: z.boolean(),
-  shareActivity: z.boolean()
+  shareActivity: z.boolean(),
+  /** A push when a friend passes you on the weekly board, or is close behind. */
+  notifyBoard: z.boolean()
 }).openapi('FriendSettings')
 export type FriendSettings = z.infer<typeof friendSettingsSchema>
 
@@ -23,7 +25,8 @@ export const updateFriendSettingsSchema = z.object({
   shareStudiedToday: z.boolean().optional(),
   shareCrossword: z.boolean().optional(),
   shareWeekly: z.boolean().optional(),
-  shareActivity: z.boolean().optional()
+  shareActivity: z.boolean().optional(),
+  notifyBoard: z.boolean().optional()
 }).openapi('UpdateFriendSettings')
 export type UpdateFriendSettingsInput = z.infer<typeof updateFriendSettingsSchema>
 

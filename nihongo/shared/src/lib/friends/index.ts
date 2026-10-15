@@ -105,3 +105,40 @@ export function activityCounts(
 export function rankBoard<T extends { days: number, xp: number, isMe: boolean }>(rows: readonly T[]): T[] {
   return [...rows].sort((a, b) => b.days - a.days || b.xp - a.xp || Number(b.isMe) - Number(a.isMe))
 }
+
+/** A place on the weekly board: days studied in the last seven, then XP. */
+export interface BoardScore { days: number, xp: number }
+
+/** How close behind counts as "close": level on days and within this much XP. */
+export const BOARD_CLOSE_XP = 30
+
+function compareScores(a: BoardScore, b: BoardScore): number {
+  return a.days - b.days || a.xp - b.xp
+}
+
+/**
+ * Whether a friend's movement on the weekly board is worth a push to you:
+ *
+ * - `passed`: they were level with you or behind and are now ahead.
+ * - `close`: they are level with you on days, behind or tied, and within
+ *   BOARD_CLOSE_XP of you.
+ *
+ * Either only when THEIR score went up since the last look, so the board
+ * shifting because one of your days left the seven never counts as them
+ * passing you. With no earlier look there is nothing to compare: null.
+ */
+export function boardNudge(
+  before: { me: BoardScore, friend: BoardScore } | null,
+  now: { me: BoardScore, friend: BoardScore }
+): 'passed' | 'close' | null {
+  if (!before)
+    return null
+  const theyMoved = compareScores(now.friend, before.friend) > 0
+  if (!theyMoved)
+    return null
+  if (compareScores(before.friend, before.me) <= 0 && compareScores(now.friend, now.me) > 0)
+    return 'passed'
+  if (compareScores(now.friend, now.me) <= 0 && now.friend.days === now.me.days && now.me.xp - now.friend.xp <= BOARD_CLOSE_XP && now.me.xp > 0)
+    return 'close'
+  return null
+}
