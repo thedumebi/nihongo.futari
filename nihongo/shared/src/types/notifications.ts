@@ -48,6 +48,8 @@ export const notificationPrefsSchema = z.object({
   streakRiskEnabled: z.boolean().default(true),
   /** A weekly push when several cards keep being forgotten. */
   ghostAlertEnabled: z.boolean().default(true),
+  /** News about go itself, sent by an admin. On unless turned off. */
+  productUpdatesEmail: z.boolean().default(true),
   /**
    * The reader's IANA timezone, e.g. `Asia/Tokyo`.
    *

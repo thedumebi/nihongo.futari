@@ -11,6 +11,7 @@ import auth from './routes/auth.js'
 import crossword from './routes/crossword/crossword.index.js'
 import dialogues from './routes/dialogues/dialogues.index.js'
 import dictionary from './routes/dictionary/dictionary.index.js'
+import emailCampaigns from './routes/email-campaigns/email-campaigns.index.js'
 import friends from './routes/friends/friends.index.js'
 import games from './routes/games/games.index.js'
 import grammar from './routes/grammar/grammar.index.js'
@@ -30,6 +31,7 @@ import speak from './routes/speak/speak.index.js'
 import study from './routes/study/study.index.js'
 import sync from './routes/sync/sync.index.js'
 import today from './routes/today/today.index.js'
+import unsubscribe from './routes/unsubscribe/unsubscribe.index.js'
 import usersRoutes from './routes/users/users.index.js'
 import wordsRoutes from './routes/words/words.index.js'
 import writing from './routes/writing/writing.index.js'
@@ -72,6 +74,8 @@ const routes = [
   friends,
   today,
   onboarding,
+  emailCampaigns,
+  unsubscribe,
   grammar,
   lessons,
   invites,

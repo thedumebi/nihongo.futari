@@ -486,6 +486,14 @@ async function turnOnPush() {
             </span>
           </label>
 
+          <label class="mt-5 flex items-start gap-3">
+            <input v-model="prefs.productUpdatesEmail" type="checkbox" class="mt-1">
+            <span>
+              <span class="font-medium">Product updates by email</span>
+              <span class="block text-sm text-[var(--color-muted)]">An occasional email when something in go changes or is new. Every one has an unsubscribe link.</span>
+            </span>
+          </label>
+
           <div class="mt-6">
             <Button variant="primary" :loading="saving || enabling" @click="save">
               Save

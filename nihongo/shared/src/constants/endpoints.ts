@@ -33,6 +33,8 @@ export const ROUTE_BASE_PATHS = {
   CROSSWORD: '/crossword',
   TODAY: '/today',
   ONBOARDING: '/onboarding',
+  EMAIL_CAMPAIGNS: '/email-campaigns',
+  UNSUBSCRIBE: '/unsubscribe',
   ACTIVITIES: '/activities',
   RECALL: '/recall',
   GAMES: '/games',
@@ -156,6 +158,12 @@ export const ONBOARDING_STATUSES = ['pending', 'offer', 'done', 'skipped'] as co
 export type OnboardingStatus = typeof ONBOARDING_STATUSES[number]
 export const JLPT_LEVELS = ['N5', 'N4', 'N3', 'N2', 'N1'] as const
 export type JlptLevel = typeof JLPT_LEVELS[number]
+
+/** Who an admin email goes to. Only those with product updates on, always. */
+export const EMAIL_AUDIENCES = ['all', 'learners', 'admins'] as const
+export type EmailAudience = typeof EMAIL_AUDIENCES[number]
+export const EMAIL_CAMPAIGN_STATUSES = ['draft', 'sending', 'sent'] as const
+export type EmailCampaignStatus = typeof EMAIL_CAMPAIGN_STATUSES[number]
 
 export const CORRECTION_TABLES = ['sentences', 'dialogue_turns', 'dialogue_replies'] as const
 export type CorrectionTable = typeof CORRECTION_TABLES[number]
@@ -341,6 +349,23 @@ export const ACTIVITY_ROUTES = {
  */
 export const CARD_ORIGINS = ['queue', 'lesson', 'kana-lesson', 'saved', 'speak-miss'] as const
 export type CardOrigin = typeof CARD_ORIGINS[number]
+
+export const EMAIL_CAMPAIGN_ROUTES = {
+  LIST: '/',
+  CREATE: '/',
+  /** Render a draft as it would arrive, without saving it. */
+  PREVIEW: '/preview',
+  GET: '/:id',
+  UPDATE: '/:id',
+  DELETE: '/:id',
+  TEST: '/:id/test',
+  SEND: '/:id/send'
+} as const
+
+export const UNSUBSCRIBE_ROUTES = {
+  /** Public: the link in every product-update email, and the one-click header. */
+  PRODUCT_UPDATES: '/product-updates'
+} as const
 
 export const ONBOARDING_ROUTES = {
   GET: '/',
@@ -582,6 +607,19 @@ export const API_ENDPOINTS = {
   },
   ACTIVITIES: {
     RECORD: `${ROUTE_BASE_PATHS.ACTIVITIES}${ACTIVITY_ROUTES.RECORD}`
+  },
+  EMAIL_CAMPAIGNS: {
+    LIST: `${ROUTE_BASE_PATHS.EMAIL_CAMPAIGNS}${EMAIL_CAMPAIGN_ROUTES.LIST}`,
+    CREATE: `${ROUTE_BASE_PATHS.EMAIL_CAMPAIGNS}${EMAIL_CAMPAIGN_ROUTES.CREATE}`,
+    PREVIEW: `${ROUTE_BASE_PATHS.EMAIL_CAMPAIGNS}${EMAIL_CAMPAIGN_ROUTES.PREVIEW}`,
+    GET: (id: string) => `${ROUTE_BASE_PATHS.EMAIL_CAMPAIGNS}${EMAIL_CAMPAIGN_ROUTES.GET.replace(':id', id)}`,
+    UPDATE: (id: string) => `${ROUTE_BASE_PATHS.EMAIL_CAMPAIGNS}${EMAIL_CAMPAIGN_ROUTES.UPDATE.replace(':id', id)}`,
+    DELETE: (id: string) => `${ROUTE_BASE_PATHS.EMAIL_CAMPAIGNS}${EMAIL_CAMPAIGN_ROUTES.DELETE.replace(':id', id)}`,
+    TEST: (id: string) => `${ROUTE_BASE_PATHS.EMAIL_CAMPAIGNS}${EMAIL_CAMPAIGN_ROUTES.TEST.replace(':id', id)}`,
+    SEND: (id: string) => `${ROUTE_BASE_PATHS.EMAIL_CAMPAIGNS}${EMAIL_CAMPAIGN_ROUTES.SEND.replace(':id', id)}`
+  },
+  UNSUBSCRIBE: {
+    PRODUCT_UPDATES: `${ROUTE_BASE_PATHS.UNSUBSCRIBE}${UNSUBSCRIBE_ROUTES.PRODUCT_UPDATES}`
   },
   ONBOARDING: {
     GET: `${ROUTE_BASE_PATHS.ONBOARDING}${ONBOARDING_ROUTES.GET}`,

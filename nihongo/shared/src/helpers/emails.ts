@@ -109,11 +109,19 @@ export async function sendTransactionalEmail(message: Mail.Options): Promise<SMT
       ? message.html
       : message.html?.toString() || ''
 
+    // Header values as Brevo wants them: plain strings. The one that matters is
+    // List-Unsubscribe, which mail providers expect on any bulk email.
+    const headers = message.headers && !Array.isArray(message.headers)
+      ? Object.fromEntries(Object.entries(message.headers).map(([k, v]) => [k, String(typeof v === 'object' && v !== null && 'value' in v ? v.value : v)]))
+      : undefined
+
     const result = await emailAPI.sendTransacEmail({
       sender,
       to,
       subject: message.subject || '',
       htmlContent,
+      ...(typeof message.text === 'string' && message.text ? { textContent: message.text } : {}),
+      ...(headers ? { headers } : {}),
       ...(message.bcc ? { bcc: parseEmailAddress(message.bcc) } : {}),
       ...(message.cc ? { cc: parseEmailAddress(message.cc) } : {}),
       ...(message.replyTo ? { replyTo: parseEmailAddress(message.replyTo)[0] } : {})

@@ -19,6 +19,14 @@ import { ROUTES } from '@/constants'
           </p>
         </li>
         <li class="p-4">
+          <router-link :to="ROUTES.ADMIN_EMAILS" class="font-medium underline underline-offset-4">
+            Emails
+          </router-link>
+          <p class="mt-1 text-sm text-[var(--color-muted)]">
+            Write, preview and send an email to learners — product updates and news.
+          </p>
+        </li>
+        <li class="p-4">
           <router-link :to="ROUTES.ADMIN_REVIEW_QUEUE" class="font-medium underline underline-offset-4">
             Review queue
           </router-link>

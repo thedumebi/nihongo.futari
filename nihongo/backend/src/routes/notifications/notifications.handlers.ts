@@ -6,6 +6,7 @@ import env from '@nihongo/shared/env'
 import type { AppRouteHandler } from '@/lib/types.js'
 
 import { publicKey } from '@/lib/push.js'
+import { runCampaignQueue } from '@/services/email-campaigns.service.js'
 import { getPrefs, subscribe as saveSubscription, setTimezone as saveTimezone, setPrefs } from '@/services/notifications.service.js'
 import { runReminders as run, runNudges, runWeeklySummaries } from '@/services/reminders.service.js'
 
@@ -50,6 +51,9 @@ export const runReminders: AppRouteHandler<RunRemindersRoute> = async (c) => {
   // right local hour, so the scheduler needs to know nothing about timezones,
   // and one endpoint means one secret to keep.
   const runs = [await run(), await runWeeklySummaries(), await runNudges()]
+  // And any admin email a restart left half-sent. Not awaited: a large send
+  // outlives the cron request, and the queue guards itself against overlap.
+  void runCampaignQueue()
   const sum = (key: keyof ReminderRunResult) => runs.reduce((n, r) => n + r[key], 0)
   return c.json({
     considered: sum('considered'),

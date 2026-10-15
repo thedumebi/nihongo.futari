@@ -64,6 +64,11 @@ export const userSettings = pgTable('user_settings', {
   streakRiskEnabled: boolean('streak_risk_enabled').notNull().default(true),
   /** A weekly note when several cards keep getting forgotten. */
   ghostAlertEnabled: boolean('ghost_alert_enabled').notNull().default(true),
+  /**
+   * News about go itself — what changed, what is new — sent by an admin.
+   * On by default for everyone; every such email has a one-click unsubscribe.
+   */
+  productUpdatesEmail: boolean('product_updates_email').notNull().default(true),
   /** Per-user FSRS weights, optimised nightly once there's enough history. */
   fsrsParams: jsonb('fsrs_params').$type<{
     w?: number[]

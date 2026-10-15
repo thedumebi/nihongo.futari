@@ -49,7 +49,8 @@ export async function getPrefs(userId: string): Promise<NotificationPrefs> {
       timezone: users.timezone,
       weeklySummaryEnabled: userSettings.weeklySummaryEnabled,
       streakRiskEnabled: userSettings.streakRiskEnabled,
-      ghostAlertEnabled: userSettings.ghostAlertEnabled
+      ghostAlertEnabled: userSettings.ghostAlertEnabled,
+      productUpdatesEmail: userSettings.productUpdatesEmail
     })
     .from(userSettings)
     .innerJoin(users, eq(users.id, userSettings.userId))
@@ -64,7 +65,8 @@ export async function getPrefs(userId: string): Promise<NotificationPrefs> {
     reminderMinute: 0,
     weeklySummaryEnabled: true,
     streakRiskEnabled: true,
-    ghostAlertEnabled: true
+    ghostAlertEnabled: true,
+    productUpdatesEmail: true
   }
 }
 

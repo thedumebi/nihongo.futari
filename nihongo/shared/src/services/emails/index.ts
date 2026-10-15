@@ -1,3 +1,4 @@
+import type Mail from 'nodemailer/lib/mailer/index.js'
 import type SMTPTransport from 'nodemailer/lib/smtp-transport/index.js'
 
 import type {
@@ -76,6 +77,14 @@ export default class SendMail {
   static async sendNudge(data: NudgeEmailType, language?: string): Promise<SMTPTransport.SentMessageInfo> {
     const inst = new NudgeMessage(data, { email: data.email, name: data.name }, language)
     return sendMail(await inst.buildMessage())
+  }
+
+  /**
+   * An admin-written email, already rendered and personalised by the caller —
+   * it owns the template, the plain-text part and the unsubscribe headers.
+   */
+  static async sendCampaign(message: Mail.Options): Promise<SMTPTransport.SentMessageInfo> {
+    return sendMail(message)
   }
 
   static async sendWeeklySummary(data: WeeklySummaryType, language?: string): Promise<SMTPTransport.SentMessageInfo> {

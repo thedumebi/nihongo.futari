@@ -160,6 +160,24 @@ const router = createRouter({
       meta: { requiresAuth: true, isAdmin: true }
     },
     {
+      path: ROUTES.ADMIN_EMAILS,
+      name: 'admin-emails',
+      component: () => import('@/views/admin/emails.vue'),
+      meta: { requiresAuth: true, isAdmin: true }
+    },
+    {
+      path: ROUTES.ADMIN_EMAIL_EDIT(':id'),
+      name: 'admin-email-edit',
+      component: () => import('@/views/admin/email-editor.vue'),
+      meta: { requiresAuth: true, isAdmin: true }
+    },
+    {
+      // Public: reached from an email, signed in or not.
+      path: ROUTES.UNSUBSCRIBE,
+      name: 'unsubscribe',
+      component: () => import('@/views/unsubscribe.vue')
+    },
+    {
       path: ROUTES.ADMIN_INVITES,
       name: 'admin-invites',
       component: () => import('@/views/admin/invites.vue'),

@@ -59,6 +59,9 @@ export const ROUTES = {
   // Admin
   ADMIN: '/admin',
   ADMIN_INVITES: '/admin/invites',
+  ADMIN_EMAILS: '/admin/emails',
+  ADMIN_EMAIL_EDIT: (id: string) => `/admin/emails/${id}`,
+  UNSUBSCRIBE: '/unsubscribe',
   ADMIN_REVIEW_QUEUE: '/admin/review-queue',
   ADMIN_GRAMMAR: '/admin/grammar',
   ADMIN_GRAMMAR_EDIT: (id: string) => `/admin/grammar/${id}/edit`,

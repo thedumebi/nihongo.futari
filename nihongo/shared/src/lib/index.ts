@@ -10,6 +10,7 @@
 export * from './api-errors.js'
 export * from './corrections/index.js'
 export * from './crossword/index.js'
+export * from './email-content/index.js'
 export * from './enrichment/index.js'
 export * from './friends/index.js'
 export * from './games/index.js'

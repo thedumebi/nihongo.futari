@@ -1,0 +1,9 @@
+<%- include("partials/header") -%>
+<% if (locals.preheader) { %>
+<div style="display: none; max-height: 0; overflow: hidden; opacity: 0; color: transparent;"><%= preheader %></div>
+<% } %>
+<%- body %>
+<p style="margin: 32px 0 0; color: #888888; font-size: 13px;">
+  You are getting this because product updates are on in your settings.
+</p>
+<%- include("partials/footer") -%>
