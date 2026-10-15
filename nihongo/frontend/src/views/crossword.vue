@@ -42,7 +42,7 @@ const errorMsg = ref('')
 /** Set when "words I know" cannot be built yet: how many there are. */
 const knownShort = ref<number | null>(null)
 const level = ref<'N5' | 'N4'>('N5')
-/** Which words — remembered on the device, so coming back resumes the same kind of puzzle. */
+/** Which words. Kept on the device so a puzzle in progress resumes, but every visit starts on Today. */
 const source = useLocalStorage<CrosswordSource>('go-crossword-source', 'daily')
 /** Entries whose kanji has been shown, and whose word has been heard, as hints — each counted once. */
 const kanjiShown = ref(new Set<string>())
@@ -129,7 +129,14 @@ onMounted(async () => {
   await loadLevel()
   if (studyLevel.value === 'N4')
     level.value = 'N4'
-  void load()
+  // Every visit starts on today's puzzle. The tab used to be remembered, and
+  // finishing a daily moved it to Mix — so the next day the page opened on Mix
+  // and today's puzzle went unseen. load() still moves on to a new puzzle when
+  // today's is already done. Changing the tab triggers the load itself.
+  if (source.value !== 'daily')
+    source.value = 'daily'
+  else
+    void load()
 })
 
 // ============ Methods ============
