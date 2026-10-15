@@ -215,10 +215,23 @@ function readMoreNew(): number {
   }
 }
 
-/** Today's new cards are done, though more are waiting: say so, honestly. */
+/** Practice the daily new-card limit does not apply to. */
+const PRACTICE = [
+  { label: 'Speak', to: ROUTES.SPEAK },
+  { label: 'Conversations', to: ROUTES.CONVERSATIONS },
+  { label: 'Read', to: ROUTES.READ },
+  { label: 'Recall', to: ROUTES.RECALL },
+  { label: 'Games', to: ROUTES.GAMES }
+]
+
+/**
+ * Today's new cards are done: say so, in any deck. It also required new cards
+ * to be waiting in the deck shown, so an empty deck said "caught up" instead,
+ * and the other decks it offered all came up empty on the same limit.
+ */
 const limitReached = computed(() =>
   mode.value === 'new' && counts.value.newLimit > 0
-  && counts.value.newToday >= counts.value.newLimit && counts.value.newAvailable > 0)
+  && counts.value.newToday >= counts.value.newLimit)
 
 function learnMore() {
   const key = moreNewKey()
@@ -314,7 +327,11 @@ watch(() => queueCelebration.value, (next) => {
  */
 const stageInProgress = computed(() => {
   const st = stage.value
-  if (!st || counts.value.newAvailable > 0)
+  // About the whole stage, so only true when nothing narrows the queue: an
+  // empty Kana deck said "every card in stage 4 has been introduced" while
+  // 119 of its cards had never been started.
+  const filtered = !focused.value && deckId.value !== 'all'
+  if (!st || filtered || counts.value.newAvailable > 0 || limitReached.value)
     return null
   const left = st.total - st.learned
   return left > 0 ? left : null
@@ -539,6 +556,22 @@ const scriptLabel = computed(() => {
   return script && script !== kind ? `${kind} · ${script}` : kind
 })
 const isChoice = computed(() => current.value?.inputMode === 'choice')
+
+/** The facet a taught item is being asked in for the first time, in words. */
+const FACET_WAYS: Record<string, string> = {
+  meaning: 'its meaning',
+  reading: 'its reading',
+  production: 'saying it',
+  listening: 'hearing it',
+  writing: 'writing it'
+}
+const newWay = computed(() => {
+  const c = current.value
+  if (!c?.firstTime || c.isNew)
+    return ''
+  const way = FACET_WAYS[c.facet]
+  return way ? `this ${c.kind === 'kanji' ? 'kanji' : 'word'}: ${way}` : ''
+})
 
 /**
  * Handwriting cards.
@@ -1541,7 +1574,7 @@ watch(() => lang.code, async () => {
         -->
         <template v-if="limitReached">
           <p class="text-2xl font-semibold">
-            You've learned today's {{ counts.newLimit }} new words.
+            You've learned {{ counts.newToday }} new {{ counts.newToday === 1 ? 'card' : 'cards' }} today.
           </p>
           <p class="mx-auto mt-3 max-w-md text-sm text-[var(--color-muted)]">
             Letting them settle beats piling on more — they come back for review soon, and
@@ -1554,6 +1587,15 @@ watch(() => lang.code, async () => {
             <Button variant="ghost" @click="learnMore">
               Learn 5 more anyway
             </Button>
+          </div>
+          <!-- What the daily limit does not touch: practice with what you know. -->
+          <p class="mt-6 text-sm text-[var(--color-muted)]">
+            Or practise with what you know:
+          </p>
+          <div class="mt-2 flex flex-wrap justify-center gap-2">
+            <router-link v-for="p in PRACTICE" :key="p.to" :to="p.to" class="rounded-full border border-[var(--color-border)] px-3 py-1.5 text-sm transition hover:border-[var(--color-text)]">
+              {{ p.label }}
+            </router-link>
           </div>
         </template>
         <template v-else-if="stageInProgress">
@@ -1609,7 +1651,7 @@ watch(() => lang.code, async () => {
           Refresh
         </Button>
 
-        <div v-if="!focused && decksWithWork.length > 0" class="mt-8 border-t border-[var(--color-border)] pt-6">
+        <div v-if="!focused && !limitReached && decksWithWork.length > 0" class="mt-8 border-t border-[var(--color-border)] pt-6">
           <p class="text-sm text-[var(--color-muted)]">
             Or study something else:
           </p>
@@ -1657,6 +1699,11 @@ watch(() => lang.code, async () => {
         <div class="relative">
           <p class="text-center text-xs uppercase tracking-wide text-[var(--color-muted)]">
             {{ scriptLabel }}<span v-if="current.isNew"> &middot; new</span>
+          </p>
+          <!-- Something already taught, asked a new way for the first time: say
+               so, or it reads as a quiz on something never shown. -->
+          <p v-if="newWay" class="mt-1 text-center text-xs text-[var(--color-muted)]">
+            A new way to practise {{ newWay }} — you've met it before.
           </p>
 
           <!--

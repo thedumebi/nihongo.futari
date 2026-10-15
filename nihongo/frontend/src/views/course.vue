@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import type { CourseLevel, CourseStage } from '@nihongo/shared/types'
 
+import { STAGE_PASS } from '@nihongo/shared/constants'
 import { Check, Lock } from 'lucide-vue-next'
 import { computed, onMounted, ref, watch } from 'vue'
 
@@ -124,10 +125,25 @@ onMounted(load)
           <p v-if="currentStage" class="mt-1 text-sm text-[var(--color-muted)]">
             {{ describe(currentStage) }}
           </p>
-          <!-- Carry the level across, so Continue lands in the level the
-               course is talking about rather than whichever one was last
-               picked on the study page. -->
-          <router-link :to="`${ROUTES.STUDY}?level=${current.level}`" class="mt-4 inline-block">
+          <!-- Where this stage stands, in the terms that decide when it opens
+               the next — "53/172 cards" alone did not say why it was not done. -->
+          <p v-if="currentStage" class="mt-3 text-sm">
+            <strong>{{ currentStage.learned }}</strong> learned &middot;
+            <strong>{{ currentStage.started }}</strong> started &middot;
+            {{ currentStage.total }} cards.
+          </p>
+          <p v-if="currentStage" class="mt-1 text-sm text-[var(--color-muted)]">
+            <template v-if="currentStage.total > currentStage.started">
+              {{ currentStage.total - currentStage.started }} still to start — New words brings a few each day.
+            </template>
+            Stage {{ (current.currentStage ?? 0) + 1 }} opens at {{ Math.round(STAGE_PASS * 100) }}% learned
+            ({{ Math.ceil(currentStage.total * STAGE_PASS) }} cards). A card counts as learned once it
+            has stuck across a few days of reviews, not the first time you see it.
+          </p>
+          <!-- A course session: new cards at this level, whatever deck was
+               last picked on the study page. Without `mode` it kept the
+               remembered deck — Kana, all done — and said "caught up". -->
+          <router-link :to="`${ROUTES.STUDY}?mode=new&level=${current.level}`" class="mt-4 inline-block">
             <Button variant="primary">
               Continue
             </Button>

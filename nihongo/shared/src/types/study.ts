@@ -263,6 +263,12 @@ export const studyQueueItemSchema = z.object({
   facet: z.enum(STUDY_FACETS),
   due: z.iso.datetime(),
   isNew: z.boolean(),
+  /**
+   * This card has never been answered, though the item may have been taught
+   * already — a known word's listening card, say. `isNew` is true only on the
+   * one card that introduces the item; this marks the rest of its first times.
+   */
+  firstTime: z.boolean().optional(),
   ghost: z.boolean(),
   card: cardStateSchema.nullable(),
   /** The prompt being shown, so the answer can say which one it answered. */
@@ -383,6 +389,8 @@ export const courseStageSchema = z.object({
   stage: z.number().int(),
   total: z.number().int(),
   learned: z.number().int(),
+  /** Cards met at least once; learned are those past the learning steps. */
+  started: z.number().int(),
   /** What the stage is made of, so it can be described rather than numbered. */
   kinds: z.array(z.object({ kind: z.string(), count: z.number().int() })),
   /** A few of its subjects, for a one-line preview. */

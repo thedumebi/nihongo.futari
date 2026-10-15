@@ -22,7 +22,7 @@ import type {
 } from '@nihongo/shared/types'
 import type { SQL, SQLWrapper } from 'drizzle-orm'
 
-import { ROUTE_BASE_PATHS } from '@nihongo/shared/constants'
+import { ROUTE_BASE_PATHS, STAGE_PASS } from '@nihongo/shared/constants'
 import db from '@nihongo/shared/db'
 import {
   curriculumUnitItems,
@@ -643,8 +643,9 @@ const STAGE_SIZE = 50
  * one — the card you keep failing is exactly the card that stops being worth
  * waiting for. Suspended cards leave the ratio entirely rather than counting
  * against it, so giving up on one is a decision the gate respects.
+ *
+ * In shared constants, because the Course map says it out loud.
  */
-const STAGE_PASS = 0.85
 
 /**
  * Stage progress, defined ONCE.
@@ -679,6 +680,8 @@ function stageRollup(userId: string, languageId: string) {
       -- suspending it meant.
       count(*) filter (where sc.id is null or not sc.suspended) as total,
       count(*) filter (where sc.state >= 2 and not sc.suspended) as learned,
+      -- Met at least once: the difference from learned is what is still settling.
+      count(*) filter (where sc.id is not null and not sc.suspended) as started,
       -- Both units, because a stage needs both to describe itself honestly:
       -- "50 kana" is what the stage IS, "14/96" is how far through its cards
       -- you are. Printing the card count as the content count is what made a
@@ -1532,21 +1535,32 @@ export async function getQueue(userId: string, query: StudyQueueQuery): Promise<
   // fired for every facet: meaning, reading, production, listening, each
   // shuffled to a different point in the session, all announcing the same word.
   //
-  // `lesson_views` is the record. It was written only for grammar lessons and
-  // read only to decide whether to attach a lesson payload; it now governs the
-  // introduction for every kind, which is what its own doc comment always said
-  // it was for.
-  const seen = new Set(
-    items.length === 0
-      ? []
-      : (await db
-          .select({ studyItemId: lessonViews.studyItemId })
+  // Taught means: for grammar, the lesson was read (`lesson_views`); for
+  // everything else, one of the item's cards has actually been ANSWERED. The
+  // view used to count for every kind — written the moment "Got it" was
+  // pressed — so a word whose question was skipped, or whose session ended
+  // before it was answered, came back later as a quiz with nothing taught.
+  const itemIds = [...new Set(items.map(i => i.studyItemId))]
+  const grammarIds = new Set(items.filter(i => i.kind === 'grammar').map(i => i.studyItemId))
+  const [viewed, answered] = itemIds.length === 0
+    ? [[], []]
+    : await Promise.all([
+        db.select({ studyItemId: lessonViews.studyItemId })
           .from(lessonViews)
+          .where(and(eq(lessonViews.userId, userId), inArray(lessonViews.studyItemId, [...grammarIds]))),
+        db.selectDistinct({ studyItemId: studyItemFacets.studyItemId })
+          .from(srsCards)
+          .innerJoin(studyItemFacets, eq(studyItemFacets.id, srsCards.facetId))
           .where(and(
-            eq(lessonViews.userId, userId),
-            inArray(lessonViews.studyItemId, [...new Set(items.map(i => i.studyItemId))])
-          ))).map(r => r.studyItemId)
-  )
+            eq(srsCards.userId, userId),
+            inArray(studyItemFacets.studyItemId, itemIds),
+            sql`(${srsCards.reps} > 0 or ${srsCards.lastReview} is not null)`
+          ))
+      ])
+  const seen = new Set([
+    ...viewed.map(r => r.studyItemId).filter(id => grammarIds.has(id)),
+    ...answered.map(r => r.studyItemId).filter(id => !grammarIds.has(id))
+  ])
 
   const introducer = new Map<string, string>()
   for (const item of items) {
@@ -1559,8 +1573,10 @@ export async function getQueue(userId: string, query: StudyQueueQuery): Promise<
     }
   }
 
-  for (const item of items)
+  for (const item of items) {
+    item.firstTime = item.isNew
     item.isNew = introducer.get(item.studyItemId) === item.facetId
+  }
 
   // Teach before asking.
   //
@@ -2198,28 +2214,30 @@ export async function getCourse(userId: string, languageCode: string): Promise<C
 
   const rollup = await db.execute(sql`
     with stages as (${stageRollup(userId, language.id)})
-    select l.code as level, l.sort_index as level_order, s.stage, s.kind, s.total, s.learned, s.items
+    select l.code as level, l.sort_index as level_order, s.stage, s.kind, s.total, s.learned, s.started, s.items
     from stages s
     join language_levels l on l.id = s.level_id
     order by l.sort_index, s.stage, s.kind
   `)
 
-  interface Row { level: string, level_order: number, stage: number, kind: string, total: number, learned: number, items: number }
+  interface Row { level: string, level_order: number, stage: number, kind: string, total: number, learned: number, started: number, items: number }
   const rows = ((rollup.rows ?? []) as unknown as Row[]).map(r => ({
     ...r,
     stage: Number(r.stage),
     total: Number(r.total),
     learned: Number(r.learned),
+    started: Number(r.started),
     items: Number(r.items)
   }))
 
   // Group into levels, then stages.
-  const byLevel = new Map<string, Map<number, { total: number, learned: number, kinds: Map<string, number> }>>()
+  const byLevel = new Map<string, Map<number, { total: number, learned: number, started: number, kinds: Map<string, number> }>>()
   for (const row of rows) {
     const level = byLevel.get(row.level) ?? new Map()
-    const stage = level.get(row.stage) ?? { total: 0, learned: 0, kinds: new Map<string, number>() }
+    const stage = level.get(row.stage) ?? { total: 0, learned: 0, started: 0, kinds: new Map<string, number>() }
     stage.total += row.total
     stage.learned += row.learned
+    stage.started += row.started
     // Keyed on ITEMS: this is the "what is in this stage" line, not progress.
     stage.kinds.set(row.kind, (stage.kinds.get(row.kind) ?? 0) + row.items)
     level.set(row.stage, stage)
@@ -2244,6 +2262,7 @@ export async function getCourse(userId: string, languageCode: string): Promise<C
         stage,
         total: v.total,
         learned: v.learned,
+        started: v.started,
         kinds: [...v.kinds].map(([kind, count]) => ({ kind, count })).sort((a, b) => b.count - a.count),
         sample: samples.get(`${level}:${stage}`) ?? [],
         // Everything up to and including the current stage is reachable.

@@ -134,12 +134,17 @@ const drawerSections = computed(() => [
   { key: 'practise', title: 'Practise', items: practiseMenu },
   { key: 'account', title: auth.user?.name || 'You', items: accountMenu.value }
 ])
-const drawerOpen = ref<Record<string, boolean>>({})
+/** The one drawer section that is open — opening another closes it. */
+const drawerOpen = ref<string | null>(null)
 
 watch(menuOpen, (isOpen) => {
   if (isOpen)
-    drawerOpen.value = Object.fromEntries(drawerSections.value.map(sec => [sec.key, groupActive(sec.items)]))
+    drawerOpen.value = drawerSections.value.find(sec => groupActive(sec.items))?.key ?? null
 })
+
+function toggleSection(key: string) {
+  drawerOpen.value = drawerOpen.value === key ? null : key
+}
 
 /**
  * Whether a nav link is the current page. Learn and Review are one path with
@@ -364,14 +369,14 @@ async function signOut() {
                 type="button"
                 class="flex w-full items-center justify-between rounded-lg px-2 py-2 text-left transition hover:text-[var(--color-text)]"
                 :class="groupActive(sec.items) ? 'text-[var(--color-text)]' : 'text-[var(--color-muted)]'"
-                :aria-expanded="drawerOpen[sec.key] === true"
-                @click="drawerOpen[sec.key] = !drawerOpen[sec.key]"
+                :aria-expanded="drawerOpen === sec.key"
+                @click="toggleSection(sec.key)"
               >
                 <span class="truncate">{{ sec.title }}</span>
-                <ChevronDown class="h-4 w-4 shrink-0 transition" :class="drawerOpen[sec.key] ? 'rotate-180' : ''" />
+                <ChevronDown class="h-4 w-4 shrink-0 transition" :class="drawerOpen === sec.key ? 'rotate-180' : ''" />
               </button>
               <!-- Indented, with a rule down the side, so what belongs to the section is plain. -->
-              <div v-if="drawerOpen[sec.key]" class="mb-2 ml-3 border-l-2 border-[var(--color-border)] pl-2">
+              <div v-if="drawerOpen === sec.key" class="mb-2 ml-3 border-l-2 border-[var(--color-border)] pl-2">
                 <router-link
                   v-for="item in sec.items"
                   :key="item.to"
