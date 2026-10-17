@@ -60,6 +60,7 @@ import {
   evaluateGhost,
   newBudget,
   replay,
+  SERIES_KNOWN_MIN,
   studyDateFor,
   studyDayRange
 } from '@nihongo/shared/lib'
@@ -908,8 +909,6 @@ function lessonOpened(userId: string): SQL {
  * or serves NEW material applies this, so none of them advertises a Speak card
  * the queue would never give.
  */
-/** How many kanji that follow a series a learner must know before the series is taught. */
-const SERIES_KNOWN_MIN = 2
 
 /**
  * A sound series is only worth teaching once its kanji are familiar.

@@ -59,7 +59,12 @@ function read(kana: string) {
 <template>
   <div class="mx-auto max-w-md text-left">
     <!-- The idea, once. A sound series means nothing until this is said. -->
-    <SeriesExplainer :open="explainerOpen" @closed="explained = true" />
+    <SeriesExplainer
+      :open="explainerOpen"
+      :example="showReadings ? { component: series.component, reading: series.primaryReading, kanji: followers.map(m => ({ character: m.character, reading: m.reading })) } : undefined"
+      :avoid="series.component"
+      @closed="explained = true"
+    />
 
     <!-- The sound part itself. -->
     <div class="mt-5 flex items-center gap-4">

@@ -244,6 +244,10 @@ onMounted(async () => {
                     :style="{ width: `${c.total === 0 ? 0 : (c.known / c.total) * 100}%` }"
                   />
                 </div>
+                <!-- What moves this one is not obvious: nothing is studied on its page. -->
+                <p v-if="c.kind === 'phonetic-series'" class="mt-1 text-xs text-[var(--color-muted)]">
+                  Each comes in New words once you know two of its kanji, and counts here once it has stuck.
+                </p>
               </router-link>
             </li>
           </ul>

@@ -8,7 +8,7 @@ import type { GetByComponentRoute, ListRoute } from './phonetics.routes.js'
 
 export const list: AppRouteHandler<ListRoute> = async (c) => {
   const { languageCode, minMembers } = c.req.valid('query')
-  return c.json(await listSeries(languageCode, minMembers), HttpStatusCodes.OK)
+  return c.json(await listSeries(languageCode, minMembers, c.get('user')?.id), HttpStatusCodes.OK)
 }
 
 export const getByComponent: AppRouteHandler<GetByComponentRoute> = async (c) => {

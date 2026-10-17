@@ -3,7 +3,7 @@ import type { PhoneticSeriesListResponse, PhoneticSeriesView } from '@nihongo/sh
 
 import db from '@nihongo/shared/db'
 import { kanji, languages, phoneticSeries, phoneticSeriesMembers } from '@nihongo/shared/db/schema'
-import { exampleWord, kanjiParts, orderMembers } from '@nihongo/shared/lib'
+import { exampleWord, kanjiParts, orderMembers, seriesStatus } from '@nihongo/shared/lib'
 import { and, asc, desc, eq, gte, inArray, sql } from 'drizzle-orm'
 
 /**
@@ -23,9 +23,10 @@ function meaningOf(meanings: Array<{ gloss: string, lang: string }> | null): str
   return meanings?.find(m => m.lang === 'en')?.gloss ?? meanings?.[0]?.gloss ?? null
 }
 
-export async function listSeries(languageCode: string, minMembers = 2): Promise<PhoneticSeriesListResponse> {
+export async function listSeries(languageCode: string, minMembers = 2, userId?: string): Promise<PhoneticSeriesListResponse> {
   const rows = await db
     .select({
+      id: phoneticSeries.id,
       component: phoneticSeries.componentCharacter,
       primaryReading: phoneticSeries.primaryReading,
       memberCount: phoneticSeries.memberCount,
@@ -43,15 +44,69 @@ export async function listSeries(languageCode: string, minMembers = 2): Promise<
     // Most reliable first: those are the ones actually worth learning as rules.
     .orderBy(desc(phoneticSeries.reliability), desc(phoneticSeries.memberCount))
 
+  const standing = await seriesStanding(rows.map(r => r.id), userId)
+
   return {
-    series: rows.map(r => ({
-      component: r.component,
-      primaryReading: r.primaryReading,
-      memberCount: r.memberCount,
-      reliability: Number(r.reliability ?? 0),
-      componentMeaning: meaningOf(r.meanings)
-    }))
+    series: rows.map((r) => {
+      const s = standing.get(r.id)
+      const status = userId && s
+        ? seriesStatus({ active: s.active, cardState: s.cardState, knownKanji: s.known, unknownKanji: s.unknown })
+        : null
+      return {
+        component: r.component,
+        primaryReading: r.primaryReading,
+        memberCount: r.memberCount,
+        reliability: Number(r.reliability ?? 0),
+        componentMeaning: meaningOf(r.meanings),
+        level: s?.active ? s.level : null,
+        status: status?.status ?? (s && !s.active ? 'reference' : null),
+        need: status?.need ?? 0,
+        suggest: status?.suggest ?? []
+      }
+    })
   }
+}
+
+/**
+ * Each series' study item (its level and whether it is taught as a card) and,
+ * for a signed-in learner, their card on it and which of its kanji they know.
+ * One query for the whole list.
+ */
+async function seriesStanding(seriesIds: string[], userId?: string): Promise<Map<string, {
+  level: string | null
+  active: boolean
+  cardState: number | null
+  known: number
+  unknown: string[]
+}>> {
+  if (seriesIds.length === 0)
+    return new Map()
+  const res = await db.execute<{ series_id: string, level: string | null, active: boolean, card_state: number | null, known: number, unknown: string[] | null }>(sql`
+    select si.phonetic_series_id as series_id, ll.code as level, si.active,
+      (select max(c.state) from study_item_facets f join srs_cards c on c.facet_id = f.id and c.user_id = ${userId ?? ''}
+        where f.study_item_id = si.id) as card_state,
+      (select count(distinct m.kanji_id)::int from phonetic_series_members m
+        join study_items ki on ki.kanji_id = m.kanji_id
+        join study_item_facets kf on kf.study_item_id = ki.id
+        join srs_cards kc on kc.facet_id = kf.id and kc.user_id = ${userId ?? ''} and kc.state >= 2
+        where m.series_id = si.phonetic_series_id and m.follows_series) as known,
+      (select array_agg(k.character order by kl.sort_index, k.character) from phonetic_series_members m
+        join kanji k on k.id = m.kanji_id
+        join study_items ki on ki.kanji_id = m.kanji_id and ki.kind = 'kanji' and ki.published
+        join language_levels kl on kl.id = ki.level_id
+        where m.series_id = si.phonetic_series_id and m.follows_series
+          and not exists (select 1 from study_item_facets kf join srs_cards kc on kc.facet_id = kf.id
+            where kf.study_item_id = ki.id and kc.user_id = ${userId ?? ''} and kc.state >= 2)) as unknown
+    from study_items si
+    left join language_levels ll on ll.id = si.level_id
+    where si.kind = 'phonetic-series' and si.published and si.phonetic_series_id in ${seriesIds}`)
+  return new Map(res.rows.map(r => [r.series_id, {
+    level: r.level,
+    active: r.active,
+    cardState: r.card_state === null ? null : Number(r.card_state),
+    known: Number(r.known ?? 0),
+    unknown: r.unknown ?? []
+  }]))
 }
 
 export async function getSeries(languageCode: string, component: string): Promise<PhoneticSeriesView | null> {

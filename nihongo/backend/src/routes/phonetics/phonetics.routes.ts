@@ -3,6 +3,8 @@ import { HttpStatusCodes, PHONETIC_ROUTES } from '@nihongo/shared/constants'
 import { createPublicRoute, ErrorSchema, jsonContent } from '@nihongo/shared/openapi'
 import { phoneticSeriesListSchema, phoneticSeriesViewSchema } from '@nihongo/shared/types'
 
+import { optionalAuthMiddleware } from '@/middlewares/auth.js'
+
 const tags = ['Sound series']
 const langQuery = z.object({
   languageCode: z.string().min(2).default('ja'),
@@ -14,7 +16,8 @@ export const list = createPublicRoute({
   path: PHONETIC_ROUTES.LIST,
   method: 'get',
   summary: 'Phonetic (sound) series',
-  description: 'Components that predict an on-reading, most reliable first.',
+  description: 'Components that predict an on-reading, most reliable first, with the signed-in learner\'s standing on each.',
+  middleware: [optionalAuthMiddleware],
   request: { query: langQuery },
   responses: {
     [HttpStatusCodes.OK]: jsonContent(phoneticSeriesListSchema, 'Series')

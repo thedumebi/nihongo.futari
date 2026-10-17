@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import { exampleWord, kanjiParts, orderMembers, seriesReading } from './index.js'
+import { exampleWord, kanjiParts, orderMembers, seriesReading, seriesStatus } from './index.js'
 
 describe('kanjiParts', () => {
   it('splits a kanji into its parts from its IDS', () => {
@@ -58,5 +58,24 @@ describe('seriesReading', () => {
     expect(seriesReading('キョウ', 'kana')).toEqual({ main: 'きょう', sub: '' })
     expect(seriesReading('キョウ', 'romaji')).toEqual({ main: 'kyou', sub: '' })
     expect(seriesReading('キョウ', 'always')).toEqual({ main: 'キョウ', sub: 'きょう' })
+  })
+})
+
+describe('seriesStatus', () => {
+  const base = { active: true, cardState: null, knownKanji: 0, unknownKanji: ['晴', '静', '清'] }
+
+  it('locks a series until two of its kanji are known, and says which to learn', () => {
+    expect(seriesStatus(base)).toEqual({ status: 'locked', need: 2, suggest: ['晴', '静', '清'] })
+    expect(seriesStatus({ ...base, knownKanji: 1, unknownKanji: ['静', '清'] })).toEqual({ status: 'locked', need: 1, suggest: ['静', '清'] })
+  })
+
+  it('is ready once two are known, then learning and learned with its card', () => {
+    expect(seriesStatus({ ...base, knownKanji: 2 }).status).toBe('ready')
+    expect(seriesStatus({ ...base, knownKanji: 2, cardState: 1 }).status).toBe('learning')
+    expect(seriesStatus({ ...base, knownKanji: 2, cardState: 2 }).status).toBe('learned')
+  })
+
+  it('is only for reading when it is never taught as a card', () => {
+    expect(seriesStatus({ ...base, active: false }).status).toBe('reference')
   })
 })

@@ -37,6 +37,14 @@ const series: PhoneticSeriesView = {
 describe('seriesCard', () => {
   beforeEach(() => localStorage.clear())
 
+  it('explains with its own family once the reading is shown, and never before', () => {
+    const teach = mount(SeriesCard, { props: { series, mode: 'teach', script: 'kana' } }).text()
+    expect(teach).toContain('供・恭 all contain 共, and all are read キョウ (きょう)')
+    const ask = mount(SeriesCard, { props: { series, mode: 'ask', script: 'kana' } }).text()
+    expect(ask).toContain('all contain 青')
+    expect(ask).not.toContain('キョウ')
+  })
+
   it('asks without giving the reading away, and shows the kanji split into parts', () => {
     const text = mount(SeriesCard, { props: { series, mode: 'ask', script: 'kana' } }).text()
     expect(text).toContain('These kanji all contain 共')

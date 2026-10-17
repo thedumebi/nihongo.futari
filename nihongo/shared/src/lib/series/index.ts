@@ -80,3 +80,37 @@ export function seriesReading(katakana: string, mode: FuriganaMode): { main: str
     return { main: hiragana, sub: '' }
   return { main: katakana, sub: hiragana === katakana ? '' : hiragana }
 }
+
+/** How many kanji of a series a learner must know before the series is taught. */
+export const SERIES_KNOWN_MIN = 2
+
+/**
+ * Where a learner stands with one sound series, for the Sound series list.
+ *
+ * - `learned`: its card has stuck (graduated).
+ * - `learning`: its card has been met and is being reviewed.
+ * - `ready`: two of its kanji are known; it comes in New words.
+ * - `locked`: not yet; `need` more kanji, and `suggest` says which to learn.
+ * - `reference`: never taught as a card (unreliable, or too few kanji in the
+ *   course to ever unlock); the page is there to read.
+ */
+export function seriesStatus(input: {
+  /** Whether the series is taught as a card at all. */
+  active: boolean
+  /** The learner's card on it: null if none, else its FSRS state. */
+  cardState: number | null
+  /** Kanji that follow the series and the learner knows. */
+  knownKanji: number
+  /** Kanji that follow the series, are in the course, and are not known yet, easiest level first. */
+  unknownKanji: readonly string[]
+}): { status: 'learned' | 'learning' | 'ready' | 'locked' | 'reference', need: number, suggest: string[] } {
+  const none = { need: 0, suggest: [] as string[] }
+  if (!input.active)
+    return { status: 'reference', ...none }
+  if (input.cardState !== null)
+    return { status: input.cardState >= 2 ? 'learned' : 'learning', ...none }
+  if (input.knownKanji >= SERIES_KNOWN_MIN)
+    return { status: 'ready', ...none }
+  const need = SERIES_KNOWN_MIN - input.knownKanji
+  return { status: 'locked', need, suggest: input.unknownKanji.slice(0, need + 1) }
+}

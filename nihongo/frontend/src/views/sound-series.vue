@@ -11,6 +11,24 @@ import { ROUTES } from '@/constants'
 const series = ref<PhoneticSeriesListResponse['series']>([])
 const loading = ref(true)
 
+/**
+ * Where you stand with a series, in a line. A series is taught in New words,
+ * not here, once you know two of its kanji; this says how close that is.
+ */
+function standing(s: PhoneticSeriesListResponse['series'][number]): string {
+  switch (s.status) {
+    case 'learned': return 'Learned'
+    case 'learning': return 'Learning: it comes back in reviews'
+    case 'ready': return 'Coming in New words'
+    case 'locked': {
+      const options = s.suggest.join(', ').replace(/, ([^,]*)$/, ' or $1')
+      return s.need === 1 ? `Learn 1 more of its kanji: ${options}` : `Learn ${s.need} of its kanji first: ${options}`
+    }
+    case 'reference': return 'For reading only: not taught as a card'
+    default: return ''
+  }
+}
+
 onMounted(async () => {
   try {
     // 3+ members: below that a "rule" predicts too little to be worth learning.
@@ -32,6 +50,10 @@ onMounted(async () => {
         青 is セイ, and 晴・清・請・精・静 stop being five separate things to memorise.
       </p>
       <SeriesExplainer class="mt-4 max-w-xl" open />
+      <p class="mt-4 max-w-xl text-sm text-[var(--color-muted)]">
+        You don't study them here. A series comes to you in New words once you know two of its
+        kanji, and counts on Progress once it has stuck. Each one below says how close it is.
+      </p>
 
       <p v-if="loading" class="mt-8 text-[var(--color-muted)]">
         Loading…
@@ -47,9 +69,14 @@ onMounted(async () => {
             <span class="min-w-0">
               <span class="block text-lg" style="font-family: var(--font-jp)">{{ s.primaryReading }}</span>
               <span class="block truncate text-sm text-[var(--color-muted)]">
-                {{ s.memberCount }} kanji &middot; {{ Math.round(s.reliability * 100) }}% follow
+                <template v-if="s.level">{{ s.level }} &middot; </template>{{ s.memberCount }} kanji &middot; {{ Math.round(s.reliability * 100) }}% follow
                 <template v-if="s.componentMeaning"> &middot; {{ s.componentMeaning }}</template>
               </span>
+              <span
+                v-if="s.status"
+                class="mt-0.5 block text-sm"
+                :class="s.status === 'learned' || s.status === 'ready' ? 'text-[var(--color-success)]' : 'text-[var(--color-muted)]'"
+              >{{ standing(s) }}</span>
             </span>
           </router-link>
         </li>

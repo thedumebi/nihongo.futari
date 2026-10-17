@@ -63,7 +63,14 @@ export const phoneticSeriesListSchema = z.object({
     primaryReading: z.string(),
     memberCount: z.number().int(),
     reliability: z.number(),
-    componentMeaning: z.string().nullable()
+    componentMeaning: z.string().nullable(),
+    /** The level it is taught at: where its second kanji is. Null if never taught as a card. */
+    level: z.string().nullable(),
+    /** Where the signed-in learner stands with it (see `seriesStatus`); null when no one is signed in. */
+    status: z.enum(['learned', 'learning', 'ready', 'locked', 'reference']).nullable(),
+    /** For `locked`: how many more kanji to know, and which to learn. */
+    need: z.number().int(),
+    suggest: z.array(z.string())
   }))
 }).openapi('PhoneticSeriesList')
 
