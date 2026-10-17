@@ -391,7 +391,7 @@ async function turnOnPush() {
         <p class="mt-1 text-sm text-[var(--color-muted)]">
           How many words you have never seen New words introduces each day. More now means more
           reviews in a few days.<template v-if="dailyNewLimit">
-            {{ PACE[dailyNewLimit] ?? `${dailyNewLimit} a day.` }}
+            {{ ` ${PACE[dailyNewLimit] ?? `${dailyNewLimit} a day.`}` }}
           </template>
           You can always ask for a few more on the day.
         </p>
