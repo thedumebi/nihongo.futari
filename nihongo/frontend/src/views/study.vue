@@ -46,7 +46,7 @@ import { useLevel } from '@/composables/use-level'
 import { ROUTES } from '@/constants'
 import { addMoreNew, readMoreNew } from '@/lib/more-new'
 import { cacheBundle, enqueueAnswer, readBundle, requestPersistence } from '@/offline/db'
-import { flush } from '@/offline/sync'
+import { flush, settle } from '@/offline/sync'
 import { useLanguageStore } from '@/store/language'
 
 const route = useRoute()
@@ -1073,6 +1073,10 @@ async function load() {
   // even the moment the new queue is in flight.
   resetCard()
   try {
+    // Answers first, then the next batch: the server counts today's new words
+    // and extras from what has arrived, and an answer still in the outbox let
+    // one more through the limit (41 of 40). Bounded, so offline never hangs.
+    await settle().catch(() => {})
     // A focused session ignores the remembered deck. Applying both narrowed
     // "everything due" down to whatever deck was last picked — the page said
     // 3 due and handed over 0, because the deck filter was still on underneath

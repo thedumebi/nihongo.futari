@@ -1483,7 +1483,11 @@ export async function getQueue(userId: string, query: StudyQueueQuery): Promise<
   // So when `new` has nothing more to introduce, fall through to the unfinished
   // cards of the CURRENT stage — not the whole curriculum, because a review of
   // something learned two stages ago is not what finishing this one means.
-  if (query.mode === 'new' && newRows.length === 0 && ceilings.size > 0) {
+  //
+  // Only when the stage is out of new material, not when today's limits are
+  // reached: then the day is done, and the page says so, instead of carrying
+  // on with the stage's started cards under "Practising words you've met".
+  if (query.mode === 'new' && newRows.length === 0 && ceilings.size > 0 && budget.wordsLeft > 0) {
     dueRows = await db
       // Same shape as the primary due select — these rows join the same list.
       .select({

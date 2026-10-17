@@ -93,6 +93,22 @@ export async function flush(): Promise<void> {
   })
 }
 
+/**
+ * Send everything waiting, and wait until it has gone (or `timeoutMs`, or the
+ * device is offline). `flush` alone returns at once when another flush holds
+ * the lock, so a caller that needs the server up to date must use this: the
+ * next batch of new cards is counted from what the server has.
+ */
+export async function settle(timeoutMs = 3000): Promise<void> {
+  const until = Date.now() + timeoutMs
+  while (navigator.onLine && Date.now() < until) {
+    await flush()
+    if (await pendingCount() === 0)
+      return
+    await new Promise(resolve => setTimeout(resolve, 150))
+  }
+}
+
 async function flushInner(): Promise<void> {
   if (syncing || !navigator.onLine)
     return
