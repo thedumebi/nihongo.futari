@@ -136,6 +136,8 @@ const { mode: furiganaMode, loadSettings } = useFurigana()
  */
 const dailyNewLimit = ref<number | null>(null)
 const DAILY_OPTIONS = ['5', '10', '15', '20', '30'].map(n => ({ value: n, label: n }))
+/** How the chosen number feels, so the hint describes the learner's own pace. */
+const PACE_WORDS: Record<number, string> = { 5: 'a gentle pace', 10: 'a steady pace', 15: 'a brisk pace', 20: 'a fast pace', 30: 'a very fast pace' }
 /**
  * Extra practice: the other cards of words already met (another way to
  * practise each), as a multiple of the new words. They come beside the new
@@ -382,7 +384,10 @@ async function turnOnPush() {
       >
         <p class="mt-1 text-sm text-[var(--color-muted)]">
           How many words you have never seen New words introduces each day. More now means more
-          reviews in a few days. 10 is a steady pace. You can always ask for a few more on the day.
+          reviews in a few days.<template v-if="dailyNewLimit">
+            {{ dailyNewLimit }} a day is {{ PACE_WORDS[dailyNewLimit] ?? 'your own pace' }}<template v-if="dailyNewLimit !== 10">; 10 is a steady pace</template>.
+          </template>
+          You can always ask for a few more on the day.
         </p>
         <Segmented
           v-if="dailyNewLimit !== null"
