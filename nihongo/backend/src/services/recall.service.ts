@@ -19,6 +19,7 @@ import { and, desc, eq, gte, inArray, isNotNull, lt, or, sql } from 'drizzle-orm
 
 import { assetUrl, speakAnswerAudio, speakSay } from '../lib/assets.js'
 import { GLOSS_AUDIO_LEVELS, glossAudioPath } from '../lib/audio-key.js'
+import { currentClips } from './clips.service.js'
 
 /**
  * Recall: a hands-free session built from what the learner is shaky on.
@@ -94,6 +95,10 @@ export async function getRecallSession(userId: string, languageCode: string, siz
   const kanaClips = new Map((await db.select({ character: kana.character, romaji: kana.romaji, script: kana.script }).from(kana))
     .map(k => [k.character, assetUrl(`/audio/kana/${k.script}-${k.romaji}.m4a`)]))
 
+  // Only recordings that say what the word says now (see clips.service): an
+  // item without one is left out, since hearing the answer is the point.
+  const answerClips = (await currentClips([], wordRows.map(r => Number(r.entSeq)).filter(Boolean))).words
+
   const items: RecallItem[] = []
   const seen = new Set<string>()
   // One word per English prompt in a session: two words both asked as "one"
@@ -102,7 +107,8 @@ export async function getRecallSession(userId: string, languageCode: string, siz
   for (const r of wordRows) {
     const prompt = recallGloss(r.glosses.filter(g => g.lang === 'en').map(g => g.text))
     const said = prompt.toLowerCase().replace(/\s+/g, ' ').trim()
-    if (!prompt || seen.has(r.wordId) || asked.has(said) || items.length >= size)
+    const answerClip = answerClips.get(Number(r.entSeq))
+    if (!prompt || !answerClip || seen.has(r.wordId) || asked.has(said) || items.length >= size)
       continue
     seen.add(r.wordId)
     asked.add(said)
@@ -116,7 +122,7 @@ export async function getRecallSession(userId: string, languageCode: string, siz
       hint,
       text: r.form,
       reading: r.reading,
-      answerAudio: assetUrl(`/audio/words/${r.entSeq}.m4a`)
+      answerAudio: assetUrl(answerClip)
     })
   }
 

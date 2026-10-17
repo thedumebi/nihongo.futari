@@ -33,6 +33,7 @@ import { DateTime } from 'luxon'
 import { withAssetUrls } from '../lib/assets.js'
 import { readingFor } from '../lib/token-reading.js'
 import { recordActivity } from './activities.service.js'
+import { withCurrentAudio } from './clips.service.js'
 import { glossary, glossLine, withPromptTokens, withSpellingVariants } from './glossary.service.js'
 import { loadExamples, loadLessons } from './grammar.service.js'
 import { getKanaLesson, KANA_SLUG_PREFIX, kanaLessonItems, kanaLessonSummaries } from './kana-lesson.service.js'
@@ -339,7 +340,8 @@ export async function getLesson(userId: string, languageCode: string, slug: stri
   const g = await glossary(languageCode)
 
   // Easiest first: the meaning question introduces, the rest build on it.
-  const ordered = [...questions].sort((a, b) => Number(b.firstExposureOnly) - Number(a.firstExposureOnly))
+  // Clips only while they say what the sentence says now (see clips.service).
+  const ordered = [...await withCurrentAudio(questions)].sort((a, b) => Number(b.firstExposureOnly) - Number(a.firstExposureOnly))
 
   return {
     lesson,

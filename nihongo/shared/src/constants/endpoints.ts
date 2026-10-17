@@ -46,6 +46,8 @@ export const ROUTE_BASE_PATHS = {
   NOTIFICATIONS: '/notifications',
   REVIEW_QUEUE: '/review-queue',
   INVITES: '/invites',
+  /** Admin: how much sentence and word audio is waiting to be recorded. */
+  AUDIO: '/audio',
   ATTRIBUTION: '/attribution'
 } as const
 
@@ -467,6 +469,10 @@ export const REVIEW_QUEUE_ROUTES = {
   REJECT: '/:id/reject'
 } as const
 
+export const AUDIO_ROUTES = {
+  STATUS: '/status'
+} as const
+
 export const INVITE_ROUTES = {
   /** Public: tells the signup page whether a code is required. */
   SIGNUP_MODE: '/signup-mode',
@@ -693,6 +699,10 @@ export const API_ENDPOINTS = {
     BULK_REJECT: `${ROUTE_BASE_PATHS.REVIEW_QUEUE}${REVIEW_QUEUE_ROUTES.BULK_REJECT}`,
     APPROVE: (id: string) => `${ROUTE_BASE_PATHS.REVIEW_QUEUE}${REVIEW_QUEUE_ROUTES.APPROVE.replace(':id', id)}`,
     REJECT: (id: string) => `${ROUTE_BASE_PATHS.REVIEW_QUEUE}${REVIEW_QUEUE_ROUTES.REJECT.replace(':id', id)}`
+  },
+
+  AUDIO: {
+    STATUS: `${ROUTE_BASE_PATHS.AUDIO}${AUDIO_ROUTES.STATUS}`
   },
 
   INVITES: {

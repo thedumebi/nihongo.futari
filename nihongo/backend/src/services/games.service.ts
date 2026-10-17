@@ -6,6 +6,7 @@ import { sql } from 'drizzle-orm'
 import { DateTime } from 'luxon'
 
 import { assetUrl } from '../lib/assets.js'
+import { currentClips } from './clips.service.js'
 import { loadUserContext } from './progress.service.js'
 
 /**
@@ -127,12 +128,18 @@ export async function getListeningGame(query: GamesQuery): Promise<ListeningGame
   const [pairs, pitched] = await Promise.all([minimalPairs(query.languageCode, levels), pitchPairs(query.languageCode, levels)])
   const pitchCount = Math.min(pitched.length, Math.round(query.size * PITCH_SHARE))
 
-  const soundRounds = shuffle(pairs).slice(0, query.size - pitchCount).map((pair) => {
+  // A round is its audio: only words whose recording says what they say now.
+  const chosen = shuffle(pairs).slice(0, (query.size - pitchCount) * 2)
+  const clips = await currentClips([], [...new Set(chosen.flatMap(p => [p.a.entSeq, p.b.entSeq]))])
+  const soundRounds = chosen.flatMap((pair) => {
     const answer = Math.random() < 0.5 ? 0 : 1
     const options = [pair.a, pair.b]
+    const clip = clips.words.get(options[answer]!.entSeq)
+    return clip ? [{ pair, answer, options, clip }] : []
+  }).slice(0, query.size - pitchCount).map(({ pair, answer, options, clip }) => {
     return {
       contrast: pair.contrast,
-      audio: assetUrl(`/audio/words/${options[answer]!.entSeq}.m4a`),
+      audio: assetUrl(clip),
       options: options.map(w => ({ reading: w.reading, text: w.text, meaning: w.meaning })),
       answer
     }

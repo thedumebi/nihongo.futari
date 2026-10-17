@@ -19,6 +19,8 @@ import { and, asc, eq, inArray, sql } from 'drizzle-orm'
 
 import { assetUrl } from '@/lib/assets.js'
 
+import { currentClips } from './clips.service.js'
+
 /**
  * One word, everything known about it.
  *
@@ -118,6 +120,7 @@ export async function getWordDetail(languageCode: string, id: string): Promise<W
         .from(sentenceTranslations)
         .where(and(sql`${sentenceTranslations.sentenceId} in ${exampleIds}`, eq(sentenceTranslations.lang, 'en')))
 
+  const exampleClips = await currentClips(exampleRows.map(s => s.id), [])
   return {
     id: row.id,
     form: row.form,
@@ -146,9 +149,10 @@ export async function getWordDetail(languageCode: string, id: string): Promise<W
     })),
     examples: exampleRows.map(s => ({
       text: s.text,
+      // Only a recording that says what the sentence says now (see clips.service).
+      audio: exampleClips.sentences.get(s.id) ? assetUrl(exampleClips.sentences.get(s.id)!) : null,
       translation: translationRows.find(t => t.sentenceId === s.id)?.text ?? null,
-      furigana: sentenceFurigana(s.text, tokenRows.filter(t => t.sentenceId === s.id)) as FuriganaSegment[],
-      audio: assetUrl(`/audio/sentences/${s.id}.m4a`)
+      furigana: sentenceFurigana(s.text, tokenRows.filter(t => t.sentenceId === s.id)) as FuriganaSegment[]
     }))
   }
 }

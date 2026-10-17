@@ -68,6 +68,7 @@ import { and, asc, desc, eq, gt, gte, inArray, isNotNull, isNull, lt, lte, or, s
 
 import { assetUrl, withAssetUrls, withDialogueAudio, withSpeakAudio } from '@/lib/assets.js'
 
+import { withCurrentAudio } from './clips.service.js'
 import { glossary, withDialogueTokens, withPromptTokens, withSpellingVariants } from './glossary.service.js'
 import { hintFromLesson, loadLessons } from './grammar.service.js'
 import { loadSeries } from './phonetics.service.js'
@@ -1555,8 +1556,12 @@ export async function getQueue(userId: string, query: StudyQueueQuery): Promise<
   // the process lifetime, so this is a map lookup after the first request.
   const gloss = await glossary(query.languageCode)
 
+  // Clips only while they say what the sentence or word says now, and the
+  // dictation hint from the current translation (see clips.service).
+  const [dueServed, newServed] = await Promise.all([withCurrentAudio(dueRows), withCurrentAudio(newRows)])
+
   let items: StudyQueueItem[] = [
-    ...dueRows.map(r => ({
+    ...dueServed.map(r => ({
       cardId: r.cardId,
       facetId: r.facetId,
       studyItemId: r.studyItemId,
@@ -1586,7 +1591,7 @@ export async function getQueue(userId: string, query: StudyQueueQuery): Promise<
       distractors: r.distractors,
       assets: withAssetUrls(r.assets)
     })),
-    ...newRows.map(r => ({
+    ...newServed.map(r => ({
       cardId: null,
       facetId: r.facetId,
       studyItemId: r.studyItemId,

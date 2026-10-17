@@ -28,6 +28,7 @@ import { assetUrl } from '../lib/assets.js'
 import { crosswordClue } from '../lib/crossword-clues.js'
 import { posLabel } from '../lib/pos.js'
 import { recordActivity } from './activities.service.js'
+import { currentClips } from './clips.service.js'
 import { loadUserContext } from './progress.service.js'
 
 /**
@@ -163,11 +164,12 @@ function puzzleKeyOf(level: string, grid: CrosswordGrid): string {
   return createHash('sha1').update(body).digest('hex').slice(0, 24)
 }
 
-function audioOf(word: PoolWord): string | null {
-  return word.entSeq ? assetUrl(`/audio/words/${word.entSeq}.m4a`) : null
+function audioOf(word: PoolWord, clips: ReadonlyMap<number, string | null>): string | null {
+  const clip = word.entSeq ? clips.get(word.entSeq) : null
+  return clip ? assetUrl(clip) : null
 }
 
-function wordView(word: PoolWord) {
+function wordView(word: PoolWord, clips: ReadonlyMap<number, string | null>) {
   return {
     form: word.form,
     reading: word.reading,
@@ -176,7 +178,7 @@ function wordView(word: PoolWord) {
     wordId: word.id,
     answer: word.candidate.cells,
     clue: word.candidate.clue,
-    audio: audioOf(word)
+    audio: audioOf(word, clips)
   }
 }
 
@@ -261,11 +263,14 @@ export async function getCrossword(userId: string, query: CrosswordQuery): Promi
   if (!grid)
     return { error: 'no-puzzle' }
 
+  const bonusWord = grid.bonus ? byId.get(grid.bonus.id) : undefined
+  // Only recordings that say what the word says now (see clips.service).
+  const placed = [...grid.placements.map(p => byId.get(p.id)!), ...(bonusWord ? [bonusWord] : [])]
+  const clips = (await currentClips([], placed.flatMap(w => w.entSeq ? [w.entSeq] : []))).words
   const entries: CrosswordEntry[] = grid.placements.map((p) => {
     const word = byId.get(p.id)!
-    return { ...wordView(word), number: p.number, direction: p.dir, row: p.row, col: p.col }
+    return { ...wordView(word, clips), number: p.number, direction: p.dir, row: p.row, col: p.col }
   })
-  const bonusWord = grid.bonus ? byId.get(grid.bonus.id) : undefined
   const puzzleKey = puzzleKeyOf(query.level, grid)
   const [done] = await db
     .select({ bestSeconds: crosswordResults.bestSeconds })
@@ -281,7 +286,7 @@ export async function getCrossword(userId: string, query: CrosswordQuery): Promi
     size: grid.size,
     cells: grid.cells,
     entries,
-    bonus: grid.bonus && bonusWord ? { ...wordView(bonusWord), cells: grid.bonus.cells } : null,
+    bonus: grid.bonus && bonusWord ? { ...wordView(bonusWord, clips), cells: grid.bonus.cells } : null,
     knownCount,
     note,
     completed: done ?? null

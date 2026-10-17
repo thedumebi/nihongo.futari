@@ -20,6 +20,7 @@ import { annotate } from '@nihongo/shared/lib'
 import { and, asc, eq, inArray } from 'drizzle-orm'
 
 import { assetUrl } from '../lib/assets.js'
+import { currentClips } from './clips.service.js'
 import { glossary, glossLine } from './glossary.service.js'
 import { getLexicon } from './lexicon.service.js'
 
@@ -71,15 +72,18 @@ export async function loadExamples(
   // that は/を/へ romanise as wa/o/e here too, which is the one thing a
   // hand-rolled tokeniser gets wrong every time.
   const g = await glossary(languageCode)
+  // Only a recording that says what the sentence says now (see clips.service).
+  const clips = await currentClips([...new Set(rows.map(r => r.sentenceId))], [])
 
   for (const row of rows) {
+    const clip = clips.sentences.get(row.sentenceId)
     const list = out.get(row.pointId) ?? []
     list.push({
       sentenceId: row.sentenceId,
       text: row.text,
       reading: row.reading,
       translation: row.translation,
-      audio: assetUrl(`/audio/sentences/${row.sentenceId}.m4a`),
+      audio: clip ? assetUrl(clip) : null,
       tokens: glossLine(row.text, g, row.reading ?? undefined)
     })
     out.set(row.pointId, list)

@@ -8,6 +8,7 @@
  * logger from the package root (`@nihongo/shared`) on the server instead.
  */
 export * from './api-errors.js'
+export * from './clips/index.js'
 export * from './corrections/index.js'
 export * from './crossword/index.js'
 export * from './email-content/index.js'
