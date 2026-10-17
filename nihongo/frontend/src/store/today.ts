@@ -4,6 +4,7 @@ import { defineStore } from 'pinia'
 import { ref } from 'vue'
 
 import { getToday } from '@/api/today'
+import { readMoreNew } from '@/lib/more-new'
 import { onSyncChange } from '@/offline/sync'
 
 /**
@@ -36,7 +37,7 @@ export const useTodayStore = defineStore('today', () => {
     languageCode = code
     if (!force && Date.now() - fetchedAt < FRESH_MS)
       return
-    inflight ??= getToday(code)
+    inflight ??= getToday(code, readMoreNew(code))
       .then((next) => {
         today.value = next
         fetchedAt = Date.now()

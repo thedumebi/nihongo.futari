@@ -36,8 +36,10 @@ export const studySettingsSchema = z.object({
   furiganaMode: z.enum(FURIGANA_MODES),
   /** A level code such as 'N5'; the empty string means every level. */
   studyLevel: z.string(),
-  /** New cards the queue introduces per study day. "Learn more anyway" can go past it. */
+  /** New words (items) the queue introduces per study day. "Learn more anyway" can go past it. */
   dailyNewLimit: z.number().int().min(0).max(100),
+  /** Extra cards of words already met, per day, as a multiple of the new-word limit. */
+  extraPracticeMultiple: z.number().int().min(1).max(3),
   /** The local hour a new study day starts: 0 (midnight) by default, up to 6am. */
   dayBoundaryHour: z.number().int().min(0).max(6)
 }).openapi('StudySettings')

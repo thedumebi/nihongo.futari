@@ -10,6 +10,7 @@ import { DateTime } from 'luxon'
 import { randomBytes } from 'node:crypto'
 
 import { emptyRun, pushEvent } from './reminders.service.js'
+import { wordsFirstMet } from './srs.service.js'
 
 /**
  * Friends: opt-in, connected by code, sharing only what each person switched
@@ -231,7 +232,7 @@ async function weeksFor(people: Array<{ userId: string, today: string, timezone:
     return out
   const ids = people.map(p => p.userId)
   // Eight calendar days back covers every timezone's seven study days.
-  const [stats, acts] = await Promise.all([
+  const [stats, acts, met] = await Promise.all([
     db.execute<{ user_id: string, local_date: string, reviews: number, new_words: number }>(sql`
       select user_id, local_date::text as local_date, sum(review_count)::int as reviews, sum(new_count)::int as new_words
       from srs_daily_stats
@@ -241,7 +242,9 @@ async function weeksFor(people: Array<{ userId: string, today: string, timezone:
       select user_id, local_date::text as local_date, kind, count(*)::int as n
       from learning_activities
       where user_id in ${ids} and local_date >= current_date - 8
-      group by 1, 2, 3`)
+      group by 1, 2, 3`),
+    // New WORDS, not new cards: a second card of a word known for weeks is not new.
+    wordsFirstMet(ids, DateTime.now().minus({ days: 9 }).toJSDate())
   ])
   for (const p of people) {
     const inWeek = (d: string) => {
@@ -255,11 +258,12 @@ async function weeksFor(people: Array<{ userId: string, today: string, timezone:
     const weekStart = DateTime.fromISO(p.today).minus({ days: 6 }).toISODate() ?? p.today
     const { start } = studyDayRange(weekStart, p.timezone, p.boundary)
     const [xp] = await db.select({ n: sum(xpEvents.amount).mapWith(Number) }).from(xpEvents).where(and(eq(xpEvents.userId, p.userId), gte(xpEvents.createdAt, start)))
-    out.set(p.userId, {
-      today: activityCounts(toStats(mineStats.filter(r => r.local_date === p.today)), toActs(mineActs.filter(r => r.local_date === p.today))),
-      week: activityCounts(toStats(mineStats.filter(r => inWeek(r.local_date))), toActs(mineActs.filter(r => inWeek(r.local_date)))),
-      xp: xp?.n ?? 0
-    })
+    const metDays = met.filter(m => m.userId === p.userId).map(m => studyDateFor(m.firstSeen, p.timezone, p.boundary))
+    const today = activityCounts(toStats(mineStats.filter(r => r.local_date === p.today)), toActs(mineActs.filter(r => r.local_date === p.today)))
+    const week = activityCounts(toStats(mineStats.filter(r => inWeek(r.local_date))), toActs(mineActs.filter(r => inWeek(r.local_date))))
+    today.newWords = metDays.filter(d => d === p.today).length
+    week.newWords = metDays.filter(inWeek).length
+    out.set(p.userId, { today, week, xp: xp?.n ?? 0 })
   }
   return out
 }

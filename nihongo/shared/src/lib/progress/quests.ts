@@ -13,7 +13,7 @@ export interface QuestDef {
   code: string
   title: string
   target: number
-  /** What counts: today's reviews, new cards learned today, or activities of these kinds. */
+  /** What counts: today's reviews, new words learned today, or activities of these kinds. */
   counts: 'reviews' | 'new' | ActivityKind[]
 }
 
@@ -25,7 +25,7 @@ export const QUEST_POOL: readonly QuestDef[] = [
   { code: 'conversation-2', title: 'Practise two conversations', target: 2, counts: ['conversation'] },
   { code: 'reading-1', title: 'Read a speech aloud', target: 1, counts: ['reading'] },
   { code: 'crossword-1', title: 'Solve a crossword', target: 1, counts: ['crossword'] },
-  { code: 'new-5', title: 'Learn 5 new cards', target: 5, counts: 'new' },
+  { code: 'new-5', title: 'Learn 5 new words', target: 5, counts: 'new' },
   { code: 'recall-1', title: 'Do a Recall session', target: 1, counts: ['recall'] },
   { code: 'shadowing-1', title: 'Shadow a conversation', target: 1, counts: ['shadowing'] },
   { code: 'game-1', title: 'Play a listening or kanji game', target: 1, counts: ['listening-game', 'kanji-build'] },
@@ -87,13 +87,13 @@ export interface QuestProgress {
 /** How far each quest has got, from today's review count and activities. */
 export function questProgress(
   quests: readonly QuestDef[],
-  today: { reviews: number, newCards: number, activities: ReadonlyArray<{ kind: ActivityKind }> }
+  today: { reviews: number, newWords: number, activities: ReadonlyArray<{ kind: ActivityKind }> }
 ): QuestProgress[] {
   return quests.map((q) => {
     const counted = q.counts === 'reviews'
       ? today.reviews
       : q.counts === 'new'
-        ? today.newCards
+        ? today.newWords
         : today.activities.filter(a => (q.counts as ActivityKind[]).includes(a.kind)).length
     return { code: q.code, title: q.title, target: q.target, progress: Math.min(counted, q.target), done: counted >= q.target }
   })

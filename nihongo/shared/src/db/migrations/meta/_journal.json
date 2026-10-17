@@ -225,6 +225,13 @@
       "when": 1792229485443,
       "tag": "0031_bent_malcolm_colcord",
       "breakpoints": true
+    },
+    {
+      "idx": 32,
+      "version": "7",
+      "when": 1792231624652,
+      "tag": "0032_curved_glorian",
+      "breakpoints": true
     }
   ]
 }

@@ -8,6 +8,7 @@ import type {
   DueListResponse,
   GhostPolicy,
   LessonSeenResult,
+  NewBudget,
   ReviewEvent,
   SaveWordResult,
   SrsCard,
@@ -57,6 +58,7 @@ import {
   effectiveCardState,
   emptyCardState,
   evaluateGhost,
+  newBudget,
   replay,
   studyDateFor,
   studyDayRange
@@ -1121,6 +1123,126 @@ export async function newCardsToday(userId: string, languageId: string, now: Dat
   return row?.total ?? 0
 }
 
+/**
+ * New WORDS the queue introduced this study day: items whose first card ever
+ * was started by the queue today. A card of a word met before is not a new
+ * word, and nor is a word that came in through a lesson, the dictionary or
+ * Speak; those were the learner's own choice.
+ */
+export async function newWordsToday(userId: string, languageId: string, now: Date): Promise<number> {
+  const { timezone, dayBoundaryHour } = await loadUserContext(userId)
+  const { start, end } = studyDayRange(studyDateFor(now, timezone, dayBoundaryHour), timezone, dayBoundaryHour)
+  // Times are stored as UTC wall-clock (how the ORM writes a Date), so compare
+  // with UTC strings: a Date passed raw would be read in the session's zone.
+  const [from, to] = [start.toISOString(), end.toISOString()]
+  const res = await db.execute<{ n: number }>(sql`
+    select count(*)::int as n from (
+      select f.study_item_id
+      from srs_cards c
+      join study_item_facets f on f.id = c.facet_id
+      where c.user_id = ${userId}
+        and f.study_item_id in (
+          select f2.study_item_id from srs_cards c2
+          join study_item_facets f2 on f2.id = c2.facet_id
+          where c2.user_id = ${userId} and c2.language_id = ${languageId}
+            and c2.first_seen_at >= ${from}::timestamp and c2.first_seen_at < ${to}::timestamp
+        )
+      group by f.study_item_id
+      having min(c.first_seen_at) >= ${from}::timestamp and min(c.first_seen_at) < ${to}::timestamp
+        and bool_and(c.origin = 'queue')
+    ) t`)
+  return res.rows[0]?.n ?? 0
+}
+
+/** The item already has a card for this learner: met before. */
+function itemHasCard(userId: string): SQL {
+  return sql`exists (
+    select 1 from srs_cards c3
+    join study_item_facets f3 on f3.id = c3.facet_id
+    where f3.study_item_id = ${studyItems.id} and c3.user_id = ${userId}
+  )`
+}
+
+/**
+ * What the queue could still offer, in ITEMS: words never met (new words) and
+ * words already met with a card not yet started (extra practice). One number
+ * used to cover both, so "136 new" counted words already known.
+ */
+async function countAvailableNew(userId: string, languageId: string, filters: SQL[]): Promise<{ words: number, extras: number }> {
+  const count = (kind: SQL) => db
+    .select({ total: sql<number>`count(distinct ${studyItems.id})`.mapWith(Number) })
+    .from(studyItemFacets)
+    .innerJoin(studyItems, eq(studyItems.id, studyItemFacets.studyItemId))
+    .leftJoin(srsCards, and(eq(srsCards.facetId, studyItemFacets.id), eq(srsCards.userId, userId)))
+    .where(and(
+      eq(studyItems.languageId, languageId),
+      eq(studyItems.published, true),
+      eq(studyItems.active, true),
+      eq(studyItemFacets.enabled, true),
+      isNull(srsCards.id),
+      introducedByQueue(),
+      seriesReady(userId),
+      ...filters,
+      kind
+    ))
+  const [[words], [extras]] = await Promise.all([
+    count(sql`not ${itemHasCard(userId)}`),
+    count(sql`${itemHasCard(userId)} and ${lessonOpened(userId)}`)
+  ])
+  return { words: words?.total ?? 0, extras: extras?.total ?? 0 }
+}
+
+/** New words and extras still to come today, as the Today page shows them. */
+export async function newLeftToday(userId: string, languageId: string, now: Date, moreNew = 0): Promise<{ budget: NewBudget, extrasLeft: number }> {
+  const ceilings = await stageCeilings(userId, languageId)
+  const withinCurriculum = ceilings.size === 0 ? [] : [sql.raw(curriculumPredicate(ceilings))]
+  const [budget, available] = await Promise.all([
+    todayBudget(userId, languageId, now, moreNew),
+    countAvailableNew(userId, languageId, withinCurriculum)
+  ])
+  return { budget, extrasLeft: Math.min(budget.extrasLeft, available.extras) }
+}
+
+/**
+ * When each word these learners know was first met, for words first met since
+ * `since`: one row per word, at its first card. Feeds "new words" counts
+ * (friends, the weekly email), which used to add up new CARDS, so a second
+ * card of a word known for weeks counted as a new word. Any origin counts
+ * here: a word learned in a lesson is still a word learned.
+ */
+export async function wordsFirstMet(userIds: string[], since: Date): Promise<Array<{ userId: string, firstSeen: Date }>> {
+  if (userIds.length === 0)
+    return []
+  // UTC wall-clock both ways, as the ORM stores it (see newWordsToday).
+  const res = await db.execute<{ user_id: string, first_seen: string }>(sql`
+    select c.user_id, to_char(min(c.first_seen_at), 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"') as first_seen
+    from srs_cards c
+    join study_item_facets f on f.id = c.facet_id
+    where c.user_id in ${userIds}
+    group by c.user_id, f.study_item_id
+    having min(c.first_seen_at) >= ${since.toISOString()}::timestamp`)
+  return res.rows.map(r => ({ userId: r.user_id, firstSeen: new Date(r.first_seen) }))
+}
+
+/** Today's new words and extra practice, from the learner's settings and what they have started. */
+export async function todayBudget(userId: string, languageId: string, now: Date, moreNew = 0): Promise<NewBudget> {
+  const [[settings], cards, words] = await Promise.all([
+    db.select({ dailyNewLimit: userSettings.dailyNewLimit, extraPracticeMultiple: userSettings.extraPracticeMultiple })
+      .from(userSettings)
+      .where(eq(userSettings.userId, userId))
+      .limit(1),
+    newCardsToday(userId, languageId, now),
+    newWordsToday(userId, languageId, now)
+  ])
+  return newBudget({
+    dailyNewLimit: settings?.dailyNewLimit ?? 10,
+    moreNew,
+    extraPracticeMultiple: settings?.extraPracticeMultiple ?? 2,
+    newWordsToday: words,
+    newCardsToday: cards
+  })
+}
+
 export async function getQueue(userId: string, query: StudyQueueQuery): Promise<StudyQueueResponse> {
   const now = new Date()
   const horizon = new Date(now.getTime() + query.horizonDays * 24 * 60 * 60 * 1000)
@@ -1132,25 +1254,21 @@ export async function getQueue(userId: string, query: StudyQueueQuery): Promise<
     .limit(1)
 
   if (!language) {
-    return { items: [], counts: { due: 0, dueCards: 0, learning: 0, newAvailable: 0, ghost: 0, newToday: 0, newLimit: 0 }, gate: null, progress: [], serverTime: now.toISOString() }
+    return { items: [], counts: { due: 0, dueCards: 0, learning: 0, newAvailable: 0, extrasAvailable: 0, ghost: 0, newToday: 0, newLimit: 0, extrasToday: 0, extrasLimit: 0 }, gate: null, progress: [], serverTime: now.toISOString() }
   }
 
-  const [settings] = await db
-    .select({ dailyNewLimit: userSettings.dailyNewLimit })
-    .from(userSettings)
-    .where(eq(userSettings.userId, userId))
-    .limit(1)
-  const newLimit = settings?.dailyNewLimit ?? 10
+  // The limit is DAILY, and counts WORDS: each new word's first card is its
+  // introduction, and the other cards of words already met come beside them,
+  // up to their own multiple of it (see `newBudget`).
+  //
   // The limit is DAILY. It was applied per request, so every "Refresh" handed
   // over ten more and a beginner could take sixty new words on day one, then
   // meet a wall of reviews on day three. Only cards the queue introduced count
   // — a finished lesson or a saved word was the learner's own choice.
-  const newToday = await newCardsToday(userId, language.id, now)
   // "Learn 5 more anyway" raises TODAY's limit. The page sends what it has
   // been granted today on every request — it used to send it once, so the
   // next refill counted the day afresh and the wall came straight back.
-  const todayLimit = newLimit + (query.moreNew ?? 0)
-  const newRemaining = Math.max(0, todayLimit - newToday)
+  const budget = await todayBudget(userId, language.id, now, query.moreNew ?? 0)
 
   // Deck filters. `kind` narrows the content type, `unit` narrows to a
   // curriculum unit — a script (hiragana) or a scenario (at a restaurant).
@@ -1303,9 +1421,15 @@ export async function getQueue(userId: string, query: StudyQueueQuery): Promise<
   const withinCurriculum = ceilings.size === 0 ? [] : [sql.raw(curriculumPredicate(ceilings))]
   // Without this a fresh account gets an empty queue forever, because a card
   // only comes into existence when the first answer is recorded.
-  const newRows = query.mode === 'due'
-    ? []
-    : await db
+  //
+  // Two kinds of new card, limited separately: a word never met (its first
+  // card is its introduction, counted against today's new WORDS), and another
+  // card of a word already met (extra practice, counted against its own
+  // multiple). Introductions first; extras fill what is left of the batch, and
+  // carry on alone once the day's words are done.
+  const pickNew = (kind: SQL, limit: number) => limit <= 0
+    ? Promise.resolve([])
+    : db
         .select({
           facetId: studyItemFacets.id,
           studyItemId: studyItems.id,
@@ -1336,10 +1460,15 @@ export async function getQueue(userId: string, query: StudyQueueQuery): Promise<
           ...withinCurriculum,
           ...kindFilter,
           ...unitFilter,
-          ...levelFilter
+          ...levelFilter,
+          kind
         ))
         .orderBy(asc(studyItems.sortIndex))
-        .limit(Math.max(0, Math.min(newRemaining, query.limit - dueRows.length)))
+        .limit(limit)
+  const slots = Math.max(0, query.limit - dueRows.length)
+  const introRows = query.mode === 'due' ? [] : await pickNew(sql`not ${itemHasCard(userId)}`, Math.min(budget.wordsLeft, slots))
+  const extraRows = query.mode === 'due' ? [] : await pickNew(itemHasCard(userId), Math.min(budget.extrasLeft, slots - introRows.length))
+  const newRows = [...introRows, ...extraRows]
 
   // --- Finish the stage -----------------------------------------------------
   //
@@ -1661,29 +1790,7 @@ export async function getQueue(userId: string, query: StudyQueueQuery): Promise<
       ...levelFilter
     ))
 
-  // Counted in ITEMS, not facets.
-  //
-  // The pool now offers one facet per item (`firstUncardedFacet`), so counting
-  // facets promised four cards where one was coming. It also matches the unit
-  // every other number on screen is moving to: a word, not a word's cards.
-  const [newAvailable] = await db
-    .select({ total: sql<number>`count(distinct ${studyItems.id})`.mapWith(Number) })
-    .from(studyItemFacets)
-    .innerJoin(studyItems, eq(studyItems.id, studyItemFacets.studyItemId))
-    .leftJoin(srsCards, and(eq(srsCards.facetId, studyItemFacets.id), eq(srsCards.userId, userId)))
-    .where(and(
-      eq(studyItems.languageId, language.id),
-      eq(studyItems.published, true),
-      eq(studyItems.active, true),
-      eq(studyItemFacets.enabled, true),
-      isNull(srsCards.id),
-      introducedByQueue(),
-      seriesReady(userId),
-      ...withinCurriculum,
-      ...kindFilter,
-      ...unitFilter,
-      ...levelFilter
-    ))
+  const available = await countAvailableNew(userId, language.id, [...withinCurriculum, ...kindFilter, ...unitFilter, ...levelFilter])
 
   // What this deck is holding back, if anything. Only worth asking when the
   // deck came up empty of new material — otherwise there is nothing to explain.
@@ -1691,7 +1798,7 @@ export async function getQueue(userId: string, query: StudyQueueQuery): Promise<
   // is no longer sufficient: the stage fallback above may have filled the queue
   // with the current stage's unfinished cards, and explaining that material is
   // locked ahead while handing the reader twenty cards is simply false.
-  const gate = items.length > 0 || newAvailable?.total || withinCurriculum.length === 0
+  const gate = items.length > 0 || available.words || withinCurriculum.length === 0
     ? null
     : await deckGate(userId, language.id, [...kindFilter, ...unitFilter, ...levelFilter])
 
@@ -1706,10 +1813,13 @@ export async function getQueue(userId: string, query: StudyQueueQuery): Promise<
       due: counts?.due ?? 0,
       dueCards: counts?.dueCards ?? 0,
       learning: counts?.learning ?? 0,
-      newAvailable: newAvailable?.total ?? 0,
+      newAvailable: available.words,
+      extrasAvailable: available.extras,
       ghost: ghosts?.total ?? 0,
-      newToday,
-      newLimit: todayLimit
+      newToday: budget.wordsToday,
+      newLimit: budget.wordsLimit,
+      extrasToday: budget.extrasToday,
+      extrasLimit: budget.extrasLimit
     },
     serverTime: now.toISOString()
   }

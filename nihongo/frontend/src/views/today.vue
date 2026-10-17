@@ -50,6 +50,8 @@ const loading = ref(true)
 const today = computed(() => store.today)
 const firstName = computed(() => (auth.user?.name ?? '').split(' ')[0] ?? '')
 const newLeft = computed(() => Math.max(0, (today.value?.newLimit ?? 0) - (today.value?.newToday ?? 0)))
+/** Extra practice (other cards of words already met) still to come once the new words are done. */
+const extrasLeft = computed(() => today.value?.extrasLeft ?? 0)
 
 // ============ Lifecycle Hooks ============
 onMounted(async () => {
@@ -125,6 +127,18 @@ onMounted(async () => {
             </p>
             <Button class="mt-4" :variant="today.due > 0 ? 'ghost' : 'primary'" :to="ROUTES.LEARN">
               Learn new words
+            </Button>
+          </template>
+          <template v-else-if="extrasLeft > 0">
+            <p class="mt-2 text-xl font-semibold">
+              Practising words you've met
+            </p>
+            <p class="mt-1 text-sm text-[var(--color-muted)]">
+              Today's {{ today.newLimit }} new words are done. {{ extrasLeft }} more {{ extrasLeft === 1 ? 'card' : 'cards' }}
+              of words you have met: another way to practise each.
+            </p>
+            <Button class="mt-4" :variant="today.due > 0 ? 'ghost' : 'primary'" :to="ROUTES.LEARN">
+              Keep practising
             </Button>
           </template>
           <template v-else>

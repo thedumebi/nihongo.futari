@@ -265,7 +265,7 @@ onUnmounted(() => {
           The next card is due in <span class="font-medium text-[var(--color-text)]">{{ nextDue }}</span>.
         </p>
         <p class="mt-3 text-sm text-[var(--color-muted)]">
-          Everything you've learned is still resting. New cards are available whenever you want them.
+          Everything you've learned is still resting. New words are waiting whenever you want them.
         </p>
         <router-link :to="`${ROUTES.STUDY}?mode=new`" class="mt-6 inline-block">
           <Button variant="ghost">

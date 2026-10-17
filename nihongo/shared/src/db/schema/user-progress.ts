@@ -20,7 +20,13 @@ import { languageLevels, languages } from './languages.js'
 
 export const userSettings = pgTable('user_settings', {
   userId: text('user_id').primaryKey().references(() => users.id, { onDelete: 'cascade' }),
+  /** New WORDS (items: words, kanji, kana) the queue introduces per study day. */
   dailyNewLimit: integer('daily_new_limit').notNull().default(10),
+  /**
+   * New cards of words already met (another way to practise them), as a
+   * multiple of the new-word limit: 2 means up to 20 extras beside 10 words.
+   */
+  extraPracticeMultiple: integer('extra_practice_multiple').notNull().default(2),
   dailyReviewLimit: integer('daily_review_limit').notNull().default(200),
   sessionLength: integer('session_length').notNull().default(20),
   /** See FURIGANA_MODES in constants — the single vocabulary for this value. */

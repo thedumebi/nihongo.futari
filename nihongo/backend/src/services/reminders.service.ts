@@ -21,7 +21,7 @@ import { DateTime } from 'luxon'
 import { pushConfigured, sendPush } from '@/lib/push.js'
 
 import { studiedToday } from './progress.service.js'
-import { countDue } from './srs.service.js'
+import { countDue, wordsFirstMet } from './srs.service.js'
 
 /**
  * Daily study reminders.
@@ -372,11 +372,13 @@ export async function runWeeklySummaries(now = new Date()): Promise<ReminderRunR
       .select({
         reviews: sql<number>`coalesce(sum(${srsDailyStats.reviewCount}), 0)::int`,
         correct: sql<number>`coalesce(sum(${srsDailyStats.correctCount}), 0)::int`,
-        newItems: sql<number>`coalesce(sum(${srsDailyStats.newCount}), 0)::int`,
         timeMs: sql<number>`coalesce(sum(${srsDailyStats.timeMs}), 0)::bigint`
       })
       .from(srsDailyStats)
       .where(and(eq(srsDailyStats.userId, c.userId), gte(srsDailyStats.localDate, since)))
+
+    // Words, not cards: a second card of a word met before is not a new item.
+    const newItems = (await wordsFirstMet([c.userId], local.minus({ days: 7 }).toJSDate())).length
 
     const [best] = await db
       .select({ localDate: srsDailyStats.localDate, reviewCount: srsDailyStats.reviewCount })
@@ -398,7 +400,7 @@ export async function runWeeklySummaries(now = new Date()): Promise<ReminderRunR
         name: c.name ?? 'there',
         reviews,
         minutes: Math.round(Number(totals?.timeMs ?? 0) / 60000),
-        newItems: Number(totals?.newItems ?? 0),
+        newItems,
         // Guard the divide: a week with no reviews is 0%, not NaN%.
         accuracy: reviews === 0 ? 0 : Math.round((Number(totals?.correct ?? 0) / reviews) * 100),
         streak: streakRow?.current ?? 0,

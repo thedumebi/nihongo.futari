@@ -31,6 +31,7 @@ export async function getSettings(userId: string): Promise<StudySettings> {
       furiganaMode: userSettings.furiganaMode,
       studyLevel: userSettings.studyLevel,
       dailyNewLimit: userSettings.dailyNewLimit,
+      extraPracticeMultiple: userSettings.extraPracticeMultiple,
       dayBoundaryHour: userSettings.dayBoundaryHour
     })
     .from(userSettings)
@@ -43,6 +44,7 @@ export async function getSettings(userId: string): Promise<StudySettings> {
     // row yet gets the same thing as a user who chose All.
     studyLevel: row?.studyLevel ?? '',
     dailyNewLimit: row?.dailyNewLimit ?? 10,
+    extraPracticeMultiple: row?.extraPracticeMultiple ?? 2,
     dayBoundaryHour: row?.dayBoundaryHour ?? DEFAULT_DAY_BOUNDARY_HOUR
   }
 }
@@ -60,6 +62,7 @@ export async function updateSettings(userId: string, patch: StudySettingsPatch):
     ...(patch.furiganaMode !== undefined ? { furiganaMode: patch.furiganaMode } : {}),
     ...(patch.studyLevel !== undefined ? { studyLevel: patch.studyLevel } : {}),
     ...(patch.dailyNewLimit !== undefined ? { dailyNewLimit: patch.dailyNewLimit } : {}),
+    ...(patch.extraPracticeMultiple !== undefined ? { extraPracticeMultiple: patch.extraPracticeMultiple } : {}),
     ...(patch.dayBoundaryHour !== undefined ? { dayBoundaryHour: patch.dayBoundaryHour } : {})
   }
 

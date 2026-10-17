@@ -25,7 +25,7 @@ import { aggregateReviews, computeStreak, DEFAULT_DAY_BOUNDARY_HOUR, QUEST_XP, q
 import { and, eq, gte, inArray, isNull, sql } from 'drizzle-orm'
 
 import { recomputeAchievements } from './achievements.service.js'
-import { countDue } from './srs.service.js'
+import { countDue, newWordsToday } from './srs.service.js'
 
 /**
  * Progress aggregates.
@@ -221,11 +221,14 @@ export async function recomputeHabit(userId: string, languageId: string): Promis
 export async function todayQuests(userId: string, languageId: string, now = new Date()): Promise<{ localDate: string, quests: QuestProgress[] }> {
   const { timezone, dayBoundaryHour } = await loadUserContext(userId)
   const localDate = studyDateFor(now, timezone, dayBoundaryHour)
-  const [[stats], activities, due] = await Promise.all([
+  const [[stats], activities, due, newWords] = await Promise.all([
     db.select({ reviews: srsDailyStats.reviewCount, newCards: srsDailyStats.newCount }).from(srsDailyStats).where(and(eq(srsDailyStats.userId, userId), eq(srsDailyStats.languageId, languageId), eq(srsDailyStats.localDate, localDate))),
     db.select({ kind: learningActivities.kind }).from(learningActivities).where(and(eq(learningActivities.userId, userId), eq(learningActivities.languageId, languageId), eq(learningActivities.localDate, localDate))),
     // Everything still due before this study day ends.
-    countDue(userId, languageId, studyDayRange(localDate, timezone, dayBoundaryHour).end)
+    countDue(userId, languageId, studyDayRange(localDate, timezone, dayBoundaryHour).end),
+    // Words, as the daily limit counts them: a second card of a word met
+    // before is practice, not a new word.
+    newWordsToday(userId, languageId, now)
   ])
   // Reviews today holds: those already done (not first looks at new cards,
   // which are a choice) plus those still to come.
@@ -234,7 +237,7 @@ export async function todayQuests(userId: string, languageId: string, now = new 
     localDate,
     quests: questProgress(questsFor(userId, localDate, reviewsAvailable), {
       reviews: stats?.reviews ?? 0,
-      newCards: stats?.newCards ?? 0,
+      newWords,
       activities: activities.map(a => ({ kind: a.kind as ActivityKind }))
     })
   }

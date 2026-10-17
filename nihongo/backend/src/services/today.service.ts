@@ -10,8 +10,7 @@ import { listLessons } from './lesson.service.js'
 import { getSummary, studiedToday, todayQuests } from './progress.service.js'
 import { listReadings } from './readings.service.js'
 import { listSpeak } from './speak.service.js'
-import { countDue, newCardsToday, nextDueAfter } from './srs.service.js'
-import { getSettings } from './users.service.js'
+import { countDue, newLeftToday, nextDueAfter } from './srs.service.js'
 
 /**
  * The Today screen, assembled from what each feature already knows.
@@ -20,20 +19,19 @@ import { getSettings } from './users.service.js'
  * is the lesson list's `next`, the next Speak session is the course's `next`.
  * One request so the screen paints at once instead of four spinners.
  */
-export async function getToday(userId: string, languageCode: string): Promise<Today | null> {
+export async function getToday(userId: string, languageCode: string, moreNew = 0): Promise<Today | null> {
   const [language] = await db.select({ id: languages.id }).from(languages).where(eq(languages.code, languageCode)).limit(1)
   if (!language)
     return null
 
-  const [due, nextDueAt, newToday, lessons, speak, summary, today, settings, quests, unseen, readings, friendRequests] = await Promise.all([
+  const [due, nextDueAt, newToday, lessons, speak, summary, today, quests, unseen, readings, friendRequests] = await Promise.all([
     countDue(userId, language.id),
     nextDueAfter(userId, language.id, new Date()),
-    newCardsToday(userId, language.id, new Date()),
+    newLeftToday(userId, language.id, new Date(), moreNew),
     listLessons(userId, languageCode),
     listSpeak(userId, languageCode),
     getSummary(userId, languageCode),
     studiedToday(userId, language.id),
-    getSettings(userId),
     todayQuests(userId, language.id),
     unseenAchievements(userId),
     listReadings(languageCode, undefined, userId),
@@ -51,8 +49,10 @@ export async function getToday(userId: string, languageCode: string): Promise<To
   return {
     due: due.items,
     nextDueAt,
-    newToday,
-    newLimit: settings.dailyNewLimit,
+    // In WORDS, with today's "learn 5 more" counted in, as Study counts them.
+    newToday: newToday.budget.wordsToday,
+    newLimit: newToday.budget.wordsLimit,
+    extrasLeft: newToday.extrasLeft,
     nextLesson: lessons.next ?? null,
     nextSpeak: nextSpeak ? { code: nextSpeak.code, number: nextSpeak.number, level: nextSpeak.level, titleEn: nextSpeak.titleEn } : null,
     streak: { current: summary.currentStreak, longest: summary.longestStreak, studiedToday: today },

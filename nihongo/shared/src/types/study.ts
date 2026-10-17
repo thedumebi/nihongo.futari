@@ -112,7 +112,7 @@ export const studyQueueQuerySchema = z.object({
    */
   level: z.string().optional(),
   /**
-   * New cards past today's limit, asked for on purpose — every "learn 5 more
+   * New words past today's limit, asked for on purpose — every "learn 5 more
    * anyway" pressed TODAY, added up. Raises today's limit by that much; the
    * page keeps the total for the day and sends it with every request, and a
    * new day starts from zero.
@@ -487,13 +487,19 @@ export const studyQueueResponseSchema = z.object({
      * came to sit beside a list showing 26.
      */
     learning: z.number().int(),
-    /** Items never studied that the curriculum will release next. */
+    /** Words (items) never studied that the curriculum will release next. */
     newAvailable: z.number().int(),
+    /** Words already met that still have a card not yet started: extra practice. */
+    extrasAvailable: z.number().int(),
     ghost: z.number().int(),
-    /** New cards the queue has introduced in this study day (midnight to midnight in the learner's time, or their own boundary hour). */
+    /** New WORDS the queue introduced this study day (midnight to midnight in the learner's time, or their own boundary hour). */
     newToday: z.number().int(),
-    /** The learner's daily new-card limit (Settings). */
-    newLimit: z.number().int()
+    /** Today's new-word limit: the setting plus any "learn 5 more". */
+    newLimit: z.number().int(),
+    /** Extra cards of words already met, started today. */
+    extrasToday: z.number().int(),
+    /** Today's limit on those: the new-word limit times the extra-practice multiple. */
+    extrasLimit: z.number().int()
   }),
   /**
    * Curriculum position, one row per level that still has a stage open.
@@ -736,3 +742,14 @@ export const wordStatusesSchema = z.object({
 export type WordStatuses = z.infer<typeof wordStatusesSchema>
 
 export type WordStatus = z.infer<typeof wordStatusSchema>
+
+/** Today's new material, in words and extras (see `newBudget`). */
+export const newBudgetSchema = z.object({
+  wordsLimit: z.number().int(),
+  wordsToday: z.number().int(),
+  wordsLeft: z.number().int(),
+  extrasLimit: z.number().int(),
+  extrasToday: z.number().int(),
+  extrasLeft: z.number().int()
+})
+export type NewBudget = z.infer<typeof newBudgetSchema>

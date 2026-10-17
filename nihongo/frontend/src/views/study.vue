@@ -44,6 +44,7 @@ import { playAudio } from '@/composables/use-audio'
 import { useFurigana } from '@/composables/use-furigana'
 import { useLevel } from '@/composables/use-level'
 import { ROUTES } from '@/constants'
+import { addMoreNew, readMoreNew } from '@/lib/more-new'
 import { cacheBundle, enqueueAnswer, readBundle, requestPersistence } from '@/offline/db'
 import { flush } from '@/offline/sync'
 import { useLanguageStore } from '@/store/language'
@@ -83,14 +84,6 @@ const mode = ref<'due' | 'new'>(requestedMode ?? 'new')
  * counted as focused, and focused sessions hide the deck and level pickers.
  */
 const focused = ref(requestedMode !== null)
-
-const focusLabel = computed(() =>
-  mode.value === 'due' ? "Reviewing what's due" : 'Learning new cards')
-
-const focusHint = computed(() =>
-  mode.value === 'due'
-    ? 'Only cards the scheduler asked for. Nothing new is mixed in.'
-    : 'Only cards you have never seen. Nothing you already know is mixed in.')
 
 const router = useRouter()
 
@@ -195,27 +188,13 @@ const deckIcon = Layers
 
 const items = ref<StudyQueueItem[]>([])
 const index = ref(0)
-const counts = ref({ due: 0, dueCards: 0, learning: 0, newAvailable: 0, ghost: 0, newToday: 0, newLimit: 0 })
+const counts = ref({ due: 0, dueCards: 0, learning: 0, newAvailable: 0, extrasAvailable: 0, ghost: 0, newToday: 0, newLimit: 0, extrasToday: 0, extrasLimit: 0 })
 /**
- * New cards past today's limit, asked for on purpose — every "learn 5 more"
- * pressed today, added up, kept on the device under today's date and sent
- * with every request. It used to be sent once and cleared, so the next refill
- * counted the day afresh and the wall came straight back after one card. A
- * new day has its own key, so it starts from zero.
+ * Cards already counted towards today, so a card that comes back on a
+ * learning step in the same session is not counted twice.
  */
-const moreNewKey = () => `go-more-new:${lang.code}:${new Date().toLocaleDateString('en-CA')}`
-/** Held in memory too, for a browser that refuses storage: it then lasts the visit. */
-const moreNewHere = new Map<string, number>()
-function readMoreNew(): number {
-  const key = moreNewKey()
-  try {
-    return Number(localStorage.getItem(key) ?? moreNewHere.get(key) ?? 0) || 0
-  } catch {
-    return moreNewHere.get(key) ?? 0
-  }
-}
-
-/** Practice the daily new-card limit does not apply to. */
+const countedToday = new Set<string>()
+/** Practice the daily new-word limit does not apply to. */
 const PRACTICE = [
   { label: 'Speak', to: ROUTES.SPEAK },
   { label: 'Conversations', to: ROUTES.CONVERSATIONS },
@@ -225,23 +204,37 @@ const PRACTICE = [
 ]
 
 /**
- * Today's new cards are done: say so, in any deck. It also required new cards
- * to be waiting in the deck shown, so an empty deck said "caught up" instead,
- * and the other decks it offered all came up empty on the same limit.
+ * Today's new WORDS are done. Extra practice (other cards of words already
+ * met) can still be coming; the page then says "Practising words you've met".
  */
-const limitReached = computed(() =>
+const wordsDone = computed(() =>
   mode.value === 'new' && counts.value.newLimit > 0
   && counts.value.newToday >= counts.value.newLimit)
 
+/** Extra practice still to come today: under its limit, and something left to give. */
+const extrasLeft = computed(() =>
+  Math.max(0, Math.min(counts.value.extrasLimit - counts.value.extrasToday, counts.value.extrasAvailable)))
+
+/**
+ * Today's new words AND extra practice are done: say so, in any deck. It also
+ * required new cards to be waiting in the deck shown, so an empty deck said
+ * "caught up" instead, and the other decks it offered all came up empty on
+ * the same limit.
+ */
+const limitReached = computed(() => wordsDone.value && extrasLeft.value === 0)
+
+const focusLabel = computed(() =>
+  mode.value === 'due' ? "Reviewing what's due" : wordsDone.value ? "Practising words you've met" : 'Learning new words')
+
+const focusHint = computed(() =>
+  mode.value === 'due'
+    ? 'Only cards the scheduler asked for. Nothing new is mixed in.'
+    : wordsDone.value
+      ? 'Today\'s new words are done. These are other cards of words you have met: another way to practise each.'
+      : 'Only cards you have never seen. Nothing you already know is mixed in.')
+
 function learnMore() {
-  const key = moreNewKey()
-  const next = readMoreNew() + 5
-  moreNewHere.set(key, next)
-  try {
-    localStorage.setItem(key, String(next))
-  } catch {
-    // Without storage it still holds for this visit.
-  }
+  addMoreNew(lang.code, 5)
   void load()
 }
 
@@ -1094,7 +1087,7 @@ async function load() {
       ...(level ? { level } : {}),
       ...(deck?.kind ? { kind: deck.kind } : {}),
       ...(deck?.unit ? { unit: deck.unit } : {}),
-      ...(readMoreNew() ? { moreNew: readMoreNew() } : {})
+      ...(readMoreNew(lang.code) ? { moreNew: readMoreNew(lang.code) } : {})
     })
     items.value = queue.items
     counts.value = queue.counts
@@ -1115,7 +1108,7 @@ async function load() {
       // A bundle cached before `dueCards` existed has no such field, and the
       // reader is offline — the worst moment to throw. Default it rather than
       // trusting the shape of something written by an older build.
-      counts.value = { dueCards: 0, newToday: 0, newLimit: 0, ...cached.counts }
+      counts.value = { dueCards: 0, newToday: 0, newLimit: 0, extrasAvailable: 0, extrasToday: 0, extrasLimit: 0, ...cached.counts }
       index.value = 0
       // Say so when the cache is standing in while the network is fine. A
       // silent fallback masked a server error that made the whole curriculum
@@ -1274,6 +1267,15 @@ async function submitRating(rating: 1 | 2 | 3 | 4) {
  * blocks on a request.
  */
 async function send(item: StudyQueueItem, rating: 1 | 2 | 3 | 4, correct: boolean) {
+  // Today's counters move as you answer, not only when the next batch loads:
+  // a new word's first card counts as a word, any other first card as extra.
+  if (item.firstTime && !countedToday.has(item.facetId)) {
+    countedToday.add(item.facetId)
+    if (item.isNew)
+      counts.value.newToday += 1
+    else
+      counts.value.extrasToday += 1
+  }
   try {
     await enqueueAnswer({
       id: uuidv7(),
@@ -1469,7 +1471,7 @@ watch(() => lang.code, async () => {
                 &middot; {{ counts.learning }} in progress<template v-if="stageInProgress">, {{ stageInProgress }} here</template>
               </template>
             </template>
-            <template v-else>{{ counts.newAvailable }} new</template>
+            <template v-else>{{ counts.newAvailable }} new {{ counts.newAvailable === 1 ? 'word' : 'words' }}</template>
           </span>
         </template>
 
@@ -1511,7 +1513,7 @@ watch(() => lang.code, async () => {
               <template v-if="counts.learning > 0">
                 &middot; {{ counts.learning }} in progress<template v-if="stageInProgress">, {{ stageInProgress }} here</template>
               </template>
-              &middot; {{ counts.newAvailable }} new
+              &middot; {{ counts.newAvailable }} new {{ counts.newAvailable === 1 ? 'word' : 'words' }}
             </span>
           </Tooltip>
         </template>
@@ -1542,8 +1544,13 @@ watch(() => lang.code, async () => {
             </router-link>
           </span>
         </Tooltip>
-        <span v-if="sessionSeen > 0" class="ml-auto text-sm text-[var(--color-muted)]">
-          {{ sessionCorrect }}/{{ sessionSeen }} this session
+        <span v-if="sessionSeen > 0 || (mode === 'new' && counts.newLimit > 0)" class="ml-auto flex flex-col items-end text-sm text-[var(--color-muted)]">
+          <span v-if="sessionSeen > 0">{{ sessionCorrect }}/{{ sessionSeen }} this session</span>
+          <!-- Today's goal: new words, then extra practice once they are done. -->
+          <span v-if="mode === 'new' && counts.newLimit > 0">
+            <template v-if="!wordsDone">{{ counts.newToday }}/{{ counts.newLimit }} new words today</template>
+            <template v-else-if="counts.extrasLimit > 0">{{ counts.extrasToday }}/{{ counts.extrasLimit }} extra practice</template>
+          </span>
         </span>
       </div>
       <p v-if="focused" class="mb-6 text-sm text-[var(--color-muted)]">
@@ -1574,7 +1581,7 @@ watch(() => lang.code, async () => {
         -->
         <template v-if="limitReached">
           <p class="text-2xl font-semibold">
-            You've learned {{ counts.newToday }} new {{ counts.newToday === 1 ? 'card' : 'cards' }} today.
+            You've learned {{ counts.newToday }} new {{ counts.newToday === 1 ? 'word' : 'words' }} today.
           </p>
           <p class="mx-auto mt-3 max-w-md text-sm text-[var(--color-muted)]">
             Letting them settle beats piling on more. They come back for review soon, and
@@ -2207,7 +2214,7 @@ watch(() => lang.code, async () => {
           </p>
           <p class="mt-3 text-sm leading-relaxed text-[var(--color-muted)]">
             You have retained enough of {{ stageUp.level }} stage {{ stageUp.from }},
-            so stage {{ stageUp.to }} is open. New cards now come from there.
+            so stage {{ stageUp.to }} is open. New words now come from there.
           </p>
           <p class="mt-4 text-sm text-[var(--color-muted)]">
             {{ stageUp.level }} &middot; stage {{ stageUp.to }} of {{ stageUp.stages }}

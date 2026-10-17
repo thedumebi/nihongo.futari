@@ -44,7 +44,7 @@ describe('questProgress', () => {
     const quests = QUEST_POOL.filter(q => ['reviews-20', 'speak-1', 'conversation-2'].includes(q.code))
     const progress = questProgress(quests, {
       reviews: 25,
-      newCards: 0,
+      newWords: 0,
       activities: [{ kind: 'speak-listen' }, { kind: 'conversation' }, { kind: 'reading' }]
     })
     expect(progress.map(p => [p.code, p.progress, p.done])).toEqual([
@@ -60,7 +60,7 @@ describe('questProgress — the newer quests', () => {
     const quests = QUEST_POOL.filter(q => ['new-5', 'story-1', 'game-1'].includes(q.code))
     const progress = questProgress(quests, {
       reviews: 0,
-      newCards: 6,
+      newWords: 6,
       activities: [{ kind: 'speak' }, { kind: 'kanji-build' }]
     })
     expect(progress.map(p => [p.code, p.progress, p.done])).toEqual([

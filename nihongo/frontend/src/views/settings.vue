@@ -136,6 +136,13 @@ const { mode: furiganaMode, loadSettings } = useFurigana()
  */
 const dailyNewLimit = ref<number | null>(null)
 const DAILY_OPTIONS = ['5', '10', '15', '20', '30'].map(n => ({ value: n, label: n }))
+/**
+ * Extra practice: the other cards of words already met (another way to
+ * practise each), as a multiple of the new words. They come beside the new
+ * words, and keep going once those are done, up to this many a day.
+ */
+const extraPracticeMultiple = ref<number | null>(null)
+const EXTRA_OPTIONS = [1, 2, 3].map(n => ({ value: String(n), label: `${n}×` }))
 
 /**
  * When a new study day starts, in the learner's own timezone: midnight unless
@@ -167,8 +174,22 @@ async function setDailyLimit(value: string) {
   dailyNewLimit.value = next
   try {
     await updateStudySettings({ dailyNewLimit: next })
+    void todayStore.refresh(lang.code, true)
   } catch {
     dailyNewLimit.value = before
+    toast.error('Could not save that. Try again.')
+  }
+}
+
+async function setExtraPractice(value: string) {
+  const next = Number(value)
+  const before = extraPracticeMultiple.value
+  extraPracticeMultiple.value = next
+  try {
+    await updateStudySettings({ extraPracticeMultiple: next })
+    void todayStore.refresh(lang.code, true)
+  } catch {
+    extraPracticeMultiple.value = before
     toast.error('Could not save that. Try again.')
   }
 }
@@ -179,6 +200,7 @@ onMounted(() => {
   displayName.value = auth.user?.name ?? ''
   void getStudySettings().then((s) => {
     dailyNewLimit.value = s.dailyNewLimit
+    extraPracticeMultiple.value = s.extraPracticeMultiple
     dayBoundaryHour.value = s.dayBoundaryHour
   }).catch(() => {})
 })
@@ -353,10 +375,14 @@ async function turnOnPush() {
         <span aria-hidden="true">→</span>
       </router-link>
 
-      <CollapsibleCard class="mt-4" title="New words a day" :summary="dailyNewLimit === null ? '' : `${dailyNewLimit} a day`">
+      <CollapsibleCard
+        class="mt-4"
+        title="New words a day"
+        :summary="dailyNewLimit === null ? '' : `${dailyNewLimit} a day${extraPracticeMultiple ? `, extra practice ${extraPracticeMultiple}×` : ''}`"
+      >
         <p class="mt-1 text-sm text-[var(--color-muted)]">
-          How many new cards Learn gives you each day. More now means more reviews in a few days.
-          10 is a steady pace. You can always ask for a few more on the day.
+          How many words you have never seen New words introduces each day. More now means more
+          reviews in a few days. 10 is a steady pace. You can always ask for a few more on the day.
         </p>
         <Segmented
           v-if="dailyNewLimit !== null"
@@ -365,6 +391,24 @@ async function turnOnPush() {
           :model-value="String(dailyNewLimit)"
           :options="DAILY_OPTIONS"
           @update:model-value="setDailyLimit"
+        />
+        <p class="mt-5 text-sm font-medium">
+          Extra practice
+        </p>
+        <p class="mt-1 text-sm text-[var(--color-muted)]">
+          Each word has more than one card: its meaning, its reading, how it sounds. Once you have
+          met a word, its other cards come as extra practice, beside the new words, up to this many
+          a day.<template v-if="dailyNewLimit && extraPracticeMultiple">
+            Now: up to {{ dailyNewLimit * extraPracticeMultiple }} a day.
+          </template>
+        </p>
+        <Segmented
+          v-if="extraPracticeMultiple !== null"
+          class="mt-3"
+          label="Extra practice"
+          :model-value="String(extraPracticeMultiple)"
+          :options="EXTRA_OPTIONS"
+          @update:model-value="setExtraPractice"
         />
       </CollapsibleCard>
 

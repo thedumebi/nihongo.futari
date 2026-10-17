@@ -13,9 +13,15 @@ export const todaySchema = z.object({
   due: z.number().int(),
   /** When the next not-yet-due card comes due, so the nav can refresh its badge right then. */
   nextDueAt: z.string().nullable(),
-  /** New cards the queue has introduced today, and the daily limit. */
+  /** New words the queue has introduced today, and today's limit. */
   newToday: z.number().int(),
   newLimit: z.number().int(),
+  /**
+   * Extra cards of words already met still to come today: what "Practising
+   * words you've met" offers once the new words are done. Never more than
+   * there are to give.
+   */
+  extrasLeft: z.number().int(),
   nextLesson: z.object({ level: z.string(), slug: z.string(), title: z.string() }).nullable(),
   nextSpeak: z.object({ code: z.string(), number: z.number().int(), level: z.string(), titleEn: z.string() }).nullable(),
   streak: z.object({
@@ -47,5 +53,7 @@ export const todaySchema = z.object({
 export type Today = z.infer<typeof todaySchema>
 
 export const todayQuerySchema = z.object({
-  languageCode: z.string().min(2).default('ja')
+  languageCode: z.string().min(2).default('ja'),
+  /** Words granted past today's limit ("learn 5 more"), as the study page sends them. */
+  moreNew: z.coerce.number().int().min(0).max(50).optional()
 })
