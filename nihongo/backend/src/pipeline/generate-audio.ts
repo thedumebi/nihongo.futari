@@ -9,7 +9,7 @@ import { tmpdir } from 'node:os'
 import path, { basename } from 'node:path'
 import { promisify } from 'node:util'
 
-import { audioKeyFor, englishVoiceFor, GLOSS_AUDIO_LEVELS, VOICE_LEARNER as LEARNER_VOICE, VOICE_OTHER, VOICE_RECALL } from '../lib/audio-key.js'
+import { audioKeyFor, englishVoiceFor, GLOSS_AUDIO_LEVELS, VOICE_LEARNER as LEARNER_VOICE, VOICE_OTHER, VOICE_RECALL, voiceForClip } from '../lib/audio-key.js'
 import { READINGS } from './data/readings/index.js'
 import { SPEAK } from './data/speak/index.js'
 import { japaneseLine, teacherLine } from './data/speak/types.js'
@@ -24,7 +24,7 @@ const run = promisify(execFile)
  * differs per device, is unavailable offline, and cannot be shadowed against.
  * Generated once, served statically.
  *
- * Uses macOS `say` with the Kyoko voice, so this is a LOCAL step — the same as
+ * Uses macOS `say` (Kyoko and Otoya for Japanese), so this is a LOCAL step — the same as
  * the importers. Production audio is meant to live on R2; this script is what
  * produces it. On a non-macOS machine, swap the two commands below for any TTS
  * that writes AIFF and any encoder that writes AAC.
@@ -35,6 +35,10 @@ const run = promisify(execFile)
  *   pnpm -C nihongo/backend audio:dialogues
  *   pnpm -C nihongo/backend audio:speak
  *   pnpm -C nihongo/backend audio:all
+ *
+ * After sentences or words, run `seed:clip-audio`: it writes the seed that
+ * tells production which recordings exist, and until it is deployed a new or
+ * reworded item plays nothing.
  *
  * Clips go straight to the bucket. They used to be written into
  * `frontend/public/audio`, which grew to 103 MB and eleven thousand files — a
@@ -67,6 +71,9 @@ const VOICE_LEARNER = LEARNER_VOICE
  * timeout, not the whole run.
  */
 const CLIP_TIMEOUT_MS = 20_000
+
+/** Clips recorded at once. `say` and the upload each leave the CPU idle, so four keep it busy. */
+const CONCURRENCY = 4
 
 /**
  * Synthesise one clip and put it in the bucket.
@@ -124,7 +131,7 @@ async function generate(kind: AudioKind) {
       .from(words)
       .where(eq(words.published, true)))
       .filter(r => r.entSeq !== null)
-      .map(r => ({ name: String(r.entSeq), text: r.text }))
+      .map(r => ({ name: String(r.entSeq), text: r.text, voice: voiceForClip(r.entSeq!) }))
   } else if (kind === 'sentences') {
     // Named by the row id, not the Tanaka id: the file has to be findable from
     // a prompt, and prompts carry sentence ids.
@@ -132,7 +139,7 @@ async function generate(kind: AudioKind) {
       .select({ id: sentences.id, text: sentences.text })
       .from(sentences)
       .where(eq(sentences.published, true)))
-      .map(r => ({ name: r.id, text: r.text }))
+      .map(r => ({ name: r.id, text: r.text, voice: voiceForClip(r.id) }))
   } else if (kind === 'readings') {
     // Every line of every speech, from the authored data — a speech is
     // approved by listening to it, so its audio exists before it is published.
@@ -217,36 +224,41 @@ async function generate(kind: AudioKind) {
   let skipped = 0
   let failed = 0
 
+  // Everything but kana is named for its text and voice, so an edited line
+  // asks for a new file instead of inheriting the old recording. A clip
+  // already in the bucket is skipped: safe because the name is the text, so a
+  // reworded sentence has a new name and is recorded again. (Filed by id, as
+  // sentences and words once were, a reworded one was skipped as present and
+  // went on saying the old words.) `--redo` re-records one on purpose.
+  const todo = new Map<string, { text: string, voice: string }>()
   for (const t of targets) {
-    // Dialogue clips are named for their TEXT, so an edited line asks for a
-    // different file instead of inheriting one recorded for the sentence that
-    // used to sit at this index. Everything else is keyed by a stable id whose
-    // content genuinely never changes.
-    const key = kind === 'dialogues' || kind === 'speak' || kind === 'readings' || kind === 'glosses'
-      ? `audio/${kind}/${audioKeyFor(t.text, t.voice ?? VOICE)}.m4a`
-      : `audio/${kind}/${t.name}.m4a`
-    // `--redo` re-records a clip that is already in the bucket.
-    //
-    // The skip above rests on ids being stable AND their text never changing,
-    // which holds right up until a sentence is REWORDED — then the id still
-    // resolves, the clip is skipped as present, and it goes on speaking the old
-    // wording forever. Silent, and worst in dictation, where the learner types
-    // what they hear and is marked wrong for getting it right.
-    if (stored.has(key) && !redo.has(t.name)) {
+    const key = kind === 'kana'
+      ? `audio/${kind}/${t.name}.m4a`
+      : `audio/${kind}/${audioKeyFor(t.text, t.voice ?? VOICE)}.m4a`
+    if (stored.has(key) && !redo.has(t.name))
       skipped++
-      continue
-    }
-    if (await synthesise(t.text, key, t.voice ?? VOICE)) {
-      made++
-    } else {
-      failed++
-      // Name it: a clip that fails every run is a text \`say\` cannot speak,
-      // not bad luck, and "4 failed" alone gives nothing to fix.
-      console.log(`  failed: ${JSON.stringify(t.text)} (${t.voice ?? VOICE})`)
-    }
-    if ((made + failed) % 250 === 0 && made + failed > 0)
-      console.log(`  ${kind}: ${made} uploaded, ${failed} failed…`)
+    else
+      todo.set(key, { text: t.text, voice: t.voice ?? VOICE })
   }
+
+  // A few at once: one at a time, eleven thousand clips took most of a day.
+  const queue = [...todo.entries()]
+  async function worker() {
+    for (let next = queue.shift(); next; next = queue.shift()) {
+      const [key, { text, voice }] = next
+      if (await synthesise(text, key, voice)) {
+        made++
+      } else {
+        failed++
+        // Name it: a clip that fails every run is a text `say` cannot speak,
+        // not bad luck, and "4 failed" alone gives nothing to fix.
+        console.log(`  failed: ${JSON.stringify(text)} (${voice})`)
+      }
+      if ((made + failed) % 250 === 0)
+        console.log(`  ${kind}: ${made} uploaded, ${failed} failed, ${queue.length} to go…`)
+    }
+  }
+  await Promise.all(Array.from({ length: CONCURRENCY }, worker))
 
   console.log(`${kind}: ${made} generated and uploaded, ${skipped} already in the bucket, ${failed} failed`)
   if (failed > 0) {

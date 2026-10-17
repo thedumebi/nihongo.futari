@@ -17,6 +17,14 @@ export const sentences = pgTable('sentences', {
   sourceRefExternal: text('source_ref_external'), // Tatoeba sentence id
   license: text('license'),
   attribution: text('attribution'),
+  /**
+   * What its audio clip actually says, and in which voice: set when the clip
+   * is in the bucket (by the generated clip seed). A clip is only played while
+   * this matches the current text; a reworded sentence plays nothing until it is
+   * recorded again, rather than the old wording.
+   */
+  audioText: text('audio_text'),
+  audioVoice: text('audio_voice'),
   published: boolean('published').notNull().default(false),
   ...provenance,
   ...timestamps

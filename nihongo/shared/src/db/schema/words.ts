@@ -32,6 +32,14 @@ export const words = pgTable('words', {
    * is covered by `lockedFields`.
    */
   wordOrigin: text('word_origin'),
+  /**
+   * What its audio clip actually says, and in which voice: set when the clip
+   * is in the bucket (by the generated clip seed). A clip is only played while
+   * this matches the current reading; a reworded word plays nothing until it is
+   * recorded again, rather than the old wording.
+   */
+  audioText: text('audio_text'),
+  audioVoice: text('audio_voice'),
   published: boolean('published').notNull().default(false),
   ...provenance,
   ...timestamps

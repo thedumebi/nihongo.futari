@@ -92,3 +92,28 @@ export function glossAudioPath(text: string): string {
 
 /** Levels whose words have Recall prompts recorded; raising it means one more audio run. */
 export const GLOSS_AUDIO_LEVELS = ['N5', 'N4'] as const
+
+/**
+ * Which Japanese voice reads a sentence or word: half in each, so a learner
+ * hears a woman and a man, and always the same one for the same item (picked
+ * from its id, so it never changes between runs).
+ */
+export const VOICES_JAPANESE = [VOICE_OTHER, VOICE_LEARNER] as const
+export function voiceForClip(id: string | number): string {
+  const digest = createHash('sha256').update(String(id), 'utf8').digest()
+  return VOICES_JAPANESE[digest[0]! % VOICES_JAPANESE.length]!
+}
+
+/**
+ * A sentence's or word's clip, named for what it SAYS. They used to be filed
+ * by id, so rewording a sentence kept its old recording: the clip went on
+ * saying the old words. Named for the text, a reworded sentence asks for a
+ * file that does not exist yet, and nothing is played until it is recorded.
+ */
+export function sentenceAudioPath(text: string, voice: string): string {
+  return `/audio/sentences/${audioKeyFor(text, voice)}.m4a`
+}
+
+export function wordAudioPath(reading: string, voice: string): string {
+  return `/audio/words/${audioKeyFor(reading, voice)}.m4a`
+}
