@@ -116,6 +116,9 @@ function coverageLink(kind: string, lvl: string): { label: string, to: string | 
 
 /** What a coverage row counts: cards learned, or conversations and sessions done. */
 function unitLabel(c: { kind: string, unit: 'cards' | 'done' }): string {
+  // A sound family is one card, so say what it is: "0 / 4 families".
+  if (c.kind === 'phonetic-series')
+    return 'families'
   if (c.unit === 'cards')
     return 'cards'
   return c.kind === 'dialogue' ? 'practised' : 'sessions done'
