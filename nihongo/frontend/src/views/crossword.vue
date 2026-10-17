@@ -6,7 +6,7 @@ import { hasKanji } from '@nihongo/shared/lib'
 import { useLocalStorage } from '@vueuse/core'
 import { isAxiosError } from 'axios'
 import { ChevronLeft, ChevronRight, Eye, Languages, RefreshCw, Type, Volume2 } from 'lucide-vue-next'
-import { computed, nextTick, onMounted, ref, watch } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 
 import { getCrossword, saveCrosswordResult } from '@/api/crossword'
 import CrosswordFinish from '@/components/crossword/crossword-finish.vue'
@@ -67,6 +67,13 @@ const SOURCES = [
 const NOTHING = new Set<string>()
 /** One character kept in the hidden input, so a backspace always has something to delete. */
 const SENTINEL = ' '
+/**
+ * A Japanese keyboard is mid-word. The input must not be touched then: iOS
+ * drops the word, and stops sending it, if the text under it is reset.
+ */
+let composing = false
+/** When the last word was confirmed: Safari sends its Enter just after, which is not a request to move on. */
+let composedAt = 0
 
 const game = useCrossword(puzzle)
 const { selected, current, currentCells, typed, revealed, pending, hints, seconds, solved, bonusLetters, wordsDone, checkAsYouGo } = game
@@ -114,6 +121,14 @@ watch(solved, async (done) => {
   } catch {
     // The puzzle is done either way; only the record of it is missing.
   }
+})
+
+// The hidden input's text is set by hand, never bound: a bound value is
+// re-applied on every render (the timer renders once a second), which reset it
+// under a word being typed on a Japanese keyboard and lost the word.
+watch(input, (el) => {
+  if (el)
+    el.value = SENTINEL
 })
 
 watch([level, source], () => {
@@ -236,6 +251,12 @@ function focusInput() {
   const el = input.value
   if (!el)
     return
+  // Moving on mid-word: finish the word where it is (blurring ends it), so
+  // the reset below cannot land under it.
+  if (composing) {
+    el.blur()
+    composing = false
+  }
   el.value = SENTINEL
   // Synchronously, inside the tap: iOS only raises the keyboard for a focus
   // made in a user gesture.
@@ -243,6 +264,9 @@ function focusInput() {
 }
 
 function onBeforeInput(e: InputEvent) {
+  // Inside a word the keyboard owns its own text, backspace included.
+  if (e.isComposing || composing)
+    return
   if (e.inputType === 'insertText' && e.data) {
     e.preventDefault()
     game.type(e.data)
@@ -259,15 +283,28 @@ function onInput(e: Event) {
     game.composition(input.value.value.replace(SENTINEL, ''))
 }
 
+function onCompositionStart() {
+  composing = true
+  game.compositionStart()
+}
+
 function onCompositionEnd(e: CompositionEvent) {
+  composing = false
+  composedAt = Date.now()
   game.compositionEnd(e.data ?? '')
-  void nextTick(() => {
-    if (input.value)
+  // After this event, and only if no new word has started in the meantime.
+  setTimeout(() => {
+    if (input.value && !composing)
       input.value.value = SENTINEL
-  })
+  }, 0)
 }
 
 function onKeydown(e: KeyboardEvent) {
+  // Keys inside a word belong to the keyboard (229 is "the keyboard is
+  // composing"), and the Enter Safari sends right after confirming one is
+  // the confirmation, not "next clue".
+  if (e.isComposing || composing || e.keyCode === 229 || Date.now() - composedAt < 100)
+    return
   if (e.key === 'Enter' || e.key === 'Tab') {
     e.preventDefault()
     game.stepClue(e.shiftKey ? -1 : 1)
@@ -441,9 +478,8 @@ const kanjiVisible = computed(() => Boolean(current.value && kanjiShown.value.ha
             autocorrect="off"
             spellcheck="false"
             aria-label="Type the answer"
-            :value="SENTINEL"
             @beforeinput="onBeforeInput"
-            @compositionstart="game.compositionStart()"
+            @compositionstart="onCompositionStart"
             @input="onInput"
             @compositionend="onCompositionEnd"
             @keydown="onKeydown"

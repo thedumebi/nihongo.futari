@@ -134,6 +134,7 @@ export function useCrossword(puzzle: Ref<CrosswordPuzzle | null>) {
     if (answerAt(row, col) === null)
       return
     flush()
+    letGoOfComposition()
     const s = selected.value
     const across = entryAt(row, col, 'across')
     const down = entryAt(row, col, 'down')
@@ -149,6 +150,7 @@ export function useCrossword(puzzle: Ref<CrosswordPuzzle | null>) {
   /** Go to a clue: its first empty cell, or its first cell if it is full. */
   function selectEntry(entry: CrosswordEntry) {
     flush()
+    letGoOfComposition()
     const cells = cellsOf(entry)
     const [row, col] = cells.find(([r, c]) => !typed.value[r]?.[c]) ?? cells[0]!
     selected.value = { row, col, dir: entry.direction }
@@ -254,6 +256,17 @@ export function useCrossword(puzzle: Ref<CrosswordPuzzle | null>) {
 
   function compositionEnd(text: string) {
     composition(text)
+    anchor = null
+    composed = []
+  }
+
+  /**
+   * Moving somewhere else mid-word: keep what the word put in the cells, and
+   * stop tracking it. Otherwise the next keystroke snapped the cursor back to
+   * where the word began, and typing in the new word landed in the old one,
+   * cut off at its end, so it looked as if nothing was written.
+   */
+  function letGoOfComposition() {
     anchor = null
     composed = []
   }
