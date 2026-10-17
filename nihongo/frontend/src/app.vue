@@ -6,6 +6,7 @@ import { syncTimezone } from '@/api/notifications'
 import ConfirmDialog from '@/components/ui/confirm-dialog.vue'
 import ToastNotification from '@/components/ui/toast-notification.vue'
 import { refreshFuriganaSetting, refreshKnownKanji } from '@/composables/use-furigana'
+import { syncPushSubscription } from '@/offline/push'
 import { setupServiceWorker } from '@/offline/register-sw'
 import { startSync } from '@/offline/sync'
 import { useAuthStore } from '@/store/auth'
@@ -70,6 +71,13 @@ function reloadNow() {
 watch(() => [auth.isAuthenticated, lang.code] as const, ([signedIn, code]) => {
   if (signedIn)
     void refreshKnownKanji(code)
+}, { immediate: true })
+
+// This device's push subscription, re-sent once per sign-in so its row on the
+// server is current and a device never keeps a stale second one.
+watch(() => auth.isAuthenticated, (signedIn) => {
+  if (signedIn)
+    void syncPushSubscription()
 }, { immediate: true })
 
 onMounted(() => {

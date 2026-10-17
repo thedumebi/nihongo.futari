@@ -3,6 +3,9 @@ import { createPublicRoute, createSecuredRoute, ErrorSchema, jsonContent, jsonCo
 import {
   MessageResponseSchema,
   notificationPrefsSchema,
+  pushDeviceParamSchema,
+  pushDevicesQuerySchema,
+  pushDevicesResponseSchema,
   pushSubscribeSchema,
   reminderRunResultSchema,
   timezoneSchema,
@@ -38,6 +41,34 @@ export const subscribe = createSecuredRoute({
   }
 })
 export type SubscribeRoute = typeof subscribe
+
+export const devices = createSecuredRoute({
+  tags,
+  path: NOTIFICATION_ROUTES.DEVICES,
+  method: 'get',
+  summary: 'Devices that get push notifications',
+  description: 'Every device subscribed for this account, with the asking device marked when its id is passed.',
+  middleware: [authMiddleware],
+  request: { query: pushDevicesQuerySchema },
+  responses: {
+    [HttpStatusCodes.OK]: jsonContent(pushDevicesResponseSchema, 'Devices')
+  }
+})
+export type DevicesRoute = typeof devices
+
+export const removeDevice = createSecuredRoute({
+  tags,
+  path: NOTIFICATION_ROUTES.DEVICE,
+  method: 'delete',
+  summary: 'Stop push to one device',
+  middleware: [authMiddleware],
+  request: { params: pushDeviceParamSchema },
+  responses: {
+    [HttpStatusCodes.OK]: jsonContent(MessageResponseSchema, 'Removed'),
+    [HttpStatusCodes.NOT_FOUND]: jsonContent(ErrorSchema, 'Not one of your devices')
+  }
+})
+export type RemoveDeviceRoute = typeof removeDevice
 
 export const preferences = createSecuredRoute({
   tags,

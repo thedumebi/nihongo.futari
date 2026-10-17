@@ -30,6 +30,33 @@ export const pushSubscribeSchema = z.object({
 
 export type PushSubscribeInput = z.infer<typeof pushSubscribeSchema>
 
+/** A device that gets this account's push notifications. */
+export const pushDeviceSchema = z.object({
+  id: z.string(),
+  /** From the browser it subscribed in, e.g. "iPhone (Home Screen app)". */
+  label: z.string(),
+  /** The device asking: its own app copy's subscription. */
+  thisDevice: z.boolean(),
+  createdAt: z.string(),
+  /** When this device last checked in (the app re-sends its subscription on start). */
+  lastSeenAt: z.string()
+}).openapi('PushDevice')
+export type PushDevice = z.infer<typeof pushDeviceSchema>
+
+export const pushDevicesResponseSchema = z.object({
+  devices: z.array(pushDeviceSchema)
+}).openapi('PushDevices')
+export type PushDevicesResponse = z.infer<typeof pushDevicesResponseSchema>
+
+export const pushDevicesQuerySchema = z.object({
+  /** The asking device's id, so its own row can be marked. */
+  deviceId: z.string().optional()
+})
+
+export const pushDeviceParamSchema = z.object({
+  id: z.string().min(1)
+})
+
 export const notificationPrefsSchema = z.object({
   reminderEmailEnabled: z.boolean(),
   reminderPushEnabled: z.boolean(),

@@ -1,10 +1,10 @@
 <script setup lang="ts">
-import type { NotificationPrefs } from '@nihongo/shared/types'
+import type { NotificationPrefs, PushDevice } from '@nihongo/shared/types'
 
 import { FURIGANA_MODES } from '@nihongo/shared/constants'
 import { computed, onMounted, ref } from 'vue'
 
-import { getPrefs, savePrefs } from '@/api/notifications'
+import { getPrefs, listPushDevices, removePushDevice, savePrefs } from '@/api/notifications'
 import { getStudySettings, updateStudySettings } from '@/api/settings'
 import AppShell from '@/components/layout/app-shell.vue'
 import FriendsSettings from '@/components/settings/friends-settings.vue'
@@ -17,7 +17,8 @@ import { FURIGANA_MODE_LABELS, useFurigana } from '@/composables/use-furigana'
 import { useToast } from '@/composables/use-toast'
 import { ROUTES } from '@/constants'
 import { authClient } from '@/lib/auth-client'
-import { enablePush, pushSupport } from '@/offline/push'
+import { deviceId } from '@/offline/db'
+import { disablePushHere, enablePush, pushSupport, syncPushSubscription } from '@/offline/push'
 import { useAuthStore } from '@/store/auth'
 import { useLanguageStore } from '@/store/language'
 import { useTodayStore } from '@/store/today'
@@ -186,6 +187,10 @@ const prefs = ref<NotificationPrefs | null>(null)
 const loading = ref(true)
 const saving = ref(false)
 const enabling = ref(false)
+/** Every device that gets this account's push, this one marked. */
+const pushDevices = ref<PushDevice[]>([])
+const thisPushDevice = computed(() => pushDevices.value.find(d => d.thisDevice) ?? null)
+const otherPushDevices = computed(() => pushDevices.value.filter(d => !d.thisDevice))
 
 // Push availability is a browser fact, not a preference — surface WHY when it
 // isn't available rather than showing a toggle that silently does nothing.
@@ -246,6 +251,9 @@ const reminderMinuteValue = computed({
 onMounted(async () => {
   try {
     prefs.value = await getPrefs()
+    // So this device's row is current and marked as this device.
+    await syncPushSubscription()
+    await loadPushDevices()
   } catch {
     toast.error('Could not load your settings.')
   } finally {
@@ -267,6 +275,43 @@ async function save() {
   }
 }
 
+async function loadPushDevices() {
+  try {
+    pushDevices.value = (await listPushDevices(deviceId())).devices
+  } catch {
+    pushDevices.value = []
+  }
+}
+
+/** Off on this device: unsubscribed here, and off for the account if no device is left. */
+async function turnOffPushHere() {
+  enabling.value = true
+  try {
+    await disablePushHere()
+    await loadPushDevices()
+    if (prefs.value && pushDevices.value.length === 0) {
+      prefs.value.reminderPushEnabled = false
+      await save()
+    }
+  } finally {
+    enabling.value = false
+  }
+}
+
+async function removeOtherDevice(id: string) {
+  await removePushDevice(id)
+  await loadPushDevices()
+}
+
+async function removeAllOtherDevices() {
+  await Promise.all(otherPushDevices.value.map(d => removePushDevice(d.id)))
+  await loadPushDevices()
+}
+
+function shortDate(iso: string): string {
+  return new Date(iso).toLocaleDateString(undefined, { day: 'numeric', month: 'short' })
+}
+
 async function turnOnPush() {
   enabling.value = true
   try {
@@ -281,6 +326,7 @@ async function turnOnPush() {
       prefs.value.reminderPushEnabled = true
       await save()
     }
+    await loadPushDevices()
     toast.success('Notifications on')
   } finally {
     enabling.value = false
@@ -435,16 +481,38 @@ async function turnOnPush() {
             <input
               type="checkbox"
               class="mt-1"
-              :checked="prefs.reminderPushEnabled"
-              :disabled="!support.supported"
-              @change="($event.target as HTMLInputElement).checked ? turnOnPush() : (prefs.reminderPushEnabled = false, save())"
+              :checked="prefs.reminderPushEnabled && thisPushDevice !== null"
+              :disabled="!support.supported || enabling"
+              @change="($event.target as HTMLInputElement).checked ? turnOnPush() : turnOffPushHere()"
             >
             <span>
-              <span class="font-medium">Push notifications</span>
+              <span class="font-medium">Push notifications on this device</span>
               <span v-if="pushReason" class="block text-sm text-[var(--color-muted)]">{{ pushReason }}</span>
-              <span v-else class="block text-sm text-[var(--color-muted)]">On this device.</span>
+              <span v-else-if="thisPushDevice" class="block text-sm text-[var(--color-muted)]">{{ thisPushDevice.label }}, since {{ shortDate(thisPushDevice.createdAt) }}.</span>
             </span>
           </label>
+
+          <!--
+            Every other device that gets push. Web push cannot tell the server
+            which subscriptions share a phone, so the learner sees them all and
+            removes what is not theirs any more: one notification per device.
+          -->
+          <div v-if="otherPushDevices.length" class="mt-3 ml-7 rounded-lg border border-[var(--color-border)] p-3 text-sm">
+            <p class="text-[var(--color-muted)]">
+              Also on {{ otherPushDevices.length }} other {{ otherPushDevices.length === 1 ? 'device' : 'devices' }}:
+            </p>
+            <ul class="mt-2 space-y-2">
+              <li v-for="d in otherPushDevices" :key="d.id" class="flex items-center justify-between gap-3">
+                <span>{{ d.label }} <span class="text-[var(--color-muted)]">· last seen {{ shortDate(d.lastSeenAt) }}</span></span>
+                <button type="button" class="text-[var(--color-muted)] underline underline-offset-4" @click="removeOtherDevice(d.id)">
+                  Remove
+                </button>
+              </li>
+            </ul>
+            <button v-if="otherPushDevices.length > 1" type="button" class="mt-3 text-[var(--color-muted)] underline underline-offset-4" @click="removeAllOtherDevices">
+              Remove all other devices
+            </button>
+          </div>
 
           <label class="mt-5 block">
             <span class="text-sm text-[var(--color-muted)]">Remind me at</span>

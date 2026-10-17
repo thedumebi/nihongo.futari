@@ -1,3 +1,4 @@
+import { sql } from 'drizzle-orm'
 import { boolean, index, integer, pgTable, text, timestamp, uniqueIndex } from 'drizzle-orm/pg-core'
 
 import { users } from './auth.js'
@@ -21,7 +22,10 @@ export const pushSubscriptions = pgTable('push_subscriptions', {
   failureCount: integer('failure_count').notNull().default(0),
   ...timestamps
 }, t => ({
-  userIdx: index('push_subscriptions_user_idx').on(t.userId)
+  userIdx: index('push_subscriptions_user_idx').on(t.userId),
+  // One subscription per app copy: a copy that gets a new endpoint replaces
+  // its old row instead of adding a second (every push arrived twice).
+  oneEachDevice: uniqueIndex('push_subscriptions_user_device_unique').on(t.userId, t.deviceId).where(sql`${t.deviceId} is not null`)
 }))
 
 /**

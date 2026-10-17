@@ -449,8 +449,10 @@ export const NOTIFICATION_ROUTES = {
   /** The reader's IANA timezone, detected by the browser. */
   TIMEZONE: '/timezone',
   SUBSCRIBE: '/push',
-  UNSUBSCRIBE: '/push/:endpointId',
   VAPID_KEY: '/push/vapid-key',
+  /** This account's push devices; DEVICE removes one. */
+  DEVICES: '/push/devices',
+  DEVICE: '/push/devices/:id',
   PREFERENCES: '/preferences',
   RUN_REMINDERS: '/run-reminders'
 } as const
@@ -679,8 +681,8 @@ export const API_ENDPOINTS = {
     PREFERENCES: `${ROUTE_BASE_PATHS.NOTIFICATIONS}${NOTIFICATION_ROUTES.PREFERENCES}`,
     RUN_REMINDERS: `${ROUTE_BASE_PATHS.NOTIFICATIONS}${NOTIFICATION_ROUTES.RUN_REMINDERS}`,
     TIMEZONE: `${ROUTE_BASE_PATHS.NOTIFICATIONS}${NOTIFICATION_ROUTES.TIMEZONE}`,
-    UNSUBSCRIBE: (endpointId: string) =>
-      `${ROUTE_BASE_PATHS.NOTIFICATIONS}${NOTIFICATION_ROUTES.UNSUBSCRIBE.replace(':endpointId', endpointId)}`
+    DEVICES: `${ROUTE_BASE_PATHS.NOTIFICATIONS}${NOTIFICATION_ROUTES.DEVICES}`,
+    DEVICE: (id: string) => `${ROUTE_BASE_PATHS.NOTIFICATIONS}${NOTIFICATION_ROUTES.DEVICE.replace(':id', id)}`
   },
 
   REVIEW_QUEUE: {

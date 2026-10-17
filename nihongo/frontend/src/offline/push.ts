@@ -1,4 +1,4 @@
-import { getVapidKey, subscribePush } from '@/api/notifications'
+import { getVapidKey, listPushDevices, removePushDevice, subscribePush } from '@/api/notifications'
 
 import { deviceId } from './db'
 
@@ -116,5 +116,55 @@ export async function enablePush(): Promise<EnableResult> {
     return { ok: true }
   } catch (err) {
     return { ok: false, reason: err instanceof Error ? err.message : 'Could not enable notifications.' }
+  }
+}
+
+/** This device's live subscription, without prompting or waiting for a worker. */
+async function currentSubscription(): Promise<PushSubscription | null> {
+  if (!pushSupport().supported || Notification.permission !== 'granted')
+    return null
+  try {
+    const registration = await navigator.serviceWorker.getRegistration()
+    return (await registration?.pushManager.getSubscription()) ?? null
+  } catch {
+    return null
+  }
+}
+
+/** Whether THIS device already gets push. Never prompts, so a screen can ask on load. */
+export async function pushOnThisDevice(): Promise<boolean> {
+  return (await currentSubscription()) !== null
+}
+
+/**
+ * Tell the server this device's current subscription, once per app start.
+ *
+ * Keeps its row current (a rotated endpoint replaces the old row, and the row
+ * says which browser it is), so a device never ends up with a stale second
+ * row. Does nothing where push was never turned on. Never throws.
+ */
+export async function syncPushSubscription(): Promise<void> {
+  const subscription = await currentSubscription()
+  if (!subscription)
+    return
+  try {
+    await subscribePush(subscription.toJSON() as PushSubscriptionJSON, deviceId())
+  } catch {
+    // Next start tries again.
+  }
+}
+
+/**
+ * Stop push on this device: unsubscribe in the browser and remove its row,
+ * so nothing is left that the server would keep sending to. Never throws.
+ */
+export async function disablePushHere(): Promise<void> {
+  try {
+    const subscription = await currentSubscription()
+    await subscription?.unsubscribe()
+    const { devices } = await listPushDevices(deviceId())
+    await Promise.all(devices.filter(d => d.thisDevice).map(d => removePushDevice(d.id)))
+  } catch {
+    // The row goes the first time the server finds the endpoint gone.
   }
 }

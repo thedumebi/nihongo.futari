@@ -7,6 +7,7 @@ import { guideFor, paceFor, studyLevelFor, suggestedFurigana } from '@nihongo/sh
 import { computed, nextTick, onMounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 
+import { getPrefs } from '@/api/notifications'
 import { getPlacement } from '@/api/onboarding'
 import FuriganaText from '@/components/ja/furigana-text.vue'
 import OptionList from '@/components/onboarding/option-list.vue'
@@ -15,7 +16,7 @@ import Button from '@/components/ui/button.vue'
 import { FURIGANA_MODE_LABELS, useFurigana } from '@/composables/use-furigana'
 import { useToast } from '@/composables/use-toast'
 import { ROUTES } from '@/constants'
-import { enablePush, pushSupport } from '@/offline/push'
+import { enablePush, pushOnThisDevice, pushSupport } from '@/offline/push'
 import { useLanguageStore } from '@/store/language'
 import { useOnboardingStore } from '@/store/onboarding'
 
@@ -87,6 +88,17 @@ const hour = ref(19)
 const minute = ref<0 | 15 | 30 | 45>(0)
 const email = ref(true)
 const push = ref(false)
+/**
+ * This device already gets notifications: nothing to ask. The checkbox would
+ * only prompt again, and on 15 Oct, run in another copy of the app, it made a
+ * second subscription and every reminder arrived twice.
+ */
+const pushHere = ref(false)
+/**
+ * Push is on for the account. The device box can only ADD this device, so
+ * leaving it unticked must not turn push off everywhere; that is Settings' job.
+ */
+const accountPush = ref(false)
 const level = ref<JlptLevel | null>(null)
 const questions = ref<PlacementQuestion[]>([])
 const saving = ref(false)
@@ -118,7 +130,7 @@ const answers = computed<OnboardingAnswers | null>(() => start.value && minutes.
       minutes: minutes.value,
       furiganaMode: furigana.value,
       level: level.value,
-      reminder: remind.value ? { hour: hour.value, minute: minute.value, email: email.value, push: push.value } : null
+      reminder: remind.value ? { hour: hour.value, minute: minute.value, email: email.value, push: push.value || pushHere.value || accountPush.value } : null
     }
   : null)
 const guide = computed(() => answers.value ? guideFor(answers.value) : [])
@@ -143,9 +155,26 @@ watch(start, (s) => {
 // ============ Lifecycle Hooks ============
 // Run again from Settings: start from the previous answers.
 onMounted(async () => {
-  const previous = (await onboarding.load())?.answers
-  if (!previous)
+  const [state, prefs, here] = await Promise.all([
+    onboarding.load(),
+    getPrefs().catch(() => null),
+    pushOnThisDevice()
+  ])
+  pushHere.value = here
+  accountPush.value = prefs?.reminderPushEnabled ?? false
+  const previous = state?.answers
+  if (!previous) {
+    // Someone already using go, here for the first time: start from the
+    // reminders they have, not the defaults, so finishing changes nothing
+    // they did not touch.
+    if (prefs && (prefs.reminderEmailEnabled || prefs.reminderPushEnabled)) {
+      remind.value = true
+      hour.value = prefs.reminderHour
+      minute.value = (prefs.reminderMinute ?? 0) as 0 | 15 | 30 | 45
+      email.value = prefs.reminderEmailEnabled
+    }
     return
+  }
   start.value = previous.start
   goals.value = [...previous.goals]
   minutes.value = previous.minutes
@@ -155,7 +184,6 @@ onMounted(async () => {
     hour.value = previous.reminder.hour
     minute.value = previous.reminder.minute
     email.value = previous.reminder.email
-    push.value = previous.reminder.push
   }
   // After `start`, whose watcher would otherwise reset it to the suggestion.
   await nextTick()
@@ -327,7 +355,10 @@ async function skip() {
             <span>By email</span>
             <input v-model="email" type="checkbox" class="h-5 w-5">
           </label>
-          <label v-if="canPush" class="flex items-center justify-between gap-3">
+          <p v-if="pushHere" class="text-sm text-[var(--color-muted)]">
+            Notifications are already on for this device.
+          </p>
+          <label v-else-if="canPush" class="flex items-center justify-between gap-3">
             <span>As a notification on this device</span>
             <input :checked="push" type="checkbox" class="h-5 w-5" @change="togglePush">
           </label>

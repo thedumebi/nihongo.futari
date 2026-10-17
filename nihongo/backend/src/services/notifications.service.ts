@@ -1,41 +1,82 @@
-import type { NotificationPrefs, PushSubscribeInput } from '@nihongo/shared/types'
+import type { NotificationPrefs, PushDevicesResponse, PushSubscribeInput } from '@nihongo/shared/types'
 
 import db from '@nihongo/shared/db'
 import { notificationLog, pushSubscriptions, users, userSettings } from '@nihongo/shared/db/schema'
-import { studyDateFor } from '@nihongo/shared/lib'
-import { and, eq, sql } from 'drizzle-orm'
+import { pushDeviceLabel, studyDateFor } from '@nihongo/shared/lib'
+import { and, desc, eq, ne, sql } from 'drizzle-orm'
 
-/** Store or refresh a browser's push subscription. */
-export async function subscribe(userId: string, input: PushSubscribeInput): Promise<void> {
-  await db
-    .insert(pushSubscriptions)
-    .values({
-      userId,
-      endpoint: input.endpoint,
-      p256dh: input.keys.p256dh,
-      auth: input.keys.auth,
-      ...(input.deviceId ? { deviceId: input.deviceId } : {}),
-      enabled: true
-    })
-    // The endpoint is the identity. A browser re-subscribing produces the same
-    // endpoint with fresh keys, so this refreshes rather than duplicating.
-    .onConflictDoUpdate({
-      target: pushSubscriptions.endpoint,
-      set: {
+/**
+ * Store or refresh a browser's push subscription.
+ *
+ * One row per app copy (its `deviceId`): when a copy subscribes with a new
+ * endpoint, its old row is removed in the same transaction, so a device never
+ * holds two and gets every push twice. The browser's User-Agent is kept so
+ * Settings can name the device.
+ */
+export async function subscribe(userId: string, input: PushSubscribeInput, userAgent?: string): Promise<void> {
+  const deviceId = input.deviceId ?? null
+  const ua = userAgent?.slice(0, 500) ?? null
+  await db.transaction(async (tx) => {
+    if (deviceId) {
+      await tx.delete(pushSubscriptions).where(and(
+        eq(pushSubscriptions.userId, userId),
+        eq(pushSubscriptions.deviceId, deviceId),
+        ne(pushSubscriptions.endpoint, input.endpoint)
+      ))
+    }
+    await tx
+      .insert(pushSubscriptions)
+      .values({
         userId,
+        endpoint: input.endpoint,
         p256dh: input.keys.p256dh,
         auth: input.keys.auth,
-        enabled: true,
-        failureCount: 0,
-        updatedAt: new Date()
-      }
-    })
+        deviceId,
+        userAgent: ua,
+        enabled: true
+      })
+      // The endpoint is the identity of a subscription. A browser re-sending
+      // the same one refreshes it, and says which copy and browser it is now.
+      .onConflictDoUpdate({
+        target: pushSubscriptions.endpoint,
+        set: {
+          userId,
+          p256dh: input.keys.p256dh,
+          auth: input.keys.auth,
+          ...(deviceId ? { deviceId } : {}),
+          ...(ua ? { userAgent: ua } : {}),
+          enabled: true,
+          failureCount: 0,
+          updatedAt: new Date()
+        }
+      })
+  })
 }
 
-export async function unsubscribe(userId: string, endpoint: string): Promise<void> {
-  await db
-    .delete(pushSubscriptions)
-    .where(and(eq(pushSubscriptions.userId, userId), eq(pushSubscriptions.endpoint, endpoint)))
+/** This account's push devices, newest first, with the asking copy marked. */
+export async function listDevices(userId: string, deviceId?: string): Promise<PushDevicesResponse> {
+  const rows = await db
+    .select({ id: pushSubscriptions.id, deviceId: pushSubscriptions.deviceId, userAgent: pushSubscriptions.userAgent, createdAt: pushSubscriptions.createdAt, updatedAt: pushSubscriptions.updatedAt })
+    .from(pushSubscriptions)
+    .where(and(eq(pushSubscriptions.userId, userId), eq(pushSubscriptions.enabled, true)))
+    .orderBy(desc(pushSubscriptions.updatedAt))
+  return {
+    devices: rows.map(r => ({
+      id: r.id,
+      label: pushDeviceLabel(r.userAgent),
+      thisDevice: Boolean(deviceId) && r.deviceId === deviceId,
+      createdAt: r.createdAt.toISOString(),
+      lastSeenAt: r.updatedAt.toISOString()
+    }))
+  }
+}
+
+/** Stop push to one of this account's devices. False if it is not theirs. */
+export async function removeDevice(userId: string, id: string): Promise<boolean> {
+  const rows = await db.delete(pushSubscriptions)
+    .where(and(eq(pushSubscriptions.id, id), eq(pushSubscriptions.userId, userId)))
+    .returning({ id: pushSubscriptions.id })
+  return rows.length > 0
 }
 
 export async function getPrefs(userId: string): Promise<NotificationPrefs> {

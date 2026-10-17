@@ -1,4 +1,4 @@
-import type { NotificationPrefs, VapidKeyResponse } from '@nihongo/shared/types'
+import type { NotificationPrefs, PushDevicesResponse, VapidKeyResponse } from '@nihongo/shared/types'
 
 import { API_ENDPOINTS } from '@nihongo/shared/constants'
 
@@ -58,4 +58,14 @@ export async function syncTimezone(): Promise<boolean> {
     // Never block the app on this. The next foregrounding tries again.
     return false
   }
+}
+
+/** This account's push devices; `deviceId` marks the asking one. */
+export async function listPushDevices(deviceId?: string): Promise<PushDevicesResponse> {
+  const { data } = await client.get<PushDevicesResponse>(API_ENDPOINTS.NOTIFICATIONS.DEVICES, { params: deviceId ? { deviceId } : {} })
+  return data
+}
+
+export async function removePushDevice(id: string): Promise<void> {
+  await client.delete(API_ENDPOINTS.NOTIFICATIONS.DEVICE(id))
 }

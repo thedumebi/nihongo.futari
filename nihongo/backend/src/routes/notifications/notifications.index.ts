@@ -8,6 +8,8 @@ import * as routes from './notifications.routes.js'
 const router = createRouter().basePath(ROUTE_BASE_PATHS.NOTIFICATIONS)
 
 router.openapi(routes.vapidKey, handlers.vapidKey)
+router.openapi(routes.devices, handlers.devices)
+router.openapi(routes.removeDevice, handlers.removeDevice)
 router.openapi(routes.subscribe, handlers.subscribe)
 router.openapi(routes.preferences, handlers.preferences)
 router.openapi(routes.updatePreferences, handlers.updatePreferences)

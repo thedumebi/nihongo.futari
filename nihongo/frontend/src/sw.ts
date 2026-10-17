@@ -1,4 +1,4 @@
-import { ROUTE_BASE_PATHS } from '@nihongo/shared/constants'
+import { API_ENDPOINTS, ROUTE_BASE_PATHS } from '@nihongo/shared/constants'
 import { CacheableResponsePlugin } from 'workbox-cacheable-response'
 import { ExpirationPlugin } from 'workbox-expiration'
 /// <reference lib="webworker" />
@@ -221,6 +221,38 @@ self.addEventListener('notificationclick', (event) => {
     await self.clients.openWindow(target)
   })())
 })
+
+/**
+ * The browser replaced this device's push subscription (Safari does rotate
+ * them). Subscribe again and tell the server, or reminders would go to the
+ * dead endpoint until the app was next opened. The server drops the old row
+ * the first time it answers "gone", and the app's next start ties the new row
+ * to this device's id.
+ */
+interface SubscriptionChangeEvent extends ExtendableEvent {
+  oldSubscription?: PushSubscription | null
+  newSubscription?: PushSubscription | null
+}
+self.addEventListener('pushsubscriptionchange', ((event: SubscriptionChangeEvent) => {
+  event.waitUntil((async () => {
+    const api = `${self.location.origin}/api`
+    let subscription = event.newSubscription ?? null
+    if (!subscription) {
+      const key = event.oldSubscription?.options.applicationServerKey
+        ?? (await fetch(`${api}${API_ENDPOINTS.NOTIFICATIONS.VAPID_KEY}`).then(r => r.json()) as { publicKey: string | null }).publicKey
+      if (!key)
+        return
+      subscription = await self.registration.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: key })
+    }
+    const json = subscription.toJSON()
+    await fetch(`${api}${API_ENDPOINTS.NOTIFICATIONS.SUBSCRIBE}`, {
+      method: 'POST',
+      credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ endpoint: json.endpoint, keys: json.keys })
+    })
+  })())
+}) as EventListener)
 
 // Let the page trigger an immediate activation after an update.
 self.addEventListener('message', (event) => {

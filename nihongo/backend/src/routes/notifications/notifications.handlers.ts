@@ -8,11 +8,13 @@ import type { AppRouteHandler } from '@/lib/types.js'
 import { publicKey } from '@/lib/push.js'
 import { runCampaignQueue } from '@/services/email-campaigns.service.js'
 import { runBoardNudges } from '@/services/friends.service.js'
-import { getPrefs, subscribe as saveSubscription, setTimezone as saveTimezone, setPrefs } from '@/services/notifications.service.js'
+import { removeDevice as deleteDevice, getPrefs, listDevices, subscribe as saveSubscription, setTimezone as saveTimezone, setPrefs } from '@/services/notifications.service.js'
 import { runReminders as run, runNudges, runWeeklySummaries } from '@/services/reminders.service.js'
 
 import type {
+  DevicesRoute,
   PreferencesRoute,
+  RemoveDeviceRoute,
   RunRemindersRoute,
   SetTimezoneRoute,
   SubscribeRoute,
@@ -26,8 +28,20 @@ export const vapidKey: AppRouteHandler<VapidKeyRoute> = (c) => {
 
 export const subscribe: AppRouteHandler<SubscribeRoute> = async (c) => {
   const user = c.get('user')!
-  await saveSubscription(user.id, c.req.valid('json'))
+  await saveSubscription(user.id, c.req.valid('json'), c.req.header('user-agent'))
   return c.json({ message: 'Subscribed to reminders' }, HttpStatusCodes.OK)
+}
+
+export const devices: AppRouteHandler<DevicesRoute> = async (c) => {
+  const user = c.get('user')!
+  return c.json(await listDevices(user.id, c.req.valid('query').deviceId), HttpStatusCodes.OK)
+}
+
+export const removeDevice: AppRouteHandler<RemoveDeviceRoute> = async (c) => {
+  const user = c.get('user')!
+  if (!(await deleteDevice(user.id, c.req.valid('param').id)))
+    return c.json({ message: 'Not one of your devices' }, HttpStatusCodes.NOT_FOUND)
+  return c.json({ message: 'Removed' }, HttpStatusCodes.OK)
 }
 
 export const preferences: AppRouteHandler<PreferencesRoute> = async (c) => {
