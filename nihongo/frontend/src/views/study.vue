@@ -1553,7 +1553,7 @@ watch(() => lang.code, async () => {
           <!-- Today's goal: new words, then extra practice once they are done. -->
           <span v-if="mode === 'new' && counts.newLimit > 0">
             <template v-if="!wordsDone">{{ counts.newToday }}/{{ counts.newLimit }} new words today</template>
-            <template v-else-if="counts.extrasLimit > 0">{{ counts.extrasToday }}/{{ counts.extrasLimit }} extra practice</template>
+            <template v-else-if="counts.extrasLimit > 0">{{ counts.extrasToday }}/{{ counts.extrasLimit }} extra cards, on top of today's {{ counts.newLimit }} new words</template>
           </span>
         </span>
       </div>

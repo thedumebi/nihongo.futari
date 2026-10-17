@@ -396,10 +396,11 @@ async function turnOnPush() {
           Extra practice
         </p>
         <p class="mt-1 text-sm text-[var(--color-muted)]">
-          Each word has more than one card: its meaning, its reading, how it sounds. Once you have
-          met a word, its other cards come as extra practice, beside the new words, up to this many
-          a day.<template v-if="dailyNewLimit && extraPracticeMultiple">
-            Now: up to {{ dailyNewLimit * extraPracticeMultiple }} a day.
+          Each word has more than one card: its meaning, its reading, how it sounds. A new word's
+          first card counts towards your new words. Its other cards come later as extra practice, on
+          top of your new words.<template v-if="dailyNewLimit && extraPracticeMultiple">
+            With {{ dailyNewLimit }} new words and {{ extraPracticeMultiple }}×, a full day is
+            {{ dailyNewLimit }} new words plus up to {{ dailyNewLimit * extraPracticeMultiple }} extra cards.
           </template>
         </p>
         <Segmented
