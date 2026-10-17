@@ -136,8 +136,14 @@ const { mode: furiganaMode, loadSettings } = useFurigana()
  */
 const dailyNewLimit = ref<number | null>(null)
 const DAILY_OPTIONS = ['5', '10', '15', '20', '30'].map(n => ({ value: n, label: n }))
-/** How the chosen number feels, so the hint describes the learner's own pace. */
-const PACE_WORDS: Record<number, string> = { 5: 'a gentle pace', 10: 'a steady pace', 15: 'a brisk pace', 20: 'a fast pace', 30: 'a very fast pace' }
+/** What each choice means in practice, so the hint speaks to the learner's own pace. */
+const PACE: Record<number, string> = {
+  5: '5 a day is a gentle pace: easy to keep up on a busy day, and reviews stay light.',
+  10: '10 a day is a steady pace: new words every day without the reviews piling up.',
+  15: '15 a day is a brisk pace: quicker progress, with noticeably more reviews a few days later.',
+  20: '20 a day is a fast pace: plenty of new words, and a heavier review load to match.',
+  30: '30 a day is a very fast pace: best if you have time for long reviews every day.'
+}
 /**
  * Extra practice: the other cards of words already met (another way to
  * practise each), as a multiple of the new words. They come beside the new
@@ -385,7 +391,7 @@ async function turnOnPush() {
         <p class="mt-1 text-sm text-[var(--color-muted)]">
           How many words you have never seen New words introduces each day. More now means more
           reviews in a few days.<template v-if="dailyNewLimit">
-            {{ dailyNewLimit }} a day is {{ PACE_WORDS[dailyNewLimit] ?? 'your own pace' }}<template v-if="dailyNewLimit !== 10">; 10 is a steady pace</template>.
+            {{ PACE[dailyNewLimit] ?? `${dailyNewLimit} a day.` }}
           </template>
           You can always ask for a few more on the day.
         </p>
