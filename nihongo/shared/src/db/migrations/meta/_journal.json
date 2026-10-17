@@ -232,6 +232,13 @@
       "when": 1792231624652,
       "tag": "0032_curved_glorian",
       "breakpoints": true
+    },
+    {
+      "idx": 33,
+      "version": "7",
+      "when": 1792233072322,
+      "tag": "0033_numerous_nomad",
+      "breakpoints": true
     }
   ]
 }

@@ -14,8 +14,8 @@ import {
 } from '@nihongo/shared/db/schema'
 import SendMail from '@nihongo/shared/emails'
 import env from '@nihongo/shared/env'
-import { DEFAULT_DAY_BOUNDARY_HOUR, studyDateFor } from '@nihongo/shared/lib'
-import { and, desc, eq, gte, or, sql } from 'drizzle-orm'
+import { DEFAULT_DAY_BOUNDARY_HOUR, shouldSendDueAlert, studyDateFor } from '@nihongo/shared/lib'
+import { and, desc, eq, gte, inArray, or, sql } from 'drizzle-orm'
 import { DateTime } from 'luxon'
 
 import { pushConfigured, sendPush } from '@/lib/push.js'
@@ -500,6 +500,9 @@ export async function runNudges(now = new Date()): Promise<ReminderRunResult> {
       dayBoundaryHour: userSettings.dayBoundaryHour,
       streakRisk: userSettings.streakRiskEnabled,
       ghostAlert: userSettings.ghostAlertEnabled,
+      dueAlert: userSettings.dueAlertEnabled,
+      reminderHour: userSettings.reminderHour,
+      reminderMinute: userSettings.reminderMinute,
       pushEnabled: userSettings.reminderPushEnabled,
       emailEnabled: userSettings.reminderEmailEnabled
     })
@@ -587,6 +590,74 @@ export async function runNudges(now = new Date()): Promise<ReminderRunResult> {
       }
     }
   }
+  // Reviews ready: push only, at most once a day, daytime, never on top of a
+  // session or the daily reminder, and within the day's cap on nudges. All of
+  // that is decided here; the app always shows what it is sent.
+  for (const r of rows) {
+    if (!r.dueAlert || !r.pushEnabled || !canPush)
+      continue
+    const local = DateTime.fromJSDate(now, { zone: r.timezone })
+    if (!local.isValid)
+      continue
+    const localDate = studyDateFor(now, r.timezone, r.dayBoundaryHour ?? DEFAULT_DAY_BOUNDARY_HOUR)
+    const key = `${r.userId}:due-alert:${localDate}`
+    const [already] = await db.select({ id: notificationLog.id }).from(notificationLog).where(eq(notificationLog.dedupeKey, `${key}:push`)).limit(1)
+    if (already)
+      continue
+    result.considered++
+    const last = await lastStudied(r.userId)
+    if (!last)
+      continue
+    const due = await countDue(r.userId, last.languageId, now)
+    const send = shouldSendDueAlert({
+      hour: local.hour,
+      minute: local.minute,
+      reminder: r.pushEnabled || r.emailEnabled ? { hour: r.reminderHour, minute: r.reminderMinute } : null,
+      due: due.items,
+      minutesSinceStudy: Math.floor((now.getTime() - last.at.getTime()) / 60000),
+      nudgesToday: await nudgesToday(r.userId, local.diff(local.startOf('day'), 'minutes').minutes)
+    })
+    if (send && await pushEvent(r.userId, 'due-alert', key, {
+      title: 'Reviews ready',
+      body: `${due.items} ${due.items === 1 ? 'item is' : 'items are'} waiting for review.`,
+      url: reminderPath(due.items)
+    })) {
+      result.pushed++
+    }
+  }
+
   result.skipped = result.skippedAlreadySent
   return result
+}
+
+/** The kinds that count towards the day's cap: nudges, not the reminder the learner chose. */
+const NUDGE_KINDS = ['streak-risk', 'ghost-alert', 'board-passed', 'board-close', 'due-alert']
+
+/**
+ * Nudges pushed to this learner in the last `minutes` (since their local
+ * midnight). Compared by the database's own clock, as the log is stamped.
+ */
+export async function nudgesToday(userId: string, minutes: number): Promise<number> {
+  const [row] = await db
+    .select({ n: sql<number>`count(*)`.mapWith(Number) })
+    .from(notificationLog)
+    .where(and(
+      eq(notificationLog.userId, userId),
+      eq(notificationLog.channel, 'push'),
+      inArray(notificationLog.kind, NUDGE_KINDS),
+      sql`${notificationLog.sentAt} >= now()::timestamp - make_interval(mins => ${Math.ceil(minutes)})`
+    ))
+  return row?.n ?? 0
+}
+
+/** When, and in which language, the learner last studied: a review or any activity. */
+async function lastStudied(userId: string): Promise<{ at: Date, languageId: string } | null> {
+  const res = await db.execute<{ at: string, language_id: string }>(sql`
+    select at, language_id from (
+      select max(reviewed_at) as at, language_id from srs_review_logs where user_id = ${userId} group by language_id
+      union all
+      select max(occurred_at), language_id from learning_activities where user_id = ${userId} group by language_id
+    ) t where at is not null order by at desc limit 1`)
+  const row = res.rows[0]
+  return row ? { at: new Date(row.at), languageId: row.language_id } : null
 }

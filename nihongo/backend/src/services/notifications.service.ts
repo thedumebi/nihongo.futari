@@ -91,6 +91,7 @@ export async function getPrefs(userId: string): Promise<NotificationPrefs> {
       weeklySummaryEnabled: userSettings.weeklySummaryEnabled,
       streakRiskEnabled: userSettings.streakRiskEnabled,
       ghostAlertEnabled: userSettings.ghostAlertEnabled,
+      dueAlertEnabled: userSettings.dueAlertEnabled,
       productUpdatesEmail: userSettings.productUpdatesEmail
     })
     .from(userSettings)
@@ -107,6 +108,7 @@ export async function getPrefs(userId: string): Promise<NotificationPrefs> {
     weeklySummaryEnabled: true,
     streakRiskEnabled: true,
     ghostAlertEnabled: true,
+    dueAlertEnabled: false,
     productUpdatesEmail: true
   }
 }

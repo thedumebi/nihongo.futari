@@ -75,6 +75,8 @@ export const notificationPrefsSchema = z.object({
   streakRiskEnabled: z.boolean().default(true),
   /** A weekly push when several cards keep being forgotten. */
   ghostAlertEnabled: z.boolean().default(true),
+  /** A daytime push when 10 or more reviews are waiting, at most once a day. Off unless turned on. */
+  dueAlertEnabled: z.boolean().default(false),
   /** News about go itself, sent by an admin. On unless turned off. */
   productUpdatesEmail: z.boolean().default(true),
   /**

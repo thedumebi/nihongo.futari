@@ -71,6 +71,11 @@ export const userSettings = pgTable('user_settings', {
   /** A weekly note when several cards keep getting forgotten. */
   ghostAlertEnabled: boolean('ghost_alert_enabled').notNull().default(true),
   /**
+   * A daytime push when enough reviews are waiting. Off by default: it is the
+   * one notification whose timing the learner did not choose.
+   */
+  dueAlertEnabled: boolean('due_alert_enabled').notNull().default(false),
+  /**
    * News about go itself — what changed, what is new — sent by an admin.
    * On by default for everyone; every such email has a one-click unsubscribe.
    */

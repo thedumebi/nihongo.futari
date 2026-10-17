@@ -599,6 +599,14 @@ async function turnOnPush() {
           </label>
 
           <label class="mt-5 flex items-start gap-3">
+            <input v-model="prefs.dueAlertEnabled" type="checkbox" class="mt-1">
+            <span>
+              <span class="font-medium">Reviews ready</span>
+              <span class="block text-sm text-[var(--color-muted)]">A push during the day when 10 or more reviews are waiting. At most once a day, never close to your daily reminder, and not right after you have studied.</span>
+            </span>
+          </label>
+
+          <label class="mt-5 flex items-start gap-3">
             <input v-model="prefs.productUpdatesEmail" type="checkbox" class="mt-1">
             <span>
               <span class="font-medium">Product updates by email</span>

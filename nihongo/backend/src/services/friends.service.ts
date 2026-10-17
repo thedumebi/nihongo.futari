@@ -4,12 +4,12 @@ import { pino } from '@nihongo/shared'
 import { ROUTE_BASE_PATHS } from '@nihongo/shared/constants'
 import db from '@nihongo/shared/db'
 import { crosswordResults, friendBoardSnapshots, friendProfiles, friendships, languageLevels, users, userSettings, xpEvents } from '@nihongo/shared/db/schema'
-import { activityCounts, boardNudge, daysBetween, daysThisWeek, DEFAULT_DAY_BOUNDARY_HOUR, friendCodeFrom, normaliseFriendCode, pairStreak, rankBoard, studyDateFor, studyDayRange, uuidv7 } from '@nihongo/shared/lib'
+import { activityCounts, boardNudge, daysBetween, daysThisWeek, DEFAULT_DAY_BOUNDARY_HOUR, friendCodeFrom, normaliseFriendCode, NUDGES_PER_DAY, pairStreak, rankBoard, studyDateFor, studyDayRange, uuidv7 } from '@nihongo/shared/lib'
 import { and, count, eq, gte, inArray, lt, or, sql, sum } from 'drizzle-orm'
 import { DateTime } from 'luxon'
 import { randomBytes } from 'node:crypto'
 
-import { emptyRun, pushEvent } from './reminders.service.js'
+import { emptyRun, nudgesToday, pushEvent } from './reminders.service.js'
 import { wordsFirstMet } from './srs.service.js'
 
 /**
@@ -447,6 +447,12 @@ export async function runBoardNudges(now = new Date()): Promise<ReminderRunResul
         pino.info({ userId: meId, friendId, nudge, ...current }, '[board] nudge')
         const hour = DateTime.fromJSDate(now, { zone: me.timezone }).hour
         if (hour < BOARD_NUDGE_FROM || hour >= BOARD_NUDGE_UNTIL) {
+          result.skipped++
+          continue
+        }
+        // Within the day's cap on nudges, all kinds together.
+        const sinceMidnight = DateTime.fromJSDate(now, { zone: me.timezone })
+        if (await nudgesToday(meId, sinceMidnight.diff(sinceMidnight.startOf('day'), 'minutes').minutes) >= NUDGES_PER_DAY) {
           result.skipped++
           continue
         }
