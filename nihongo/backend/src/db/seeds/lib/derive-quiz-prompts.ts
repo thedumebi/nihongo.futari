@@ -18,6 +18,8 @@
 import db from '@nihongo/shared/db'
 import { sql } from 'drizzle-orm'
 
+import { widenAnswerSpellings } from './answer-spellings.js'
+
 const DERIVATION = `WITH grouped AS (
   SELECT
     st.sentence_id, st.index, st.surface, st.furigana,
@@ -225,4 +227,6 @@ ON CONFLICT (facet_id, template_id, version) DO NOTHING;
 
 export async function deriveQuizPrompts(): Promise<void> {
   await db.execute(sql.raw(DERIVATION))
+  // New prompts accept every common spelling of their words from the start.
+  await widenAnswerSpellings()
 }

@@ -3,7 +3,7 @@ import type { GlossedToken, WordGloss } from '@nihongo/shared/types'
 
 import db from '@nihongo/shared/db'
 import { grammarPoints, languageLevels, languages, wordForms, words, wordSenses } from '@nihongo/shared/db/schema'
-import { buildTokenIndex, classifyVerb, conjugateAll, otherSpelling, readLine, splitAround, toHiragana, tokenise } from '@nihongo/shared/lib'
+import { buildTokenIndex, classifyVerb, conjugateAll, readLine, splitAround, toHiragana, tokenise } from '@nihongo/shared/lib'
 import { and, asc, eq } from 'drizzle-orm'
 
 import { glueAuthorWords, regroupKana } from '../lib/author-segments.js'
@@ -740,31 +740,4 @@ export function withPromptTokens(prompt: Record<string, unknown>, g: Glossary, a
   if (typeof prompt.after === 'string' && prompt.after)
     out.afterTokens = glossLine(prompt.after, g, segmentsOf(prompt.afterFurigana))
   return out
-}
-
-/**
- * A dictation answer that accepts each word in any of its spellings.
- *
- * The stored answer offers each word as written in the sentence and in kana.
- * A learner whose keyboard offered 下さい for ください typed the sentence they
- * heard and was marked wrong. Each spelling is looked up, and the word's other
- * spelling (otherSpelling) is added beside it.
- */
-export function withSpellingVariants<T extends Record<string, unknown>>(answer: T, g: Glossary): T {
-  const tokens = answer.tokens
-  if (!Array.isArray(tokens))
-    return answer
-  const widened = tokens.map((options: unknown) => {
-    if (!Array.isArray(options))
-      return options
-    const all = new Set(options.filter((o): o is string => typeof o === 'string'))
-    for (const option of [...all]) {
-      const word = g.byForm.get(option) ?? g.byReading.get(toHiragana(option))
-      const other = word ? otherSpelling(option, word.form, word.reading) : null
-      if (other)
-        all.add(other)
-    }
-    return [...all]
-  })
-  return { ...answer, tokens: widened }
 }

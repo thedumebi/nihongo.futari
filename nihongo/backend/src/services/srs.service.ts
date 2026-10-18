@@ -70,7 +70,7 @@ import { and, asc, desc, eq, gt, gte, inArray, isNotNull, isNull, lt, lte, or, s
 import { assetUrl, withAssetUrls, withDialogueAudio, withSpeakAudio } from '@/lib/assets.js'
 
 import { withCurrentAudio } from './clips.service.js'
-import { glossary, withDialogueTokens, withPromptTokens, withSpellingVariants } from './glossary.service.js'
+import { glossary, withDialogueTokens, withPromptTokens } from './glossary.service.js'
 import { hintFromLesson, loadLessons } from './grammar.service.js'
 import { loadSeries } from './phonetics.service.js'
 import { loadUserContext, recomputeProgress } from './progress.service.js'
@@ -1590,7 +1590,7 @@ export async function getQueue(userId: string, query: StudyQueueQuery): Promise<
       inputMode: r.inputMode,
       graderCode: r.graderCode,
       prompt: withPromptTokens(withDialogueTokens(withDialogueAudio(withSpeakAudio(r.prompt)), gloss), gloss, r.answer),
-      answer: withSpellingVariants(r.answer as Record<string, unknown>, gloss) as typeof r.answer,
+      answer: r.answer,
       distractors: r.distractors,
       assets: withAssetUrls(r.assets)
     })),
@@ -1609,7 +1609,7 @@ export async function getQueue(userId: string, query: StudyQueueQuery): Promise<
       inputMode: r.inputMode,
       graderCode: r.graderCode,
       prompt: withPromptTokens(withDialogueTokens(withDialogueAudio(withSpeakAudio(r.prompt)), gloss), gloss, r.answer),
-      answer: withSpellingVariants(r.answer as Record<string, unknown>, gloss) as typeof r.answer,
+      answer: r.answer,
       distractors: r.distractors,
       assets: withAssetUrls(r.assets)
     }))

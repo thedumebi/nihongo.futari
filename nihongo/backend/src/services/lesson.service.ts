@@ -34,7 +34,7 @@ import { withAssetUrls } from '../lib/assets.js'
 import { readingFor } from '../lib/token-reading.js'
 import { recordActivity } from './activities.service.js'
 import { withCurrentAudio } from './clips.service.js'
-import { glossary, glossLine, withPromptTokens, withSpellingVariants } from './glossary.service.js'
+import { glossary, glossLine, withPromptTokens } from './glossary.service.js'
 import { loadExamples, loadLessons } from './grammar.service.js'
 import { getKanaLesson, KANA_SLUG_PREFIX, kanaLessonItems, kanaLessonSummaries } from './kana-lesson.service.js'
 import { saveStudyItem } from './srs.service.js'
@@ -367,12 +367,12 @@ export async function getLesson(userId: string, languageCode: string, slug: stri
     // and the bucket is the only place they exist. Returning them raw made the
     // lesson's own audio a 404: the dictation question played nothing, which is
     // the fault the play button was added to fix.
-    // Tokens and readings for each sentence, and every spelling of each word a
-    // dictation accepts — the same treatment the review queue gives them.
+    // Tokens and readings for each sentence, the same treatment the review
+    // queue gives them. Every spelling an answer accepts is stored on it (seed
+    // 180), so the answer goes out as it is.
     questions: ordered.map(({ firstExposureOnly: _drop, ...q }) => ({
       ...q,
       prompt: withPromptTokens(q.prompt as Record<string, unknown>, g, q.answer) as typeof q.prompt,
-      answer: withSpellingVariants(q.answer as Record<string, unknown>, g) as typeof q.answer,
       assets: withAssetUrls(q.assets)
     })),
     status: statusOf(point),

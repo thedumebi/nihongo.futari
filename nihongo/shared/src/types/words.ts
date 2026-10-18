@@ -17,6 +17,12 @@ export type Word = typeof words.$inferSelect
 export type NewWord = typeof words.$inferInsert
 export type WordForm = typeof wordForms.$inferSelect
 export type WordSense = typeof wordSenses.$inferSelect
+
+/**
+ * One way to write a word, with the word's dictionary reading: what a typed
+ * answer's spellings are worked out from (`spellingsOf`).
+ */
+export type DictionarySpelling = Pick<WordForm, 'form'> & { reading: Word['primaryReading'] }
 export type WordSenseSource = typeof wordSenseSources.$inferSelect
 
 /**

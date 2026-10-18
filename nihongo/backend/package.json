@@ -58,6 +58,7 @@
     "check:speak": "tsx src/pipeline/check-speak.ts",
     "check:readings": "tsx src/pipeline/check-readings.ts",
     "check:crossword": "tsx src/pipeline/check-crossword.ts",
+    "check:spellings": "tsx src/pipeline/check-answer-spellings.ts",
     "seed:dialogue-levels": "tsx src/pipeline/make-dialogue-levels-seed.ts",
     "seed:confusables": "tsx src/pipeline/derive-confusables.ts"
   },
