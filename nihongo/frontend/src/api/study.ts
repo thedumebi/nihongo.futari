@@ -58,3 +58,8 @@ export async function getWordStatus(wordId: string): Promise<WordStatus> {
   const { data } = await client.get<WordStatus>(API_ENDPOINTS.STUDY.WORD_STATUS(wordId))
   return data
 }
+
+/** A stage celebration has been shown, so the server stops offering it. */
+export async function markCelebrationSeen(languageCode: string, level: string, to: number): Promise<void> {
+  await client.post(API_ENDPOINTS.STUDY.CELEBRATION_SEEN, { languageCode, level, to })
+}

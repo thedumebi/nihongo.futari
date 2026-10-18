@@ -2,9 +2,9 @@ import { HttpStatusCodes } from '@nihongo/shared/constants'
 
 import type { AppRouteHandler } from '@/lib/types.js'
 
-import { getCourse, getDecks, getDueList, getQueue, markLessonSeen, saveWord as saveWordForReview, wordStatuses as statusesOfWords, wordStatus as statusOfWord, submitAnswer } from '@/services/srs.service.js'
+import { getCourse, getDecks, getDueList, getQueue, markCelebrationSeen, markLessonSeen, saveWord as saveWordForReview, wordStatuses as statusesOfWords, wordStatus as statusOfWord, submitAnswer } from '@/services/srs.service.js'
 
-import type { AnswerRoute, CourseRoute, DecksRoute, DueRoute, LessonSeenRoute, QueueRoute, SaveWordRoute, WordStatusesRoute, WordStatusRoute } from './study.routes.js'
+import type { AnswerRoute, CelebrationSeenRoute, CourseRoute, DecksRoute, DueRoute, LessonSeenRoute, QueueRoute, SaveWordRoute, WordStatusesRoute, WordStatusRoute } from './study.routes.js'
 
 export const decks: AppRouteHandler<DecksRoute> = async (c) => {
   const user = c.get('user')!
@@ -40,6 +40,13 @@ export const answer: AppRouteHandler<AnswerRoute> = async (c) => {
     }
     throw err
   }
+}
+
+export const celebrationSeen: AppRouteHandler<CelebrationSeenRoute> = async (c) => {
+  const user = c.get('user')!
+  const { languageCode, level, to } = c.req.valid('json')
+  await markCelebrationSeen(user.id, languageCode, level, to)
+  return c.body(null, HttpStatusCodes.NO_CONTENT)
 }
 
 export const lessonSeen: AppRouteHandler<LessonSeenRoute> = async (c) => {

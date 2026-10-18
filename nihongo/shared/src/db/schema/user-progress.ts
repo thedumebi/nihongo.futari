@@ -137,14 +137,25 @@ export const userLanguages = pgTable('user_languages', {
  * 3. It was written before the level had resolved, so the value recorded often
  *    belonged to a different level entirely.
  *
- * Hence: the HIGHEST stage ever reached, per level, on the server. It only ever
+ * Hence: the HIGHEST stage celebrated, per level, on the server. It only ever
  * increases, so a stage that drops because new material arrived can never
  * re-fire a celebration when it is finished again.
+ *
+ * Beside it, the stage last SEEN, which follows the learner both ways, so a
+ * celebration says where they actually came from. And the announcement itself
+ * waits in `pending*` until a screen has shown it: claiming it and showing it
+ * were one step, so a dropped response or another device fetching first lost
+ * it for good. Until 18 Oct the mark was also wrong from the start for the
+ * owner (39 against a real 5, from the 053 backfill), and it never fired once.
  */
 export const stageCelebrations = pgTable('stage_celebrations', {
   userId: text('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
   levelId: text('level_id').notNull().references(() => languageLevels.id, { onDelete: 'cascade' }),
   highestStageSeen: integer('highest_stage_seen').notNull().default(0),
+  lastStageSeen: integer('last_stage_seen').notNull().default(0),
+  /** A pass not yet shown: from this stage to that one. Both null when none. */
+  pendingFrom: integer('pending_from'),
+  pendingTo: integer('pending_to'),
   ...timestamps
 }, t => ({
   pk: primaryKey({ columns: [t.userId, t.levelId] })

@@ -59,6 +59,7 @@ import {
   emptyCardState,
   evaluateGhost,
   newBudget,
+  nextCelebration,
   replay,
   SERIES_KNOWN_MIN,
   studyDateFor,
@@ -770,7 +771,10 @@ export async function stageProgress(userId: string, languageId: string): Promise
     current as (
       select level_id, min(stage) as stage
       from stages
-      where learned::float / greatest(total, 1) < ${STAGE_PASS}
+      -- total > 0, as the gate has it: a stage whose every card is suspended
+      -- is passed, not current. Without it this reported a stage the gate had
+      -- already moved past, and a celebration could name the wrong one.
+      where total > 0 and learned::float / total < ${STAGE_PASS}
       group by 1
     )
     select
@@ -1029,7 +1033,7 @@ function firstUncardedFacet(userId: string): SQL {
  * stage. Storing that and celebrating a rise would congratulate the reader
  * every time they cleaned up after a content release.
  */
-async function claimStageCelebration(
+export async function claimStageCelebration(
   userId: string,
   progress: StageProgress[]
 ): Promise<StageCelebration | null> {
@@ -1040,62 +1044,97 @@ async function claimStageCelebration(
     .select({ id: languageLevels.id, code: languageLevels.code })
     .from(languageLevels)
     .where(inArray(languageLevels.code, progress.map(p => p.level)))
-
   const idByCode = new Map(levels.map(l => [l.code, l.id]))
-  const seen = new Map(
-    (await db
-      .select({ levelId: stageCelebrations.levelId, highest: stageCelebrations.highestStageSeen })
-      .from(stageCelebrations)
-      .where(and(
-        eq(stageCelebrations.userId, userId),
-        inArray(stageCelebrations.levelId, [...idByCode.values()])
-      ))).map(r => [r.levelId, r.highest])
-  )
+  const levelIds = [...idByCode.values()]
+  const rowsFor = async () => new Map((await db
+    .select({
+      levelId: stageCelebrations.levelId,
+      highestStageSeen: stageCelebrations.highestStageSeen,
+      lastStageSeen: stageCelebrations.lastStageSeen,
+      pendingFrom: stageCelebrations.pendingFrom,
+      pendingTo: stageCelebrations.pendingTo
+    })
+    .from(stageCelebrations)
+    .where(and(eq(stageCelebrations.userId, userId), inArray(stageCelebrations.levelId, levelIds)))
+  ).map(({ levelId, ...marks }) => [levelId, marks]))
 
-  let announced: StageCelebration | null = null
-
+  const seen = await rowsFor()
   for (const p of progress) {
     const levelId = idByCode.get(p.level)
     if (!levelId)
       continue
-    const highest = seen.get(levelId)
+    const marks = seen.get(levelId) ?? null
+    const next = nextCelebration(marks, p.stage)
 
     // First sight of a level: record where it is and say nothing.
-    if (highest === undefined) {
-      await db
-        .insert(stageCelebrations)
-        .values({ userId, levelId, highestStageSeen: p.stage })
-        .onConflictDoNothing()
+    if (!marks) {
+      await db.insert(stageCelebrations).values({ userId, levelId, ...next.marks }).onConflictDoNothing()
       continue
     }
 
-    if (p.stage <= highest)
+    // A pass. Claimed with the WRITE, not with the read above: two requests in
+    // flight at once both read the old mark, and only the one whose update
+    // raises it records the pass. The starting point is taken in SQL for the
+    // same reason, and an earlier pass still waiting to be shown keeps its own.
+    if (next.claimed) {
+      await db
+        .update(stageCelebrations)
+        .set({
+          highestStageSeen: p.stage,
+          lastStageSeen: p.stage,
+          pendingFrom: sql`coalesce(${stageCelebrations.pendingFrom}, ${stageCelebrations.lastStageSeen})`,
+          pendingTo: p.stage,
+          updatedAt: new Date()
+        })
+        .where(and(
+          eq(stageCelebrations.userId, userId),
+          eq(stageCelebrations.levelId, levelId),
+          lt(stageCelebrations.highestStageSeen, p.stage)
+        ))
       continue
+    }
 
-    // Claim the announcement with the WRITE, not with the read above.
-    //
-    // Two queue requests in flight at once — two devices, or a retry — both
-    // read the old value and would both decide to celebrate. Worse, an
-    // unconditional update let the slower one write a LOWER number back and
-    // re-arm the whole thing.
-    //
-    // `where` makes the update fire only when it raises the mark, and
-    // `returning` reports whether this request was the one that raised it.
-    const claimed = await db
-      .insert(stageCelebrations)
-      .values({ userId, levelId, highestStageSeen: p.stage })
-      .onConflictDoUpdate({
-        target: [stageCelebrations.userId, stageCelebrations.levelId],
-        set: { highestStageSeen: p.stage, updatedAt: new Date() },
-        where: lt(stageCelebrations.highestStageSeen, p.stage)
-      })
-      .returning({ highest: stageCelebrations.highestStageSeen })
-
-    if (claimed.length > 0 && announced === null)
-      announced = { level: p.level, from: highest, to: p.stage, stages: p.stages }
+    // Anything else, down included: follow them, silently.
+    if (marks.lastStageSeen !== p.stage) {
+      await db
+        .update(stageCelebrations)
+        .set({ lastStageSeen: p.stage, updatedAt: new Date() })
+        .where(and(eq(stageCelebrations.userId, userId), eq(stageCelebrations.levelId, levelId)))
+    }
   }
 
-  return announced
+  // Whatever is waiting to be shown, this pass or one a lost response never
+  // delivered. It stays until a screen says it has shown it.
+  const after = await rowsFor()
+  for (const p of progress) {
+    const marks = after.get(idByCode.get(p.level) ?? '')
+    if (marks?.pendingTo != null && marks.pendingFrom != null)
+      return { level: p.level, from: marks.pendingFrom, to: marks.pendingTo, stages: p.stages }
+  }
+  return null
+}
+
+/**
+ * A celebration has been shown: stop offering it. Only the pass that was
+ * shown; a newer one that arrived meanwhile stays pending.
+ */
+export async function markCelebrationSeen(userId: string, languageCode: string, level: string, to: number): Promise<void> {
+  const [row] = await db
+    .select({ id: languageLevels.id })
+    .from(languageLevels)
+    .innerJoin(languages, eq(languages.id, languageLevels.languageId))
+    .where(and(eq(languages.code, languageCode), eq(languageLevels.code, level)))
+    .limit(1)
+  if (!row)
+    return
+  await db
+    .update(stageCelebrations)
+    .set({ pendingFrom: null, pendingTo: null, updatedAt: new Date() })
+    .where(and(
+      eq(stageCelebrations.userId, userId),
+      eq(stageCelebrations.levelId, row.id),
+      lte(stageCelebrations.pendingTo, to)
+    ))
 }
 
 /**

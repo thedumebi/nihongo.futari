@@ -3,6 +3,7 @@ import { z } from '@hono/zod-openapi'
 import type {
   achievements,
   levelReadinessSnapshots,
+  stageCelebrations,
   userLanguages,
   userSettings,
   userStreaks,
@@ -24,6 +25,9 @@ export type UserStreak = typeof userStreaks.$inferSelect
 export type XpEvent = typeof xpEvents.$inferSelect
 export type Achievement = typeof achievements.$inferSelect
 export type LevelReadinessSnapshot = typeof levelReadinessSnapshots.$inferSelect
+export type StageCelebrationRow = typeof stageCelebrations.$inferSelect
+/** What decides a stage celebration (`nextCelebration`). */
+export type StageCelebrationMarks = Pick<StageCelebrationRow, 'highestStageSeen' | 'lastStageSeen' | 'pendingFrom' | 'pendingTo'>
 
 /**
  * Study preferences.

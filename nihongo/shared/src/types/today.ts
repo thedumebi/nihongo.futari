@@ -1,6 +1,6 @@
 import { z } from '@hono/zod-openapi'
 
-import { stageProgressSchema } from './study.js'
+import { stageCelebrationSchema, stageProgressSchema } from './study.js'
 
 /**
  * The Today screen: one answer to "what should I do now?".
@@ -35,6 +35,8 @@ export const todaySchema = z.object({
    * every word in it met, and not enough of it learned yet. Null otherwise.
    */
   stageWait: stageProgressSchema.nullable(),
+  /** A stage passed and not yet shown anywhere, as Study's queue carries it. */
+  celebrate: stageCelebrationSchema.nullable(),
   nextLesson: z.object({ level: z.string(), slug: z.string(), title: z.string() }).nullable(),
   nextSpeak: z.object({ code: z.string(), number: z.number().int(), level: z.string(), titleEn: z.string() }).nullable(),
   streak: z.object({

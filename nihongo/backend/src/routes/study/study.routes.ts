@@ -3,6 +3,7 @@ import { HttpStatusCodes, STUDY_ROUTES } from '@nihongo/shared/constants'
 import { createSecuredRoute, ErrorSchema, jsonContent, jsonContentRequired } from '@nihongo/shared/openapi'
 import {
   answerResultSchema,
+  celebrationSeenSchema,
   courseResponseSchema,
   dueListQuerySchema,
   dueListResponseSchema,
@@ -120,6 +121,22 @@ export const lessonSeen = createSecuredRoute({
   }
 })
 export type LessonSeenRoute = typeof lessonSeen
+
+export const celebrationSeen = createSecuredRoute({
+  tags,
+  path: STUDY_ROUTES.CELEBRATION_SEEN,
+  method: 'post',
+  summary: 'Record that a stage celebration was shown',
+  description:
+    'A stage pass waits on the server until a screen has shown it, so a dropped response or another device '
+    + 'cannot lose it. Idempotent; a newer pass than `to` stays pending.',
+  middleware: [authMiddleware, writeLimiter],
+  request: { body: jsonContentRequired(celebrationSeenSchema, 'The celebration that was shown') },
+  responses: {
+    [HttpStatusCodes.NO_CONTENT]: { description: 'Recorded' }
+  }
+})
+export type CelebrationSeenRoute = typeof celebrationSeen
 
 export const saveWord = createSecuredRoute({
   tags,

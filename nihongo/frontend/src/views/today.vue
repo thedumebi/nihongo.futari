@@ -6,6 +6,7 @@ import { computed, onMounted, ref } from 'vue'
 import CoverageBadge from '@/components/ja/coverage-badge.vue'
 import AppShell from '@/components/layout/app-shell.vue'
 import GettingStarted from '@/components/onboarding/getting-started.vue'
+import StageUpModal from '@/components/study/stage-up-modal.vue'
 import StageWait from '@/components/study/stage-wait.vue'
 import Button from '@/components/ui/button.vue'
 import { ROUTES } from '@/constants'
@@ -62,6 +63,8 @@ const newLeft = computed(() => Math.max(0, Math.min(
 )))
 /** The stage new words are waiting on, when that is why none are left. */
 const stageWait = computed(() => today.value?.stageWait ?? null)
+/** A stage passed and not yet shown: reviewing, or on another device. */
+const celebrate = computed(() => today.value?.celebrate ?? null)
 /** Extra practice (other cards of words already met) still to come once the new words are done. */
 const extrasLeft = computed(() => today.value?.extrasLeft ?? 0)
 
@@ -74,6 +77,7 @@ onMounted(async () => {
 
 <template>
   <AppShell>
+    <StageUpModal :celebration="celebrate" :language-code="lang.code" />
     <div class="mx-auto max-w-xl px-4 py-8 sm:px-6 sm:py-12">
       <h1 class="text-3xl font-semibold">
         {{ firstName ? `Hi, ${firstName}` : 'Today' }}

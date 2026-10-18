@@ -37,6 +37,7 @@ import GrammarLesson from '@/components/study/grammar-lesson.vue'
 import OrderInput from '@/components/study/order-input.vue'
 import SeriesCard from '@/components/study/series-card.vue'
 import SpeakCard from '@/components/study/speak-card.vue'
+import StageUpModal from '@/components/study/stage-up-modal.vue'
 import StageWait from '@/components/study/stage-wait.vue'
 import Button from '@/components/ui/button.vue'
 import Dropdown from '@/components/ui/dropdown.vue'
@@ -297,7 +298,7 @@ const focusHint = computed(() =>
  * batch. That is the moment the app actually learns the stage moved; announcing
  * it earlier would mean guessing.
  */
-const stageUp = ref<{ level: string, from: number, to: number, stages: number } | null>(null)
+const stageUp = ref<StageCelebration | null>(null)
 
 /**
  * Set from the queue response, which is where the decision is now made.
@@ -2267,41 +2268,7 @@ watch(() => lang.code, async () => {
         </div>
       </div>
 
-      <!--
-        Reaching a new stage. Dismissible and self-closing on click: this marks
-        a moment, it does not ask for a decision.
-      -->
-      <VueFinalModal
-        :model-value="stageUp !== null"
-        class="flex items-center justify-center"
-        content-class="flex items-center justify-center"
-        overlay-class="bg-black/60"
-        :click-to-close="true"
-        :esc-to-close="true"
-        @update:model-value="stageUp = null"
-      >
-        <div
-          v-if="stageUp"
-          class="mx-4 max-w-sm rounded-2xl border border-[var(--color-border)] bg-[var(--color-card)] p-8 text-center"
-        >
-          <p class="text-3xl">
-            🎉
-          </p>
-          <p class="mt-3 text-xl font-semibold">
-            Stage {{ stageUp.from }} complete
-          </p>
-          <p class="mt-3 text-sm leading-relaxed text-[var(--color-muted)]">
-            You have retained enough of {{ stageUp.level }} stage {{ stageUp.from }},
-            so stage {{ stageUp.to }} is open. New words now come from there.
-          </p>
-          <p class="mt-4 text-sm text-[var(--color-muted)]">
-            {{ stageUp.level }} &middot; stage {{ stageUp.to }} of {{ stageUp.stages }}
-          </p>
-          <Button class="mt-6" variant="primary" @click="stageUp = null">
-            Keep going
-          </Button>
-        </div>
-      </VueFinalModal>
+      <StageUpModal :celebration="stageUp" :language-code="lang.code" @close="stageUp = null" />
 
       <!--
         The illustration, full size. VueFinalModal locks scrolling on the page

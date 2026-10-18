@@ -418,6 +418,7 @@ export const STUDY_ROUTES = {
   DECKS: '/decks',
   QUEUE: '/queue',
   LESSON_SEEN: '/lesson-seen',
+  CELEBRATION_SEEN: '/celebration-seen',
   SAVE_WORD: '/save-word',
   WORD_STATUS: '/word-status/:wordId',
   /** Several words at once — a page of dictionary results. */
@@ -650,6 +651,7 @@ export const API_ENDPOINTS = {
     DECKS: `${ROUTE_BASE_PATHS.STUDY}${STUDY_ROUTES.DECKS}`,
     QUEUE: `${ROUTE_BASE_PATHS.STUDY}${STUDY_ROUTES.QUEUE}`,
     LESSON_SEEN: `${ROUTE_BASE_PATHS.STUDY}${STUDY_ROUTES.LESSON_SEEN}`,
+    CELEBRATION_SEEN: `${ROUTE_BASE_PATHS.STUDY}${STUDY_ROUTES.CELEBRATION_SEEN}`,
     SAVE_WORD: `${ROUTE_BASE_PATHS.STUDY}${STUDY_ROUTES.SAVE_WORD}`,
     WORD_STATUSES: `${ROUTE_BASE_PATHS.STUDY}${STUDY_ROUTES.WORD_STATUSES}`,
     WORD_STATUS: (wordId: string) => `${ROUTE_BASE_PATHS.STUDY}${STUDY_ROUTES.WORD_STATUS.replace(':wordId', encodeURIComponent(wordId))}`,

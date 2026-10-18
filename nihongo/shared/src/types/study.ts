@@ -460,6 +460,16 @@ export const stageCelebrationSchema = z.object({
 
 export type StageCelebration = z.infer<typeof stageCelebrationSchema>
 
+/** A stage celebration a screen has shown, so it is not offered again. */
+export const celebrationSeenSchema = z.object({
+  languageCode: z.string().min(2).default('ja'),
+  level: z.string(),
+  /** The stage it announced. A newer pass that arrived meanwhile stays pending. */
+  to: z.number().int()
+}).openapi('CelebrationSeen')
+
+export type CelebrationSeenInput = z.infer<typeof celebrationSeenSchema>
+
 export const studyQueueResponseSchema = z.object({
   /** Set once, by the server, when a stage is genuinely passed. */
   celebrate: stageCelebrationSchema.nullish(),

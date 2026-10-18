@@ -10,7 +10,7 @@ import { listLessons } from './lesson.service.js'
 import { getSummary, studiedToday, todayQuests } from './progress.service.js'
 import { listReadings } from './readings.service.js'
 import { listSpeak } from './speak.service.js'
-import { countDue, newLeftToday, nextDueAfter } from './srs.service.js'
+import { claimStageCelebration, countDue, newLeftToday, nextDueAfter, stageProgress } from './srs.service.js'
 
 /**
  * The Today screen, assembled from what each feature already knows.
@@ -24,7 +24,7 @@ export async function getToday(userId: string, languageCode: string, moreNew = 0
   if (!language)
     return null
 
-  const [due, nextDueAt, newToday, lessons, speak, summary, today, quests, unseen, readings, friendRequests] = await Promise.all([
+  const [due, nextDueAt, newToday, lessons, speak, summary, today, quests, unseen, readings, friendRequests, progress] = await Promise.all([
     countDue(userId, language.id),
     nextDueAfter(userId, language.id, new Date()),
     newLeftToday(userId, language.id, new Date(), moreNew),
@@ -35,8 +35,12 @@ export async function getToday(userId: string, languageCode: string, moreNew = 0
     todayQuests(userId, language.id),
     unseenAchievements(userId),
     listReadings(languageCode, undefined, userId),
-    pendingRequestCount(userId)
+    pendingRequestCount(userId),
+    stageProgress(userId, language.id)
   ])
+  // A stage passed while reviewing, or on another device, is announced here
+  // too, not only on the next Study batch.
+  const celebrate = await claimStageCelebration(userId, progress)
 
   // The unread speech most within reach; ties go to the easier level, which
   // the list is already ordered by.
@@ -55,6 +59,7 @@ export async function getToday(userId: string, languageCode: string, moreNew = 0
     extrasLeft: newToday.extrasLeft,
     newAvailable: newToday.newAvailable,
     stageWait: newToday.stageWait,
+    celebrate,
     nextLesson: lessons.next ?? null,
     nextSpeak: nextSpeak ? { code: nextSpeak.code, number: nextSpeak.number, level: nextSpeak.level, titleEn: nextSpeak.titleEn } : null,
     streak: { current: summary.currentStreak, longest: summary.longestStreak, studiedToday: today },
