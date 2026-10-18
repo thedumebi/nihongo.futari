@@ -138,6 +138,13 @@
       0 0 0 2px var(--color-bg),
       0 0 0 4px var(--color-hover);
   }
+
+  /* vue-final-modal focuses its own full-width content box on open. It is not
+   * a control, and the ring drew a band across the screen above and below the
+   * card, so the dialog looked detached. Controls inside keep their ring. */
+  .vfm__content:focus-visible {
+    box-shadow: none;
+  }
 }
 
 /* Flat inputs (clone style): plain dark field with a hairline border that lifts
