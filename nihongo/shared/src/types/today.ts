@@ -1,5 +1,7 @@
 import { z } from '@hono/zod-openapi'
 
+import { stageProgressSchema } from './study.js'
+
 /**
  * The Today screen: one answer to "what should I do now?".
  *
@@ -22,6 +24,17 @@ export const todaySchema = z.object({
    * there are to give.
    */
   extrasLeft: z.number().int(),
+  /**
+   * New words the stage you are on still has to introduce. Today's count is the
+   * smaller of this and what is left of the limit: once a stage's words are all
+   * met, nothing new comes until most of the stage is learned, whatever the limit.
+   */
+  newAvailable: z.number().int(),
+  /**
+   * The stage new words are waiting on, when that is why none are left today:
+   * every word in it met, and not enough of it learned yet. Null otherwise.
+   */
+  stageWait: stageProgressSchema.nullable(),
   nextLesson: z.object({ level: z.string(), slug: z.string(), title: z.string() }).nullable(),
   nextSpeak: z.object({ code: z.string(), number: z.number().int(), level: z.string(), titleEn: z.string() }).nullable(),
   streak: z.object({

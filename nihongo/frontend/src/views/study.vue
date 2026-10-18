@@ -25,6 +25,7 @@ import { useRoute, useRouter } from 'vue-router'
 
 import type { DropdownOption } from '@/components/ui/dropdown.vue'
 
+import { search } from '@/api/dictionary'
 import { getDecks, getQueue, markLessonSeen } from '@/api/study'
 import FuriganaText from '@/components/ja/furigana-text.vue'
 import WordMeaning from '@/components/ja/word-meaning.vue'
@@ -36,6 +37,7 @@ import GrammarLesson from '@/components/study/grammar-lesson.vue'
 import OrderInput from '@/components/study/order-input.vue'
 import SeriesCard from '@/components/study/series-card.vue'
 import SpeakCard from '@/components/study/speak-card.vue'
+import StageWait from '@/components/study/stage-wait.vue'
 import Button from '@/components/ui/button.vue'
 import Dropdown from '@/components/ui/dropdown.vue'
 import Tooltip from '@/components/ui/tooltip.vue'
@@ -223,16 +225,6 @@ const extrasLeft = computed(() =>
  */
 const limitReached = computed(() => wordsDone.value && extrasLeft.value === 0)
 
-const focusLabel = computed(() =>
-  mode.value === 'due' ? "Reviewing what's due" : wordsDone.value ? "Practising words you've met" : 'Learning new words')
-
-const focusHint = computed(() =>
-  mode.value === 'due'
-    ? 'Only cards the scheduler asked for. Nothing new is mixed in.'
-    : wordsDone.value
-      ? 'Today\'s new words are done. These are other cards of words you have met: another way to practise each.'
-      : 'Only cards you have never seen. Nothing you already know is mixed in.')
-
 function learnMore() {
   addMoreNew(lang.code, 5)
   void load()
@@ -270,6 +262,28 @@ const gate = ref<StudyQueueResponse['gate']>(null)
  */
 const stage = computed(() =>
   progress.value.find(p => p.level === levelCode.value))
+
+/**
+ * The stage new words are waiting on: every word in it met, today's limit not
+ * reached, and too little of it learned for the next stage to open. Study then
+ * serves other cards of words already met, and said nothing about why.
+ */
+const stageWait = computed(() => {
+  const filtered = !focused.value && deckId.value !== 'all'
+  if (mode.value !== 'new' || filtered || counts.value.newAvailable > 0 || wordsDone.value)
+    return null
+  return stage.value ?? null
+})
+
+const focusLabel = computed(() =>
+  mode.value === 'due' ? "Reviewing what's due" : wordsDone.value || stageWait.value ? "Practising words you've met" : 'Learning new words')
+
+const focusHint = computed(() =>
+  mode.value === 'due'
+    ? 'Only cards the scheduler asked for. Nothing new is mixed in.'
+    : wordsDone.value
+      ? 'Today\'s new words are done. These are other cards of words you have met: another way to practise each.'
+      : 'Only cards you have never seen. Nothing you already know is mixed in.')
 
 /**
  * The stage you just finished, while the congratulation is on screen.
@@ -831,6 +845,56 @@ const clozeTranslation = computed(() => {
 })
 
 /**
+ * The missing word's own meaning, shown with the sentence's English.
+ *
+ * The sentence's English alone can point at a different word: 仕事と家庭どっちが
+ * 大切なの？ reads "your career or your family?", and 家族 (family) is the
+ * natural answer to that. The card wants 家庭 (home, household), and only its
+ * own meaning says so.
+ */
+const clozeGloss = computed(() => {
+  const value = current.value?.prompt?.gloss
+  return isCloze.value && typeof value === 'string' ? value : ''
+})
+
+/**
+ * When a wrong fill-in answer is a real word, what that word means, so the
+ * reader sees why it is not the one wanted: "家族 (かぞく) means family". Looked
+ * up after the verdict; offline, or for a typo, there is simply nothing to add.
+ */
+const otherWord = ref<{ headword: string, reading: string, gloss: string } | null>(null)
+
+async function lookUpOtherWord(typed: string, wanted: string) {
+  const card = current.value
+  try {
+    const { hits } = await search(typed, 5, lang.code)
+    const hit = hits.find(h => h.kind === 'word' && h.score >= 1 && h.headword !== wanted && h.gloss)
+    // Still the same card, still showing the verdict.
+    if (hit && current.value === card && revealed.value && !wasCorrect.value)
+      otherWord.value = { headword: hit.headword, reading: hit.reading && hit.reading !== hit.headword ? hit.reading : '', gloss: hit.gloss ?? '' }
+  } catch {
+    // Offline or the search failed: the verdict stands on its own.
+  }
+}
+
+/**
+ * "家族 (かぞく) means family. This sentence uses 家庭 (かてい): home."
+ *
+ * Built as a string: in the template, Vue renders each line break as a space,
+ * which put one before the colon and the full stop.
+ */
+const otherWordLine = computed(() => {
+  const other = otherWord.value
+  if (!other)
+    return ''
+  const hint = current.value?.prompt?.hint
+  const reading = typeof hint === 'string' && hint !== expected.value ? ` (${hint})` : ''
+  const meaning = clozeGloss.value ? `: ${clozeGloss.value}` : ''
+  const otherReading = other.reading ? ` (${other.reading})` : ''
+  return `${other.headword}${otherReading} means ${other.gloss}. This sentence uses ${expected.value}${reading}${meaning}.`
+})
+
+/**
  * Whether to put furigana on the prompt.
  *
  * Never before the reveal on a reading card: the furigana IS the answer there,
@@ -1207,6 +1271,8 @@ function check() {
   const result = gradeAnswer(item.graderCode, answer.value, item.answer)
   wasCorrect.value = result.correct
   expected.value = result.expected
+  if (!result.correct && isCloze.value && answer.value.trim())
+    void lookUpOtherWord(answer.value.trim(), item.answer.primary)
   revealed.value = true
   sessionSeen.value += 1
   if (result.correct)
@@ -1323,6 +1389,7 @@ function resetCard() {
   // is no longer on screen — the same class of bug as the verdict that used to
   // survive a deck change.
   pickedWord.value = null
+  otherWord.value = null
   shownAt.value = Date.now()
 }
 
@@ -1557,7 +1624,8 @@ watch(() => lang.code, async () => {
           </span>
         </span>
       </div>
-      <p v-if="focused" class="mb-6 text-sm text-[var(--color-muted)]">
+      <StageWait v-if="stageWait && !finished" class="mb-6" :stage="stageWait" compact />
+      <p v-else-if="focused" class="mb-6 text-sm text-[var(--color-muted)]">
         {{ focusHint }}
         <router-link v-if="mode === 'due'" :to="ROUTES.DUE" class="ml-1 underline underline-offset-4">
           See the list
@@ -1844,6 +1912,9 @@ watch(() => lang.code, async () => {
             <p v-if="isCloze && clozeTranslation" class="mt-4 text-center text-sm text-[var(--color-muted)]">
               {{ clozeTranslation }}
             </p>
+            <p v-if="clozeGloss" class="mt-1 text-center text-sm text-[var(--color-muted)]">
+              The missing word means "{{ clozeGloss }}"
+            </p>
 
             <p v-if="isOrdering && clozeTranslation" class="mt-6 text-center text-lg text-[var(--color-heading)]">
               {{ clozeTranslation }}
@@ -2118,6 +2189,9 @@ watch(() => lang.code, async () => {
                 </p>
                 <p v-else class="font-semibold text-[var(--color-danger)]">
                   Not quite, it's <strong>{{ expected }}</strong>
+                </p>
+                <p v-if="otherWordLine" class="mx-auto mt-2 max-w-sm text-sm text-[var(--color-muted)]">
+                  {{ otherWordLine }}
                 </p>
                 <!-- Once answered, the word's other meanings — the card asks one. -->
                 <div v-if="alsoMeans.length" class="mx-auto mt-3 max-w-sm text-left text-sm">

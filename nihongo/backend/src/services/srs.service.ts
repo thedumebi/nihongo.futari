@@ -23,7 +23,7 @@ import type {
 } from '@nihongo/shared/types'
 import type { SQL, SQLWrapper } from 'drizzle-orm'
 
-import { ROUTE_BASE_PATHS, STAGE_PASS } from '@nihongo/shared/constants'
+import { ROUTE_BASE_PATHS, STAGE_PASS, STAGE_SIZE } from '@nihongo/shared/constants'
 import db from '@nihongo/shared/db'
 import {
   curriculumUnitItems,
@@ -638,8 +638,6 @@ async function cardFirstFacet(userId: string, target: SQL, origin: CardOrigin): 
   return { added: created.length > 0 }
 }
 
-const STAGE_SIZE = 50
-
 /**
  * How much of a stage must have stuck before the next one opens.
  *
@@ -1192,15 +1190,44 @@ async function countAvailableNew(userId: string, languageId: string, filters: SQ
   return { words: words?.total ?? 0, extras: extras?.total ?? 0 }
 }
 
-/** New words and extras still to come today, as the Today page shows them. */
-export async function newLeftToday(userId: string, languageId: string, now: Date, moreNew = 0): Promise<{ budget: NewBudget, extrasLeft: number }> {
-  const ceilings = await stageCeilings(userId, languageId)
+/**
+ * New words and extras still to come today, as the Today page shows them.
+ *
+ * Scoped to the level the learner studies (Settings, shared with Study), so
+ * Today and Study count the same words. `stageWait` says when the stage is why
+ * no new word is left: every word in it met and too little of it learned. The
+ * page used to say "11 new words for today" right then, and Study served thirty
+ * cards of words already met with nothing to say why.
+ */
+export async function newLeftToday(userId: string, languageId: string, now: Date, moreNew = 0): Promise<{
+  budget: NewBudget
+  extrasLeft: number
+  newAvailable: number
+  stageWait: StageProgress | null
+}> {
+  const [ceilings, [settings]] = await Promise.all([
+    stageCeilings(userId, languageId),
+    db.select({ studyLevel: userSettings.studyLevel }).from(userSettings).where(eq(userSettings.userId, userId)).limit(1)
+  ])
+  const levelCode = settings?.studyLevel ?? ''
+  const [level] = levelCode
+    ? await db.select({ id: languageLevels.id }).from(languageLevels).where(and(eq(languageLevels.languageId, languageId), eq(languageLevels.code, levelCode))).limit(1)
+    : []
+  const levelFilter = level ? [or(eq(studyItems.levelId, level.id), isNull(studyItems.levelId))!] : []
   const withinCurriculum = ceilings.size === 0 ? [] : [sql.raw(curriculumPredicate(ceilings))]
   const [budget, available] = await Promise.all([
     todayBudget(userId, languageId, now, moreNew),
-    countAvailableNew(userId, languageId, withinCurriculum)
+    countAvailableNew(userId, languageId, [...withinCurriculum, ...levelFilter])
   ])
-  return { budget, extrasLeft: Math.min(budget.extrasLeft, available.extras) }
+  const waiting = available.words === 0 && budget.wordsLeft > 0 && ceilings.size > 0
+  const stages = waiting ? await stageProgress(userId, languageId) : []
+  const stageWait = (level ? stages.find(s => s.level === levelCode) : stages[0]) ?? null
+  return {
+    budget,
+    extrasLeft: Math.min(budget.extrasLeft, available.extras),
+    newAvailable: available.words,
+    stageWait
+  }
 }
 
 /**

@@ -2,13 +2,14 @@
 import type { FuriganaMode, JlptLevel, OnboardingGoal, OnboardingMinutes, OnboardingStart } from '@nihongo/shared/constants'
 import type { OnboardingAnswers, PlacementQuestion } from '@nihongo/shared/types'
 
-import { FURIGANA_MODES } from '@nihongo/shared/constants'
+import { FURIGANA_MODES, STAGE_SIZE } from '@nihongo/shared/constants'
 import { guideFor, paceFor, studyLevelFor, suggestedFurigana } from '@nihongo/shared/lib'
 import { computed, nextTick, onMounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 
 import { getPrefs } from '@/api/notifications'
 import { getPlacement } from '@/api/onboarding'
+import { getStudySettings } from '@/api/settings'
 import FuriganaText from '@/components/ja/furigana-text.vue'
 import OptionList from '@/components/onboarding/option-list.vue'
 import PlacementCheck from '@/components/onboarding/placement-check.vue'
@@ -74,7 +75,7 @@ const SAMPLE_SEGMENTS = [
 const TOUR = [
   { title: 'Today', body: 'Opens every time: what is due, what to learn next, your streak and three small goals for the day.' },
   { title: 'Review', body: 'Words come back just before you would forget them. A few minutes a day keeps everything you have learned.' },
-  { title: 'Learn and Practise', body: 'Learn brings new words, lessons and writing. Practise is for using them: speaking, conversations, reading and games.' }
+  { title: 'Learn and Practice', body: 'Learn brings new words in stages, with lessons and writing. Finish most of a stage and the next one opens. Practice is for using them: speaking, conversations, reading and games.' }
 ]
 
 // ============ Reactive State ============
@@ -100,6 +101,8 @@ const pushHere = ref(false)
  */
 const accountPush = ref(false)
 const level = ref<JlptLevel | null>(null)
+/** Extra practice as a multiple of new words (Settings): 2× unless they changed it. */
+const extraMultiple = ref(2)
 const questions = ref<PlacementQuestion[]>([])
 const saving = ref(false)
 
@@ -134,9 +137,12 @@ const answers = computed<OnboardingAnswers | null>(() => start.value && minutes.
     }
   : null)
 const guide = computed(() => answers.value ? guideFor(answers.value) : [])
-const plan = computed(() => answers.value
-  ? { level: studyLevelFor(answers.value), pace: paceFor(answers.value.minutes) }
-  : null)
+const plan = computed(() => {
+  if (!answers.value)
+    return null
+  const pace = paceFor(answers.value.minutes)
+  return { level: studyLevelFor(answers.value), pace, extras: pace.dailyNewLimit * extraMultiple.value }
+})
 const canContinue = computed(() => {
   if (step.value === 'start')
     return start.value !== null
@@ -155,12 +161,14 @@ watch(start, (s) => {
 // ============ Lifecycle Hooks ============
 // Run again from Settings: start from the previous answers.
 onMounted(async () => {
-  const [state, prefs, here] = await Promise.all([
+  const [state, prefs, here, study] = await Promise.all([
     onboarding.load(),
     getPrefs().catch(() => null),
-    pushOnThisDevice()
+    pushOnThisDevice(),
+    getStudySettings().catch(() => null)
   ])
   pushHere.value = here
+  extraMultiple.value = study?.extraPracticeMultiple ?? extraMultiple.value
   accountPush.value = prefs?.reminderPushEnabled ?? false
   const previous = state?.answers
   if (!previous) {
@@ -311,6 +319,10 @@ async function skip() {
           A little every day beats a lot once a week.
         </p>
         <OptionList v-model="minutes" class="mt-6" :options="MINUTES" />
+        <p class="mt-4 text-sm text-[var(--color-muted)]">
+          Each new word comes with a few more cards later (reading, writing, listening), so a day is
+          more than the new words alone.
+        </p>
       </section>
 
       <section v-else-if="step === 'reading'" class="mt-10">
@@ -384,12 +396,20 @@ async function skip() {
         </h1>
         <ul class="mt-4 space-y-1 text-[var(--color-muted)]">
           <li>Studying at <strong class="text-[var(--color-text)]">{{ plan.level }}</strong></li>
-          <li><strong class="text-[var(--color-text)]">{{ plan.pace.dailyNewLimit }}</strong> new words a day</li>
+          <li>
+            <strong class="text-[var(--color-text)]">{{ plan.pace.dailyNewLimit }}</strong> new words a day, plus up to
+            <strong class="text-[var(--color-text)]">{{ plan.extras }}</strong> cards of extra practice on words you've met
+          </li>
           <li>Japanese shown as <strong class="text-[var(--color-text)]">{{ FURIGANA_MODE_LABELS[furigana].label }}</strong></li>
           <li v-if="remind">
             Reminder at <strong class="text-[var(--color-text)]">{{ String(hour).padStart(2, '0') }}:{{ String(minute).padStart(2, '0') }}</strong>
           </li>
         </ul>
+        <p class="mt-3 text-sm text-[var(--color-muted)]">
+          The course goes in stages of about {{ STAGE_SIZE }} items. When you've met everything in a
+          stage, new words pause until you've learned most of it. Study keeps giving you practice in
+          the meantime.
+        </p>
 
         <h2 class="mt-8 font-semibold">
           Your first week

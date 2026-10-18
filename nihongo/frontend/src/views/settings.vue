@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { NotificationPrefs, PushDevice } from '@nihongo/shared/types'
 
-import { FURIGANA_MODES } from '@nihongo/shared/constants'
+import { FURIGANA_MODES, STAGE_PASS } from '@nihongo/shared/constants'
 import { computed, onMounted, ref } from 'vue'
 
 import { getPrefs, listPushDevices, removePushDevice, savePrefs } from '@/api/notifications'
@@ -136,6 +136,8 @@ const { mode: furiganaMode, loadSettings } = useFurigana()
  */
 const dailyNewLimit = ref<number | null>(null)
 const DAILY_OPTIONS = ['5', '10', '15', '20', '30'].map(n => ({ value: n, label: n }))
+/** The share of a stage that opens the next one, as Settings explains it. */
+const STAGE_PASS_PERCENT = Math.round(STAGE_PASS * 100)
 /** What each choice means in practice, so the hint speaks to the learner's own pace. */
 const PACE: Record<number, string> = {
   5: '5 a day is a gentle pace: easy to keep up on a busy day, and reviews stay light.',
@@ -394,6 +396,10 @@ async function turnOnPush() {
             {{ ` ${PACE[dailyNewLimit] ?? `${dailyNewLimit} a day.`}` }}
           </template>
           You can always ask for a few more on the day.
+        </p>
+        <p class="mt-2 text-sm text-[var(--color-muted)]">
+          New words come in stages. When you've met every word in your stage, new words pause until
+          you've learned most of it ({{ STAGE_PASS_PERCENT }}%), even if today's number isn't reached.
         </p>
         <Segmented
           v-if="dailyNewLimit !== null"

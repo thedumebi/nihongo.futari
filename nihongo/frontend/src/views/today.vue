@@ -6,6 +6,7 @@ import { computed, onMounted, ref } from 'vue'
 import CoverageBadge from '@/components/ja/coverage-badge.vue'
 import AppShell from '@/components/layout/app-shell.vue'
 import GettingStarted from '@/components/onboarding/getting-started.vue'
+import StageWait from '@/components/study/stage-wait.vue'
 import Button from '@/components/ui/button.vue'
 import { ROUTES } from '@/constants'
 import { useAuthStore } from '@/store/auth'
@@ -49,7 +50,18 @@ const loading = ref(true)
 // ============ Computed Properties ============
 const today = computed(() => store.today)
 const firstName = computed(() => (auth.user?.name ?? '').split(' ')[0] ?? '')
-const newLeft = computed(() => Math.max(0, (today.value?.newLimit ?? 0) - (today.value?.newToday ?? 0)))
+/**
+ * New words still to come today: what is left of the limit, but never more than
+ * the stage has to introduce. It used to be the limit alone, so the page said
+ * "11 new words for today" while the stage had none left to give.
+ */
+const newLeft = computed(() => Math.max(0, Math.min(
+  (today.value?.newLimit ?? 0) - (today.value?.newToday ?? 0),
+  // A Today cached before this field existed has no number: no cap.
+  today.value?.newAvailable ?? Number.POSITIVE_INFINITY
+)))
+/** The stage new words are waiting on, when that is why none are left. */
+const stageWait = computed(() => today.value?.stageWait ?? null)
 /** Extra practice (other cards of words already met) still to come once the new words are done. */
 const extrasLeft = computed(() => today.value?.extrasLeft ?? 0)
 
@@ -127,6 +139,12 @@ onMounted(async () => {
             </p>
             <Button class="mt-4" :variant="today.due > 0 ? 'ghost' : 'primary'" :to="ROUTES.LEARN">
               Learn new words
+            </Button>
+          </template>
+          <template v-else-if="stageWait">
+            <StageWait :stage="stageWait" />
+            <Button v-if="extrasLeft > 0" class="mt-4" :variant="today.due > 0 ? 'ghost' : 'primary'" :to="ROUTES.LEARN">
+              Keep practising
             </Button>
           </template>
           <template v-else-if="extrasLeft > 0">

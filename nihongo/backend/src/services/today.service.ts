@@ -53,6 +53,8 @@ export async function getToday(userId: string, languageCode: string, moreNew = 0
     newToday: newToday.budget.wordsToday,
     newLimit: newToday.budget.wordsLimit,
     extrasLeft: newToday.extrasLeft,
+    newAvailable: newToday.newAvailable,
+    stageWait: newToday.stageWait,
     nextLesson: lessons.next ?? null,
     nextSpeak: nextSpeak ? { code: nextSpeak.code, number: nextSpeak.number, level: nextSpeak.level, titleEn: nextSpeak.titleEn } : null,
     streak: { current: summary.currentStreak, longest: summary.longestStreak, studiedToday: today },

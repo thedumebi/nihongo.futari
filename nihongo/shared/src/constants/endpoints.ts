@@ -160,6 +160,8 @@ export type OnboardingStatus = typeof ONBOARDING_STATUSES[number]
 export const JLPT_LEVELS = ['N5', 'N4', 'N3', 'N2', 'N1'] as const
 /** Share of a course stage's cards that must be learned before the next stage opens. */
 export const STAGE_PASS = 0.85
+/** Items per course stage, by curriculum position (sort index). */
+export const STAGE_SIZE = 50
 export type JlptLevel = typeof JLPT_LEVELS[number]
 
 /** Who an admin email goes to. Only those with product updates on, always. */
