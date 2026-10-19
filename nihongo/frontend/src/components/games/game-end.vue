@@ -2,7 +2,10 @@
 import Button from '@/components/ui/button.vue'
 import { ROUTES } from '@/constants'
 
-/** The end of a game: the score, play again, or back to the games. */
+/**
+ * The end of a game: the score, play again, or back to the games. A game with
+ * more to say (what was missed, a heading of its own) puts it in the slot.
+ */
 interface Props {
   score: number
   total: number
@@ -23,6 +26,7 @@ const emit = defineEmits<{
     <p class="mt-1 text-[var(--color-muted)]">
       {{ score === total ? 'Every one.' : score >= total * 0.7 ? 'Nearly there.' : 'Another round will help.' }}
     </p>
+    <slot />
     <div class="mt-5 flex flex-wrap justify-center gap-3">
       <Button @click="emit('again')">
         Play again

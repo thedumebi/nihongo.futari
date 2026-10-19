@@ -112,6 +112,12 @@ const router = createRouter({
       meta: { requiresAuth: true }
     },
     {
+      path: ROUTES.GAME_VERB_FORMS,
+      name: 'verb-forms',
+      component: () => import('@/views/verb-forms-game.vue'),
+      meta: { requiresAuth: true }
+    },
+    {
       path: ROUTES.GAME_GHOST_BOSS,
       name: 'ghost-boss',
       component: () => import('@/views/ghost-boss.vue'),

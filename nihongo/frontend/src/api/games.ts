@@ -1,4 +1,4 @@
-import type { GhostBoss, KanjiBuildGame, ListeningGame } from '@nihongo/shared/types'
+import type { GhostBoss, KanjiBuildGame, ListeningGame, VerbFormsGame } from '@nihongo/shared/types'
 
 import { API_ENDPOINTS } from '@nihongo/shared/constants'
 
@@ -19,5 +19,11 @@ export async function getKanjiBuildGame(languageCode = 'ja', level?: string): Pr
 /** This week's ghost boss. */
 export async function getGhostBoss(languageCode = 'ja'): Promise<GhostBoss> {
   const { data } = await client.get<GhostBoss>(API_ENDPOINTS.GAMES.GHOST_BOSS, { params: { languageCode } })
+  return data
+}
+
+/** Verb forms: the verbs to conjugate and the forms open to the learner. */
+export async function getVerbFormsGame(languageCode = 'ja'): Promise<VerbFormsGame> {
+  const { data } = await client.get<VerbFormsGame>(API_ENDPOINTS.GAMES.VERB_FORMS, { params: { languageCode, size: 15 } })
   return data
 }

@@ -37,6 +37,7 @@ const BUSY_ROUTES = new Set([
   'listening-game',
   'kanji-build',
   'ghost-boss',
+  'verb-forms',
   'writing'
 ])
 

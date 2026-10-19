@@ -304,7 +304,8 @@ export const ACTIVITY_KINDS = [
   'listening-game',
   'kanji-build',
   'ghost-boss',
-  'story'
+  'story',
+  'verb-forms'
 ] as const
 export type ActivityKind = typeof ACTIVITY_KINDS[number]
 
@@ -341,7 +342,8 @@ export const FRIENDS_ROUTES = {
 export const GAMES_ROUTES = {
   LISTENING: '/listening',
   KANJI_BUILD: '/kanji-build',
-  GHOST_BOSS: '/ghost-boss'
+  GHOST_BOSS: '/ghost-boss',
+  VERB_FORMS: '/verb-forms'
 } as const
 
 export const ACTIVITY_ROUTES = {
@@ -609,7 +611,8 @@ export const API_ENDPOINTS = {
   GAMES: {
     LISTENING: `${ROUTE_BASE_PATHS.GAMES}${GAMES_ROUTES.LISTENING}`,
     KANJI_BUILD: `${ROUTE_BASE_PATHS.GAMES}${GAMES_ROUTES.KANJI_BUILD}`,
-    GHOST_BOSS: `${ROUTE_BASE_PATHS.GAMES}${GAMES_ROUTES.GHOST_BOSS}`
+    GHOST_BOSS: `${ROUTE_BASE_PATHS.GAMES}${GAMES_ROUTES.GHOST_BOSS}`,
+    VERB_FORMS: `${ROUTE_BASE_PATHS.GAMES}${GAMES_ROUTES.VERB_FORMS}`
   },
   ACTIVITIES: {
     RECORD: `${ROUTE_BASE_PATHS.ACTIVITIES}${ACTIVITY_ROUTES.RECORD}`

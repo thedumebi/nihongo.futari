@@ -1,7 +1,7 @@
-import type { GamesQuery, GhostBoss, GhostBossEntry, KanjiBuildGame, KanjiBuildRound, ListeningGame } from '@nihongo/shared/types'
+import type { DictionarySpelling, DrillForm, GamesQuery, GhostBoss, GhostBossEntry, KanjiBuildGame, KanjiBuildRound, ListeningGame, VerbFormsGame, VerbFormsGameVerb } from '@nihongo/shared/types'
 
 import db from '@nihongo/shared/db'
-import { classifyPitch, countMorae, findMinimalPairs, findPitchPairs, hasKanji, hasKatakana, lookAlikes, parseIds, pitchShape, studyDateFor } from '@nihongo/shared/lib'
+import { classifyPitch, classifyVerb, conjugatesReliably, countMorae, DRILL_FORMS, findMinimalPairs, findPitchPairs, hasKanji, hasKatakana, lookAlikes, parseIds, pitchShape, RARE_SPELLING_TAGS, studyDateFor, VERB_FORM_INFO } from '@nihongo/shared/lib'
 import { sql } from 'drizzle-orm'
 import { DateTime } from 'luxon'
 
@@ -395,4 +395,118 @@ export async function getGhostBoss(userId: string, languageCode: string): Promis
   const rounds = [...shuffle(basicRounds), ...kanjiRounds, ...wordRounds]
 
   return { week, ghosts, rounds }
+}
+
+// ============ Verb forms ============
+
+/** Verbs sent per game: enough for a mixed round of every form without repeats. */
+const VERB_FORMS_POOL = 40
+
+/**
+ * The Verb forms game: the verbs to ask about, and which forms are open.
+ *
+ * Verbs are the ones the learner has learned, any level, topped up with the
+ * level's earliest verbs while they know fewer than a game's worth. Only
+ * verbs `conjugate` gets right in every form (`conjugatesReliably`), no
+ * くる compound, whose prefix the くる table would drop, and no noun that
+ * merely takes する.
+ *
+ * A form is open once any grammar point that teaches it is learned, by the
+ * rule the conjugation drills are gated by: a card on that point past
+ * learning. The device builds the questions; the answers never travel.
+ */
+export async function getVerbFormsGame(userId: string, query: GamesQuery): Promise<VerbFormsGame> {
+  const levels = levelsFor(query)
+  const rows = await db.execute<{ id: string, surface: string, reading: string, pos: string[], glosses: Array<{ lang: string, text: string }>, known: boolean, level: string | null }>(sql`
+    select distinct on (w.id) w.id, w.primary_form as surface, w.primary_reading as reading, ws.pos, ws.glosses,
+      exists (
+        select 1 from srs_cards c
+        join study_item_facets f on f.id = c.facet_id
+        where f.study_item_id = si.id and c.user_id = ${userId} and c.state >= 2 and not c.suspended
+      ) as known,
+      lv.code as level,
+      si.sort_index
+    from words w
+    join languages l on l.id = w.language_id and l.code = ${query.languageCode}
+    join study_items si on si.word_id = w.id and si.published and si.active
+    join word_senses ws on ws.word_id = w.id and ws.sort_index = 0
+    left join language_levels lv on lv.id = si.level_id
+    where w.published and exists (select 1 from unnest(ws.pos) p where p like 'v%')
+    order by w.id, si.sort_index
+  `)
+
+  const verbs: Array<Omit<VerbFormsGameVerb, 'spellings'> & { sortIndex: number, level: string | null }> = []
+  for (const r of rows.rows as Array<typeof rows.rows[number] & { sort_index: number }>) {
+    const verbClass = classifyVerb(r.pos)
+    const meaning = firstGloss(r.glosses)
+    if (!verbClass || !conjugatesReliably(r.pos) || !meaning || !r.reading)
+      continue
+    if (verbClass === 'kuru' && r.reading !== 'くる')
+      continue
+    // A noun that can take する (戦争, 予定) is filed and glossed as the noun:
+    // "war", not "to wage war". Asking for 戦争したい under "war" is a puzzle
+    // about the noun, so only words that are themselves verbs are played.
+    if (verbClass === 'suru' && !r.reading.endsWith('する'))
+      continue
+    verbs.push({
+      wordId: r.id,
+      surface: r.surface,
+      reading: r.reading,
+      verbClass,
+      meaning,
+      known: r.known,
+      sortIndex: Number(r.sort_index),
+      level: r.level
+    })
+  }
+
+  const known = shuffle(verbs.filter(v => v.known)).slice(0, VERB_FORMS_POOL)
+  // The first level's earliest verbs first: N5 before N4.
+  const rank = (v: { level: string | null }) => levels.indexOf(v.level ?? '')
+  const topUp = verbs
+    .filter(v => !v.known && rank(v) >= 0)
+    .sort((a, b) => rank(a) - rank(b) || a.sortIndex - b.sortIndex)
+    .slice(0, Math.max(0, query.size - known.length))
+  const chosen = [...known, ...topUp]
+
+  const spellings = new Map<string, DictionarySpelling[]>()
+  if (chosen.length) {
+    const forms = await db.execute<{ word_id: string, form: string, tags: string[] | null, reading: string }>(sql`
+      select wf.word_id, wf.form, wf.tags, w.primary_reading as reading
+      from word_forms wf join words w on w.id = wf.word_id
+      where wf.word_id in ${chosen.map(v => v.wordId)}
+    `)
+    for (const f of forms.rows) {
+      if ((f.tags ?? []).some(tag => RARE_SPELLING_TAGS.has(tag)))
+        continue
+      const list = spellings.get(f.word_id) ?? []
+      list.push({ form: f.form, reading: f.reading })
+      spellings.set(f.word_id, list)
+    }
+  }
+
+  const slugs = [...new Set(DRILL_FORMS.flatMap(f => VERB_FORM_INFO[f].grammar))]
+  const points = await db.execute<{ slug: string, title: string, learned: boolean }>(sql`
+    select g.slug, g.title,
+      exists (
+        select 1 from srs_cards c
+        join study_item_facets f on f.id = c.facet_id
+        join study_items si on si.id = f.study_item_id
+        where si.grammar_point_id = g.id and c.user_id = ${userId} and c.state >= 2
+      ) as learned
+    from grammar_points g
+    join languages l on l.id = g.language_id and l.code = ${query.languageCode}
+    where g.slug in ${slugs} and g.published
+  `)
+  const bySlug = new Map(points.rows.map(p => [p.slug, p]))
+
+  return {
+    verbs: chosen.map(({ sortIndex: _s, level: _l, ...v }) => ({ ...v, spellings: spellings.get(v.wordId) ?? [] })),
+    forms: DRILL_FORMS.map((form: DrillForm) => {
+      const taught = VERB_FORM_INFO[form].grammar.map(slug => bySlug.get(slug)).filter(p => p !== undefined)
+      const unlocked = taught.some(p => p.learned)
+      const first = taught[0]
+      return { form, unlocked, lesson: unlocked || !first ? null : { slug: first.slug, title: first.title } }
+    })
+  }
 }

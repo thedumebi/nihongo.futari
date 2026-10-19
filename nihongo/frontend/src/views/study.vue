@@ -16,7 +16,7 @@ import type {
   WordGloss
 } from '@nihongo/shared/types'
 
-import { describeScript, gradeAnswer, gradeHandwriting, ratingFromGrade, samplePath, scriptOf, seriesReading, uuidv7 } from '@nihongo/shared/lib'
+import { describeScript, gradeAnswer, gradeHandwriting, ratingFromGrade, samplePath, scriptOf, seriesReading, uuidv7, VERB_CLASS_NOTE, VERB_FORM_INFO } from '@nihongo/shared/lib'
 import { useLocalStorage } from '@vueuse/core'
 import { GraduationCap, Layers } from 'lucide-vue-next'
 import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
@@ -502,34 +502,10 @@ const intro = computed(() => {
  * answer takes. Being told the answer afterwards does not fix that, because you
  * still do not know what was wanted.
  *
- * Four forms exist, so each gets a sentence and a worked example rather than an
- * abbreviation.
+ * Each form gets a sentence and a worked example rather than an abbreviation,
+ * from the descriptions the Verb forms game uses too (`VERB_FORM_INFO`).
  */
-const FORM_HELP: Record<string, { what: string, example: string }> = {
-  masu: {
-    what: 'The polite form: how you would say it to someone you are not close to.',
-    example: 'たべる → たべます'
-  },
-  te: {
-    what: 'The te-form. It does not mean anything on its own; it is the joint that lets a verb connect to what follows: asking, linking, continuing.',
-    example: 'たべる → たべて'
-  },
-  ta: {
-    what: 'The plain past: it already happened, said casually. Add です・ます register only if you need to be polite.',
-    example: 'たべる → たべた'
-  },
-  nai: {
-    what: 'The plain negative: it does not or will not happen, said casually.',
-    example: 'たべる → たべない'
-  }
-}
-
-/** Suru verbs are conjugated through する, which the bare noun does not show. */
-const CLASS_NOTE: Record<string, string> = {
-  suru: 'This is a suru-verb: it becomes a verb by taking する, and する is the part that changes.',
-  kuru: 'くる is irregular: it does not follow either regular pattern.',
-  aru: 'ある is irregular in the negative.'
-}
+const FORM_HELP: Record<string, { what: string, example: string }> = VERB_FORM_INFO
 
 const formHelp = computed(() => {
   if (current.value?.templateCode !== 'conjugation-drill')
@@ -540,7 +516,7 @@ const formHelp = computed(() => {
     return null
   return {
     ...help,
-    classNote: CLASS_NOTE[String(current.value?.prompt?.verbClass ?? '')] ?? ''
+    classNote: (VERB_CLASS_NOTE as Record<string, string>)[String(current.value?.prompt?.verbClass ?? '')] ?? ''
   }
 })
 

@@ -1,6 +1,6 @@
 import { GAMES_ROUTES, HttpStatusCodes } from '@nihongo/shared/constants'
 import { createSecuredRoute, jsonContent } from '@nihongo/shared/openapi'
-import { gamesQuerySchema, ghostBossSchema, kanjiBuildGameSchema, listeningGameSchema } from '@nihongo/shared/types'
+import { gamesQuerySchema, ghostBossSchema, kanjiBuildGameSchema, listeningGameSchema, verbFormsGameSchema } from '@nihongo/shared/types'
 
 import authMiddleware from '@/middlewares/auth.js'
 
@@ -47,3 +47,17 @@ export const ghostBoss = createSecuredRoute({
   }
 })
 export type GhostBossRoute = typeof ghostBoss
+
+export const verbForms = createSecuredRoute({
+  tags,
+  path: GAMES_ROUTES.VERB_FORMS,
+  method: 'get',
+  summary: 'Verb forms: the verbs to conjugate, and which forms the learner has been taught',
+  description: 'Known verbs, topped up from the level. Questions and answers are built on the device. Writes nothing.',
+  middleware: [authMiddleware],
+  request: { query: gamesQuerySchema },
+  responses: {
+    [HttpStatusCodes.OK]: jsonContent(verbFormsGameSchema, 'The verbs and the forms')
+  }
+})
+export type VerbFormsRoute = typeof verbForms

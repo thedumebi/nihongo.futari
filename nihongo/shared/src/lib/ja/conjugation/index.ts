@@ -36,8 +36,20 @@ export const CONJUGATION_FORMS = [
 ] as const
 export type ConjugationForm = typeof CONJUGATION_FORMS[number]
 
+/**
+ * Forms built on top of another one: ましょう and たい on the ます stem, ないで on
+ * the negative, ている on the te-form. Kept out of `CONJUGATION_FORMS`, which
+ * the glossary claims inflections from: claiming 食べている as one word would
+ * re-cut every sentence that says it as 食べて | いる.
+ */
+export const COMPOUND_FORMS = ['mashou', 'tai', 'naide', 'teiru'] as const
+export type CompoundForm = typeof COMPOUND_FORMS[number]
+
+/** Every form `conjugate` can produce. */
+export type VerbForm = ConjugationForm | CompoundForm
+
 export interface Conjugated {
-  form: ConjugationForm
+  form: VerbForm
   surface: string
   reading: string
 }
@@ -66,6 +78,22 @@ export function classifyVerb(pos: readonly string[]): VerbClass | null {
   return null
 }
 
+/**
+ * Classes `conjugate` gets wrong, so nothing should ask a learner for them.
+ *
+ * v5aru (くださる, いらっしゃる) takes い in the ます form: くださいます, not
+ * くださります. v5u-s (問う) takes うて: 問うて, not 問って. v1-s (くれる) has
+ * the command くれ, not くれろ. vs-s (愛する) has the potential 愛せる, not
+ * 愛できる. vz (信ずる) is not classified at all. Each one would come out as
+ * the regular pattern, confidently wrong.
+ */
+export const IRREGULAR_VERB_POS: ReadonlySet<string> = new Set(['v5aru', 'v5u-s', 'v1-s', 'vs-s', 'vz'])
+
+/** A verb `conjugate` handles correctly in every form. */
+export function conjugatesReliably(pos: readonly string[]): boolean {
+  return classifyVerb(pos) !== null && !pos.some(p => IRREGULAR_VERB_POS.has(p))
+}
+
 export function isIAdjective(pos: readonly string[]): boolean {
   return pos.includes('adj-i')
 }
@@ -75,7 +103,7 @@ export function isNaAdjective(pos: readonly string[]): boolean {
 }
 
 /** Godan stem vowel shifts, keyed by the dictionary-form final kana. */
-const GODAN_ROWS: Record<string, { i: string, a: string, e: string, o: string }> = {
+export const GODAN_ROWS: Record<string, { i: string, a: string, e: string, o: string }> = {
   う: { i: 'い', a: 'わ', e: 'え', o: 'お' }, // わ, not あ — a historical w that survives only here
   く: { i: 'き', a: 'か', e: 'け', o: 'こ' },
   ぐ: { i: 'ぎ', a: 'が', e: 'げ', o: 'ご' },
@@ -231,7 +259,34 @@ export interface ConjugateInput {
   verbClass: VerbClass
 }
 
-export function conjugate(input: ConjugateInput, form: ConjugationForm): Conjugated | null {
+/** The form a compound is built on, and what is put in place of its ending. */
+const COMPOUND_BASE: Record<CompoundForm, { base: ConjugationForm, drop: string, add: string }> = {
+  mashou: { base: 'masu', drop: 'ます', add: 'ましょう' },
+  tai: { base: 'masu', drop: 'ます', add: 'たい' },
+  naide: { base: 'nai', drop: '', add: 'で' },
+  teiru: { base: 'te', drop: '', add: 'いる' }
+}
+
+function isCompound(form: VerbForm): form is CompoundForm {
+  return (COMPOUND_FORMS as readonly string[]).includes(form)
+}
+
+function compound(input: ConjugateInput, form: CompoundForm): Conjugated | null {
+  // ありたい and ありましょう are grammatical but nobody says them; asking
+  // for them would teach a form the learner should not use.
+  if (input.verbClass === 'aru' && (form === 'tai' || form === 'mashou'))
+    return null
+  const { base, drop, add } = COMPOUND_BASE[form]
+  const b = conjugate(input, base)
+  if (!b || !b.surface.endsWith(drop) || !b.reading.endsWith(drop))
+    return null
+  const cut = (text: string) => text.slice(0, text.length - drop.length) + add
+  return { form, surface: cut(b.surface), reading: cut(b.reading) }
+}
+
+export function conjugate(input: ConjugateInput, form: VerbForm): Conjugated | null {
+  if (isCompound(form))
+    return compound(input, form)
   const { surface, reading, verbClass } = input
   if (!surface || !reading)
     return null
@@ -266,9 +321,10 @@ export function conjugate(input: ConjugateInput, form: ConjugationForm): Conjuga
   return result ? { form, ...result } : null
 }
 
-/** Every form, for a conjugation table. */
+/** Every base form, for a conjugation table. Compound forms are asked for by name. */
 export function conjugateAll(input: ConjugateInput): Conjugated[] {
   return CONJUGATION_FORMS
     .map(form => conjugate(input, form))
     .filter((c): c is Conjugated => c !== null)
 }
+export * from './forms.js'

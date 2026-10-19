@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest'
 
-import type { ConjugationForm, VerbClass } from './index.js'
+import type { ConjugationForm, VerbClass, VerbForm } from './index.js'
 
-import { classifyVerb, conjugate, conjugateAll, CONJUGATION_FORMS, isIAdjective } from './index.js'
+import { classifyVerb, conjugate, conjugateAll, conjugatesReliably, CONJUGATION_FORMS, isIAdjective } from './index.js'
 
 /**
  * Known-answer tests against forms a textbook would print.
@@ -12,7 +12,7 @@ import { classifyVerb, conjugate, conjugateAll, CONJUGATION_FORMS, isIAdjective 
  * one verb per godan row, both irregulars, and every documented exception.
  */
 
-function form(surface: string, reading: string, verbClass: VerbClass, f: ConjugationForm) {
+function form(surface: string, reading: string, verbClass: VerbClass, f: VerbForm) {
   return conjugate({ surface, reading, verbClass }, f)?.reading
 }
 
@@ -142,6 +142,51 @@ describe('irregulars', () => {
   it('conjugates ある regularly everywhere else', () => {
     expect(form('ある', 'ある', 'aru', 'masu')).toBe('あります')
     expect(form('ある', 'ある', 'aru', 'te')).toBe('あって')
+  })
+})
+
+describe('compound forms', () => {
+  const cases: Array<[string, string, VerbClass, Partial<Record<VerbForm, string>>]> = [
+    ['書く', 'かく', 'godan', { mashou: 'かきましょう', tai: 'かきたい', naide: 'かかないで', teiru: 'かいている' }],
+    ['会う', 'あう', 'godan', { tai: 'あいたい', naide: 'あわないで', teiru: 'あっている' }],
+    ['行く', 'いく', 'godan', { mashou: 'いきましょう', tai: 'いきたい', teiru: 'いっている' }],
+    ['食べる', 'たべる', 'ichidan', { mashou: 'たべましょう', tai: 'たべたい', naide: 'たべないで', teiru: 'たべている' }],
+    ['する', 'する', 'suru', { mashou: 'しましょう', tai: 'したい', naide: 'しないで', teiru: 'している' }],
+    ['勉強する', 'べんきょうする', 'suru', { tai: 'べんきょうしたい', teiru: 'べんきょうしている' }],
+    ['来る', 'くる', 'kuru', { mashou: 'きましょう', tai: 'きたい', naide: 'こないで', teiru: 'きている' }],
+    ['ある', 'ある', 'aru', { naide: 'ないで', teiru: 'あっている' }]
+  ]
+
+  for (const [surface, reading, verbClass, expected] of cases) {
+    it(`builds ${surface}'s on the form beneath`, () => {
+      for (const [f, want] of Object.entries(expected))
+        expect(form(surface, reading, verbClass, f as VerbForm), `${surface} ${f}`).toBe(want)
+    })
+  }
+
+  it('keeps the kanji, and 来る\'s reading change', () => {
+    expect(conjugate({ surface: '書く', reading: 'かく', verbClass: 'godan' }, 'tai')?.surface).toBe('書きたい')
+    expect(conjugate({ surface: '来る', reading: 'くる', verbClass: 'kuru' }, 'naide')?.surface).toBe('来ないで')
+  })
+
+  it('does not ask ある for a want or a let\'s nobody says', () => {
+    expect(form('ある', 'ある', 'aru', 'tai')).toBeUndefined()
+    expect(form('ある', 'ある', 'aru', 'mashou')).toBeUndefined()
+  })
+})
+
+describe('conjugatesReliably', () => {
+  it('leaves out the classes conjugate would get wrong', () => {
+    expect(conjugatesReliably(['v5aru'])).toBe(false) // くださる: くださいます
+    expect(conjugatesReliably(['v5u-s'])).toBe(false) // 問う: 問うて
+    expect(conjugatesReliably(['v1-s'])).toBe(false) // くれる: くれ
+    expect(conjugatesReliably(['vs-s'])).toBe(false) // 愛する: 愛せる
+    expect(conjugatesReliably(['n'])).toBe(false)
+  })
+
+  it('keeps the regular classes and the irregulars it handles', () => {
+    for (const pos of [['v5k'], ['v1'], ['vs-i'], ['vk'], ['v5r-i'], ['v5k-s']])
+      expect(conjugatesReliably(pos), pos[0]).toBe(true)
   })
 })
 

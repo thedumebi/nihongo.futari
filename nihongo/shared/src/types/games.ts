@@ -1,5 +1,9 @@
 import { z } from '@hono/zod-openapi'
 
+import type { Conjugated, VERB_FORM_INFO } from '@/lib/ja/conjugation/index.js'
+
+import { DRILL_FORMS, VERB_CLASSES } from '@/lib/ja/conjugation/index.js'
+
 import { wordPitchSchema } from './words.js'
 
 /**
@@ -120,3 +124,48 @@ export const ghostBossSchema = z.object({
   }))
 }).openapi('GhostBoss')
 export type GhostBoss = z.infer<typeof ghostBossSchema>
+
+// ============ Verb forms ============
+
+/** A form the Verb forms game can ask for: the keys of `VERB_FORM_INFO`. */
+export type DrillForm = keyof typeof VERB_FORM_INFO
+
+export const drillFormSchema = z.enum(DRILL_FORMS as [DrillForm, ...DrillForm[]])
+
+export const verbFormsGameVerbSchema = z.object({
+  wordId: z.string(),
+  surface: z.string(),
+  reading: z.string(),
+  verbClass: z.enum(VERB_CLASSES),
+  meaning: z.string(),
+  /** False for a verb added from the level because too few are known yet. */
+  known: z.boolean(),
+  /** Common dictionary spellings, so a typed 分かって counts for わかって. */
+  spellings: z.array(z.object({ form: z.string(), reading: z.string() }))
+}).openapi('VerbFormsGameVerb')
+export type VerbFormsGameVerb = z.infer<typeof verbFormsGameVerbSchema>
+
+export const verbFormsGameSchema = z.object({
+  verbs: z.array(verbFormsGameVerbSchema),
+  /** Every form, and whether the learner has learned the grammar that teaches it. */
+  forms: z.array(z.object({
+    form: drillFormSchema,
+    unlocked: z.boolean(),
+    /** The grammar point to learn first, for a locked form. */
+    lesson: z.object({ slug: z.string(), title: z.string() }).nullable()
+  }))
+}).openapi('VerbFormsGame')
+export type VerbFormsGame = z.infer<typeof verbFormsGameSchema>
+
+/** One question, built on the device from a verb and a form. */
+export interface VerbFormsRound {
+  verb: VerbFormsGameVerb
+  form: DrillForm
+  answer: Conjugated
+  /** Four readings to pick from, the answer among them. */
+  options: string[]
+  /** Every typed answer that counts: the spelling, the kana, the dictionary's other spellings. */
+  accepted: string[]
+  /** How the form is made from this verb, in one line. */
+  rule: string
+}

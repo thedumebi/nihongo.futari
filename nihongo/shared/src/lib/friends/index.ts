@@ -72,7 +72,8 @@ const ACTIVITY_BUCKET: Record<ActivityKind, keyof ActivityCounts> = {
   'crossword': 'games',
   'listening-game': 'games',
   'kanji-build': 'games',
-  'ghost-boss': 'games'
+  'ghost-boss': 'games',
+  'verb-forms': 'games'
 }
 
 export function emptyActivityCounts(): ActivityCounts {

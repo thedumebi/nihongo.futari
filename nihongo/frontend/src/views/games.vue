@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Ear, Ghost, Grid3x3, Puzzle } from 'lucide-vue-next'
+import { Ear, Ghost, Grid3x3, Layers, Puzzle } from 'lucide-vue-next'
 
 import AppShell from '@/components/layout/app-shell.vue'
 import { ROUTES } from '@/constants'
@@ -11,6 +11,7 @@ import { ROUTES } from '@/constants'
 const GAMES = [
   { to: ROUTES.CROSSWORD, icon: Grid3x3, title: 'Crossword', text: 'A daily puzzle from the words you know.' },
   { to: ROUTES.GAME_LISTENING, icon: Ear, title: 'Listening', text: 'おばさん or おばあさん? Hear a word and pick which it was: long vowels, small っ and ん.' },
+  { to: ROUTES.GAME_VERB_FORMS, icon: Layers, title: 'Verb forms', text: '書く → 書いて, 書きたい, 書きましょう: verbs you know, in the forms you choose or all mixed.' },
   { to: ROUTES.GAME_KANJI_BUILD, icon: Puzzle, title: 'Build a kanji', text: 'Put kanji together from their parts, and guess readings from the part that carries the sound.' },
   { to: ROUTES.GAME_GHOST_BOSS, icon: Ghost, title: 'Ghost boss', text: 'The cards that keep slipping, once a week, with where they come from and what they get confused with.' }
 ]

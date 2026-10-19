@@ -10,5 +10,6 @@ const router = createRouter().basePath(ROUTE_BASE_PATHS.GAMES)
 router.openapi(routes.listening, handlers.listening)
 router.openapi(routes.kanjiBuild, handlers.kanjiBuild)
 router.openapi(routes.ghostBoss, handlers.ghostBoss)
+router.openapi(routes.verbForms, handlers.verbForms)
 
 export default router
