@@ -134,7 +134,9 @@ export const reviewItemSchema = z.object({
       alsoRight: z.array(z.string()),
       wrong: z.array(z.string()),
       note: z.string(),
-      translation: z.string().nullable()
+      translation: z.string().nullable(),
+      /** A sentence written for this set: published by approving it. */
+      newSentence: z.boolean()
     }))
   }).nullable(),
 

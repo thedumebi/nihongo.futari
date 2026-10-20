@@ -10,6 +10,7 @@ import path, { basename } from 'node:path'
 import { promisify } from 'node:util'
 
 import { audioKeyFor, englishVoiceFor, GLOSS_AUDIO_LEVELS, VOICE_LEARNER as LEARNER_VOICE, VOICE_OTHER, VOICE_RECALL, voiceForClip } from '../lib/audio-key.js'
+import { PARTICLE_SENTENCES } from './data/particles/sentences.js'
 import { READINGS } from './data/readings/index.js'
 import { SPEAK } from './data/speak/index.js'
 import { japaneseLine, teacherLine } from './data/speak/types.js'
@@ -135,11 +136,16 @@ async function generate(kind: AudioKind) {
   } else if (kind === 'sentences') {
     // Named by the row id, not the Tanaka id: the file has to be findable from
     // a prompt, and prompts carry sentence ids.
-    targets = (await db
-      .select({ id: sentences.id, text: sentences.text })
-      .from(sentences)
-      .where(eq(sentences.published, true)))
-      .map(r => ({ name: r.id, text: r.text, voice: voiceForClip(r.id) }))
+    targets = [
+      ...(await db
+        .select({ id: sentences.id, text: sentences.text })
+        .from(sentences)
+        .where(eq(sentences.published, true)))
+        .map(r => ({ name: r.id, text: r.text, voice: voiceForClip(r.id) })),
+      // Sentences written for Particles: approved by reading and hearing them,
+      // so recorded before they are published.
+      ...PARTICLE_SENTENCES.map(s => ({ name: s.id, text: s.t, voice: voiceForClip(s.id) }))
+    ]
   } else if (kind === 'readings') {
     // Every line of every speech, from the authored data — a speech is
     // approved by listening to it, so its audio exists before it is published.

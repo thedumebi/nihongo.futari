@@ -222,6 +222,7 @@ export async function listPending(
           alsoRight: particleQuestions.alsoRight,
           wrong: particleQuestions.wrong,
           note: particleQuestions.note,
+          newSentence: sql<boolean>`not ${sentences.published}`,
           translation: sql<string | null>`(select t.text from sentence_translations t where t.sentence_id = ${sentences.id} and t.lang = 'en' order by t.created_at limit 1)`
         })
         .from(particleQuestions)
@@ -347,6 +348,18 @@ export async function approve(id: string, reviewerId: string, note?: string): Pr
         .update(particleSets)
         .set({ published: true, updatedAt: now })
         .where(eq(particleSets.id, row.targetId))
+      // And the sentences written for its questions: reviewed here, with the
+      // questions, and published by nothing else.
+      await tx
+        .update(sentences)
+        .set({ published: true, updatedAt: now })
+        .where(and(
+          eq(sentences.published, false),
+          inArray(sentences.id, tx
+            .select({ id: particleQuestions.sentenceId })
+            .from(particleQuestions)
+            .where(eq(particleQuestions.setId, row.targetId)))
+        ))
     }
 
     await tx

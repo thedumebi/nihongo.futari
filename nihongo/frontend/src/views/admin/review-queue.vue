@@ -306,6 +306,9 @@ async function decide(action: 'approve' | 'reject') {
                     <p v-if="q.translation" class="text-sm text-[var(--color-muted)]">
                       {{ q.translation }}
                     </p>
+                    <p v-if="q.newSentence" class="mt-1 text-xs uppercase tracking-wide text-[var(--color-accent)]">
+                      New sentence: approving publishes it
+                    </p>
                     <p class="mt-2 text-sm" style="font-family: var(--font-jp)">
                       <span class="text-[var(--color-muted)]">Wrong:</span> {{ q.wrong.join(', ') }}
                       <template v-if="q.alsoRight.length">

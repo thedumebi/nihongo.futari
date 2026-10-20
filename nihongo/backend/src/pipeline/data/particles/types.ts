@@ -22,3 +22,18 @@ export interface AuthoredParticleSet {
   point: string
   questions: AuthoredParticleQuestion[]
 }
+
+/**
+ * A sentence written for a Particles lesson the published sentences could not
+ * fill (に per, か or, や and so on). It arrives unpublished, with its tokens
+ * and its recording, and is published by approving its lesson's set.
+ */
+export interface AuthoredParticleSentence {
+  /** Stable, never reused: `sent-ptc-<lesson>-<n>`. */
+  id: string
+  /** As written: N5 kanji only, the rest in kana. */
+  t: string
+  /** The whole sentence in kana, word by word, particles as said: わ for は, お for を, え for へ. */
+  r: string
+  en: string
+}
