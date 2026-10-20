@@ -3,7 +3,7 @@ import type { FuriganaMode } from '@nihongo/shared/constants'
 import type { SpeakStepView, WordGloss } from '@nihongo/shared/types'
 
 import { thinkingTimeMs } from '@nihongo/shared/lib'
-import { Check, Pause, Play, RotateCcw, Volume2, X } from 'lucide-vue-next'
+import { Check, Pause, Play, RotateCcw, SkipBack, Volume2, X } from 'lucide-vue-next'
 import { computed, onBeforeUnmount, ref, watch } from 'vue'
 
 import TokenLine from '@/components/ja/token-line.vue'
@@ -188,7 +188,8 @@ function answer(gotIt: boolean) {
   const index = order.value[position.value]!
   if (!gotIt)
     emit('missed', props.steps[index]!.index)
-  if (!isRetry.value)
+  // Gone back to a prompt already answered: the first answer is the one that counts.
+  if (!isRetry.value && !firstTry.value.has(index))
     firstTry.value = new Map(firstTry.value).set(index, gotIt)
   // A miss comes round once more at the end — not forever.
   if (!gotIt && !retried.value.has(index)) {
@@ -196,6 +197,19 @@ function answer(gotIt: boolean) {
     order.value = [...order.value, index]
   }
   next()
+}
+
+/**
+ * Back one step, played again from its start: the explanation or passage is
+ * heard again, a prompt asks again and runs its countdown. Nothing skips
+ * forward; the way on is answering.
+ */
+function previous() {
+  if (position.value === 0)
+    return
+  stopAudio()
+  position.value--
+  void enter()
 }
 
 function replay() {
@@ -300,6 +314,9 @@ defineExpose({ restart, prompts })
     </div>
 
     <div v-if="phase !== 'done'" class="mt-6 flex flex-wrap items-center justify-center gap-3">
+      <Button variant="ghost" round aria-label="Previous" :disabled="position === 0" @click="previous">
+        <SkipBack class="h-5 w-5" />
+      </Button>
       <Button variant="ghost" round aria-label="Hear it again" @click="replay">
         <Volume2 class="h-5 w-5" />
       </Button>

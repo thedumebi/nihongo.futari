@@ -1,3 +1,6 @@
+import type { RecallSession } from '@/types/recall.js'
+import type { SpeakStepView } from '@/types/speak.js'
+
 /**
  * Recall: a hands-free session over the learner's own words, Pimsleur style.
  *
@@ -92,4 +95,43 @@ export function ambiguousPrompts(prompts: ReadonlyArray<{ word: string, prompt: 
     words.set(key, (words.get(key) ?? new Set()).add(word))
   }
   return new Set([...words].filter(([, ws]) => ws.size > 1).map(([key]) => key))
+}
+
+/**
+ * A Recall session as the steps of the hands-free player Speak uses, so both
+ * play, pause, go back and pace the same way.
+ *
+ * Each asking is one step, repeats included, in `order`. The English is said
+ * first; a hint's clip comes after it, shown as "starts with ひ". `tags`
+ * marks a word asked before in the session, which comes back on purpose.
+ */
+export function recallSteps(session: RecallSession): { steps: SpeakStepView[], tags: Array<string | null> } {
+  const steps: SpeakStepView[] = []
+  const tags: Array<string | null> = []
+  const asked = new Set<number>()
+  session.order.forEach((at, index) => {
+    const item = session.items[at]
+    if (!item)
+      return
+    const [first = null, ...rest] = item.promptAudio
+    const hintClip = item.hint ? rest.pop() ?? null : null
+    steps.push({
+      index,
+      kind: 'prompt',
+      say: [
+        { lang: 'en', text: item.prompt, audio: first },
+        // A Speak prompt's English may come in several clips; they play in turn.
+        ...rest.map(audio => ({ lang: 'en' as const, text: '', audio })),
+        ...(item.hint ? [{ lang: 'en' as const, text: '(starts with', audio: null }, { lang: 'ja' as const, text: `${item.hint})`, audio: hintClip }] : [])
+      ],
+      text: item.text,
+      reading: item.reading,
+      note: null,
+      tokens: [],
+      answerAudio: item.answerAudio
+    })
+    tags.push(asked.has(at) ? 'again' : null)
+    asked.add(at)
+  })
+  return { steps, tags }
 }

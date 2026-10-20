@@ -17,15 +17,25 @@ import { playAudioQueue, prefetchAudio, stopAudio } from '@/composables/use-audi
  * play/pause/skip through the Media Session API, so it keeps going with the
  * phone in a pocket. There is no self-check here — this is for practice on the
  * move — so it does not mark the session complete.
+ *
+ * Recall plays through this too (its words made into steps by `recallSteps`),
+ * so both have the same controls, pauses and pace. What differs comes in as
+ * props and slots: the intro, a tag per step, the reading under the answer,
+ * and what to show at the end.
  */
 interface Props {
   steps: SpeakStepView[]
   title: string
-  number: number
+  /** The lock screen's second line: "Session 4", "Story 2". */
+  album: string
   thinkScale: number
+  /** A short label per step, by position: Recall's "again" for a word asked before. */
+  tags?: Array<string | null>
+  /** Show the reading under the answer when it is written with kanji. */
+  showReading?: boolean
 }
 
-const props = defineProps<Props>()
+const props = withDefaults(defineProps<Props>(), { tags: () => [], showReading: false })
 
 const emit = defineEmits<{
   /** Played through to the end — a listen, recorded apart from a scored run. */
@@ -61,7 +71,7 @@ onMounted(() => {
   const session = typeof navigator !== 'undefined' ? navigator.mediaSession : undefined
   if (!session)
     return
-  session.metadata = new MediaMetadata({ title: props.title, artist: 'go · Speak', album: `Session ${props.number}` })
+  session.metadata = new MediaMetadata({ title: props.title, artist: 'go', album: props.album })
   session.setActionHandler('play', () => void start())
   session.setActionHandler('pause', pause)
   session.setActionHandler('nexttrack', () => skip(1))
@@ -158,14 +168,17 @@ function setState(state: MediaSessionPlaybackState) {
 
 <template>
   <div>
-    <p class="text-sm text-[var(--color-muted)]">
-      Plays straight through: the English, a pause for you to say it, then the answer. Works with the
-      screen off. Pause during the silence to take as long as you need. Play again gives the answer. Listening does not mark the session done, so run it on screen to check yourself.
-    </p>
+    <slot name="intro">
+      <p class="text-sm text-[var(--color-muted)]">
+        Plays straight through: the English, a pause for you to say it, then the answer. Works with the
+        screen off. Pause during the silence to take as long as you need. Play again gives the answer. Listening does not mark the session done, so run it on screen to check yourself.
+      </p>
+    </slot>
 
     <div class="mt-6 min-h-[12rem] rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] p-6">
       <p class="text-xs uppercase tracking-wide text-[var(--color-muted)]">
         {{ finished ? 'Finished' : `${current + 1} of ${steps.length}` }}
+        <span v-if="!finished && tags[current]" class="ml-2 rounded-full border border-[var(--color-border)] px-2 py-0.5 normal-case tracking-normal">{{ tags[current] }}</span>
       </p>
       <p v-if="heldInThinking && !playing" class="mt-1 text-sm text-[var(--color-muted)]">
         Paused. Take as long as you need. Play gives the answer.
@@ -180,8 +193,10 @@ function setState(state: MediaSessionPlaybackState) {
           :aria-hidden="!answered"
         >
           {{ step.text }}
+          <span v-if="showReading && step.reading && step.reading !== step.text" class="block text-sm text-[var(--color-muted)]">{{ step.reading }}</span>
         </p>
       </template>
+      <slot v-else-if="finished" name="finished" />
     </div>
 
     <div class="mt-6 flex items-center justify-center gap-3">

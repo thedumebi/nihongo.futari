@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import { ambiguousPrompts, firstMora, RECALL_GAPS, recallGloss, recallSchedule } from './index.js'
+import { ambiguousPrompts, firstMora, RECALL_GAPS, recallGloss, recallSchedule, recallSteps } from './index.js'
 
 describe('recallGloss', () => {
   it('takes the first meaning without its asides', () => {
@@ -68,5 +68,32 @@ describe('ambiguousPrompts', () => {
       { word: '一つ', prompt: 'one' },
       { word: '猫', prompt: 'cat' }
     ])).toEqual(new Set(['one']))
+  })
+})
+
+describe('recallSteps', () => {
+  const session = {
+    items: [
+      { key: 'w1', kind: 'word' as const, prompt: 'one', promptAudio: ['en/one.mp3', 'ja/hi.mp3'], hint: 'ひ', text: '一つ', reading: 'ひとつ', answerAudio: 'ja/hitotsu.mp3' },
+      { key: 'w2', kind: 'word' as const, prompt: 'cat', promptAudio: ['en/cat.mp3'], hint: null, text: '猫', reading: 'ねこ', answerAudio: 'ja/neko.mp3' }
+    ],
+    order: [0, 1, 0]
+  }
+
+  it('makes one prompt per asking, repeats included, tagging the repeats', () => {
+    const { steps, tags } = recallSteps(session)
+    expect(steps.map(s => s.text)).toEqual(['一つ', '猫', '一つ'])
+    expect(steps.map(s => s.index)).toEqual([0, 1, 2])
+    expect(tags).toEqual([null, null, 'again'])
+    expect(steps[1]).toMatchObject({ kind: 'prompt', reading: 'ねこ', answerAudio: 'ja/neko.mp3' })
+  })
+
+  it('says the English, then the hint, each with its own clip', () => {
+    const [first] = recallSteps(session).steps
+    expect(first!.say).toEqual([
+      { lang: 'en', text: 'one', audio: 'en/one.mp3' },
+      { lang: 'en', text: '(starts with', audio: null },
+      { lang: 'ja', text: 'ひ)', audio: 'ja/hi.mp3' }
+    ])
   })
 })
