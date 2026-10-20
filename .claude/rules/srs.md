@@ -86,5 +86,7 @@ server clock.
 Flag when `lapses >= ghostThreshold` or rolling-10 accuracy drops below 0.6.
 Effect: shorten the interval by `ghostIntervalFactor`, and draw the next prompt
 from the facet's template pool **excluding the template it keeps failing**.
-Clear after 3 consecutive correct at intervals >= 7d. All thresholds come from
+Clear after 3 consecutive correct (Hard or better; Again ends the run) when
+either the next interval is >= 7d or the run itself spans >= 7d, first answer
+to last (`streakSpanDays`). The boss and Recall never count: only real reviews. All thresholds come from
 `user_settings` / `language_features.config` — never hardcode them.
