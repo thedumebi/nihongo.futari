@@ -25,6 +25,7 @@ import { aggregateReviews, computeStreak, DEFAULT_DAY_BOUNDARY_HOUR, QUEST_XP, q
 import { and, eq, gte, inArray, isNull, lt, sql } from 'drizzle-orm'
 
 import { recomputeAchievements } from './achievements.service.js'
+import { ghostBossHasCards } from './games.service.js'
 import { countDue, loadPolicy, newWordsToday } from './srs.service.js'
 
 /**
@@ -283,21 +284,13 @@ export async function todayQuests(userId: string, languageId: string, now = new 
     // Words, as the daily limit counts them: a second card of a word met
     // before is practice, not a new word.
     newWordsToday(userId, languageId, now),
-    // Whether this week's ghost boss has anyone to fight, by its own rule.
-    db.execute<{ any: boolean }>(sql`
-      select exists (
-        select 1 from srs_cards c
-        join study_item_facets f on f.id = c.facet_id
-        join study_items si on si.id = f.study_item_id and si.published and si.active
-        where c.user_id = ${userId} and c.language_id = ${languageId} and c.ghost and not c.suspended
-          and (si.kanji_id is not null or si.word_id is not null)
-      ) as any
-    `)
+    // Whether this week's ghost boss has anyone to face, by its own rule.
+    ghostBossHasCards(userId, languageId)
   ])
   const goal = reviewGoal(cards, day)
   return {
     localDate,
-    quests: questProgress(questsFor(userId, localDate, goal.available, { ghosts: Boolean(ghosts.rows[0]?.any) }), {
+    quests: questProgress(questsFor(userId, localDate, goal.available, { ghosts }), {
       reviews: goal.reviewed,
       newWords,
       activities: activities.map(a => ({ kind: a.kind as ActivityKind }))

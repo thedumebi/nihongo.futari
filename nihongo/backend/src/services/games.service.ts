@@ -1,8 +1,8 @@
 import type { FuriganaSegment } from '@nihongo/shared/lib'
-import type { DictionarySpelling, DrillForm, GamesQuery, GhostBoss, GhostBossEntry, KanjiBuildGame, KanjiBuildRound, ListeningGame, ParticlesGame, VerbFormsGame, VerbFormsGameVerb } from '@nihongo/shared/types'
+import type { DictionarySpelling, DrillForm, GamesQuery, GhostBoss, GhostBossEntry, GhostPools, GhostSubject, KanjiBuildGame, KanjiBuildRound, ListeningGame, ParticlesGame, VerbFormsGame, VerbFormsGameVerb } from '@nihongo/shared/types'
 
 import db from '@nihongo/shared/db'
-import { classifyPitch, classifyVerb, clozeFurigana, conjugatesReliably, countMorae, DRILL_FORMS, findMinimalPairs, findPitchPairs, hasKanji, hasKatakana, lookAlikes, parseIds, pitchShape, RARE_SPELLING_TAGS, studyDateFor, VERB_FORM_INFO } from '@nihongo/shared/lib'
+import { buildGhostRounds, classifyPitch, classifyVerb, clozeFurigana, conjugatesReliably, countMorae, DRILL_FORMS, findMinimalPairs, findPitchPairs, hasKanji, hasKatakana, KANA_LOOKALIKES, lookAlikes, parseIds, pitchShape, RARE_SPELLING_TAGS, studyDateFor, toHiragana, VERB_FORM_INFO } from '@nihongo/shared/lib'
 import { sql } from 'drizzle-orm'
 import { DateTime } from 'luxon'
 
@@ -260,143 +260,289 @@ export async function getKanjiBuildGame(query: GamesQuery): Promise<KanjiBuildGa
 
 // ============ Ghost boss ============
 
+/** Ghosts in one boss, at most. */
+const BOSS_MAX = 12
+/** Below this many ghosts, cards nearly haunting top the boss up to it. */
+const BOSS_TOP_UP = 8
+/** Nearly haunting: answered Again or Hard at least this often in the window. */
+const NEARLY_MISSES = 2
+const NEARLY_DAYS = 14
+
+/** The kinds of study item the boss can ask about. */
+const BOSS_KINDS = sql`(si.kanji_id is not null or si.word_id is not null or si.grammar_point_id is not null or si.kana_id is not null)`
+
+/**
+ * The cards for this week's boss: the ghosts, worst first, then (while there
+ * are fewer than `BOSS_TOP_UP`) the cards nearly haunting, most slipped
+ * first. One per study item, by its worst card, whose facet is the side the
+ * boss asks first.
+ */
+async function bossCards(userId: string, languageId: string): Promise<Array<{ key: string, facet: string, status: 'ghost' | 'nearly' }>> {
+  const ghosts = await db.execute<{ key: string, facet: string }>(sql`
+    select key, facet from (
+      select distinct on (si.id) si.id as key, f.facet, c.lapses
+      from srs_cards c
+      join study_item_facets f on f.id = c.facet_id
+      join study_items si on si.id = f.study_item_id and si.published and si.active
+      where c.user_id = ${userId} and c.language_id = ${languageId} and c.ghost and not c.suspended and ${BOSS_KINDS}
+      order by si.id, c.lapses desc
+    ) g order by lapses desc limit ${BOSS_MAX}
+  `)
+  const room = BOSS_TOP_UP - ghosts.rows.length
+  const nearly = room <= 0
+    ? []
+    : (await db.execute<{ key: string, facet: string }>(sql`
+        select key, facet from (
+          select distinct on (si.id) si.id as key, f.facet, x.misses
+          from (
+            select l.card_id, count(*) as misses from srs_review_logs l
+            where l.user_id = ${userId} and l.language_id = ${languageId} and not l.superseded
+              and l.rating in (1, 2) and l.reviewed_at > now() - make_interval(days => ${NEARLY_DAYS})
+            group by l.card_id having count(*) >= ${NEARLY_MISSES}
+          ) x
+          join srs_cards c on c.id = x.card_id and not c.ghost and not c.suspended
+          join study_item_facets f on f.id = c.facet_id
+          join study_items si on si.id = f.study_item_id and si.published and si.active
+          where ${BOSS_KINDS} and si.id not in ${ghosts.rows.length ? ghosts.rows.map(g => g.key) : ['']}
+          order by si.id, x.misses desc
+        ) n order by misses desc limit ${room}
+      `)).rows
+  return [
+    ...ghosts.rows.map(g => ({ ...g, status: 'ghost' as const })),
+    ...nearly.map(n => ({ ...n, status: 'nearly' as const }))
+  ]
+}
+
+/** Whether this week's boss has anyone to face: a ghost, or a card nearly one. */
+export async function ghostBossHasCards(userId: string, languageId: string): Promise<boolean> {
+  return (await bossCards(userId, languageId)).length > 0
+}
+
+/**
+ * This week's ghost boss: the cards that keep slipping, with what to read up
+ * on, and two rounds each, asked from the side that keeps failing.
+ */
 export async function getGhostBoss(userId: string, languageCode: string): Promise<GhostBoss> {
   const ctx = await loadUserContext(userId)
   const week = DateTime.fromISO(studyDateFor(new Date(), ctx.timezone, ctx.dayBoundaryHour)).toFormat('kkkk-\'W\'WW')
+  const [language] = (await db.execute<{ id: string }>(sql`select id from languages where code = ${languageCode}`)).rows
+  if (!language)
+    return { week, ghosts: [], rounds: [] }
 
-  const rows = await db.execute<{
+  const cards = await bossCards(userId, language.id)
+  if (cards.length === 0)
+    return { week, ghosts: [], rounds: [] }
+
+  const items = (await db.execute<{
     key: string
     kanji_id: string | null
     word_id: string | null
+    grammar_point_id: string | null
     character: string | null
     kanji_meanings: ShapeRow['meanings'] | null
     form: string | null
     reading: string | null
     glosses: Array<{ lang: string, text: string }> | null
+    ent_seq: number | null
+    gp_title: string | null
+    gp_slug: string | null
+    gp_pattern: string | null
+    gp_meaning: string | null
+    kana_character: string | null
+    kana_romaji: string | null
+    kana_script: 'hiragana' | 'katakana' | null
   }>(sql`
-    select distinct on (si.id) si.id as key, si.kanji_id, si.word_id,
-      k.character, k.meanings as kanji_meanings, w.primary_form as form, w.primary_reading as reading, ws.glosses
-    from srs_cards c
-    join languages l on l.id = c.language_id and l.code = ${languageCode}
-    join study_item_facets f on f.id = c.facet_id
-    join study_items si on si.id = f.study_item_id and si.published and si.active
+    select si.id as key, si.kanji_id, si.word_id, si.grammar_point_id,
+      k.character, k.meanings as kanji_meanings,
+      w.primary_form as form, w.primary_reading as reading, ws.glosses, w.ent_seq,
+      g.title as gp_title, g.slug as gp_slug, g.pattern as gp_pattern, g.meaning_short as gp_meaning,
+      ka.character as kana_character, ka.romaji as kana_romaji, ka.script as kana_script
+    from study_items si
     left join kanji k on k.id = si.kanji_id
     left join words w on w.id = si.word_id
     left join word_senses ws on ws.word_id = w.id and ws.sort_index = 0
-    where c.user_id = ${userId} and c.ghost and not c.suspended
-      and (si.kanji_id is not null or si.word_id is not null)
-    limit 12
-  `)
+    left join grammar_points g on g.id = si.grammar_point_id
+    left join kana ka on ka.id = si.kana_id
+    where si.id in ${cards.map(c => c.key)}
+  `)).rows
+  const itemOf = new Map(items.map(i => [i.key, i]))
 
-  const kanjiIds = rows.rows.flatMap(r => r.kanji_id ? [r.kanji_id] : [])
-  const wordIds = rows.rows.flatMap(r => r.word_id ? [r.word_id] : [])
+  const kanjiIds = items.flatMap(r => r.kanji_id ? [r.kanji_id] : [])
+  const wordIds = items.flatMap(r => r.word_id ? [r.word_id] : [])
+  const pointIds = items.flatMap(r => r.grammar_point_id ? [r.grammar_point_id] : [])
+  const wordChars = [...new Set(items.flatMap(r => r.word_id && r.form ? [...r.form].filter(ch => hasKanji(ch)) : []))]
 
-  // Published, sourced etymology only — the boss never shows a mnemonic.
-  const etymology = kanjiIds.length + wordIds.length === 0
-    ? []
-    : (await db.execute<{ kanji_id: string | null, word_id: string | null, claim: string, confidence: string, is_disputed: boolean, source: string | null }>(sql`
-        select distinct on (coalesce(e.kanji_id, e.word_id)) e.kanji_id, e.word_id, e.claim, e.confidence, e.is_disputed,
-          (select coalesce(s.abbreviation, s.title) from etymology_sources es join sources s on s.id = es.source_id
-           where es.etymology_id = e.id order by es.sort_index limit 1) as source
-        from etymology_entries e
-        where e.status = 'published'
-          and (e.kanji_id in ${kanjiIds.length ? kanjiIds : ['']} or e.word_id in ${wordIds.length ? wordIds : ['']})
-        order by coalesce(e.kanji_id, e.word_id), e.is_primary desc, e.aspect
-      `)).rows
+  const [etymology, confusables, swaps, kanjiReadingRows, meaningQuestions, examples, clips, wordPool, kanaPool] = await Promise.all([
+    // Published, sourced etymology only: the boss never shows a mnemonic.
+    kanjiIds.length + wordIds.length === 0
+      ? []
+      : db.execute<{ kanji_id: string | null, word_id: string | null, claim: string, confidence: string, is_disputed: boolean, source: string | null }>(sql`
+          select distinct on (coalesce(e.kanji_id, e.word_id)) e.kanji_id, e.word_id, e.claim, e.confidence, e.is_disputed,
+            (select coalesce(s.abbreviation, s.title) from etymology_sources es join sources s on s.id = es.source_id
+             where es.etymology_id = e.id order by es.sort_index limit 1) as source
+          from etymology_entries e
+          where e.status = 'published'
+            and (e.kanji_id in ${kanjiIds.length ? kanjiIds : ['']} or e.word_id in ${wordIds.length ? wordIds : ['']})
+          order by coalesce(e.kanji_id, e.word_id), e.is_primary desc, e.aspect
+        `).then(r => r.rows),
+    kanjiIds.length === 0
+      ? []
+      : db.execute<{ kanji_id: string, character: string, meanings: ShapeRow['meanings'] }>(sql`
+          select kc.kanji_id, k.character, k.meanings
+          from kanji_confusables kc join kanji k on k.id = kc.confusable_id
+          where kc.kanji_id in ${kanjiIds}
+          order by kc.score desc
+        `).then(r => r.rows),
+    // Words: the real spelling against the same word with one kanji swapped
+    // for a look-alike, 待つ against 持つ and 時つ.
+    wordChars.length === 0
+      ? []
+      : db.execute<{ character: string, confusable: string }>(sql`
+          select a.character, b.character as confusable
+          from kanji_confusables kc
+          join kanji a on a.id = kc.kanji_id
+          join kanji b on b.id = kc.confusable_id
+          where a.character in ${wordChars}
+          order by kc.score desc
+        `).then(r => r.rows),
+    kanjiIds.length === 0
+      ? []
+      : db.execute<{ kanji_id: string, type: string, reading: string }>(sql`
+          select kanji_id, type, reading from kanji_readings
+          where kanji_id in ${kanjiIds} and type in ('on', 'kun')
+          order by kanji_id, is_common desc, sort_index
+        `).then(r => r.rows),
+    // Grammar: the meaning question its lesson was reviewed with, and the
+    // patterns its wrong meanings belong to.
+    pointIds.length === 0
+      ? []
+      : db.execute<{ grammar_point_id: string, answer: string, distractors: string[] }>(sql`
+          select distinct on (si.grammar_point_id) si.grammar_point_id, p.answer->>'primary' as answer, p.distractors
+          from exercise_prompts p
+          join exercise_templates t on t.id = p.template_id and t.code = 'mcq'
+          join study_item_facets f on f.id = p.facet_id
+          join study_items si on si.id = f.study_item_id
+          where si.grammar_point_id in ${pointIds} and p.status = 'published' and p.prompt->>'kind' = 'grammar'
+            -- The meaning question; the same template also holds conjugation drills.
+            and p.prompt->>'instruction' = 'What does this pattern mean?'
+          order by si.grammar_point_id, p.version desc
+        `).then(r => r.rows),
+    pointIds.length === 0
+      ? []
+      : db.execute<{ grammar_point_id: string, text: string, translation: string | null }>(sql`
+          select distinct on (gs.grammar_point_id) gs.grammar_point_id, s.text,
+            (select t.text from sentence_translations t where t.sentence_id = s.id and t.lang = 'en' order by t.created_at limit 1) as translation
+          from grammar_point_sentences gs join sentences s on s.id = gs.sentence_id and s.published
+          where gs.grammar_point_id in ${pointIds} and gs.role = 'example'
+          order by gs.grammar_point_id, gs.sort_index
+        `).then(r => r.rows),
+    currentClips([], items.flatMap(r => r.ent_seq ? [Number(r.ent_seq)] : [])),
+    // Wrong answers: other common N5 and N4 words.
+    db.execute<{ form: string, reading: string, glosses: Array<{ lang: string, text: string }> }>(sql`
+      select w.primary_form as form, w.primary_reading as reading, ws.glosses
+      from words w
+      join languages l on l.id = w.language_id and l.code = ${languageCode}
+      join language_levels lv on lv.id = w.level_id and lv.code in ${DEFAULT_LEVELS}
+      join study_items si on si.word_id = w.id and si.published and si.active
+      join word_senses ws on ws.word_id = w.id and ws.sort_index = 0
+      where w.is_common and w.published
+      order by random()
+      limit 120
+    `).then(r => r.rows),
+    db.execute<{ character: string, romaji: string, script: 'hiragana' | 'katakana' }>(sql`
+      select k.character, k.romaji, k.script from kana k
+      join languages l on l.id = k.language_id and l.code = ${languageCode}
+      where k.variant = 'base'
+    `).then(r => r.rows)
+  ])
 
-  const confusables = kanjiIds.length === 0
-    ? []
-    : (await db.execute<{ kanji_id: string, character: string, meanings: ShapeRow['meanings'] }>(sql`
-        select kc.kanji_id, k.character, k.meanings
-        from kanji_confusables kc join kanji k on k.id = kc.confusable_id
-        where kc.kanji_id in ${kanjiIds}
-        order by kc.score desc
-      `)).rows
+  const meaningTitles = new Map<string, string>()
+  const wrongMeanings = [...new Set(meaningQuestions.flatMap(q => q.distractors))]
+  if (wrongMeanings.length) {
+    const titles = await db.execute<{ meaning: string, title: string }>(sql`
+      select distinct on (meaning_short) meaning_short as meaning, title from grammar_points
+      where language_id = ${language.id} and meaning_short in ${wrongMeanings}
+      order by meaning_short, sort_index
+    `)
+    for (const t of titles.rows) meaningTitles.set(t.meaning, t.title)
+  }
 
-  const ghosts: GhostBossEntry[] = rows.rows.map((r) => {
+  /** A kanji reading as a learner says it: kana, no okurigana marks. */
+  const spoken = (reading: string) => toHiragana(reading.split('.')[0]!.replace(/-/g, ''))
+
+  const subjects: GhostSubject[] = cards.flatMap((card): GhostSubject[] => {
+    const r = itemOf.get(card.key)
+    if (!r)
+      return []
+    const base: Pick<GhostBossEntry, 'key' | 'facet' | 'status' | 'etymology' | 'lookAlikes' | 'grammar'> = { key: card.key, facet: card.facet, status: card.status, etymology: null, lookAlikes: [], grammar: null }
     const e = etymology.find(x => (r.kanji_id && x.kanji_id === r.kanji_id) || (r.word_id && x.word_id === r.word_id))
-    const isKanji = Boolean(r.kanji_id)
-    return {
-      key: r.key,
-      kind: isKanji ? 'kanji' : 'word',
-      text: (isKanji ? r.character : r.form) ?? '',
-      reading: isKanji ? null : r.reading,
-      meaning: isKanji ? firstGloss(r.kanji_meanings) : firstGloss(r.glosses),
-      ref: (isKanji ? r.character : r.word_id) ?? '',
-      etymology: e ? { claim: e.claim, confidence: e.confidence, isDisputed: e.is_disputed, source: e.source } : null,
-      lookAlikes: confusables
-        .filter(c => c.kanji_id === r.kanji_id)
-        .slice(0, 3)
-        .map(c => ({ character: c.character, meaning: firstGloss(c.meanings) }))
+    const sourced = e ? { claim: e.claim, confidence: e.confidence, isDisputed: e.is_disputed, source: e.source } : null
+    if (r.kanji_id && r.character) {
+      return [{
+        entry: {
+          ...base,
+          kind: 'kanji' as const,
+          text: r.character,
+          reading: null,
+          meaning: firstGloss(r.kanji_meanings),
+          ref: r.character,
+          etymology: sourced,
+          lookAlikes: confusables.filter(c => c.kanji_id === r.kanji_id).slice(0, 3).map(c => ({ character: c.character, meaning: firstGloss(c.meanings) }))
+        },
+        kanjiReadings: [...new Set(kanjiReadingRows.filter(k => k.kanji_id === r.kanji_id).map(k => spoken(k.reading)))]
+      }]
     }
-  })
-
-  type Round = GhostBoss['rounds'][number]
-
-  const kanjiRounds: Round[] = ghosts
-    .filter(g => g.kind === 'kanji' && g.lookAlikes.length > 0 && g.meaning)
-    .map(g => ({ kind: 'look-alike', question: `Which one means “${g.meaning}”?`, answer: g.text, options: shuffle([g.text, ...g.lookAlikes.map(l => l.character)]) }))
-
-  // Words: the real spelling against the same word with one kanji swapped for
-  // a look-alike — 待つ against 持つ and 時つ. Most ghosts are words, and the
-  // usual slip is exactly a part misread.
-  const wordGhosts = ghosts.filter(g => g.kind === 'word' && g.meaning)
-  const chars = [...new Set(wordGhosts.flatMap(g => [...g.text].filter(ch => hasKanji(ch))))]
-  const swaps = chars.length === 0
-    ? []
-    : (await db.execute<{ character: string, confusable: string }>(sql`
-        select a.character, b.character as confusable
-        from kanji_confusables kc
-        join kanji a on a.id = kc.kanji_id
-        join kanji b on b.id = kc.confusable_id
-        where a.character in ${chars}
-        order by kc.score desc
-      `)).rows
-  const wordRounds = wordGhosts.flatMap((g) => {
-    const variants = [...new Set([...g.text].flatMap((ch, i) => swaps
-      .filter(s => s.character === ch)
-      .map(s => [...g.text].map((c, j) => j === i ? s.confusable : c).join(''))))]
-      .slice(0, 3)
-    return variants.length > 0 ? [{ kind: 'look-alike' as const, question: `Which one means “${g.meaning}”?`, answer: g.text, options: shuffle([g.text, ...variants]) }] : []
-  })
-
-  // Every ghost, look-alikes or not, gets its meaning and (when written in
-  // kanji) its reading — wrong answers drawn from other common N5–N4 words.
-  // A ghost with nothing to fight was a boss that was only a list.
-  const pool = ghosts.length === 0
-    ? []
-    : (await db.execute<{ reading: string, glosses: Array<{ lang: string, text: string }> }>(sql`
-        select w.primary_reading as reading, ws.glosses
-        from words w
-        join languages l on l.id = w.language_id and l.code = ${languageCode}
-        join language_levels lv on lv.id = w.level_id and lv.code in ${DEFAULT_LEVELS}
-        join study_items si on si.word_id = w.id and si.published and si.active
-        join word_senses ws on ws.word_id = w.id and ws.sort_index = 0
-        where w.is_common and w.published
-        order by random()
-        limit 120
-      `)).rows.map(r => ({ reading: r.reading, meaning: firstGloss(r.glosses) })).filter(r => r.reading && r.meaning)
-
-  const basicRounds: Round[] = ghosts.flatMap((g) => {
-    const out: Round[] = []
-    const wrongMeanings = shuffle([...new Set(pool.map(p => p.meaning))]).filter(m => m.toLowerCase() !== g.meaning.toLowerCase()).slice(0, 3)
-    if (g.meaning && wrongMeanings.length === 3)
-      out.push({ kind: 'meaning', question: `What does ${g.text} mean?`, answer: g.meaning, options: shuffle([g.meaning, ...wrongMeanings]) })
-    const reading = g.kind === 'word' ? g.reading : null
-    if (reading && hasKanji(g.text)) {
-      const length = [...reading].length
-      const wrongReadings = shuffle([...new Set(pool.map(p => p.reading))])
-        .filter(r => r !== reading && Math.abs([...r].length - length) <= 1 && !hasKatakana(r))
-        .slice(0, 3)
-      if (wrongReadings.length === 3)
-        out.push({ kind: 'reading', question: `How is ${g.text} read?`, answer: reading, options: shuffle([reading, ...wrongReadings]) })
+    if (r.word_id && r.form) {
+      const form = r.form
+      const misspellings = [...new Set([...form].flatMap((ch, i) => swaps
+        .filter(sw => sw.character === ch)
+        .map(sw => [...form].map((c, j) => j === i ? sw.confusable : c).join(''))))]
+      return [{
+        entry: { ...base, kind: 'word' as const, text: form, reading: r.reading, meaning: firstGloss(r.glosses), ref: r.word_id, etymology: sourced },
+        audio: r.ent_seq ? clips.words.get(Number(r.ent_seq)) ?? null : null,
+        misspellings
+      }]
     }
-    return out
+    if (r.grammar_point_id && r.gp_title) {
+      const q = meaningQuestions.find(m => m.grammar_point_id === r.grammar_point_id)
+      const example = examples.find(x => x.grammar_point_id === r.grammar_point_id)
+      return [{
+        entry: {
+          ...base,
+          kind: 'grammar' as const,
+          text: r.gp_title,
+          reading: null,
+          meaning: q?.answer ?? r.gp_meaning ?? '',
+          ref: r.gp_slug ?? '',
+          grammar: { pattern: r.gp_pattern, example: example ? { text: example.text, translation: example.translation } : null }
+        },
+        meaningQuestion: q ? { answer: q.answer, wrong: q.distractors.map(meaning => ({ meaning, title: meaningTitles.get(meaning) ?? null })) } : undefined
+      }]
+    }
+    if (r.kana_character && r.kana_romaji && r.kana_script) {
+      const romajiOf = (ch: string) => kanaPool.find(k => k.character === ch)?.romaji ?? ''
+      return [{
+        entry: {
+          ...base,
+          kind: 'kana' as const,
+          text: r.kana_character,
+          reading: r.kana_romaji,
+          meaning: '',
+          ref: '',
+          lookAlikes: (KANA_LOOKALIKES[r.kana_character] ?? []).map(ch => ({ character: ch, meaning: romajiOf(ch) }))
+        },
+        script: r.kana_script
+      }]
+    }
+    return []
   })
 
-  const rounds = [...shuffle(basicRounds), ...kanjiRounds, ...wordRounds]
-
-  return { week, ghosts, rounds }
+  const pools: GhostPools = {
+    words: wordPool.map(w => ({ text: w.form, reading: w.reading, meaning: firstGloss(w.glosses) })).filter(w => w.text && w.reading && w.meaning),
+    kana: kanaPool
+  }
+  const rounds = buildGhostRounds(subjects, pools).map(round => ({ ...round, audio: round.audio ? assetUrl(round.audio) : null }))
+  return { week, ghosts: subjects.map(s => s.entry), rounds }
 }
 
 // ============ Verb forms ============

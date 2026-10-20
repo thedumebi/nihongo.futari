@@ -1,3 +1,4 @@
+export * from './ghost-boss.js'
 export * from './kanji-shapes.js'
 export * from './minimal-pairs.js'
 export * from './particles.js'

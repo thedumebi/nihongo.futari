@@ -89,14 +89,21 @@ export type KanjiBuildGame = z.infer<typeof kanjiBuildGameSchema>
 
 // ============ Ghost boss ============
 
+/** What a ghost can be: the kinds the boss knows how to ask about. */
+export const GHOST_KINDS = ['word', 'kanji', 'grammar', 'kana'] as const
+
 export const ghostBossEntrySchema = z.object({
   /** The study item behind the ghost card. */
   key: z.string(),
-  kind: z.enum(['word', 'kanji']),
+  kind: z.enum(GHOST_KINDS),
+  /** The side of it that keeps slipping: meaning, reading, production, listening, writing or usage. */
+  facet: z.string(),
+  /** A ghost, or nearly one: answered Again or Hard at least twice in two weeks. */
+  status: z.enum(['ghost', 'nearly']),
   text: z.string(),
   reading: z.string().nullable(),
   meaning: z.string(),
-  /** For linking: the word's id, or the kanji itself. */
+  /** For linking: the word's id, the kanji itself, the grammar point's slug; empty for kana. */
   ref: z.string(),
   /** The lead sourced explanation, when one is published. Never a mnemonic. */
   etymology: z.object({
@@ -105,27 +112,70 @@ export const ghostBossEntrySchema = z.object({
     isDisputed: z.boolean(),
     source: z.string().nullable()
   }).nullable(),
-  lookAlikes: z.array(z.object({ character: z.string(), meaning: z.string() }))
+  /** Look-alikes: kanji with their meanings, kana with their readings. */
+  lookAlikes: z.array(z.object({ character: z.string(), meaning: z.string() })),
+  /** Grammar only: how it is formed, and one example from its lesson. */
+  grammar: z.object({
+    pattern: z.string().nullable(),
+    example: z.object({ text: z.string(), translation: z.string().nullable() }).nullable()
+  }).nullable()
 }).openapi('GhostBossEntry')
 export type GhostBossEntry = z.infer<typeof ghostBossEntrySchema>
 
+export const GHOST_ROUND_KINDS = ['meaning', 'reading', 'production', 'listening', 'look-alike', 'pattern', 'pattern-reverse', 'kana-reading', 'kana-writing'] as const
+
+export const ghostRoundSchema = z.object({
+  /** The ghost this round is about (its `key`). */
+  ghost: z.string(),
+  kind: z.enum(GHOST_ROUND_KINDS),
+  /** The question, ready to show: "What does 一つ mean?" */
+  question: z.string(),
+  answer: z.string(),
+  options: z.array(z.string()),
+  /** Whether the options are Japanese, set in the Japanese face, or English. */
+  script: z.enum(['ja', 'en']),
+  /** A listening round's clip. */
+  audio: z.string().nullable()
+}).openapi('GhostRound')
+export type GhostRound = z.infer<typeof ghostRoundSchema>
+
 export const ghostBossSchema = z.object({
-  /** ISO week, e.g. 2026-W42 — the boss is weekly. */
+  /** ISO week, e.g. 2026-W42: the boss is weekly. */
   week: z.string(),
   ghosts: z.array(ghostBossEntrySchema),
   /**
-   * Every ghost gets rounds: its meaning, its reading (when written in kanji),
-   * and — where there are look-alikes — telling it from them.
+   * Two rounds per ghost: the side that keeps slipping first, then one other.
+   * The page brings a missed round back once at the end.
    */
-  rounds: z.array(z.object({
-    kind: z.enum(['meaning', 'reading', 'look-alike']),
-    /** The question, ready to show: "What does 一つ mean?" */
-    question: z.string(),
-    answer: z.string(),
-    options: z.array(z.string())
-  }))
+  rounds: z.array(ghostRoundSchema)
 }).openapi('GhostBoss')
 export type GhostBoss = z.infer<typeof ghostBossSchema>
+
+/**
+ * A ghost as the round builder needs it: the entry, plus what its questions
+ * are made from. Built on the server from the database; never sent.
+ */
+export interface GhostSubject {
+  entry: GhostBossEntry
+  /** Word: its recording, for a listening round. */
+  audio?: string | null
+  /** Kanji: its readings, on in katakana and kun in hiragana as stored. */
+  kanjiReadings?: string[]
+  /** Word or kanji: the same spelling with one kanji swapped for a look-alike. */
+  misspellings?: string[]
+  /** Grammar: its reviewed meaning question, and the patterns behind the wrong meanings. */
+  meaningQuestion?: { answer: string, wrong: Array<{ meaning: string, title: string | null }> }
+  /** Kana: its script, for picking look-alikes from the same one. */
+  script?: 'hiragana' | 'katakana'
+}
+
+/** What wrong answers are drawn from. */
+export interface GhostPools {
+  /** Common N5 and N4 words. */
+  words: Array<{ text: string, reading: string, meaning: string }>
+  /** Every kana with its reading. */
+  kana: Array<{ character: string, romaji: string, script: 'hiragana' | 'katakana' }>
+}
 
 // ============ Verb forms ============
 
