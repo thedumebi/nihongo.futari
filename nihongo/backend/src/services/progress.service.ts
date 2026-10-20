@@ -1,6 +1,6 @@
 import type { ActivityKind } from '@nihongo/shared/constants'
-import type { QuestProgress } from '@nihongo/shared/lib'
-import type { AggregateEvent, KnownKanji, ProgressSummary, Readiness, Streak } from '@nihongo/shared/types'
+import type { QuestProgress, ReviewGoalCard } from '@nihongo/shared/lib'
+import type { AggregateEvent, KnownKanji, ProgressSummary, Readiness, ReviewEvent, Streak } from '@nihongo/shared/types'
 
 import db from '@nihongo/shared/db'
 import {
@@ -21,11 +21,11 @@ import {
   userXp,
   xpEvents
 } from '@nihongo/shared/db/schema'
-import { aggregateReviews, computeStreak, DEFAULT_DAY_BOUNDARY_HOUR, QUEST_XP, questProgress, questsFor, studyDateFor, studyDayRange, xpToLevel } from '@nihongo/shared/lib'
-import { and, eq, gte, inArray, isNull, sql } from 'drizzle-orm'
+import { aggregateReviews, computeStreak, DEFAULT_DAY_BOUNDARY_HOUR, QUEST_XP, questProgress, questsFor, replay, reviewGoal, studyDateFor, studyDayRange, xpToLevel } from '@nihongo/shared/lib'
+import { and, eq, gte, inArray, isNull, lt, sql } from 'drizzle-orm'
 
 import { recomputeAchievements } from './achievements.service.js'
-import { countDue, newWordsToday } from './srs.service.js'
+import { countDue, loadPolicy, newWordsToday } from './srs.service.js'
 
 /**
  * Progress aggregates.
@@ -215,17 +215,71 @@ export async function recomputeHabit(userId: string, languageId: string): Promis
 }
 
 /**
- * Today's quests and how far each has got — from today's review count and
- * today's activities, so it can be asked at any moment and agrees with itself.
+ * The cards behind today's review goal: every card that could have been owed
+ * a review today. For a card already answered today, where it stood before
+ * that first answer comes from replaying its log, the source of truth (the
+ * log's own before-columns are not filled in). `reviewGoal` decides which
+ * were waiting when the day began.
+ */
+async function reviewGoalCards(userId: string, languageId: string, day: { start: Date, end: Date }): Promise<ReviewGoalCard[]> {
+  const rows = await db.execute<{ id: string, state: number, due: Date, created_at: Date, reviewed: boolean }>(sql`
+    select c.id, c.state, c.due, c.created_at,
+      exists (select 1 from srs_review_logs l where l.card_id = c.id and l.reviewed_at >= ${day.start} and l.reviewed_at < ${day.end}) as reviewed
+    from srs_cards c
+    join study_item_facets f on f.id = c.facet_id and f.enabled
+    join study_items si on si.id = f.study_item_id and si.published and si.active
+    where c.user_id = ${userId} and c.language_id = ${languageId} and not c.suspended
+      and c.created_at < ${day.start}
+      and (
+        (c.state in (1, 2, 3) and c.due < ${day.end})
+        or exists (select 1 from srs_review_logs l where l.card_id = c.id and l.reviewed_at >= ${day.start} and l.reviewed_at < ${day.end})
+      )
+  `)
+
+  const answered = rows.rows.filter(r => r.reviewed).map(r => r.id)
+  const before = new Map<string, { stateBefore: number, dueBefore: Date }>()
+  if (answered.length > 0) {
+    const [{ fsrsParams }, logs] = await Promise.all([
+      loadPolicy(userId),
+      db.select({ id: srsReviewLogs.id, cardId: srsReviewLogs.cardId, rating: srsReviewLogs.rating, reviewedAt: srsReviewLogs.reviewedAt, clientId: srsReviewLogs.clientId })
+        .from(srsReviewLogs)
+        .where(and(eq(srsReviewLogs.userId, userId), inArray(srsReviewLogs.cardId, answered), lt(srsReviewLogs.reviewedAt, day.end)))
+    ])
+    const byCard = new Map<string, typeof logs>()
+    for (const log of logs)
+      byCard.set(log.cardId, [...(byCard.get(log.cardId) ?? []), log])
+    for (const [cardId, history] of byCard) {
+      const at = new Map(history.map(h => [h.id, h.reviewedAt]))
+      const { snapshots } = replay(history.map(h => ({ id: h.id, rating: h.rating as ReviewEvent['rating'], reviewedAt: h.reviewedAt, clientId: h.clientId })), fsrsParams)
+      const first = snapshots.find(snap => at.get(snap.logId)! >= day.start)
+      if (first)
+        before.set(cardId, { stateBefore: first.stateBefore, dueBefore: first.dueBefore })
+    }
+  }
+
+  return rows.rows.map(r => ({
+    state: Number(r.state),
+    due: new Date(r.due),
+    createdAt: new Date(r.created_at),
+    firstToday: r.reviewed ? before.get(r.id) ?? { stateBefore: null, dueBefore: null } : null
+  }))
+}
+
+/**
+ * Today's quests and how far each has got, from today's reviews and
+ * activities, so it can be asked at any moment and agrees with itself.
+ *
+ * The review goal is fixed by the reviews waiting when the day began
+ * (`reviewGoal`): it used to be done-plus-still-due, which grew every time a
+ * missed card came back, so the owner saw 15/15 one hour and 26/26 the next.
  */
 export async function todayQuests(userId: string, languageId: string, now = new Date()): Promise<{ localDate: string, quests: QuestProgress[] }> {
   const { timezone, dayBoundaryHour } = await loadUserContext(userId)
   const localDate = studyDateFor(now, timezone, dayBoundaryHour)
-  const [[stats], activities, due, newWords, ghosts] = await Promise.all([
-    db.select({ reviews: srsDailyStats.reviewCount, newCards: srsDailyStats.newCount }).from(srsDailyStats).where(and(eq(srsDailyStats.userId, userId), eq(srsDailyStats.languageId, languageId), eq(srsDailyStats.localDate, localDate))),
+  const day = studyDayRange(localDate, timezone, dayBoundaryHour)
+  const [activities, cards, newWords, ghosts] = await Promise.all([
     db.select({ kind: learningActivities.kind }).from(learningActivities).where(and(eq(learningActivities.userId, userId), eq(learningActivities.languageId, languageId), eq(learningActivities.localDate, localDate))),
-    // Everything still due before this study day ends.
-    countDue(userId, languageId, studyDayRange(localDate, timezone, dayBoundaryHour).end),
+    reviewGoalCards(userId, languageId, day),
     // Words, as the daily limit counts them: a second card of a word met
     // before is practice, not a new word.
     newWordsToday(userId, languageId, now),
@@ -240,13 +294,11 @@ export async function todayQuests(userId: string, languageId: string, now = new 
       ) as any
     `)
   ])
-  // Reviews today holds: those already done (not first looks at new cards,
-  // which are a choice) plus those still to come.
-  const reviewsAvailable = (stats?.reviews ?? 0) - (stats?.newCards ?? 0) + due.cards
+  const goal = reviewGoal(cards, day)
   return {
     localDate,
-    quests: questProgress(questsFor(userId, localDate, reviewsAvailable, { ghosts: Boolean(ghosts.rows[0]?.any) }), {
-      reviews: stats?.reviews ?? 0,
+    quests: questProgress(questsFor(userId, localDate, goal.available, { ghosts: Boolean(ghosts.rows[0]?.any) }), {
+      reviews: goal.reviewed,
       newWords,
       activities: activities.map(a => ({ kind: a.kind as ActivityKind }))
     })

@@ -114,7 +114,7 @@ function cardStateColumns(state: CardState) {
   }
 }
 
-async function loadPolicy(userId: string): Promise<{ policy: GhostPolicy, fsrsParams: Record<string, unknown> }> {
+export async function loadPolicy(userId: string): Promise<{ policy: GhostPolicy, fsrsParams: Record<string, unknown> }> {
   const [settings] = await db
     .select({
       threshold: userSettings.ghostThreshold,
