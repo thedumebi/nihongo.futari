@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 
 import type { GhostPolicy, SrsRating } from '@/types/srs.js'
 
-import { applyGhostInterval, evaluateGhost } from './ghost.js'
+import { applyGhostInterval, evaluateGhost, streakSpanDays } from './ghost.js'
 
 const POLICY: GhostPolicy = {
   threshold: 4,
@@ -71,6 +71,15 @@ describe('evaluateGhost — recovery', () => {
     expect(d.event).toBeNull()
   })
 
+  it('clears on three right in a row spread over a week, at a short interval', () => {
+    const d = evaluateGhost({ ...ghosted, consecutiveCorrect: 3, scheduledDays: 2, streakSpanDays: 8 }, POLICY)
+    expect(d).toMatchObject({ ghost: false, event: 'cleared', reason: 'recovered' })
+  })
+
+  it('stays a ghost when the three right come within a few days', () => {
+    expect(evaluateGhost({ ...ghosted, consecutiveCorrect: 3, scheduledDays: 2, streakSpanDays: 3 }, POLICY).ghost).toBe(true)
+  })
+
   it('does not clear on too few correct answers', () => {
     expect(evaluateGhost({ ...ghosted, consecutiveCorrect: 2, scheduledDays: 30 }, POLICY).ghost).toBe(true)
   })
@@ -82,6 +91,25 @@ describe('evaluateGhost — recovery', () => {
 
   it('keeps the shortened interval while ghosted', () => {
     expect(evaluateGhost(ghosted, POLICY).intervalFactor).toBe(0.5)
+  })
+})
+
+describe('streakSpanDays', () => {
+  const at = (day: number) => new Date(Date.UTC(2026, 9, day))
+
+  it('measures the run of right answers since the last Again', () => {
+    expect(streakSpanDays([
+      { rating: 3, reviewedAt: at(1) },
+      { rating: 1, reviewedAt: at(18) },
+      { rating: 3, reviewedAt: at(18) },
+      { rating: 2, reviewedAt: at(21) },
+      { rating: 3, reviewedAt: at(26) }
+    ])).toBe(8)
+  })
+
+  it('is zero just after an Again, or with nothing to go on', () => {
+    expect(streakSpanDays([{ rating: 3, reviewedAt: at(1) }, { rating: 1, reviewedAt: at(9) }])).toBe(0)
+    expect(streakSpanDays([])).toBe(0)
   })
 })
 

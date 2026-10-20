@@ -9,6 +9,8 @@ export interface GhostInput {
   scheduledDays: number
   /** Most recent ratings, newest last. Only `policy.recentWindow` are read. */
   recentRatings: readonly SrsRating[]
+  /** Days from the first answer of the current right-answer run to this one. */
+  streakSpanDays?: number
 }
 
 export interface GhostDecision {
@@ -37,9 +39,15 @@ export function evaluateGhost(input: GhostInput, policy: GhostPolicy): GhostDeci
   const accuracy = recent.length > 0 ? correct / recent.length : 1
 
   if (input.ghost) {
+    // Right enough times in a row, and either spread over a week or already
+    // scheduled a week out. A ghost's intervals are halved, so the run alone
+    // can take a fortnight to reach a week's interval; three right answers
+    // a week apart from first to last show it is held just as well. A run
+    // inside a few days proves less, and waits for the interval.
+    const span = input.streakSpanDays ?? 0
     const recovered
       = input.consecutiveCorrect >= policy.clearAfterCorrect
-        && input.scheduledDays >= policy.clearMinIntervalDays
+        && (input.scheduledDays >= policy.clearMinIntervalDays || span >= policy.clearMinIntervalDays)
 
     if (recovered) {
       return { ghost: false, event: 'cleared', reason: 'recovered', intervalFactor: 1 }
@@ -67,6 +75,20 @@ export function evaluateGhost(input: GhostInput, policy: GhostPolicy): GhostDeci
   }
 
   return { ghost: false, event: null, reason: null, intervalFactor: 1 }
+}
+
+/**
+ * How many days the current run of right answers covers: from its first
+ * answer to the newest. Ratings oldest first; Again ends a run.
+ */
+export function streakSpanDays(recent: ReadonlyArray<{ rating: number, reviewedAt: Date }>): number {
+  const last = recent.at(-1)
+  if (!last || last.rating === 1)
+    return 0
+  let first = last
+  for (let i = recent.length - 1; i >= 0 && recent[i]!.rating !== 1; i--)
+    first = recent[i]!
+  return (last.reviewedAt.getTime() - first.reviewedAt.getTime()) / 86_400_000
 }
 
 /** Shorten a ghosted card's interval, capped so it never runs away. */

@@ -11,7 +11,7 @@ export { effectiveCardState, emptyCardState, fromFsrsCard, toFsrsCard } from './
 export type { ClampOptions, ClampResult } from './clock.js'
 export { clampReviewedAt } from './clock.js'
 export type { GhostDecision, GhostInput } from './ghost.js'
-export { applyGhostInterval, evaluateGhost } from './ghost.js'
+export { applyGhostInterval, evaluateGhost, streakSpanDays } from './ghost.js'
 export { buildParameters } from './params.js'
 export type { ReplayOptions, ReplayResult } from './replay.js'
 export { canFastForward, compareEvents, replay } from './replay.js'

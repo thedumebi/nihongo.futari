@@ -62,6 +62,7 @@ import {
   nextCelebration,
   replay,
   SERIES_KNOWN_MIN,
+  streakSpanDays,
   studyDateFor,
   studyDayRange
 } from '@nihongo/shared/lib'
@@ -390,7 +391,7 @@ export async function submitAnswer(userId: string, input: SubmitAnswerInput): Pr
     // This read the oldest ones, so a card that had come good was still judged
     // on its first stumbles, and one going bad was judged on its good start.
     const recent = (await tx
-      .select({ rating: srsReviewLogs.rating })
+      .select({ rating: srsReviewLogs.rating, reviewedAt: srsReviewLogs.reviewedAt })
       .from(srsReviewLogs)
       .where(and(eq(srsReviewLogs.userId, userId), eq(srsReviewLogs.cardId, card.id), eq(srsReviewLogs.superseded, false)))
       .orderBy(desc(srsReviewLogs.reviewedAt), desc(srsReviewLogs.id))
@@ -401,7 +402,8 @@ export async function submitAnswer(userId: string, input: SubmitAnswerInput): Pr
       lapses: next.lapses,
       consecutiveCorrect,
       scheduledDays: next.scheduledDays,
-      recentRatings: recent.map(r => r.rating as 1 | 2 | 3 | 4)
+      recentRatings: recent.map(r => r.rating as 1 | 2 | 3 | 4),
+      streakSpanDays: streakSpanDays(recent)
     }, policy)
 
     await tx
