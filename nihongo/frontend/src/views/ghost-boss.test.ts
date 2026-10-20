@@ -12,6 +12,10 @@ vi.mock('@/api/games', () => ({ getGhostBoss: async () => boss }))
 vi.mock('@/api/activities', () => ({ recordActivity: (...args: unknown[]) => record(...(args as [])) }))
 vi.mock('@/store/language', () => ({ useLanguageStore: () => ({ code: 'ja' }) }))
 vi.mock('@/composables/use-audio', () => ({ playAudio: async () => true, stopAudio: () => {} }))
+vi.mock('@/composables/use-furigana', async () => {
+  const { ref } = await import('vue')
+  return { useFurigana: () => ({ mode: ref('always'), knownKanji: ref(new Set()), loadKnownKanji: async () => {}, loadSettings: async () => {} }) }
+})
 
 function ghost(key: string, text: string, status: 'ghost' | 'nearly', kind: 'word' | 'kana' = 'word') {
   return { key, kind, facet: kind === 'kana' ? 'reading' : 'production', status, text, reading: kind === 'kana' ? 'wo' : null, meaning: kind === 'kana' ? '' : 'one', ref: kind === 'kana' ? '' : 'w1', etymology: null, lookAlikes: [], grammar: null }
@@ -32,6 +36,32 @@ async function open() {
 function click(wrapper: Awaited<ReturnType<typeof open>>, text: string) {
   return wrapper.findAll('button').find(b => b.text() === text)!.trigger('click')
 }
+
+describe('ghost boss: furigana', () => {
+  function readingBoss(kind: 'meaning' | 'reading') {
+    return {
+      week: '2026-W43',
+      ghosts: [{ ...ghost('w', '渡る', 'nearly'), reading: 'わたる', meaning: 'to cross' }],
+      rounds: [{ ghost: 'w', kind, question: kind === 'reading' ? 'How is 渡る read?' : 'What does 渡る mean?', answer: kind === 'reading' ? 'わたる' : 'to cross', options: kind === 'reading' ? ['わたる', 'みっつ', 'いけん', 'けっして'] : ['to cross', 'cold', 'right', 'to pull out'], script: kind === 'reading' ? 'ja' as const : 'en' as const, audio: null }]
+    }
+  }
+
+  it('puts the reading over the word on a meaning question', async () => {
+    boss = readingBoss('meaning')
+    const wrapper = await open()
+    await click(wrapper, 'Face it')
+    expect(wrapper.find('rt').text()).toBe('わた')
+  })
+
+  it('holds it back on a reading question until it is answered', async () => {
+    boss = readingBoss('reading')
+    const wrapper = await open()
+    await click(wrapper, 'Face it')
+    expect(wrapper.find('rt').exists()).toBe(false)
+    await click(wrapper, 'わたる')
+    expect(wrapper.find('rt').text()).toBe('わた')
+  })
+})
 
 describe('ghost boss', () => {
   beforeEach(() => {

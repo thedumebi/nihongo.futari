@@ -8,9 +8,11 @@ import { recordActivity } from '@/api/activities'
 import { getGhostBoss } from '@/api/games'
 import ChoiceGrid from '@/components/games/choice-grid.vue'
 import GameEnd from '@/components/games/game-end.vue'
+import FuriganaText from '@/components/ja/furigana-text.vue'
 import AppShell from '@/components/layout/app-shell.vue'
 import Button from '@/components/ui/button.vue'
 import { playAudio, stopAudio } from '@/composables/use-audio'
+import { useFurigana } from '@/composables/use-furigana'
 import { ROUTES } from '@/constants'
 import { useLanguageStore } from '@/store/language'
 
@@ -27,6 +29,9 @@ import { useLanguageStore } from '@/store/language'
 
 // ============ Stores ============
 const lang = useLanguageStore()
+
+// ============ Composables ============
+const { mode: furiganaMode, knownKanji, loadKnownKanji, loadSettings } = useFurigana()
 
 // ============ Reactive State ============
 const boss = ref<GhostBoss | null>(null)
@@ -48,6 +53,23 @@ const isRetry = computed(() => Boolean(boss.value) && index.value >= (boss.value
 const ghostOf = computed(() => new Map((boss.value?.ghosts ?? []).map(g => [g.key, g])))
 const ghostCount = computed(() => boss.value?.ghosts.filter(g => g.status === 'ghost').length ?? 0)
 const nearlyCount = computed(() => boss.value?.ghosts.filter(g => g.status === 'nearly').length ?? 0)
+/**
+ * The question cut around its word, so the word can carry furigana in the
+ * reader's setting, the way Study shows it. Not on a reading question until
+ * it is answered: there the furigana IS the answer. Words only: a kanji on
+ * its own has several readings, and grammar patterns and kana need none.
+ */
+const questionParts = computed(() => {
+  const r = round.value
+  const g = r ? ghostOf.value.get(r.ghost) : undefined
+  if (!r || !g || g.kind !== 'word' || !g.reading || !r.question.includes(g.text))
+    return null
+  if (r.kind === 'reading' && !picked.value)
+    return null
+  const at = r.question.indexOf(g.text)
+  return { before: r.question.slice(0, at), word: g.text, reading: g.reading, after: r.question.slice(at + g.text.length) }
+})
+
 const intro = computed(() => {
   const ghosts = ghostCount.value
   const nearly = nearlyCount.value
@@ -64,7 +86,11 @@ const outcome = computed(() => (boss.value?.ghosts ?? []).map((g) => {
 }))
 
 // ============ Lifecycle Hooks ============
-onMounted(load)
+onMounted(() => {
+  void loadKnownKanji(lang.code)
+  void loadSettings()
+  void load()
+})
 
 onBeforeUnmount(stopAudio)
 
@@ -251,8 +277,18 @@ function sideOf(g: GhostBossEntry): string {
               · nearly haunting
             </template>
           </p>
-          <p class="mt-6 text-lg" style="font-family: var(--font-jp)">
-            {{ round.question }}
+          <p class="mt-6 text-lg leading-loose" style="font-family: var(--font-jp)">
+            <template v-if="questionParts">
+              {{ questionParts.before }}<FuriganaText
+                :text="questionParts.word"
+                :reading="questionParts.reading"
+                :mode="furiganaMode"
+                :known-kanji="knownKanji"
+              />{{ questionParts.after }}
+            </template>
+            <template v-else>
+              {{ round.question }}
+            </template>
           </p>
           <div v-if="round.audio" class="mt-4 flex justify-center">
             <Button round aria-label="Hear it again" @click="hear">
