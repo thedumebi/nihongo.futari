@@ -67,7 +67,7 @@ const step = computed(() => props.steps[current.value] ?? null)
 
 // ============ Lifecycle Hooks ============
 onMounted(() => {
-  void prefetchAudio(props.steps.flatMap(s => [...s.say.map(x => x.audio), s.answerAudio]))
+  void prefetchAudio(props.steps.flatMap(clipsOf))
   const session = typeof navigator !== 'undefined' ? navigator.mediaSession : undefined
   if (!session)
     return
@@ -90,6 +90,10 @@ onBeforeUnmount(() => {
 })
 
 // ============ Methods ============
+function clipsOf(s: SpeakStepView | undefined): Array<string | null> {
+  return s ? [...s.say.map(x => x.audio), s.answerAudio] : []
+}
+
 async function start() {
   if (finished.value) {
     finished.value = false
@@ -102,6 +106,9 @@ async function start() {
   while (current.value < props.steps.length) {
     const s = props.steps[current.value]!
     answered.value = false
+    // The next step's clips, fetched while this one plays, so they are on the
+    // phone before they are needed and a locked screen has nothing to wait for.
+    void prefetchAudio(clipsOf(props.steps[current.value + 1]))
     const ask = s.say.map(x => x.audio)
     if (s.kind === 'explain') {
       await playAudioQueue([...ask, { pauseMs: AFTER_EXPLAIN_MS }], { silentPauses: true })

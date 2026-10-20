@@ -210,9 +210,74 @@ async function wait(pause: AudioPause, run: number): Promise<void> {
 
 type Played = 'played' | 'skipped' | 'refused'
 
+/**
+ * Clips fetched (or being fetched) this page's life: true once the whole body
+ * has arrived, false if it could not be fetched.
+ *
+ * Hands-free playback needs to know whether the next clip is already on the
+ * phone. With the screen locked, iOS keeps a page running only while it is
+ * playing sound. A clip that still has to come over the network leaves the
+ * element silent while it loads, iOS suspends the page mid-download, and the
+ * clip plays only when the phone is unlocked. Recall met this most: each
+ * session is new words, so its clips are often not cached yet.
+ */
+const fetched = new Map<string, boolean>()
+const fetching = new Map<string, Promise<boolean>>()
+
+/** Fetch a clip once, through the service worker so it lands in the audio cache. */
+function fetchClip(url: string): Promise<boolean> {
+  const known = fetched.get(url)
+  if (known !== undefined)
+    return Promise.resolve(known)
+  let pending = fetching.get(url)
+  if (!pending) {
+    // `cors` so the response is readable and the range-slicing cache can
+    // store it; opaque responses are useless to it. The body is read to the
+    // end, so "fetched" means the whole clip is here, not just its headers.
+    pending = fetch(url, { mode: 'cors', credentials: 'omit' })
+      .then(async res => res.ok && (await res.arrayBuffer()).byteLength > 0)
+      .catch(() => false)
+      .then((ok) => {
+        fetched.set(url, ok)
+        fetching.delete(url)
+        return ok
+      })
+    fetching.set(url, pending)
+  }
+  return pending
+}
+
+/**
+ * The most silent seconds to spend waiting for a clip before trying it anyway,
+ * so a download that never finishes cannot hold the session in silence.
+ */
+const MAX_WAIT_SECONDS = 15
+
+/**
+ * Keep sound going until a clip is on the phone: one silent second at a time,
+ * which keeps a locked page awake while the download finishes. A clip already
+ * fetched costs nothing. Returns false if the run was superseded or refused.
+ */
+async function waitForClip(audio: HTMLAudioElement, src: string, run: number): Promise<boolean> {
+  if (typeof fetch === 'undefined' || src.startsWith('/silence'))
+    return true
+  if (fetched.has(src))
+    return true
+  void fetchClip(src)
+  for (let waited = 0; !fetched.has(src) && waited < MAX_WAIT_SECONDS; waited++) {
+    if (run !== token || await playClip(audio, SILENCE_SECOND, run) === 'refused')
+      return false
+  }
+  // Fetched, failed or timed out: play it either way. A failed fetch is not
+  // proof the element cannot play it, and it used to be tried regardless.
+  return run === token
+}
+
 /** Play one clip to its end on the shared element. */
 async function playClip(audio: HTMLAudioElement, src: string, run: number): Promise<Played> {
-  audio.pause()
+  // No pause() before the swap: setting `src` stops the old clip anyway, and
+  // an explicit pause is one more moment with nothing playing, which is what
+  // a locked iPhone takes as its cue to suspend the page.
   audio.src = src
   try {
     await audio.play()
@@ -273,7 +338,8 @@ async function playClip(audio: HTMLAudioElement, src: string, run: number): Prom
  * the queue, and the whole run is abandoned if something else starts playing.
  *
  * `silentPauses` plays each pause as real silence, a second at a time, instead
- * of waiting on a timer. Hands-free Speak needs it: with the screen locked iOS
+ * of waiting on a timer, and before each clip keeps silence going until the
+ * clip is on the phone (`waitForClip`). Hands-free Speak needs it: with the screen locked iOS
  * suspends JavaScript timers but keeps a page alive for as long as its audio is
  * playing, so a timer-based pause never wakes up and the session stops dead in
  * the first gap. The length is re-read before each second, so a changed
@@ -305,6 +371,8 @@ export async function playAudioQueue(
       }
       continue
     }
+    if (silentPauses && !await waitForClip(audio, item, run))
+      return
     if (await playClip(audio, item, run) === 'refused')
       return
   }
@@ -337,16 +405,8 @@ export async function prefetchAudio(sources: Array<string | null | undefined>): 
 
   // A few at a time. A conversation is a couple of dozen clips and firing them
   // all at once on a phone competes with whatever is actually playing.
+  // Offline, or a clip that does not exist: neither is worth reporting.
   const BATCH = 4
-  for (let i = 0; i < urls.length; i += BATCH) {
-    await Promise.all(urls.slice(i, i + BATCH).map(async (url) => {
-      try {
-        // `cors` so the response is readable and the range-slicing cache can
-        // store it; opaque responses are useless to it.
-        await fetch(url, { mode: 'cors', credentials: 'omit' })
-      } catch {
-        // Offline, or the clip does not exist. Neither is worth reporting.
-      }
-    }))
-  }
+  for (let i = 0; i < urls.length; i += BATCH)
+    await Promise.all(urls.slice(i, i + BATCH).map(fetchClip))
 }
