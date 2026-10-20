@@ -38,6 +38,7 @@ const BUSY_ROUTES = new Set([
   'kanji-build',
   'ghost-boss',
   'verb-forms',
+  'particles',
   'writing'
 ])
 

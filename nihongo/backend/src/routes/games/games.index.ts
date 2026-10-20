@@ -11,5 +11,6 @@ router.openapi(routes.listening, handlers.listening)
 router.openapi(routes.kanjiBuild, handlers.kanjiBuild)
 router.openapi(routes.ghostBoss, handlers.ghostBoss)
 router.openapi(routes.verbForms, handlers.verbForms)
+router.openapi(routes.particles, handlers.particles)
 
 export default router

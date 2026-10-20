@@ -7,6 +7,7 @@ import { computed, nextTick, onMounted, ref, watch } from 'vue'
 
 import { recordActivity } from '@/api/activities'
 import { getVerbFormsGame } from '@/api/games'
+import ChoiceGrid from '@/components/games/choice-grid.vue'
 import GameEnd from '@/components/games/game-end.vue'
 import AppShell from '@/components/layout/app-shell.vue'
 import Button from '@/components/ui/button.vue'
@@ -346,24 +347,15 @@ function backToSetup() {
           </Button>
         </form>
 
-        <div v-else class="mt-8 grid grid-cols-2 gap-3">
-          <button
-            v-for="o in round.options"
-            :key="o"
-            type="button"
-            class="rounded-xl border p-4 text-center text-2xl transition"
-            style="font-family: var(--font-jp)"
-            :class="correct === null
-              ? 'border-[var(--color-border)] hover:border-[var(--color-text)]'
-              : o === round.answer.reading
-                ? 'border-[var(--color-success)] bg-[var(--color-card)]'
-                : o === picked ? 'border-[var(--color-danger)]' : 'border-[var(--color-border)] opacity-60'"
-            :disabled="correct !== null"
-            @click="pick(o)"
-          >
-            {{ o }}
-          </button>
-        </div>
+        <ChoiceGrid
+          v-else
+          class="mt-8"
+          :options="round.options"
+          :answer="round.answer.reading"
+          :picked="picked"
+          jp
+          @pick="pick"
+        />
 
         <div v-if="correct !== null" class="mt-6 text-center">
           <p class="font-semibold" :class="correct ? 'text-[var(--color-success)]' : 'text-[var(--color-danger)]'">

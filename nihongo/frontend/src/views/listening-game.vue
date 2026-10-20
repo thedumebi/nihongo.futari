@@ -6,6 +6,7 @@ import { computed, onMounted, ref } from 'vue'
 
 import { recordActivity } from '@/api/activities'
 import { getListeningGame } from '@/api/games'
+import ChoiceGrid from '@/components/games/choice-grid.vue'
 import GameEnd from '@/components/games/game-end.vue'
 import PitchAccent from '@/components/ja/pitch-accent.vue'
 import AppShell from '@/components/layout/app-shell.vue'
@@ -126,27 +127,21 @@ function next() {
           Which one means <span class="font-semibold">“{{ round.options[round.answer]!.meaning }}”</span>?
         </p>
 
-        <div class="mt-8 grid grid-cols-2 gap-3">
-          <button
-            v-for="(o, i) in round.options"
-            :key="o.reading"
-            type="button"
-            class="rounded-xl border p-5 text-center transition"
-            :class="picked === null
-              ? 'border-[var(--color-border)] hover:border-[var(--color-text)]'
-              : i === round.answer
-                ? 'border-[var(--color-success)] bg-[var(--color-card)]'
-                : i === picked ? 'border-[var(--color-danger)]' : 'border-[var(--color-border)] opacity-60'"
-            :disabled="picked !== null"
-            @click="pick(i)"
-          >
-            <span v-if="!o.pitch" class="block text-3xl" style="font-family: var(--font-jp)">{{ o.reading }}</span>
-            <PitchAccent v-else class="mx-auto w-fit" :reading="o.pitch.reading" :shape="o.pitch.shape" :pattern="o.pitch.pattern" />
+        <ChoiceGrid
+          class="mt-8"
+          :options="round.options.map((_, i) => i)"
+          :answer="round.answer"
+          :picked="picked"
+          @pick="pick"
+        >
+          <template #default="{ index: i }">
+            <span v-if="!round.options[i]!.pitch" class="block py-1 text-3xl" style="font-family: var(--font-jp)">{{ round.options[i]!.reading }}</span>
+            <PitchAccent v-else class="mx-auto w-fit" :reading="round.options[i]!.pitch!.reading" :shape="round.options[i]!.pitch!.shape" :pattern="round.options[i]!.pitch!.pattern" />
             <span v-if="picked !== null" class="mt-2 block text-sm text-[var(--color-muted)]">
-              <span style="font-family: var(--font-jp)">{{ o.text }}</span> · {{ o.meaning }}
+              <span style="font-family: var(--font-jp)">{{ round.options[i]!.text }}</span> · {{ round.options[i]!.meaning }}
             </span>
-          </button>
-        </div>
+          </template>
+        </ChoiceGrid>
 
         <div v-if="picked !== null" class="mt-6 text-center">
           <p class="font-semibold" :class="picked === round.answer ? 'text-[var(--color-success)]' : 'text-[var(--color-danger)]'">

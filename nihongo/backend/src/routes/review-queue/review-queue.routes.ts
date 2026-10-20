@@ -89,3 +89,18 @@ export const bulkReject = createAdminRoute({
   }
 })
 export type BulkRejectRoute = typeof bulkReject
+
+export const removeParticleQuestion = createAdminRoute({
+  tags,
+  path: REVIEW_QUEUE_ROUTES.REMOVE_PARTICLE_QUESTION,
+  method: 'delete',
+  summary: 'Take one question out of a Particles set awaiting review',
+  description: 'Only while its set is unpublished. The rest of the set is approved or rejected as usual.',
+  middleware: adminMiddlewares,
+  request: { params: IdParamSchema },
+  responses: {
+    [HttpStatusCodes.OK]: jsonContent(MessageResponseSchema, 'Removed'),
+    [HttpStatusCodes.NOT_FOUND]: jsonContent(ErrorSchema, 'No such question awaiting review')
+  }
+})
+export type RemoveParticleQuestionRoute = typeof removeParticleQuestion

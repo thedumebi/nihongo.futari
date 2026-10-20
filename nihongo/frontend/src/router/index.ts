@@ -118,6 +118,12 @@ const router = createRouter({
       meta: { requiresAuth: true }
     },
     {
+      path: ROUTES.GAME_PARTICLES,
+      name: 'particles',
+      component: () => import('@/views/particles-game.vue'),
+      meta: { requiresAuth: true }
+    },
+    {
       path: ROUTES.GAME_GHOST_BOSS,
       name: 'ghost-boss',
       component: () => import('@/views/ghost-boss.vue'),

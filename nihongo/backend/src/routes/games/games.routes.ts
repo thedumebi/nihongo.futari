@@ -1,6 +1,6 @@
 import { GAMES_ROUTES, HttpStatusCodes } from '@nihongo/shared/constants'
 import { createSecuredRoute, jsonContent } from '@nihongo/shared/openapi'
-import { gamesQuerySchema, ghostBossSchema, kanjiBuildGameSchema, listeningGameSchema, verbFormsGameSchema } from '@nihongo/shared/types'
+import { gamesQuerySchema, ghostBossSchema, kanjiBuildGameSchema, listeningGameSchema, particlesGameSchema, verbFormsGameSchema } from '@nihongo/shared/types'
 
 import authMiddleware from '@/middlewares/auth.js'
 
@@ -61,3 +61,17 @@ export const verbForms = createSecuredRoute({
   }
 })
 export type VerbFormsRoute = typeof verbForms
+
+export const particles = createSecuredRoute({
+  tags,
+  path: GAMES_ROUTES.PARTICLES,
+  method: 'get',
+  summary: 'Particles: sentences with a particle taken out, from every particle lesson at the level',
+  description: 'Published, reviewed questions only, familiar sentences first. Writes nothing.',
+  middleware: [authMiddleware],
+  request: { query: gamesQuerySchema },
+  responses: {
+    [HttpStatusCodes.OK]: jsonContent(particlesGameSchema, 'The questions')
+  }
+})
+export type ParticlesRoute = typeof particles

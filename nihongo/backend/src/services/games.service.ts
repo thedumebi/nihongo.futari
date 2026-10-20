@@ -1,12 +1,14 @@
-import type { DictionarySpelling, DrillForm, GamesQuery, GhostBoss, GhostBossEntry, KanjiBuildGame, KanjiBuildRound, ListeningGame, VerbFormsGame, VerbFormsGameVerb } from '@nihongo/shared/types'
+import type { FuriganaSegment } from '@nihongo/shared/lib'
+import type { DictionarySpelling, DrillForm, GamesQuery, GhostBoss, GhostBossEntry, KanjiBuildGame, KanjiBuildRound, ListeningGame, ParticlesGame, VerbFormsGame, VerbFormsGameVerb } from '@nihongo/shared/types'
 
 import db from '@nihongo/shared/db'
-import { classifyPitch, classifyVerb, conjugatesReliably, countMorae, DRILL_FORMS, findMinimalPairs, findPitchPairs, hasKanji, hasKatakana, lookAlikes, parseIds, pitchShape, RARE_SPELLING_TAGS, studyDateFor, VERB_FORM_INFO } from '@nihongo/shared/lib'
+import { classifyPitch, classifyVerb, clozeFurigana, conjugatesReliably, countMorae, DRILL_FORMS, findMinimalPairs, findPitchPairs, hasKanji, hasKatakana, lookAlikes, parseIds, pitchShape, RARE_SPELLING_TAGS, studyDateFor, VERB_FORM_INFO } from '@nihongo/shared/lib'
 import { sql } from 'drizzle-orm'
 import { DateTime } from 'luxon'
 
 import { assetUrl } from '../lib/assets.js'
 import { currentClips } from './clips.service.js'
+import { glossary, glossLine } from './glossary.service.js'
 import { loadUserContext } from './progress.service.js'
 
 /**
@@ -507,6 +509,109 @@ export async function getVerbFormsGame(userId: string, query: GamesQuery): Promi
       const unlocked = taught.some(p => p.learned)
       const first = taught[0]
       return { form, unlocked, lesson: unlocked || !first ? null : { slug: first.slug, title: first.title } }
+    })
+  }
+}
+
+// ============ Particles ============
+
+/** Questions sent per game: enough to deal fifteen without a sentence twice, and a replay. */
+const PARTICLES_POOL = 60
+
+/**
+ * The Particles game: published questions from every particle lesson at the
+ * game's levels, the sentences the learner knows most of first.
+ *
+ * Every particle is in play from the start: there is nothing to choose and
+ * nothing locked. A sentence's familiarity is the share of its dictionary
+ * words the learner has learned (a card past learning), bucketed by quarters
+ * and random within a bucket, so a game is not always the same sixty.
+ */
+export async function getParticlesGame(userId: string, query: GamesQuery): Promise<ParticlesGame> {
+  const levels = levelsFor(query)
+  const rows = await db.execute<{
+    id: string
+    sentence_id: string
+    blank_start: number
+    blank_end: number
+    answer: string
+    wrong: string[]
+    note: string
+    text: string
+    slug: string
+    title: string
+    translation: string | null
+    familiar: number
+  }>(sql`
+    with pool as (
+      select q.id, q.sentence_id, q.blank_start, q.blank_end, q.answer, q.wrong, q.note,
+        s.text, g.slug, g.title,
+        (select t.text from sentence_translations t where t.sentence_id = s.id and t.lang = 'en' order by t.created_at limit 1) as translation,
+        coalesce((
+          select avg(case when exists (
+            select 1 from study_items si
+            join study_item_facets f on f.study_item_id = si.id
+            join srs_cards c on c.facet_id = f.id
+            where si.word_id = tok.word_id and c.user_id = ${userId} and c.state >= 2
+          ) then 1.0 else 0.0 end)
+          from sentence_tokens tok where tok.sentence_id = s.id and tok.word_id is not null
+        ), 0)::float as familiar
+      from particle_questions q
+      join particle_sets ps on ps.id = q.set_id and ps.published
+      join languages l on l.id = ps.language_id and l.code = ${query.languageCode}
+      join grammar_points g on g.id = ps.grammar_point_id
+      join language_levels lv on lv.id = g.level_id
+      join sentences s on s.id = q.sentence_id and s.published
+      where lv.code in ${levels}
+    )
+    select * from pool order by floor(familiar * 4) desc, random() limit ${PARTICLES_POOL}
+  `)
+  if (rows.rows.length === 0)
+    return { questions: [] }
+
+  const sentenceIds = [...new Set(rows.rows.map(r => r.sentence_id))]
+  const [g, clips, tokenRows] = await Promise.all([
+    glossary(query.languageCode),
+    currentClips(sentenceIds, []),
+    db.execute<{ sentence_id: string, char_start: number, char_end: number, furigana: FuriganaSegment[] }>(sql`
+      select sentence_id, char_start, char_end, furigana from sentence_tokens
+      where sentence_id in ${sentenceIds} order by sentence_id, char_start
+    `)
+  ])
+  const tokensOf = new Map<string, Array<{ charStart: number, charEnd: number, furigana: FuriganaSegment[] }>>()
+  for (const t of tokenRows.rows) {
+    const list = tokensOf.get(t.sentence_id) ?? []
+    list.push({ charStart: t.char_start, charEnd: t.char_end, furigana: t.furigana })
+    tokensOf.set(t.sentence_id, list)
+  }
+
+  return {
+    questions: rows.rows.flatMap((r) => {
+      const chars = [...r.text]
+      // A gap that no longer holds its particle (the sentence was reworded) is left out.
+      if (chars.slice(r.blank_start, r.blank_end).join('') !== r.answer)
+        return []
+      const before = chars.slice(0, r.blank_start).join('')
+      const after = chars.slice(r.blank_end).join('')
+      const { beforeFurigana, afterFurigana } = clozeFurigana(r.text, before, after, tokensOf.get(r.sentence_id) ?? [])
+      const clip = clips.sentences.get(r.sentence_id)
+      return [{
+        id: r.id,
+        sentenceId: r.sentence_id,
+        before,
+        after,
+        beforeTokens: before ? glossLine(before, g, beforeFurigana) : [],
+        afterTokens: after ? glossLine(after, g, afterFurigana) : [],
+        beforeSegments: beforeFurigana,
+        afterSegments: afterFurigana,
+        answer: r.answer,
+        wrong: r.wrong,
+        note: r.note,
+        translation: r.translation,
+        audio: clip ? assetUrl(clip) : null,
+        lesson: { slug: r.slug, title: r.title },
+        familiar: Math.min(1, Math.max(0, Number(r.familiar)))
+      }]
     })
   }
 }

@@ -11,6 +11,7 @@ const router = createRouter().basePath(ROUTE_BASE_PATHS.REVIEW_QUEUE)
 router.openapi(routes.list, handlers.list)
 router.openapi(routes.bulkApprove, handlers.bulkApprove)
 router.openapi(routes.bulkReject, handlers.bulkReject)
+router.openapi(routes.removeParticleQuestion, handlers.removeParticleQuestion)
 router.openapi(routes.approve, handlers.approve)
 router.openapi(routes.reject, handlers.reject)
 

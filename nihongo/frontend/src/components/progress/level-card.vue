@@ -34,6 +34,7 @@ const ACTIVITY_LABELS: Partial<Record<ActivityKind, string>> = {
   'listening-game': 'Play Listening',
   'kanji-build': 'Play Build a kanji',
   'verb-forms': 'Play Verb forms',
+  'particles': 'Play Particles',
   'story': 'Say a Speak story'
 }
 

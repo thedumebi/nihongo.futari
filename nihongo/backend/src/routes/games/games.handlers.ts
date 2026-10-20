@@ -2,9 +2,9 @@ import { HttpStatusCodes } from '@nihongo/shared/constants'
 
 import type { AppRouteHandler } from '@/lib/types.js'
 
-import { getGhostBoss, getKanjiBuildGame, getListeningGame, getVerbFormsGame } from '@/services/games.service.js'
+import { getGhostBoss, getKanjiBuildGame, getListeningGame, getParticlesGame, getVerbFormsGame } from '@/services/games.service.js'
 
-import type { GhostBossRoute, KanjiBuildRoute, ListeningRoute, VerbFormsRoute } from './games.routes.js'
+import type { GhostBossRoute, KanjiBuildRoute, ListeningRoute, ParticlesRoute, VerbFormsRoute } from './games.routes.js'
 
 export const listening: AppRouteHandler<ListeningRoute> = async (c) => {
   return c.json(await getListeningGame(c.req.valid('query')), HttpStatusCodes.OK)
@@ -22,4 +22,9 @@ export const ghostBoss: AppRouteHandler<GhostBossRoute> = async (c) => {
 export const verbForms: AppRouteHandler<VerbFormsRoute> = async (c) => {
   const user = c.get('user')!
   return c.json(await getVerbFormsGame(user.id, c.req.valid('query')), HttpStatusCodes.OK)
+}
+
+export const particles: AppRouteHandler<ParticlesRoute> = async (c) => {
+  const user = c.get('user')!
+  return c.json(await getParticlesGame(user.id, c.req.valid('query')), HttpStatusCodes.OK)
 }

@@ -33,3 +33,8 @@ export async function bulkReject(ids: string[], note?: string): Promise<BulkRevi
   const { data } = await client.post<BulkReviewResult>(API_ENDPOINTS.REVIEW_QUEUE.BULK_REJECT, { ids, ...(note ? { note } : {}) })
   return data
 }
+
+/** Take one question out of a Particles set before approving the rest. */
+export async function removeParticleQuestion(id: string): Promise<void> {
+  await client.delete(API_ENDPOINTS.REVIEW_QUEUE.REMOVE_PARTICLE_QUESTION(id))
+}

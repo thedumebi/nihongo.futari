@@ -123,7 +123,7 @@ export const CONTENT_STATUSES = ['draft', 'ai-drafted', 'in-review', 'published'
 export type ContentStatus = typeof CONTENT_STATUSES[number]
 
 /** What the admin review queue can hold — each kind shows different fields. */
-export const REVIEW_KINDS = ['grammar', 'etymology', 'reading', 'speak', 'correction'] as const
+export const REVIEW_KINDS = ['grammar', 'etymology', 'reading', 'speak', 'particles', 'correction'] as const
 export type ReviewKind = typeof REVIEW_KINDS[number]
 
 /** The table each review kind's queue rows point at. */
@@ -132,6 +132,7 @@ export const REVIEW_KIND_TABLES: Record<ReviewKind, string> = {
   etymology: 'etymology_entries',
   reading: 'readings',
   speak: 'speak_sessions',
+  particles: 'particle_sets',
   correction: 'sentences'
 }
 
@@ -305,7 +306,8 @@ export const ACTIVITY_KINDS = [
   'kanji-build',
   'ghost-boss',
   'story',
-  'verb-forms'
+  'verb-forms',
+  'particles'
 ] as const
 export type ActivityKind = typeof ACTIVITY_KINDS[number]
 
@@ -343,7 +345,8 @@ export const GAMES_ROUTES = {
   LISTENING: '/listening',
   KANJI_BUILD: '/kanji-build',
   GHOST_BOSS: '/ghost-boss',
-  VERB_FORMS: '/verb-forms'
+  VERB_FORMS: '/verb-forms',
+  PARTICLES: '/particles'
 } as const
 
 export const ACTIVITY_ROUTES = {
@@ -471,7 +474,9 @@ export const REVIEW_QUEUE_ROUTES = {
   APPROVE: '/:id/approve',
   BULK_APPROVE: '/bulk/approve',
   BULK_REJECT: '/bulk/reject',
-  REJECT: '/:id/reject'
+  REJECT: '/:id/reject',
+  /** Take one question out of a Particles set before approving the rest. */
+  REMOVE_PARTICLE_QUESTION: '/particle-questions/:id'
 } as const
 
 export const AUDIO_ROUTES = {
@@ -612,7 +617,8 @@ export const API_ENDPOINTS = {
     LISTENING: `${ROUTE_BASE_PATHS.GAMES}${GAMES_ROUTES.LISTENING}`,
     KANJI_BUILD: `${ROUTE_BASE_PATHS.GAMES}${GAMES_ROUTES.KANJI_BUILD}`,
     GHOST_BOSS: `${ROUTE_BASE_PATHS.GAMES}${GAMES_ROUTES.GHOST_BOSS}`,
-    VERB_FORMS: `${ROUTE_BASE_PATHS.GAMES}${GAMES_ROUTES.VERB_FORMS}`
+    VERB_FORMS: `${ROUTE_BASE_PATHS.GAMES}${GAMES_ROUTES.VERB_FORMS}`,
+    PARTICLES: `${ROUTE_BASE_PATHS.GAMES}${GAMES_ROUTES.PARTICLES}`
   },
   ACTIVITIES: {
     RECORD: `${ROUTE_BASE_PATHS.ACTIVITIES}${ACTIVITY_ROUTES.RECORD}`
@@ -705,7 +711,8 @@ export const API_ENDPOINTS = {
     BULK_APPROVE: `${ROUTE_BASE_PATHS.REVIEW_QUEUE}${REVIEW_QUEUE_ROUTES.BULK_APPROVE}`,
     BULK_REJECT: `${ROUTE_BASE_PATHS.REVIEW_QUEUE}${REVIEW_QUEUE_ROUTES.BULK_REJECT}`,
     APPROVE: (id: string) => `${ROUTE_BASE_PATHS.REVIEW_QUEUE}${REVIEW_QUEUE_ROUTES.APPROVE.replace(':id', id)}`,
-    REJECT: (id: string) => `${ROUTE_BASE_PATHS.REVIEW_QUEUE}${REVIEW_QUEUE_ROUTES.REJECT.replace(':id', id)}`
+    REJECT: (id: string) => `${ROUTE_BASE_PATHS.REVIEW_QUEUE}${REVIEW_QUEUE_ROUTES.REJECT.replace(':id', id)}`,
+    REMOVE_PARTICLE_QUESTION: (id: string) => `${ROUTE_BASE_PATHS.REVIEW_QUEUE}${REVIEW_QUEUE_ROUTES.REMOVE_PARTICLE_QUESTION.replace(':id', id)}`
   },
 
   AUDIO: {

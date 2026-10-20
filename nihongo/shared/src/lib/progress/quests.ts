@@ -28,7 +28,7 @@ export const QUEST_POOL: readonly QuestDef[] = [
   { code: 'new-5', title: 'Learn 5 new words', target: 5, counts: 'new' },
   { code: 'recall-1', title: 'Do a Recall session', target: 1, counts: ['recall'] },
   { code: 'shadowing-1', title: 'Shadow a conversation', target: 1, counts: ['shadowing'] },
-  { code: 'game-1', title: 'Play a listening, kanji or verb game', target: 1, counts: ['listening-game', 'kanji-build', 'verb-forms'] },
+  { code: 'game-1', title: 'Play a listening, kanji, verb or particle game', target: 1, counts: ['listening-game', 'kanji-build', 'verb-forms', 'particles'] },
   { code: 'story-1', title: 'Say a Speak story', target: 1, counts: ['story'] }
 ]
 

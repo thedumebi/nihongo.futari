@@ -4,6 +4,8 @@ import type { Conjugated, VERB_FORM_INFO } from '@/lib/ja/conjugation/index.js'
 
 import { DRILL_FORMS, VERB_CLASSES } from '@/lib/ja/conjugation/index.js'
 
+import { furiganaSegmentSchema } from './sentences.js'
+import { glossedTokenSchema } from './study.js'
 import { wordPitchSchema } from './words.js'
 
 /**
@@ -168,4 +170,45 @@ export interface VerbFormsRound {
   accepted: string[]
   /** How the form is made from this verb, in one line. */
   rule: string
+}
+
+// ============ Particles ============
+
+/** One question: a published sentence with its particle taken out. */
+export const particleQuestionSchema = z.object({
+  id: z.string(),
+  /** Two gaps in one sentence are two questions; a game asks the sentence once. */
+  sentenceId: z.string(),
+  /** The sentence either side of the gap, as written. */
+  before: z.string(),
+  after: z.string(),
+  /** Each half cut into tappable words, with readings for the reader's furigana. */
+  beforeTokens: z.array(glossedTokenSchema),
+  afterTokens: z.array(glossedTokenSchema),
+  beforeSegments: z.array(furiganaSegmentSchema),
+  afterSegments: z.array(furiganaSegmentSchema),
+  answer: z.string(),
+  /** Three particles that are wrong in this sentence; never one that would also do. */
+  wrong: z.array(z.string()).length(3),
+  /** Why the answer, in one line. */
+  note: z.string(),
+  translation: z.string().nullable(),
+  /** The whole sentence spoken, played once it is answered. */
+  audio: z.string().nullable(),
+  /** The lesson that teaches this use of the particle. */
+  lesson: z.object({ slug: z.string(), title: z.string() }),
+  /** How much of the sentence's vocabulary the learner knows, 0 to 1. Familiar sentences come first. */
+  familiar: z.number().min(0).max(1)
+}).openapi('ParticleQuestion')
+export type ParticleQuestion = z.infer<typeof particleQuestionSchema>
+
+export const particlesGameSchema = z.object({
+  questions: z.array(particleQuestionSchema)
+}).openapi('ParticlesGame')
+export type ParticlesGame = z.infer<typeof particlesGameSchema>
+
+/** One question as asked: the four boxes, in the order shown. */
+export interface ParticlesRound {
+  question: ParticleQuestion
+  options: string[]
 }

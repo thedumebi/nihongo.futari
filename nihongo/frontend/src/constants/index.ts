@@ -26,6 +26,7 @@ export const ROUTES = {
   GAME_KANJI_BUILD: '/games/kanji-build',
   GAME_GHOST_BOSS: '/games/ghost-boss',
   GAME_VERB_FORMS: '/games/verb-forms',
+  GAME_PARTICLES: '/games/particles',
   SPEAK_SESSION: (code: string) => `/speak/${encodeURIComponent(code)}`,
   STUDY_SESSION: '/study/session',
   /** The list of what is due, as opposed to a session that hands it over one card at a time. */

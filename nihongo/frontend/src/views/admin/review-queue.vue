@@ -4,7 +4,7 @@ import type { ReviewItem } from '@nihongo/shared/types'
 
 import { computed, onMounted, ref } from 'vue'
 
-import { bulkApprove, bulkReject, listPending } from '@/api/review-queue'
+import { bulkApprove, bulkReject, listPending, removeParticleQuestion } from '@/api/review-queue'
 import CorrectionDiff from '@/components/admin/correction-diff.vue'
 import AppShell from '@/components/layout/app-shell.vue'
 import Button from '@/components/ui/button.vue'
@@ -84,6 +84,22 @@ async function goToPage(next: number) {
   await load()
 }
 
+/** Take one bad question out of a Particles set; the rest stay to be approved. */
+async function removeQuestion(item: ReviewItem, questionId: string) {
+  if (!item.particles || working.value)
+    return
+  working.value = true
+  try {
+    await removeParticleQuestion(questionId)
+    item.particles.questions = item.particles.questions.filter(q => q.id !== questionId)
+    toast.success('Question removed.')
+  } catch {
+    toast.error('Could not remove that question.')
+  } finally {
+    working.value = false
+  }
+}
+
 async function decide(action: 'approve' | 'reject') {
   if (selected.value.size === 0 || working.value)
     return
@@ -116,7 +132,8 @@ async function decide(action: 'approve' | 'reject') {
       </div>
       <p class="mt-2 text-sm text-[var(--color-muted)]">
         Nothing here reaches a reader until you approve it. Etymology is checked against its
-        sources; grammar prose just needs a read. A correction changes something already live:
+        sources; grammar prose just needs a read. A Particles entry is one lesson's questions:
+        remove any that are wrong, then approve the rest together. A correction changes something already live:
         approving it applies the change everywhere it appears.
       </p>
 
@@ -180,6 +197,14 @@ async function decide(action: 'approve' | 'reject') {
           <button
             type="button"
             class="rounded-full border px-3 py-1 text-sm transition"
+            :class="kindFilter === 'particles' ? 'border-[var(--color-text)] text-[var(--color-text)]' : 'border-[var(--color-border)] text-[var(--color-muted)]'"
+            @click="selectKind('particles')"
+          >
+            Particles
+          </button>
+          <button
+            type="button"
+            class="rounded-full border px-3 py-1 text-sm transition"
             :class="kindFilter === 'correction' ? 'border-[var(--color-text)] text-[var(--color-text)]' : 'border-[var(--color-border)] text-[var(--color-muted)]'"
             @click="selectKind('correction')"
           >
@@ -216,6 +241,9 @@ async function decide(action: 'approve' | 'reject') {
                   <template v-if="item.kind === 'speak' && item.speak">
                     <span>&middot; {{ item.speak.level }} &middot; session {{ item.speak.number }}</span>
                   </template>
+                  <template v-if="item.kind === 'particles' && item.particles">
+                    <span>&middot; {{ item.particles.level }} &middot; {{ item.particles.questions.length }} questions</span>
+                  </template>
                   <template v-if="item.kind === 'etymology'">
                     <span>&middot; {{ item.aspect }}</span>
                     <span>&middot; {{ item.confidence }}</span>
@@ -229,7 +257,7 @@ async function decide(action: 'approve' | 'reject') {
                 <!-- A correction is small enough to judge at a glance: always shown. -->
                 <CorrectionDiff v-if="item.kind === 'correction' && item.correction" :correction="item.correction" />
 
-                <p v-if="item.kind !== 'correction'" class="mt-2 font-medium">
+                <p v-if="item.kind !== 'correction' && item.kind !== 'particles'" class="mt-2 font-medium">
                   {{ item.kind === 'etymology' ? item.claim : item.kind === 'reading' ? item.reading?.titleEn : item.kind === 'speak' ? item.speak?.titleEn : item.meaningShort }}
                 </p>
                 <!-- Read it the way a learner will: scrolling, tappable, with the reading aid. -->
@@ -257,6 +285,38 @@ async function decide(action: 'approve' | 'reject') {
                 >
                   {{ expanded.has(item.id) ? 'Hide detail' : 'Show detail' }}
                 </button>
+
+                <!-- A Particles set: every question as the game asks it, the gap filled
+                     in green, with what else would do, what is offered as wrong, and why. -->
+                <ol v-if="expanded.has(item.id) && item.kind === 'particles' && item.particles" class="mt-3 space-y-4">
+                  <li v-for="q in item.particles.questions" :key="q.id" class="rounded-lg border border-[var(--color-border)] p-3">
+                    <div class="flex items-start justify-between gap-3">
+                      <p class="text-lg" style="font-family: var(--font-jp)">
+                        {{ q.before }}<span class="font-semibold text-[var(--color-success)] underline underline-offset-4">{{ q.answer }}</span>{{ q.after }}
+                      </p>
+                      <button
+                        type="button"
+                        class="shrink-0 text-sm text-[var(--color-muted)] underline underline-offset-4"
+                        :disabled="working"
+                        @click="removeQuestion(item, q.id)"
+                      >
+                        Remove
+                      </button>
+                    </div>
+                    <p v-if="q.translation" class="text-sm text-[var(--color-muted)]">
+                      {{ q.translation }}
+                    </p>
+                    <p class="mt-2 text-sm" style="font-family: var(--font-jp)">
+                      <span class="text-[var(--color-muted)]">Wrong:</span> {{ q.wrong.join(', ') }}
+                      <template v-if="q.alsoRight.length">
+                        <span class="ml-3 text-[var(--color-muted)]">Also right, never offered:</span> {{ q.alsoRight.join(', ') }}
+                      </template>
+                    </p>
+                    <p class="mt-1 text-sm text-[var(--color-muted)]">
+                      {{ q.note }}
+                    </p>
+                  </li>
+                </ol>
 
                 <div v-if="expanded.has(item.id) && item.kind === 'reading' && item.reading" class="mt-3 space-y-4">
                   <div v-for="(stanza, s) in item.reading.stanzas" :key="s" class="space-y-2">
@@ -293,7 +353,7 @@ async function decide(action: 'approve' | 'reject') {
                   </li>
                 </ol>
 
-                <div v-if="expanded.has(item.id) && item.kind !== 'reading' && item.kind !== 'speak' && item.kind !== 'correction'" class="mt-3 space-y-4">
+                <div v-if="expanded.has(item.id) && item.kind !== 'reading' && item.kind !== 'speak' && item.kind !== 'particles' && item.kind !== 'correction'" class="mt-3 space-y-4">
                   <p v-if="item.kind === 'grammar' && item.pattern" class="text-sm text-[var(--color-muted)]" style="font-family: var(--font-jp)">
                     {{ item.pattern }}
                   </p>

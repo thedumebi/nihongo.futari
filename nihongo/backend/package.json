@@ -56,6 +56,8 @@
     "seed:words": "tsx src/pipeline/make-words-seed.ts",
     "seed:speak": "tsx src/pipeline/make-speak-seed.ts",
     "check:speak": "tsx src/pipeline/check-speak.ts",
+    "check:particles": "tsx src/pipeline/check-particles.ts",
+    "seed:particles": "tsx src/pipeline/make-particles-seed.ts",
     "check:readings": "tsx src/pipeline/check-readings.ts",
     "check:crossword": "tsx src/pipeline/check-crossword.ts",
     "check:spellings": "tsx src/pipeline/check-answer-spellings.ts",

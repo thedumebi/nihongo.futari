@@ -1,4 +1,4 @@
-import type { GhostBoss, KanjiBuildGame, ListeningGame, VerbFormsGame } from '@nihongo/shared/types'
+import type { GhostBoss, KanjiBuildGame, ListeningGame, ParticlesGame, VerbFormsGame } from '@nihongo/shared/types'
 
 import { API_ENDPOINTS } from '@nihongo/shared/constants'
 
@@ -25,5 +25,11 @@ export async function getGhostBoss(languageCode = 'ja'): Promise<GhostBoss> {
 /** Verb forms: the verbs to conjugate and the forms open to the learner. */
 export async function getVerbFormsGame(languageCode = 'ja'): Promise<VerbFormsGame> {
   const { data } = await client.get<VerbFormsGame>(API_ENDPOINTS.GAMES.VERB_FORMS, { params: { languageCode, size: 15 } })
+  return data
+}
+
+/** Particles: reviewed sentences with a particle taken out, familiar ones first. */
+export async function getParticlesGame(languageCode = 'ja'): Promise<ParticlesGame> {
+  const { data } = await client.get<ParticlesGame>(API_ENDPOINTS.GAMES.PARTICLES, { params: { languageCode } })
   return data
 }

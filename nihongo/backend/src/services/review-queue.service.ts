@@ -14,6 +14,8 @@ import {
   grammarPoints,
   kanji,
   languageLevels,
+  particleQuestions,
+  particleSets,
   readingLines,
   readings,
   sentences,
@@ -32,6 +34,9 @@ import { aliasedTable, and, asc, eq, inArray, like, sql } from 'drizzle-orm'
 const directPoint = aliasedTable(grammarPoints, 'direct_point')
 /** A Speak session's level, joined beside a speech's. */
 const speakLevel = aliasedTable(languageLevels, 'speak_level')
+/** A Particles set's lesson, and its level. */
+const particlePoint = aliasedTable(grammarPoints, 'particle_point')
+const particleLevel = aliasedTable(languageLevels, 'particle_level')
 
 /**
  * The content review queue.
@@ -98,7 +103,10 @@ export async function listPending(
       speakNumber: speakSessions.number,
       speakTitle: speakSessions.title,
       speakTitleEn: speakSessions.titleEn,
-      speakLevel: speakLevel.code
+      speakLevel: speakLevel.code,
+      particleTitle: particlePoint.title,
+      particleSlug: particlePoint.slug,
+      particleLevel: particleLevel.code
     })
     .from(contentReviewQueue)
     .leftJoin(etymologyEntries, eq(etymologyEntries.id, contentReviewQueue.targetId))
@@ -110,6 +118,9 @@ export async function listPending(
     .leftJoin(languageLevels, eq(languageLevels.id, readings.levelId))
     .leftJoin(speakSessions, and(eq(contentReviewQueue.targetTable, 'speak_sessions'), eq(speakSessions.id, contentReviewQueue.targetId)))
     .leftJoin(speakLevel, eq(speakLevel.id, speakSessions.levelId))
+    .leftJoin(particleSets, and(eq(contentReviewQueue.targetTable, 'particle_sets'), eq(particleSets.id, contentReviewQueue.targetId)))
+    .leftJoin(particlePoint, eq(particlePoint.id, particleSets.grammarPointId))
+    .leftJoin(particleLevel, eq(particleLevel.id, particlePoint.levelId))
     .where(and(eq(contentReviewQueue.status, 'pending'), kindFilter))
     .orderBy(asc(contentReviewQueue.priority), asc(contentReviewQueue.createdAt))
     .limit(limit)
@@ -196,6 +207,44 @@ export async function listPending(
     }
   }
 
+  // Every question of each Particles set on the page, shown with its gap.
+  const setIds = rows.filter(r => r.targetTable === 'particle_sets').map(r => r.targetId)
+  const questions = setIds.length === 0
+    ? []
+    : await db
+        .select({
+          setId: particleQuestions.setId,
+          id: particleQuestions.id,
+          text: sentences.text,
+          blankStart: particleQuestions.blankStart,
+          blankEnd: particleQuestions.blankEnd,
+          answer: particleQuestions.answer,
+          alsoRight: particleQuestions.alsoRight,
+          wrong: particleQuestions.wrong,
+          note: particleQuestions.note,
+          translation: sql<string | null>`(select t.text from sentence_translations t where t.sentence_id = ${sentences.id} and t.lang = 'en' order by t.created_at limit 1)`
+        })
+        .from(particleQuestions)
+        .innerJoin(sentences, eq(sentences.id, particleQuestions.sentenceId))
+        .where(inArray(particleQuestions.setId, setIds))
+        .orderBy(asc(particleQuestions.setId), asc(particleQuestions.sortIndex))
+
+  function particleSet(r: typeof rows[number]): ReviewItem['particles'] {
+    if (r.targetTable !== 'particle_sets' || !r.particleSlug)
+      return null
+    return {
+      lesson: r.particleTitle!,
+      slug: r.particleSlug,
+      level: r.particleLevel ?? '',
+      questions: questions
+        .filter(q => q.setId === r.targetId)
+        .map(({ setId: _drop, text, blankStart, blankEnd, ...q }) => {
+          const chars = [...text]
+          return { ...q, before: chars.slice(0, blankStart).join(''), after: chars.slice(blankEnd).join('') }
+        })
+    }
+  }
+
   const [count] = await db
     .select({ total: sql<number>`count(*)`.mapWith(Number) })
     .from(contentReviewQueue)
@@ -210,7 +259,7 @@ export async function listPending(
       status: r.status,
       createdAt: r.createdAt.toISOString(),
       kind: kindOf(r.targetTable),
-      subject: r.etySubject ?? r.gpTitle ?? r.readingTitle ?? r.speakTitle ?? correctionSubject(r.targetTable, r.proposed),
+      subject: r.etySubject ?? r.gpTitle ?? r.readingTitle ?? r.speakTitle ?? r.particleTitle ?? correctionSubject(r.targetTable, r.proposed),
       claim: r.claim,
       body: r.body,
       confidence: r.confidence,
@@ -224,6 +273,7 @@ export async function listPending(
         .map(({ etymologyId: _drop, ...rest }) => rest),
       reading: speech(r),
       speak: speakSession(r),
+      particles: particleSet(r),
       correction: isCorrection(r.targetTable) ? proposalOf(r.proposed) : null
     })),
     pending: count?.total ?? 0
@@ -290,6 +340,13 @@ export async function approve(id: string, reviewerId: string, note?: string): Pr
           .select({ id: speakSteps.id })
           .from(speakSteps)
           .where(eq(speakSteps.sessionId, row.targetId))))
+    } else if (row.targetTable === 'particle_sets') {
+      // The seed brings a set in unpublished; approval is the only thing that
+      // puts its questions in the game.
+      await tx
+        .update(particleSets)
+        .set({ published: true, updatedAt: now })
+        .where(eq(particleSets.id, row.targetId))
     }
 
     await tx
@@ -357,6 +414,25 @@ export async function bulkDecide(
   }
 
   return { succeeded, failed }
+}
+
+/**
+ * Take one question out of a Particles set still awaiting review, so the rest
+ * can be approved without it. Refused once the set is published: a live
+ * question is not quietly deleted from under a game.
+ */
+export async function removeParticleQuestion(id: string): Promise<boolean> {
+  const [row] = await db
+    .delete(particleQuestions)
+    .where(and(
+      eq(particleQuestions.id, id),
+      inArray(particleQuestions.setId, db
+        .select({ id: particleSets.id })
+        .from(particleSets)
+        .where(eq(particleSets.published, false)))
+    ))
+    .returning({ id: particleQuestions.id })
+  return Boolean(row)
 }
 
 // ============ Corrections ============

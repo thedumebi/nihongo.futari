@@ -121,6 +121,23 @@ export const reviewItemSchema = z.object({
     }))
   }).nullable(),
 
+  /** A Particles set: one lesson's questions, each with its gap, options and why. */
+  particles: z.object({
+    lesson: z.string(),
+    slug: z.string(),
+    level: z.string(),
+    questions: z.array(z.object({
+      id: z.string(),
+      before: z.string(),
+      after: z.string(),
+      answer: z.string(),
+      alsoRight: z.array(z.string()),
+      wrong: z.array(z.string()),
+      note: z.string(),
+      translation: z.string().nullable()
+    }))
+  }).nullable(),
+
   /** A correction to readings already live: before, after, and why. */
   correction: correctionProposalSchema.nullable()
 }).openapi('ReviewItem')

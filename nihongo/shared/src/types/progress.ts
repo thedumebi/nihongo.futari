@@ -110,7 +110,8 @@ export const XP_FOR_ACTIVITY: Record<ActivityKind, number> = {
   'kanji-build': 5,
   'ghost-boss': 8,
   'story': 8,
-  'verb-forms': 5
+  'verb-forms': 5,
+  'particles': 5
 }
 
 export function xpForReview(event: Pick<AggregateEvent, 'rating' | 'stateBefore'>): number {
