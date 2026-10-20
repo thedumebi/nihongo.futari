@@ -318,6 +318,21 @@ async function decide(action: 'approve' | 'reject') {
                     <p class="mt-1 text-sm text-[var(--color-muted)]">
                       {{ q.note }}
                     </p>
+                    <!-- A live question this entry changes: the change above, how it reads now below. -->
+                    <div v-if="q.previous" class="mt-2 border-t border-[var(--color-border)] pt-2">
+                      <p class="text-xs uppercase tracking-wide text-[var(--color-accent)]">
+                        Changes when approved. Now it reads:
+                      </p>
+                      <p class="mt-1 text-sm line-through decoration-[var(--color-muted)]" style="font-family: var(--font-jp)">
+                        <span class="text-[var(--color-muted)]">Wrong:</span> {{ q.previous.wrong.join(', ') }}
+                        <template v-if="q.previous.alsoRight.length">
+                          <span class="ml-3 text-[var(--color-muted)]">Also right, never offered:</span> {{ q.previous.alsoRight.join(', ') }}
+                        </template>
+                      </p>
+                      <p class="mt-1 text-sm text-[var(--color-muted)] line-through">
+                        {{ q.previous.note }}
+                      </p>
+                    </div>
                   </li>
                 </ol>
 

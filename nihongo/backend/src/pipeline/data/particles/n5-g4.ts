@@ -52,14 +52,14 @@ export const N5_G4: AuthoredParticleSet[] = [
       { s: '山[や]海が好きです。', wrong: ['と', 'を', 'に'], why: 'や lists examples, "and so on". と would claim these two are the whole list.' },
       { s: '本[や]新聞などを読みます。', also: ['と'], wrong: ['を', 'が', 'で'], why: 'や joins examples, and など confirms there are more.' },
       { s: '本[や]新聞を読みます。', wrong: ['と', 'が', 'に'], why: 'や gives books and newspapers as examples. と would mean only those two.' },
-      { s: '海[や]山などが好きです。', also: ['と'], wrong: ['か', 'を', 'で'], why: 'や lists the sea and mountains as examples of what you like.' },
+      { s: '海[や]山などが好きです。', also: ['と'], wrong: ['か', 'を', 'で'], why: 'や lists the sea and mountains as examples, and など confirms there are more.' },
       { s: '靴[や]服を買います。', wrong: ['と', 'が', 'へ'], why: 'や says shoes, clothes and similar things. と would be exactly those two.' },
-      { s: '魚[や]肉を食べます。', wrong: ['と', 'が', 'に'], why: 'や names fish and meat as examples of what you eat.' },
-      { s: 'つくえの上にペン[や]ノートがあります。', also: ['と'], wrong: ['か', 'を', 'で'], why: 'や lists pens and notebooks as examples of what is on the desk.' },
-      { s: 'りんご[や]バナナを買いました。', also: ['と'], wrong: ['か', 'が', 'に'], why: 'や lists apples and bananas as examples. か would mean one or the other.' },
+      { s: '魚[や]肉を食べます。', wrong: ['と', 'を', 'に'], why: 'や names fish and meat as examples of what you eat. と would mean only those two.' },
+      { s: 'つくえの上にペン[や]ノートがあります。', wrong: ['か', 'を', 'と'], why: 'や lists pens and notebooks as examples of what is on the desk. と would mean only those two.' },
+      { s: 'りんご[や]バナナを買いました。', wrong: ['か', 'が', 'と'], why: 'や lists apples and bananas as examples. と would mean only those two.' },
       { s: '日曜日はそうじ[や]せんたくなどをします。', also: ['と'], wrong: ['か', 'が', 'で'], why: 'や lists examples of chores, and など confirms there are more.' },
-      { s: '犬[や]猫が好きです。', also: ['と'], wrong: ['か', 'を', 'に'], why: 'や names dogs and cats as examples of animals you like.' },
-      { s: 'パン[や]たまごを食べます。', also: ['と'], wrong: ['か', 'が', 'に'], why: 'や lists bread and eggs as examples of what you eat.' }
+      { s: '犬[や]猫が好きです。', wrong: ['か', 'を', 'と'], why: 'や names dogs and cats as examples of animals you like. と would mean only those two.' },
+      { s: 'パン[や]たまごを食べます。', wrong: ['か', 'が', 'と'], why: 'や lists bread and eggs as examples of what you eat. と would mean only those two.' }
     ]
   },
   {

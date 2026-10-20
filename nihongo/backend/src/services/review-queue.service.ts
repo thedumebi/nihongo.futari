@@ -1,6 +1,6 @@
 import type { CorrectionTable, ReviewKind } from '@nihongo/shared/constants'
 import type { FuriganaSegment } from '@nihongo/shared/lib'
-import type { BulkReviewResult, CorrectionProposal, ReviewItem, ReviewListResponse } from '@nihongo/shared/types'
+import type { BulkReviewResult, CorrectionProposal, ParticleEdit, ReviewItem, ReviewListResponse } from '@nihongo/shared/types'
 
 import { CORRECTION_TABLES, REVIEW_KIND_TABLES } from '@nihongo/shared/constants'
 import db from '@nihongo/shared/db'
@@ -27,7 +27,7 @@ import {
   words
 } from '@nihongo/shared/db/schema'
 import { clozeFurigana, correctedAnswers, withLineReading } from '@nihongo/shared/lib'
-import { correctionProposalSchema } from '@nihongo/shared/types'
+import { correctionProposalSchema, particleProposalSchema } from '@nihongo/shared/types'
 import { aliasedTable, and, asc, eq, inArray, like, sql } from 'drizzle-orm'
 
 /** Second alias: a queue row can point straight at a grammar point. */
@@ -233,6 +233,8 @@ export async function listPending(
   function particleSet(r: typeof rows[number]): ReviewItem['particles'] {
     if (r.targetTable !== 'particle_sets' || !r.particleSlug)
       return null
+    // A proposed change is shown as the question would be, with what it says now beside it.
+    const edits = particleEditsOf(r.proposed)
     return {
       lesson: r.particleTitle!,
       slug: r.particleSlug,
@@ -241,7 +243,16 @@ export async function listPending(
         .filter(q => q.setId === r.targetId)
         .map(({ setId: _drop, text, blankStart, blankEnd, ...q }) => {
           const chars = [...text]
-          return { ...q, before: chars.slice(0, blankStart).join(''), after: chars.slice(blankEnd).join('') }
+          const edit = edits.get(q.id)
+          const now = { alsoRight: q.alsoRight, wrong: q.wrong, note: q.note }
+          const changed = edit !== undefined && JSON.stringify({ alsoRight: edit.alsoRight, wrong: edit.wrong, note: edit.note }) !== JSON.stringify(now)
+          return {
+            ...q,
+            ...(changed ? { alsoRight: edit.alsoRight, wrong: edit.wrong, note: edit.note } : {}),
+            before: chars.slice(0, blankStart).join(''),
+            after: chars.slice(blankEnd).join(''),
+            previous: changed ? now : null
+          }
         })
     }
   }
@@ -360,6 +371,14 @@ export async function approve(id: string, reviewerId: string, note?: string): Pr
             .from(particleQuestions)
             .where(eq(particleQuestions.setId, row.targetId)))
         ))
+      // And the changes it proposes to questions the set already had: held
+      // in the row until now, so a live question never changes unreviewed.
+      for (const edit of particleEditsOf(row.proposed).values()) {
+        await tx
+          .update(particleQuestions)
+          .set({ alsoRight: edit.alsoRight, wrong: edit.wrong, note: edit.note })
+          .where(and(eq(particleQuestions.id, edit.id), eq(particleQuestions.setId, row.targetId)))
+      }
     }
 
     await tx
@@ -454,6 +473,12 @@ export async function removeParticleQuestion(id: string): Promise<boolean> {
 function proposalOf(proposed: unknown): CorrectionProposal | null {
   const parsed = correctionProposalSchema.safeParse(proposed)
   return parsed.success ? parsed.data : null
+}
+
+/** A Particles row's proposed changes by question, the last word on each one winning. */
+function particleEditsOf(proposed: unknown): Map<string, ParticleEdit> {
+  const parsed = particleProposalSchema.safeParse(proposed)
+  return new Map((parsed.success ? parsed.data.edits ?? [] : []).map(e => [e.id, e]))
 }
 
 function correctionSubject(table: string, proposed: unknown): string | null {

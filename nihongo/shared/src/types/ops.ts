@@ -69,6 +69,29 @@ export const correctionProposalSchema = z.discriminatedUnion('type', [
 
 export type CorrectionProposal = z.infer<typeof correctionProposalSchema>
 
+/** A change to a question a Particles set already has: its options and its note as they would be. */
+export const particleEditSchema = z.object({
+  id: z.string(),
+  alsoRight: z.array(z.string()),
+  wrong: z.array(z.string()),
+  note: z.string()
+}).openapi('ParticleEdit')
+
+export type ParticleEdit = z.infer<typeof particleEditSchema>
+
+/**
+ * What a Particles set's queue row proposes: how many questions came with it,
+ * and changes to questions it already had. The changes wait in the row, and
+ * approving it is what applies them, so a live question never changes unreviewed.
+ */
+export const particleProposalSchema = z.object({
+  point: z.string(),
+  questions: z.number().int().optional(),
+  edits: z.array(particleEditSchema).optional()
+})
+
+export type ParticleProposal = z.infer<typeof particleProposalSchema>
+
 /**
  * One item awaiting sign-off, with everything a reviewer needs on screen at
  * once: the claim, the prose, and the exact source quotes behind it. Reviewing
@@ -136,7 +159,9 @@ export const reviewItemSchema = z.object({
       note: z.string(),
       translation: z.string().nullable(),
       /** A sentence written for this set: published by approving it. */
-      newSentence: z.boolean()
+      newSentence: z.boolean(),
+      /** Set when approving changes this question: what it says now. The fields above are the change. */
+      previous: particleEditSchema.omit({ id: true }).nullable()
     }))
   }).nullable(),
 
