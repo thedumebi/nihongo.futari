@@ -15,7 +15,7 @@ import {
   wordSenses
 } from '@nihongo/shared/db/schema'
 import { ambiguousPrompts, firstMora, recallGloss, recallSchedule } from '@nihongo/shared/lib'
-import { and, desc, eq, gte, inArray, isNotNull, lt, or, sql } from 'drizzle-orm'
+import { and, desc, eq, inArray, isNotNull, or, sql } from 'drizzle-orm'
 
 import { assetUrl, speakAnswerAudio, speakSay } from '../lib/assets.js'
 import { GLOSS_AUDIO_LEVELS, glossAudioPath } from '../lib/audio-key.js'
@@ -25,8 +25,8 @@ import { currentClips } from './clips.service.js'
  * Recall: a hands-free session built from what the learner is shaky on.
  *
  * The words still on their learning steps, the ones that keep slipping
- * (ghosts), and the ones missed in the last week — plus Speak prompts missed in
- * a session. Each is asked in English and answered aloud, Pimsleur style, and
+ * (ghosts), and the ones missed in the last week, plus Speak prompts missed in
+ * a session, by the same rule. Each is asked in English and answered aloud, Pimsleur style, and
  * comes back within the session at growing gaps (`recallSchedule`).
  *
  * It never writes a review: there is no grading hands-free, and the SRS log
@@ -126,7 +126,10 @@ export async function getRecallSession(userId: string, languageCode: string, siz
     })
   }
 
-  // Speak prompts missed in a session and not yet settled.
+  // Speak prompts missed in a session and not yet settled, by the same rule
+  // as words: still learning or relearning, a ghost, or missed in the last
+  // week. It was "missed in review ever" (lapses >= 1), so a prompt slipped
+  // once stayed in every Recall for good.
   const speakRows = await db
     .select({
       stepId: speakSteps.id,
@@ -146,8 +149,9 @@ export async function getRecallSession(userId: string, languageCode: string, siz
       eq(srsCards.suspended, false),
       eq(studyItems.published, true),
       eq(studyItems.active, true),
-      or(lt(srsCards.state, 2), eq(srsCards.ghost, true), gte(srsCards.lapses, 1))
+      or(inArray(srsCards.state, [1, 3]), eq(srsCards.ghost, true), missedRecently)
     ))
+    .orderBy(desc(srsCards.ghost), srsCards.due)
     .limit(MAX_SPEAK)
 
   for (const r of speakRows) {
