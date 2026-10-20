@@ -55,6 +55,7 @@ import {
   applyReview,
   canFastForward,
   clampReviewedAt,
+  distinguishingStart,
   effectiveCardState,
   emptyCardState,
   evaluateGhost,
@@ -988,6 +989,54 @@ async function withSenses(items: StudyQueueItem[]): Promise<StudyQueueItem[]> {
     : item)
 }
 
+/** An English meaning as compared for twins: no asides, case or spacing. */
+function plainGloss(text: string): string {
+  return text.replace(/\s*\([^)]*\)/g, '').replace(/\s+/g, ' ').trim().toLowerCase()
+}
+
+/**
+ * Give each fill-in card the other words its meaning fits, and the sound that
+ * tells its own word from them (see `distinguishingStart`). "The missing word
+ * means 'car'" is as true of 車 as of 自動車, so the card says which it wants
+ * ("starts with じ"), and the page treats the other word typed as neither
+ * right nor wrong.
+ *
+ * A twin is an everyday N5 or N4 word whose first meaning, asides aside, is
+ * exactly the card's meaning: one a learner might actually type.
+ */
+async function withClozeTwins(items: StudyQueueItem[], languageId: string): Promise<StudyQueueItem[]> {
+  const cloze = items.filter(i => i.prompt?.kind === 'cloze' && typeof i.prompt.gloss === 'string')
+  const glosses = [...new Set(cloze.map(i => plainGloss(String(i.prompt!.gloss))))].filter(Boolean)
+  if (glosses.length === 0)
+    return items
+  const rows = await db.execute<{ form: string, reading: string, gloss: string }>(sql`
+    select distinct w.primary_form as form, w.primary_reading as reading,
+      lower(trim(regexp_replace(regexp_replace(g->>'text', '\s*\([^)]*\)', '', 'g'), '\s+', ' ', 'g'))) as gloss
+    from words w
+    join study_items si on si.word_id = w.id and si.published and si.active
+    join word_senses ws on ws.word_id = w.id and ws.sort_index = 0
+    join language_levels lv on lv.id = w.level_id and lv.code in ('N5', 'N4')
+    cross join lateral jsonb_array_elements(ws.glosses) g
+    where w.language_id = ${languageId} and w.published and w.is_common and w.primary_reading is not null
+      and coalesce(g->>'lang', 'en') in ('en', 'eng')
+      and lower(trim(regexp_replace(regexp_replace(g->>'text', '\s*\([^)]*\)', '', 'g'), '\s+', ' ', 'g'))) in ${glosses}
+  `)
+  return items.map((item) => {
+    if (item.prompt?.kind !== 'cloze' || typeof item.prompt.gloss !== 'string')
+      return item
+    const gloss = plainGloss(item.prompt.gloss)
+    const reading = typeof item.prompt.hint === 'string' ? item.prompt.hint : ''
+    const accepted = new Set([item.answer.primary, ...item.answer.accepted])
+    const twins = [...new Map(rows.rows
+      .filter(r => r.gloss === gloss && !accepted.has(r.form) && !accepted.has(r.reading) && r.reading !== reading)
+      .map(r => [`${r.form}|${r.reading}`, { form: r.form, reading: r.reading }])).values()]
+    if (twins.length === 0 || !reading)
+      return item
+    const startsWith = distinguishingStart(reading, twins.map(t => t.reading))
+    return { ...item, prompt: { ...item.prompt, twins, ...(startsWith ? { startsWith } : {}) } }
+  })
+}
+
 /** Kanji this learner has graduated a card for. */
 async function knownKanjiCharacters(userId: string, languageId: string): Promise<Set<string>> {
   const rows = await db.execute<{ character: string }>(sql`
@@ -1493,8 +1542,9 @@ export async function getQueue(userId: string, query: StudyQueueQuery): Promise<
   // Two kinds of new card, limited separately: a word never met (its first
   // card is its introduction, counted against today's new WORDS), and another
   // card of a word already met (extra practice, counted against its own
-  // multiple). Introductions first; extras fill what is left of the batch, and
-  // carry on alone once the day's words are done.
+  // multiple). Introductions first; in a mixed session extras fill what is
+  // left of the batch, and in any session they carry on alone once the day's
+  // words are done.
   const pickNew = (kind: SQL, limit: number) => limit <= 0
     ? Promise.resolve([])
     : db
@@ -1535,7 +1585,12 @@ export async function getQueue(userId: string, query: StudyQueueQuery): Promise<
         .limit(limit)
   const slots = Math.max(0, query.limit - dueRows.length)
   const introRows = query.mode === 'due' ? [] : await pickNew(sql`not ${itemHasCard(userId)}`, Math.min(budget.wordsLeft, slots))
-  const extraRows = query.mode === 'due' ? [] : await pickNew(itemHasCard(userId), Math.min(budget.extrasLeft, slots - introRows.length))
+  // "Learning new words" means new words: a met word's next card only comes
+  // once there are none to give, never shuffled in among them. Mixed
+  // sessions still fill the batch with both.
+  const extraRows = query.mode === 'due' || (query.mode === 'new' && introRows.length > 0)
+    ? []
+    : await pickNew(itemHasCard(userId), Math.min(budget.extrasLeft, slots - introRows.length))
   const newRows = [...introRows, ...extraRows]
 
   // --- Finish the stage -----------------------------------------------------
@@ -1730,6 +1785,7 @@ export async function getQueue(userId: string, query: StudyQueueQuery): Promise<
   items = [...oneEach.values()]
   items = await withSeries(items, userId, language.id)
   items = await withSenses(items)
+  items = await withClozeTwins(items, language.id)
 
   shuffle(items)
 

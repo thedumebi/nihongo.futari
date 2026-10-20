@@ -16,7 +16,7 @@ import type {
   WordGloss
 } from '@nihongo/shared/types'
 
-import { describeScript, gradeAnswer, gradeHandwriting, ratingFromGrade, samplePath, scriptOf, seriesReading, uuidv7, VERB_CLASS_NOTE, VERB_FORM_INFO } from '@nihongo/shared/lib'
+import { describeScript, gradeAnswer, gradeHandwriting, ratingFromGrade, samplePath, scriptOf, seriesReading, typedTwin, uuidv7, VERB_CLASS_NOTE, VERB_FORM_INFO } from '@nihongo/shared/lib'
 import { useLocalStorage } from '@vueuse/core'
 import { GraduationCap, Layers } from 'lucide-vue-next'
 import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
@@ -284,7 +284,9 @@ const focusHint = computed(() =>
     ? 'Only cards the scheduler asked for. Nothing new is mixed in.'
     : wordsDone.value
       ? 'Today\'s new words are done. These are other cards of words you have met: another way to practise each.'
-      : 'Only cards you have never seen. Nothing you already know is mixed in.')
+      : stageWait.value
+        ? 'No new words are open in this stage right now. These are other cards of words you have met: another way to practise each.'
+        : 'Only words you have never met. Nothing you already know is mixed in.')
 
 /**
  * The stage you just finished, while the congratulation is on screen.
@@ -835,6 +837,23 @@ const clozeGloss = computed(() => {
 })
 
 /**
+ * Other everyday words the same English fits (車 and 自動車 are both "car"),
+ * and the sound that tells this card's word from them. Without it the
+ * meaning alone could not say which word was wanted, and typing the other
+ * one was marked wrong.
+ */
+const clozeTwins = computed(() => {
+  const value = current.value?.prompt?.twins
+  return isCloze.value && Array.isArray(value) ? value as Array<{ form: string, reading: string }> : []
+})
+const clozeStart = computed(() => {
+  const value = current.value?.prompt?.startsWith
+  return clozeTwins.value.length && typeof value === 'string' ? value : ''
+})
+/** A twin typed: it fits too, but this card wants its own word. Neither right nor wrong. */
+const twinNote = ref('')
+
+/**
  * When a wrong fill-in answer is a real word, what that word means, so the
  * reader sees why it is not the one wanted: "家族 (かぞく) means family". Looked
  * up after the verdict; offline, or for a typo, there is simply nothing to add.
@@ -966,6 +985,9 @@ const imageSrc = computed(() => {
   return typeof src === 'string' ? src : ''
 })
 
+/** The word's drawing, shown as a picture under the verdict once answered. */
+const shownArt = computed(() => revealed.value && imageSrc.value ? imageSrc.value : '')
+
 /**
  * What sits behind the card.
  *
@@ -984,22 +1006,26 @@ const cardArt = computed(() => {
   // the sentence. Before the reveal that rules out roughly three cards in five;
   // after it, none. Nine hundred drawings were otherwise sitting unused on the
   // majority of the cards that reference them.
-  if (imageSrc.value && (revealed.value || (!isCloze.value && !isOrdering.value && !answerIsEnglish.value)))
+  // Once answered, the word's own drawing moves out from behind the card into
+  // a picture of its own under the verdict (`shownArt`): at full strength
+  // behind the answer box and the buttons, it read as something drawn over
+  // them, not a backdrop.
+  if (shownArt.value)
+    return ''
+  if (imageSrc.value && !isCloze.value && !isOrdering.value && !answerIsEnglish.value)
     return imageSrc.value
   return focused.value ? '' : (activeDeck.value?.imageUrl ?? '')
 })
 
+/** What opens full screen: the picture under the verdict, else the backdrop. */
+const fullArt = computed(() => shownArt.value || cardArt.value)
+
 /**
- * How strongly the backdrop reads.
- *
- * Faint while the question stands so the prompt keeps the eye; stronger once
- * answered, because at that point the picture is the reward rather than a
- * distraction — and at 0.09 it was barely visible enough to count as shown.
+ * How strongly the backdrop reads: faint, so the prompt keeps the eye. Once
+ * answered, the word's own drawing is a picture of its own (`shownArt`), not a
+ * stronger backdrop.
  */
-const cardArtOpacity = computed(() =>
-  revealed.value && imageSrc.value
-    ? 'var(--card-art-opacity-revealed)'
-    : 'var(--card-art-opacity)')
+const cardArtOpacity = 'var(--card-art-opacity)'
 
 /** Whether the illustration is open full screen. */
 const artOpen = ref(false)
@@ -1014,7 +1040,7 @@ const artOpen = ref(false)
  * image swallowing clicks meant for the answer input or the rating buttons.
  */
 function openArt(event: MouseEvent) {
-  if (!cardArt.value)
+  if (!fullArt.value)
     return
   const target = event.target as HTMLElement | null
   if (target?.closest('button, a, input, textarea, select, label, canvas'))
@@ -1246,6 +1272,16 @@ function check() {
   }
 
   const result = gradeAnswer(item.graderCode, answer.value, item.answer)
+  // The other word the English fits: not a miss, and not this card's word.
+  // Say so and let them try again; nothing is recorded.
+  const twin = !result.correct && isCloze.value ? typedTwin(item.graderCode, answer.value, clozeTwins.value) : null
+  if (twin) {
+    twinNote.value = `${twin.form} (${twin.reading}) fits too, but this card wants another word for it${clozeStart.value ? `, one starting with ${clozeStart.value}` : ''}. Try again.`
+    answer.value = ''
+    answerInput.value?.focus()
+    return
+  }
+  twinNote.value = ''
   wasCorrect.value = result.correct
   expected.value = result.expected
   if (!result.correct && isCloze.value && answer.value.trim())
@@ -1367,6 +1403,7 @@ function resetCard() {
   // survive a deck change.
   pickedWord.value = null
   otherWord.value = null
+  twinNote.value = ''
   shownAt.value = Date.now()
 }
 
@@ -1890,7 +1927,9 @@ watch(() => lang.code, async () => {
               {{ clozeTranslation }}
             </p>
             <p v-if="clozeGloss" class="mt-1 text-center text-sm text-[var(--color-muted)]">
-              The missing word means "{{ clozeGloss }}"
+              The missing word means "{{ clozeGloss }}"<template v-if="clozeStart && !revealed">
+                (starts with <span style="font-family: var(--font-jp)">{{ clozeStart }}</span>)
+              </template>
             </p>
 
             <p v-if="isOrdering && clozeTranslation" class="mt-6 text-center text-lg text-[var(--color-heading)]">
@@ -2131,6 +2170,9 @@ watch(() => lang.code, async () => {
                 autocorrect="off"
                 spellcheck="false"
               >
+              <p v-if="twinNote && !revealed" class="text-center text-sm text-[var(--color-muted)]" style="font-family: var(--font-jp)">
+                {{ twinNote }}
+              </p>
 
               <div v-if="revealed && handwriting" class="text-center">
                 <p class="font-semibold" :class="handwriting.passed ? 'text-[var(--color-success)]' : 'text-[var(--color-danger)]'">
@@ -2182,6 +2224,17 @@ watch(() => lang.code, async () => {
                   </ul>
                 </div>
               </div>
+
+              <!-- The word's drawing, once answered: its own picture, tap to enlarge. -->
+              <button
+                v-if="shownArt"
+                type="button"
+                class="mx-auto block cursor-zoom-in"
+                aria-label="See the picture full size"
+                @click="artOpen = true"
+              >
+                <img :src="shownArt" alt="" class="h-36 w-36 object-contain" loading="lazy">
+              </button>
 
               <template v-if="revealed && wasCorrect">
                 <div class="flex gap-2">
@@ -2267,8 +2320,8 @@ watch(() => lang.code, async () => {
           the picture spans edge to edge.
         -->
         <img
-          v-if="cardArt"
-          :src="cardArt"
+          v-if="fullArt"
+          :src="fullArt"
           alt=""
           class="max-h-[100dvh] w-screen cursor-zoom-out bg-white object-contain"
           @click="artOpen = false"
