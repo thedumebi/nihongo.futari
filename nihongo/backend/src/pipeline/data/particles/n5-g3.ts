@@ -85,7 +85,12 @@ export const N5_G3: AuthoredParticleSet[] = [
       { s: '電車[か]車で行きます。', wrong: ['を', 'が', 'に'], why: 'か joins the two options "train or car".' },
       { s: '今日[か]明日行きます。', wrong: ['を', 'が', 'と'], why: 'か gives the choice between today and tomorrow. と would mean going on both days.' },
       { s: '赤と黒のマジック[か]サインペン持ってない？', wrong: ['を', 'が', 'に'], why: 'か offers two alternatives: markers or felt-tip pens.' },
-      { s: 'あの犬はオス[か]メスか。', wrong: ['を', 'が', 'に'], why: 'The question "male or female?" puts か between the two choices.' }
+      { s: 'あの犬はオス[か]メスか。', wrong: ['を', 'が', 'に'], why: 'The question "male or female?" puts か between the two choices.' },
+      { s: '水[か]お茶を飲みます。', wrong: ['と', 'を', 'が'], why: 'か between two nouns means "or". と would mean drinking both.' },
+      { s: '月曜日[か]火曜日に行きます。', wrong: ['と', 'を', 'が'], why: 'か offers a choice of days. と would mean going on both.' },
+      { s: 'ペン[か]えんぴつで書きます。', wrong: ['と', 'を', 'が'], why: 'か joins the two options: a pen or a pencil.' },
+      { s: 'りんご[か]バナナを食べます。', wrong: ['と', 'が', 'に'], why: 'か gives a choice of one fruit or the other.' },
+      { s: '父[か]母に聞きます。', wrong: ['と', 'を', 'が'], why: 'か means "or": one of the two parents, not both.' }
     ]
   }
 ]

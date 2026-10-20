@@ -52,7 +52,13 @@ export const N5_G2: AuthoredParticleSet[] = [
       { s: '一日[に]一回勉強します。', wrong: ['で', 'を', 'と'], why: 'に after a period of time says "per": once a day.' },
       { s: '一日[に]三回食べます。', wrong: ['で', 'から', 'の'], why: '一日に三回 means three times per day. 一日で would mean within one day, not per day.' },
       { s: '一日[に]三回飲みます。', wrong: ['が', 'へ', 'を'], why: 'に ties the count to the period: three times per day.' },
-      { s: '一日[に]二回歩きます。', wrong: ['で', 'の', 'と'], why: 'に gives the rate: twice per day.' }
+      { s: '一日[に]二回歩きます。', wrong: ['で', 'の', 'と'], why: 'に gives the rate: twice per day.' },
+      { s: '週[に]二かい友達に会います。', wrong: ['が', 'を', 'で'], why: 'に after a period of time says "per": twice a week.' },
+      { s: '月[に]一度母に電話します。', wrong: ['で', 'を', 'の'], why: 'に ties the count to the period: once per month.' },
+      { s: '一年[に]一かい日本へ行きます。', wrong: ['を', 'と', 'が'], why: 'に gives the rate: once per year.' },
+      { s: '一日[に]二かいメールを見ます。', wrong: ['が', 'を', 'の'], why: 'に after a day says "per day": twice a day.' },
+      { s: '週[に]三かい学校へ行きます。', wrong: ['を', 'と', 'が'], why: 'に after 週 says "per week": three times a week.' },
+      { s: '月[に]二かい映画を見ます。', wrong: ['が', 'を', 'で'], why: 'に gives the rate: twice per month.' }
     ]
   },
   {
