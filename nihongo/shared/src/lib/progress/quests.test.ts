@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 
 import { evaluateAchievements } from './achievements.js'
-import { QUEST_POOL, questProgress, questsFor, REVIEW_QUEST_MIN } from './quests.js'
+import { GAME_QUESTS, GAME_QUESTS_FROM, QUEST_POOL, questProgress, questsFor, REVIEW_QUEST_MIN } from './quests.js'
 
 describe('questsFor', () => {
   it('gives the same three quests all day, and others on another day', () => {
@@ -57,7 +57,7 @@ describe('questProgress', () => {
 
 describe('questProgress — the newer quests', () => {
   it('counts new cards learned today, and a story but not a course session for the story quest', () => {
-    const quests = QUEST_POOL.filter(q => ['new-5', 'story-1', 'game-1'].includes(q.code))
+    const quests = QUEST_POOL.filter(q => ['new-5', 'story-1', 'kanji-build-1'].includes(q.code))
     const progress = questProgress(quests, {
       reviews: 0,
       newWords: 6,
@@ -65,16 +65,51 @@ describe('questProgress — the newer quests', () => {
     })
     expect(progress.map(p => [p.code, p.progress, p.done])).toEqual([
       ['new-5', 5, true],
-      ['game-1', 1, true],
-      ['story-1', 0, false]
+      ['story-1', 0, false],
+      ['kanji-build-1', 1, true]
     ])
   })
 
-  it('rotates through the whole pool across a month', () => {
+  it('rotates through the whole pool, every game included, over a few months', () => {
     const seen = new Set<string>()
-    for (let d = 1; d <= 31; d++)
-      questsFor('u1', `2026-10-${String(d).padStart(2, '0')}`).forEach(q => seen.add(q.code))
-    expect(seen.size).toBe(QUEST_POOL.length)
+    for (let d = 0; d < 120; d++)
+      questsFor('u1', day(d), undefined, { ghosts: true }).forEach(q => seen.add(q.code))
+    expect([...seen].sort()).toEqual(QUEST_POOL.map(q => q.code).sort())
+  })
+})
+
+/** A study day from the first one with a quest per game. */
+function day(offset: number): string {
+  const d = new Date(`${GAME_QUESTS_FROM}T00:00:00Z`)
+  d.setUTCDate(d.getUTCDate() + offset)
+  return d.toISOString().slice(0, 10)
+}
+
+const gameCodes = new Set(GAME_QUESTS.map(q => q.code))
+
+describe('questsFor: the games', () => {
+  it('never sets more than one game in a day, with or without a review goal', () => {
+    for (let u = 0; u < 20; u++) {
+      for (let d = 0; d < 60; d++) {
+        for (const reviews of [undefined, REVIEW_QUEST_MIN - 1]) {
+          const quests = questsFor(`user-${u}`, day(d), reviews, { ghosts: true })
+          expect(quests.filter(q => gameCodes.has(q.code)).length).toBeLessThanOrEqual(1)
+          expect(new Set(quests.map(q => q.code)).size).toBe(3)
+        }
+      }
+    }
+  })
+
+  it('offers the ghost boss only in a week that has ghosts', () => {
+    const codes = (ghosts: boolean) => Array.from({ length: 200 }, (_, d) => questsFor('u1', day(d), undefined, { ghosts }).map(q => q.code)).flat()
+    expect(codes(false)).not.toContain('ghost-boss-1')
+    expect(codes(true)).toContain('ghost-boss-1')
+  })
+
+  it('leaves the days before the change as they were', () => {
+    const before = Array.from({ length: 30 }, (_, d) => questsFor('u1', `2026-09-${String(d + 1).padStart(2, '0')}`).map(q => q.code)).flat()
+    expect(before).toContain('game-1')
+    expect(before).not.toContain('particles-1')
   })
 })
 

@@ -37,7 +37,12 @@ const QUEST_LINKS: Record<string, string> = {
   'reading-1': ROUTES.READ,
   'crossword-1': ROUTES.CROSSWORD,
   'recall-1': ROUTES.RECALL,
-  'game-1': ROUTES.GAMES
+  'game-1': ROUTES.GAMES,
+  'listening-1': ROUTES.GAME_LISTENING,
+  'kanji-build-1': ROUTES.GAME_KANJI_BUILD,
+  'verb-forms-1': ROUTES.GAME_VERB_FORMS,
+  'particles-1': ROUTES.GAME_PARTICLES,
+  'ghost-boss-1': ROUTES.GAME_GHOST_BOSS
 }
 
 // ============ Stores ============
