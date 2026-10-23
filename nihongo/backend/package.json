@@ -92,7 +92,7 @@
     "@repo/eslint-config": "workspace:*",
     "@repo/typescript-config": "workspace:*",
     "@types/luxon": "^3.7.1",
-    "@types/node": "^22.0.0",
+    "@types/node": "^24.0.0",
     "@types/pg": "^8.15.4",
     "@types/web-push": "^3.6.4",
     "eslint": "^9.31.0",

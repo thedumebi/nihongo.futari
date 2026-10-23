@@ -1,7 +1,12 @@
 # syntax=docker/dockerfile:1
 
+# Versions come from nagaya's sites.yaml → runtime; its runtime-sync rewrites
+# these ARG lines. Change them there, not here.
+ARG NODE_VERSION=24.22.1
+ARG NGINX_VERSION=1.30.6
+
 # ---- Base ----
-FROM node:22.17.0-alpine AS base
+FROM node:${NODE_VERSION}-alpine AS base
 RUN npm install -g pnpm@10.13.1
 WORKDIR /app
 
@@ -33,7 +38,7 @@ RUN pnpm --filter frontend build
 # ---- Runner (unprivileged nginx) ----
 # nginx-unprivileged runs as non-root (uid 101) and listens on 8080, so the
 # pod can drop root without the "bind :80 permission denied" problem.
-FROM nginxinc/nginx-unprivileged:1.27-alpine AS runner
+FROM nginxinc/nginx-unprivileged:${NGINX_VERSION}-alpine AS runner
 COPY nihongo/frontend/nginx.conf /etc/nginx/conf.d/default.conf
 COPY --from=build --chown=101:101 /app/nihongo/frontend/dist /usr/share/nginx/html
 # Runtime configuration (see env.sh). The stock entrypoint runs everything in
