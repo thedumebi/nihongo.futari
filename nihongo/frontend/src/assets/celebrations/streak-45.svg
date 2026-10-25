@@ -1,0 +1,33 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" width="200" height="200" role="img" aria-label="A climber on the summit of Mount Fuji gripping a flag planted in the snow, scalloped clouds below">
+<rect width="200" height="200" fill="#E3D8C6"/>
+<g fill="none" stroke="#2F4858" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+<path d="M100 60L394 119L349 227ZM100 60L267 309L159 354ZM100 60L41 354L-67 309ZM100 60L-149 227L-194 119ZM100 60L-194 1L-149 -107ZM100 60L-67 -189L41 -234ZM100 60L159 -234L267 -189ZM100 60L349 -107L394 1Z" fill="#F2EBDD" stroke="none"/>
+<circle cx="52.8" cy="87.6" r="3.6" fill="#FBFAF7" stroke="none"/>
+<path d="M22.2 56.3 23.8 62 29.4 63.5 23.8 65.1 22.2 70.7 20.6 65.1 15 63.5 20.6 62Z" fill="#D8A7A0" stroke="none"/>
+<rect x="15.2" y="8.1" width="10.8" height="5.4" rx="1" fill="#7FA5C0" transform="rotate(72 20.6 10.8)" stroke="none"/>
+<path d="M143.1 157.8 141.5 169.1 132.5 162.1Z" fill="#B7C5AE" stroke="none"/>
+<circle cx="113.5" cy="153.8" r="3.6" fill="#A9C6DC" stroke="none"/>
+<path d="M153.3 26.6 154.9 32.2 160.5 33.8 154.9 35.4 153.3 41 151.7 35.4 146.1 33.8 151.7 32.2Z" fill="#F2EBDD" stroke="none"/>
+<rect x="72.6" y="105" width="10.8" height="5.4" rx="1" fill="#FBFAF7" transform="rotate(36 78 107.7)" stroke="none"/>
+<path d="M37.7 43 41.9 53.7 30.6 51.9Z" fill="#D8A7A0" stroke="none"/>
+<circle cx="126.9" cy="139.5" r="3.6" fill="#7FA5C0" stroke="none"/>
+<path d="M155.8 58.4 157.4 64 163 65.6 157.4 67.2 155.8 72.8 154.2 67.2 148.6 65.6 154.2 64Z" fill="#B7C5AE" stroke="none"/>
+<rect x="65.5" y="148.4" width="10.8" height="5.4" rx="1" fill="#A9C6DC" transform="rotate(156 70.9 151.1)" stroke="none"/>
+<path d="M97.3 103.9 101.7 114.5 90.4 113Z" fill="#F2EBDD" stroke="none"/>
+<circle cx="123.8" cy="108.7" r="3.6" fill="#FBFAF7" stroke="none"/>
+<path d="M45.2 6.3 46.8 11.9 52.4 13.5 46.8 15 45.2 20.7 43.7 15 38 13.5 43.7 11.9Z" fill="#D8A7A0" stroke="none"/>
+<rect x="55.3" y="109.5" width="10.8" height="5.4" rx="1" fill="#7FA5C0" transform="rotate(106 60.7 112.2)" stroke="none"/>
+<path d="M51.7 63.3 48 74.1 40.4 65.5Z" fill="#B7C5AE" stroke="none"/>
+<circle cx="16.9" cy="109" r="3.6" fill="#A9C6DC" stroke="none"/>
+<path d="M70.3 10.4 71.9 16 77.5 17.6 71.9 19.1 70.3 24.8 68.8 19.1 63.1 17.6 68.8 16Z" fill="#F2EBDD" stroke="none"/>
+<rect x="137.6" y="16.3" width="10.8" height="5.4" rx="1" fill="#FBFAF7" transform="rotate(92 143 19)" stroke="none"/>
+<path d="M93.5 160.6 104.6 163.5 96.6 171.7Z" fill="#D8A7A0" stroke="none"/>
+<circle cx="72.3" cy="127.6" r="3.6" fill="#7FA5C0" stroke="none"/>
+<path d="M164.6 82.8 166.2 88.4 171.8 90 166.2 91.6 164.6 97.2 163 91.6 157.4 90 163 88.4Z" fill="#B7C5AE" stroke="none"/>
+<rect x="4" y="78" width="10.8" height="5.4" rx="1" fill="#A9C6DC" transform="rotate(69 9.4 80.7)" stroke="none"/>
+<path d="M44.3 36.6 55.6 35.1 51.3 45.7Z" fill="#F2EBDD" stroke="none"/>
+<circle cx="166.8" cy="49.5" r="3.6" fill="#FBFAF7" stroke="none"/>
+<path d="M13.6 34.7 15.2 40.3 20.8 41.9 15.2 43.5 13.6 49.1 12 43.5 6.4 41.9 12 40.3Z" fill="#D8A7A0" stroke="none"/>
+<path d="M70 84H136Q156 136 204 176V210H-4V176Q46 136 70 84Z" fill="#7FA5C0"/><path d="M70 84H136L147.2 108.3L139.2 101.3L129.2 116.3L104 103.3L115 118.3L69 102.3L62 117.3L57 108.3Z" fill="#FBFAF7"/><path d="M-4 180Q50 174 100 180T204 178V204H-4Z" fill="#B7C5AE"/><path d="M2 134a8.3 8.3 0 0 1 5.2 -13.5a11.5 11.5 0 0 1 20.8 -3.1a9.4 9.4 0 0 1 14.6 7.3a7.3 7.3 0 0 1 9.4 9.4Z" fill="#FBFAF7"/><path d="M148 118a8.7 8.7 0 0 1 5.4 -14.1a11.9 11.9 0 0 1 21.7 -3.2a9.8 9.8 0 0 1 15.2 7.6a7.6 7.6 0 0 1 9.8 9.8Z" fill="#FBFAF7"/><path d="M128.5 90L128.5 16A2.5 2.5 0 0 0 123.5 16L123.5 90A2.5 2.5 0 0 0 128.5 90Z" fill="#E3D8C6"/><path d="M128 18L164 28L128 40Z" fill="#D8A7A0"/><path d="M80.5 71.3L77.7 82.5A6.3 6.3 0 0 0 89.9 85.5L92.7 74.3A6.3 6.3 0 0 0 80.5 71.3Z" fill="#F2EBDD"/><path d="M97.3 74.3L100.1 85.5A6.3 6.3 0 0 0 112.3 82.5L109.5 71.3A6.3 6.3 0 0 0 97.3 74.3Z" fill="#F2EBDD"/><ellipse cx="81" cy="85.4" rx="11.2" ry="6.3" fill="#FBFAF7"/><ellipse cx="109" cy="85.4" rx="11.2" ry="6.3" fill="#FBFAF7"/><path d="M81.8 54.5L62.2 37.7A5.6 5.6 0 0 0 55 46.3L74.6 63.1A5.6 5.6 0 0 0 81.8 54.5Z" fill="#D8A7A0"/><circle cx="55.8" cy="39.2" r="8.4" fill="#E3D8C6"/><rect x="78.2" y="47.6" width="33.6" height="30.8" rx="11.2" fill="#D8A7A0"/><path d="M109.8 58.9L129.4 42.1A5.6 5.6 0 0 0 122.2 33.5L102.6 50.3A5.6 5.6 0 0 0 109.8 58.9Z" fill="#D8A7A0"/><circle cx="95" cy="28" r="15.4" fill="#E3D8C6"/><path d="M79.6 26.7Q78.3 11.3 95 11.3Q111.7 11.3 110.4 26.7Q102.7 19 95 20.3Q87.3 19 79.6 26.7Z" fill="#2F4858"/><path d="M86.9 32.2Q89.2 27.7 91.5 32.2"/><circle cx="86" cy="35.1" r="2.1" fill="#D8A7A0" stroke="none"/><path d="M98.5 32.2Q100.8 27.7 103.1 32.2"/><circle cx="104" cy="35.1" r="2.1" fill="#D8A7A0" stroke="none"/><path d="M90.5 35.7L99.5 35.7Q95 45.3 90.5 35.7Z" fill="#D8A7A0"/><circle cx="125.8" cy="37.8" r="7.7" fill="#E3D8C6"/>
+</g>
+</svg>

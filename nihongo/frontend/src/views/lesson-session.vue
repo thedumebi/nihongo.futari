@@ -16,6 +16,7 @@ import KanaLesson from '@/components/study/kana-lesson.vue'
 import OrderInput from '@/components/study/order-input.vue'
 import Button from '@/components/ui/button.vue'
 import Input from '@/components/ui/input.vue'
+import { useAnswerStreak } from '@/composables/use-answer-streak'
 import { playAudio } from '@/composables/use-audio'
 import { useFurigana } from '@/composables/use-furigana'
 import { ROUTES } from '@/constants'
@@ -33,6 +34,7 @@ import { useLanguageStore } from '@/store/language'
  * enough for the topic to enter review and for the missed ones to come back
  * first.
  */
+const { recordAnswer } = useAnswerStreak()
 const route = useRoute()
 const router = useRouter()
 const lang = useLanguageStore()
@@ -172,6 +174,7 @@ function submit() {
 
   correct.value = gradeAnswer(q.graderCode, given, q.answer).correct
   revealed.value = true
+  recordAnswer(correct.value)
   if (correct.value && !missed.value.has(q.id))
     firstTimeRight.value += 1
   if (!correct.value)

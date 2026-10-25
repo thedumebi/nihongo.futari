@@ -45,7 +45,9 @@ export const studySettingsSchema = z.object({
   /** Extra cards of words already met, per day, as a multiple of the new-word limit. */
   extraPracticeMultiple: z.number().int().min(1).max(3),
   /** The local hour a new study day starts: 0 (midnight) by default, up to 6am. */
-  dayBoundaryHour: z.number().int().min(0).max(6)
+  dayBoundaryHour: z.number().int().min(0).max(6),
+  /** A celebration at 5, 10, 15… answers right in a row. */
+  streakCelebrations: z.boolean()
 }).openapi('StudySettings')
 
 export type StudySettings = z.infer<typeof studySettingsSchema>

@@ -13,6 +13,7 @@ import CollapsibleCard from '@/components/ui/collapsible-card.vue'
 import Dropdown from '@/components/ui/dropdown.vue'
 import Input from '@/components/ui/input.vue'
 import Segmented from '@/components/ui/segmented.vue'
+import { setStreakCelebrations, streakCelebrationsOn } from '@/composables/use-answer-streak'
 import { FURIGANA_MODE_LABELS, useFurigana } from '@/composables/use-furigana'
 import { useToast } from '@/composables/use-toast'
 import { ROUTES } from '@/constants'
@@ -204,6 +205,22 @@ async function setExtraPractice(value: string) {
   }
 }
 
+/**
+ * A celebration at every 5 answers right in a row. Shown from the cache at
+ * once, and the cache follows the save, so turning it off takes effect on the
+ * very next answer.
+ */
+async function setCelebrations(on: boolean) {
+  const before = streakCelebrationsOn.value
+  setStreakCelebrations(on)
+  try {
+    await updateStudySettings({ streakCelebrations: on })
+  } catch {
+    setStreakCelebrations(before)
+    toast.error('Could not save that. Try again.')
+  }
+}
+
 onMounted(() => {
   void loadSettings()
   void loadHasPassword()
@@ -212,6 +229,7 @@ onMounted(() => {
     dailyNewLimit.value = s.dailyNewLimit
     extraPracticeMultiple.value = s.extraPracticeMultiple
     dayBoundaryHour.value = s.dayBoundaryHour
+    setStreakCelebrations(s.streakCelebrations)
   }).catch(() => {})
 })
 
@@ -468,6 +486,21 @@ async function turnOnPush() {
           <span>
             <span class="font-medium">{{ FURIGANA_MODE_LABELS[option].label }}</span>
             <span class="block text-sm text-[var(--color-muted)]">{{ FURIGANA_MODE_LABELS[option].description }}</span>
+          </span>
+        </label>
+      </CollapsibleCard>
+
+      <CollapsibleCard class="mt-4" title="Celebrations" :summary="streakCelebrationsOn ? 'On, every 5 right in a row' : 'Off'">
+        <label class="flex items-start gap-3">
+          <input
+            type="checkbox"
+            class="mt-1"
+            :checked="streakCelebrationsOn"
+            @change="setCelebrations(($event.target as HTMLInputElement).checked)"
+          >
+          <span>
+            <span class="font-medium">Celebrate answers in a row</span>
+            <span class="block text-sm text-[var(--color-muted)]">A short congratulation at 5, 10, 15 and on, whatever you are answering. A wrong answer, or leaving the page, starts the count again.</span>
           </span>
         </label>
       </CollapsibleCard>

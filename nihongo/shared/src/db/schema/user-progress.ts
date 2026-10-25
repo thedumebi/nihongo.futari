@@ -46,6 +46,8 @@ export const userSettings = pgTable('user_settings', {
   studyLevel: text('study_level').notNull().default(''),
   romajiEnabled: boolean('romaji_enabled').notNull().default(false),
   autoplayAudio: boolean('autoplay_audio').notNull().default(true),
+  /** A celebration at every 5 answers right in a row. On unless the learner turns it off. */
+  streakCelebrations: boolean('streak_celebrations').notNull().default(true),
   audioSpeed: numeric('audio_speed', { precision: 3, scale: 2 }).notNull().default('1.00'),
   theme: text('theme').notNull().default('system'),
   /**

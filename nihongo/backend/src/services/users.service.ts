@@ -32,7 +32,8 @@ export async function getSettings(userId: string): Promise<StudySettings> {
       studyLevel: userSettings.studyLevel,
       dailyNewLimit: userSettings.dailyNewLimit,
       extraPracticeMultiple: userSettings.extraPracticeMultiple,
-      dayBoundaryHour: userSettings.dayBoundaryHour
+      dayBoundaryHour: userSettings.dayBoundaryHour,
+      streakCelebrations: userSettings.streakCelebrations
     })
     .from(userSettings)
     .where(eq(userSettings.userId, userId))
@@ -45,7 +46,8 @@ export async function getSettings(userId: string): Promise<StudySettings> {
     studyLevel: row?.studyLevel ?? '',
     dailyNewLimit: row?.dailyNewLimit ?? 10,
     extraPracticeMultiple: row?.extraPracticeMultiple ?? 2,
-    dayBoundaryHour: row?.dayBoundaryHour ?? DEFAULT_DAY_BOUNDARY_HOUR
+    dayBoundaryHour: row?.dayBoundaryHour ?? DEFAULT_DAY_BOUNDARY_HOUR,
+    streakCelebrations: row?.streakCelebrations ?? true
   }
 }
 
@@ -63,7 +65,8 @@ export async function updateSettings(userId: string, patch: StudySettingsPatch):
     ...(patch.studyLevel !== undefined ? { studyLevel: patch.studyLevel } : {}),
     ...(patch.dailyNewLimit !== undefined ? { dailyNewLimit: patch.dailyNewLimit } : {}),
     ...(patch.extraPracticeMultiple !== undefined ? { extraPracticeMultiple: patch.extraPracticeMultiple } : {}),
-    ...(patch.dayBoundaryHour !== undefined ? { dayBoundaryHour: patch.dayBoundaryHour } : {})
+    ...(patch.dayBoundaryHour !== undefined ? { dayBoundaryHour: patch.dayBoundaryHour } : {}),
+    ...(patch.streakCelebrations !== undefined ? { streakCelebrations: patch.streakCelebrations } : {})
   }
 
   // An empty patch is a read, not a write. Without this the insert below would

@@ -10,6 +10,7 @@ import TokenLine from '@/components/ja/token-line.vue'
 import WordMeaning from '@/components/ja/word-meaning.vue'
 import TeacherLine from '@/components/speak/teacher-line.vue'
 import Button from '@/components/ui/button.vue'
+import { recordAnswer } from '@/composables/use-answer-streak'
 import { playAudio, playAudioQueue, prefetchAudio, stopAudio } from '@/composables/use-audio'
 
 /**
@@ -186,6 +187,7 @@ function next() {
 
 function answer(gotIt: boolean) {
   const index = order.value[position.value]!
+  recordAnswer(gotIt)
   if (!gotIt)
     emit('missed', props.steps[index]!.index)
   // Gone back to a prompt already answered: the first answer is the one that counts.

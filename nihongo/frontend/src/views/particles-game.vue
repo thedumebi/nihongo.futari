@@ -13,6 +13,7 @@ import WordMeaning from '@/components/ja/word-meaning.vue'
 import AppShell from '@/components/layout/app-shell.vue'
 import ClozePrompt from '@/components/study/cloze-prompt.vue'
 import Button from '@/components/ui/button.vue'
+import { useAnswerStreak } from '@/composables/use-answer-streak'
 import { playAudio, stopAudio } from '@/composables/use-audio'
 import { useFurigana } from '@/composables/use-furigana'
 import { ROUTES } from '@/constants'
@@ -28,6 +29,7 @@ import { useLanguageStore } from '@/store/language'
  */
 
 // ============ Stores ============
+const { recordAnswer } = useAnswerStreak()
 const lang = useLanguageStore()
 
 // ============ Composables ============
@@ -107,6 +109,7 @@ function pick(option: string) {
     return
   picked.value = option
   word.value = null
+  recordAnswer(option === round.value.question.answer)
   if (option === round.value.question.answer) {
     score.value++
     combo.value++

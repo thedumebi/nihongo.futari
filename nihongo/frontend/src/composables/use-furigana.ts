@@ -6,6 +6,7 @@ import { useLocalStorage } from '@vueuse/core'
 import { nextTick, ref, watch } from 'vue'
 
 import client from '@/api/client'
+import { setStreakCelebrations } from '@/composables/use-answer-streak'
 
 /**
  * Furigana preference and the known-kanji set behind "unknown only".
@@ -51,6 +52,8 @@ export async function refreshFuriganaSetting(): Promise<void> {
     const { data } = await client.get<StudySettings>(API_ENDPOINTS.USERS.SETTINGS)
     applying = true
     mode.value = data.furiganaMode
+    // Same read, so the streak celebration setting follows the learner too.
+    setStreakCelebrations(data.streakCelebrations)
   } catch {
     // Logged out or offline — the cached preference is enough to render.
   } finally {

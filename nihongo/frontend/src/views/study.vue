@@ -43,6 +43,7 @@ import Button from '@/components/ui/button.vue'
 import Dropdown from '@/components/ui/dropdown.vue'
 import Tooltip from '@/components/ui/tooltip.vue'
 import WritingCanvas from '@/components/writing/writing-canvas.vue'
+import { celebrationOpen, useAnswerStreak } from '@/composables/use-answer-streak'
 import { playAudio } from '@/composables/use-audio'
 import { useFurigana } from '@/composables/use-furigana'
 import { useLevel } from '@/composables/use-level'
@@ -118,6 +119,7 @@ function clearFocus() {
 
 const lang = useLanguageStore()
 const { mode: furiganaMode, knownKanji, loadKnownKanji, loadSettings } = useFurigana()
+const { recordAnswer } = useAnswerStreak()
 
 // Which deck to study. Remembered, because you usually pick up where you left
 // off rather than re-choosing every session.
@@ -1258,6 +1260,7 @@ function check() {
     expected.value = item.answer.primary
     revealed.value = true
     sessionSeen.value += 1
+    recordAnswer(grade.passed)
     if (grade.passed)
       sessionCorrect.value += 1
     play()
@@ -1288,6 +1291,7 @@ function check() {
     void lookUpOtherWord(answer.value.trim(), item.answer.primary)
   revealed.value = true
   sessionSeen.value += 1
+  recordAnswer(result.correct)
   if (result.correct)
     sessionCorrect.value += 1
 
@@ -1313,6 +1317,7 @@ function onDialogueFinished(result: { correct: number, total: number }) {
   expected.value = ''
   revealed.value = true
   sessionSeen.value += 1
+  // No recordAnswer: the dialogue card counted each reply as it was chosen.
   if (wasCorrect.value)
     sessionCorrect.value += 1
 
@@ -1327,6 +1332,7 @@ async function onSpeakFinished(gotIt: boolean) {
   expected.value = ''
   revealed.value = true
   sessionSeen.value += 1
+  recordAnswer(gotIt)
   if (gotIt)
     sessionCorrect.value += 1
   await submitRating(gotIt ? 3 : 1)
@@ -1473,7 +1479,8 @@ function onEnter() {
  * answer, and space replays the audio without leaving the field.
  */
 function onKey(e: KeyboardEvent) {
-  if (!revealed.value)
+  // A celebration is open on top: its button takes the key, not the card.
+  if (!revealed.value || celebrationOpen.value)
     return
   const rating = RATINGS.find(r => r.key === e.key)
   if (rating && wasCorrect.value) {

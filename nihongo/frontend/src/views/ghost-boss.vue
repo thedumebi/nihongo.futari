@@ -11,6 +11,7 @@ import GameEnd from '@/components/games/game-end.vue'
 import FuriganaText from '@/components/ja/furigana-text.vue'
 import AppShell from '@/components/layout/app-shell.vue'
 import Button from '@/components/ui/button.vue'
+import { useAnswerStreak } from '@/composables/use-answer-streak'
 import { playAudio, stopAudio } from '@/composables/use-audio'
 import { useFurigana } from '@/composables/use-furigana'
 import { ROUTES } from '@/constants'
@@ -28,6 +29,7 @@ import { useLanguageStore } from '@/store/language'
  */
 
 // ============ Stores ============
+const { recordAnswer } = useAnswerStreak()
 const lang = useLanguageStore()
 
 // ============ Composables ============
@@ -133,6 +135,7 @@ function pick(option: string) {
   picked.value = option
   const right = option === round.value.answer
   results.value = [...results.value, { round: round.value, right }]
+  recordAnswer(right)
   if (right && !isRetry.value)
     score.value++
   // A miss comes round once more at the end, not forever.

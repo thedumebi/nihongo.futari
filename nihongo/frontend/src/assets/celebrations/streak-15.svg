@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" width="200" height="200" role="img" aria-label="A cheerful maneki-neko lucky cat with one paw raised high, holding a koban coin, confetti all around">
+<rect width="200" height="200" fill="#A9C6DC"/>
+<g fill="none" stroke="#2F4858" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+<path d="M100 100L394 159L349 267ZM100 100L267 349L159 394ZM100 100L41 394L-67 349ZM100 100L-149 267L-194 159ZM100 100L-194 41L-149 -67ZM100 100L-67 -149L41 -194ZM100 100L159 -194L267 -149ZM100 100L349 -67L394 41Z" fill="#7FA5C0" stroke="none"/>
+<circle cx="184.7" cy="11.1" r="3" fill="#FBFAF7" stroke="none"/>
+<path d="M143 31.8 144.3 36.4 149 37.8 144.3 39.1 143 43.8 141.6 39.1 137 37.8 141.6 36.4Z" fill="#D8A7A0" stroke="none"/>
+<rect x="164.6" y="130.8" width="9" height="4.5" rx="1" fill="#F2EBDD" transform="rotate(94 169.1 133)" stroke="none"/>
+<path d="M166.7 162.9 168.9 172.2 159.8 169.4Z" fill="#C7DAE8" stroke="none"/>
+<circle cx="49.7" cy="177.3" r="3" fill="#B7C5AE" stroke="none"/>
+<path d="M23.4 105.8 24.7 110.5 29.4 111.8 24.7 113.1 23.4 117.8 22.1 113.1 17.4 111.8 22.1 110.5Z" fill="#7FA5C0" stroke="none"/>
+<rect x="185.6" y="96" width="9" height="4.5" rx="1" fill="#FBFAF7" transform="rotate(4 190.1 98.2)" stroke="none"/>
+<path d="M157.2 11.1 166.2 8 164.4 17.4Z" fill="#D8A7A0" stroke="none"/>
+<circle cx="36.6" cy="164.7" r="3" fill="#F2EBDD" stroke="none"/>
+<path d="M171.3 75 172.6 79.6 177.3 81 172.6 82.3 171.3 87 170 82.3 165.3 81 170 79.6Z" fill="#C7DAE8" stroke="none"/>
+<rect x="17.9" y="138.8" width="9" height="4.5" rx="1" fill="#B7C5AE" transform="rotate(142 22.4 141.1)" stroke="none"/>
+<path d="M98 28.4 96.6 18.9 105.5 22.4Z" fill="#7FA5C0" stroke="none"/>
+<path d="M53 206C48 150 62 118 100 116C138 118 152 150 147 206Z" fill="#FBFAF7"/><path d="M62 62L58 28L88 48Z" fill="#FBFAF7"/><path d="M138 62L142 28L112 48Z" fill="#FBFAF7"/><path d="M65 52L64 38L77 47Z" fill="#D8A7A0" stroke="none"/><path d="M135 52L136 38L123 47Z" fill="#D8A7A0" stroke="none"/><ellipse cx="100" cy="84" rx="46" ry="37" fill="#FBFAF7"/><path d="M64 112Q100 136 136 112L134 126Q100 150 66 126Z" fill="#D8A7A0"/><path d="M140 86L160 82M140 96L160 100"/><circle cx="83" cy="82" r="3.2" fill="#2F4858" stroke="none"/><circle cx="117" cy="82" r="3.2" fill="#2F4858" stroke="none"/><circle cx="80" cy="97" r="6" fill="#D8A7A0" stroke="none"/><circle cx="120" cy="97" r="6" fill="#D8A7A0" stroke="none"/><path d="M95 92H105L100 98Z" fill="#D8A7A0"/><path d="M100 98Q100 102 94 104M100 98Q100 102 106 104"/><rect x="97" y="142" width="48.1" height="22" rx="11" transform="rotate(147.5 121 153)" fill="#FBFAF7"/><ellipse cx="100" cy="166" rx="18" ry="25" fill="#E3D8C6"/><ellipse cx="100" cy="166" rx="11" ry="18" fill="#F2EBDD"/><rect x="1" y="81.5" width="108" height="27" rx="13.5" transform="rotate(-105.8 55 95)" fill="#FBFAF7"/><ellipse cx="44" cy="66" rx="7" ry="9" fill="#D8A7A0" stroke="none"/><path d="M22 42Q14 56 22 70M10 36Q0 56 10 76"/><circle cx="100" cy="131" r="7.5" fill="#E3D8C6"/><path d="M95 131H105M100 138V142"/>
+</g>
+</svg>

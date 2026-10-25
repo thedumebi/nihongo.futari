@@ -11,6 +11,7 @@ import GameEnd from '@/components/games/game-end.vue'
 import PitchAccent from '@/components/ja/pitch-accent.vue'
 import AppShell from '@/components/layout/app-shell.vue'
 import Button from '@/components/ui/button.vue'
+import { useAnswerStreak } from '@/composables/use-answer-streak'
 import { playAudio } from '@/composables/use-audio'
 import { ROUTES } from '@/constants'
 import { useLanguageStore } from '@/store/language'
@@ -24,6 +25,7 @@ import { useLanguageStore } from '@/store/language'
  */
 
 // ============ Stores ============
+const { recordAnswer } = useAnswerStreak()
 const lang = useLanguageStore()
 
 // ============ Constants ============
@@ -75,6 +77,7 @@ function pick(i: number) {
   if (picked.value !== null || !round.value)
     return
   picked.value = i
+  recordAnswer(i === round.value.answer)
   if (i === round.value.answer)
     score.value++
 }

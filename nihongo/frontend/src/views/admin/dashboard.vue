@@ -52,6 +52,14 @@ onMounted(async () => {
             Sign off sourced explanations. Nothing reaches a reader until you do.
           </p>
         </li>
+        <li class="p-4">
+          <router-link :to="ROUTES.ADMIN_CELEBRATIONS" class="font-medium underline underline-offset-4">
+            Celebrations
+          </router-link>
+          <p class="mt-1 text-sm text-[var(--color-muted)]">
+            Every "in a row" celebration, as learners see it.
+          </p>
+        </li>
         <!-- Audio: a reworded sentence plays nothing (never its old words) until it is recorded again. -->
         <li v-if="audio" class="p-4">
           <p class="font-medium">

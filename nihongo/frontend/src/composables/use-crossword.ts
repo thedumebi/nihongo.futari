@@ -83,6 +83,13 @@ export function useCrossword(puzzle: Ref<CrosswordPuzzle | null>) {
     return { done, total: entries.length }
   })
 
+  /** Entries the learner filled in themselves: done, and not one letter of them revealed. */
+  const wordsByHand = computed(() => (puzzle.value?.entries ?? []).flatMap((e, i) => {
+    const cells = cellsOf(e)
+    const done = cells.every(([r, c], j) => crosswordCellMatches(e.answer[j]!, typed.value[r]?.[c] ?? ''))
+    return done && !cells.some(([r, c]) => revealed.value.has(key(r, c))) ? [i] : []
+  }))
+
   // ============ Timer ============
   const visibility = useDocumentVisibility()
   useIntervalFn(() => {
@@ -345,6 +352,7 @@ export function useCrossword(puzzle: Ref<CrosswordPuzzle | null>) {
     solved,
     bonusLetters,
     wordsDone,
+    wordsByHand,
     isWrong,
     select,
     selectEntry,

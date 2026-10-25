@@ -8,6 +8,7 @@ import { computed, onBeforeUnmount, ref, watch } from 'vue'
 import TokenLine from '@/components/ja/token-line.vue'
 import WordMeaning from '@/components/ja/word-meaning.vue'
 import Button from '@/components/ui/button.vue'
+import { recordAnswer } from '@/composables/use-answer-streak'
 import { playAudio, playAudioQueue, prefetchAudio, stopAudio } from '@/composables/use-audio'
 
 /**
@@ -116,6 +117,7 @@ function choose(reply: Reply) {
   if (chosen.value)
     return
   chosen.value = reply
+  recordAnswer(reply.isCorrect)
   if (reply.isCorrect)
     correctCount.value += 1
 }

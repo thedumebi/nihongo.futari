@@ -65,6 +65,7 @@ export const ROUTES = {
   ADMIN_EMAIL_EDIT: (id: string) => `/admin/emails/${id}`,
   UNSUBSCRIBE: '/unsubscribe',
   ADMIN_REVIEW_QUEUE: '/admin/review-queue',
+  ADMIN_CELEBRATIONS: '/admin/celebrations',
   ADMIN_GRAMMAR: '/admin/grammar',
   ADMIN_GRAMMAR_EDIT: (id: string) => `/admin/grammar/${id}/edit`,
   ADMIN_WORDS: '/admin/words',

@@ -190,6 +190,12 @@ const router = createRouter({
       component: () => import('@/views/unsubscribe.vue')
     },
     {
+      path: ROUTES.ADMIN_CELEBRATIONS,
+      name: 'admin-celebrations',
+      component: () => import('@/views/admin/celebrations.vue'),
+      meta: { requiresAuth: true, isAdmin: true }
+    },
+    {
       path: ROUTES.ADMIN_INVITES,
       name: 'admin-invites',
       component: () => import('@/views/admin/invites.vue'),

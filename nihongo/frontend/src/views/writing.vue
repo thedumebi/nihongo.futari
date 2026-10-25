@@ -10,6 +10,7 @@ import AppShell from '@/components/layout/app-shell.vue'
 import Dropdown from '@/components/ui/dropdown.vue'
 import Tooltip from '@/components/ui/tooltip.vue'
 import WritingCanvas from '@/components/writing/writing-canvas.vue'
+import { celebrationOpen, useAnswerStreak } from '@/composables/use-answer-streak'
 
 /**
  * Handwriting practice.
@@ -18,6 +19,8 @@ import WritingCanvas from '@/components/writing/writing-canvas.vue'
  * same pure functions the unit tests use — so a review works offline and gives
  * feedback with no round trip.
  */
+
+const { recordAnswer } = useAnswerStreak()
 
 const DECKS = [
   { value: 'hiragana', label: 'Hiragana', kind: 'kana' as const, script: 'hiragana' as const },
@@ -169,6 +172,7 @@ function check() {
     return
   grade.value = gradeHandwriting(drawn.value, referenceStrokes.value)
   attempted.value++
+  recordAnswer(grade.value.passed)
   if (grade.value.passed)
     passedCount.value++
 }
@@ -207,6 +211,9 @@ const ISSUE_TEXT: Record<string, string> = {
 }
 
 function onKey(event: KeyboardEvent) {
+  // A celebration is open on top: its button takes the key, not the page.
+  if (celebrationOpen.value)
+    return
   if (event.key === 'ArrowLeft') {
     prev()
   } else if (event.key === 'ArrowRight') {

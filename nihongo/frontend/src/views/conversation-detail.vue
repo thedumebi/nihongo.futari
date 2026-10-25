@@ -12,6 +12,7 @@ import DialogueCard from '@/components/study/dialogue-card.vue'
 import ShadowingPanel from '@/components/study/shadowing-panel.vue'
 import Button from '@/components/ui/button.vue'
 import Segmented from '@/components/ui/segmented.vue'
+import { useAnswerStreak } from '@/composables/use-answer-streak'
 import { useFurigana } from '@/composables/use-furigana'
 import { ROUTES } from '@/constants'
 import { useLanguageStore } from '@/store/language'
@@ -28,6 +29,8 @@ import { useLanguageStore } from '@/store/language'
 const route = useRoute()
 const lang = useLanguageStore()
 const { mode, loadSettings } = useFurigana()
+// The run is counted by the answers inside; it ends when this page does.
+useAnswerStreak()
 
 const dialogue = ref<DialogueView | null>(null)
 const loading = ref(true)

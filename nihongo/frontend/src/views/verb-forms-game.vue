@@ -11,6 +11,7 @@ import ChoiceGrid from '@/components/games/choice-grid.vue'
 import GameEnd from '@/components/games/game-end.vue'
 import AppShell from '@/components/layout/app-shell.vue'
 import Button from '@/components/ui/button.vue'
+import { useAnswerStreak } from '@/composables/use-answer-streak'
 import { ROUTES } from '@/constants'
 import { useLanguageStore } from '@/store/language'
 
@@ -25,6 +26,7 @@ import { useLanguageStore } from '@/store/language'
  */
 
 // ============ Stores ============
+const { recordAnswer } = useAnswerStreak()
 const lang = useLanguageStore()
 
 // ============ Constants ============
@@ -149,6 +151,7 @@ function resetAnswer() {
 
 function settle(right: boolean) {
   correct.value = right
+  recordAnswer(right)
   if (right) {
     score.value++
     combo.value++

@@ -12,6 +12,7 @@ import OnScreenRun from '@/components/speak/on-screen-run.vue'
 import Button from '@/components/ui/button.vue'
 import Segmented from '@/components/ui/segmented.vue'
 import Slider from '@/components/ui/slider.vue'
+import { useAnswerStreak } from '@/composables/use-answer-streak'
 import { useFurigana } from '@/composables/use-furigana'
 import { usePace } from '@/composables/use-pace'
 import { useToast } from '@/composables/use-toast'
@@ -28,6 +29,8 @@ import { useLanguageStore } from '@/store/language'
  */
 
 // ============ Stores ============
+// The run is counted by the answers inside; it ends when this page does.
+useAnswerStreak()
 const route = useRoute()
 const lang = useLanguageStore()
 
