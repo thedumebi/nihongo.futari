@@ -29,7 +29,7 @@ import { useLanguageStore } from '@/store/language'
  */
 
 // ============ Stores ============
-const { recordAnswer } = useAnswerStreak()
+const { recordAnswer, releaseCelebration } = useAnswerStreak()
 const lang = useLanguageStore()
 
 // ============ Composables ============
@@ -109,7 +109,7 @@ function pick(option: string) {
     return
   picked.value = option
   word.value = null
-  recordAnswer(option === round.value.question.answer)
+  recordAnswer(option === round.value.question.answer, { hold: true })
   if (option === round.value.question.answer) {
     score.value++
     combo.value++
@@ -127,7 +127,9 @@ function hear() {
     void playAudio(round.value.question.audio)
 }
 
-function next() {
+async function next() {
+  // Moving on: a celebration the last answer earned opens first, and the next question waits for it.
+  await releaseCelebration()
   stopAudio()
   index.value++
   picked.value = null

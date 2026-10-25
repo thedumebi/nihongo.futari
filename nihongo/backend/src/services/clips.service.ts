@@ -6,6 +6,7 @@ import { clipRefs, withCurrentClips } from '@nihongo/shared/lib'
 import { and, eq, inArray, sql } from 'drizzle-orm'
 
 import { sentenceAudioPath, wordAudioPath } from '@/lib/audio-key.js'
+import { respelledVersion } from '@/lib/spoken-text.js'
 
 /**
  * Sentence and word audio, only while it says what the sentence or word says.
@@ -39,7 +40,7 @@ export async function currentClips(sentenceIds: string[], entSeqs: number[]): Pr
   return {
     sentences: new Map(sentenceIds.map((id) => {
       const r = sentenceRows.find(s => s.id === id)
-      return [id, r && r.audioText === r.text && r.audioVoice ? sentenceAudioPath(r.audioText, r.audioVoice) : null]
+      return [id, r && r.audioText === r.text && r.audioVoice ? `${sentenceAudioPath(r.audioText, r.audioVoice)}${respelledVersion(r.audioText)}` : null]
     })),
     words: new Map(entSeqs.map((seq) => {
       const r = wordRows.find(w => w.entSeq === seq)

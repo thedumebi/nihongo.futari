@@ -26,8 +26,18 @@ const count = ref(0)
 /** The run length being celebrated, or null when nothing is open. */
 const celebrating = ref<number | null>(null)
 let timer: ReturnType<typeof setTimeout> | null = null
-/** A celebration earned but held until the learner has rated the card (Study). */
+/** A celebration earned but held until the learner moves on (rates the card, presses Next). */
 let held: number | null = null
+/** Who is waiting for the open celebration to close before going on. */
+let onClosed: Array<() => void> = []
+
+function closeCelebration(): void {
+  celebrating.value = null
+  const waiting = onClosed
+  onClosed = []
+  for (const go of waiting)
+    go()
+}
 
 function cancelPending(): void {
   if (timer)
@@ -40,9 +50,10 @@ function cancelPending(): void {
  * Count one graded answer. A right one may open a celebration; a wrong one
  * ends the run.
  *
- * `hold`: the answer still needs the learner's rating (Hard, Good, Easy), so
- * the celebration waits for `releaseCelebration()` instead of covering the
- * rating buttons.
+ * `hold`: the learner has not moved on yet (Study still wants Hard, Good or
+ * Easy; a game still shows its verdict and Next), so the celebration waits for
+ * `releaseCelebration()` instead of covering the verdict. Every answering
+ * screen holds; nothing should open over the answer itself.
  */
 export function recordAnswer(correct: boolean, options: { hold?: boolean } = {}): void {
   if (!correct) {
@@ -65,12 +76,18 @@ export function recordAnswer(correct: boolean, options: { hold?: boolean } = {})
   }, OPEN_DELAY_MS)
 }
 
-/** The card is rated: open the celebration it earned, if any, before the next question. */
-export function releaseCelebration(): void {
+/**
+ * The learner is moving on: open the celebration the last answer earned, if
+ * any, before the next question. Resolves once it is closed (at once when
+ * there is none), so a screen that starts a timer or plays audio on its next
+ * question can wait for it.
+ */
+export function releaseCelebration(): Promise<void> {
   if (held === null)
-    return
+    return Promise.resolve()
   celebrating.value = held
   held = null
+  return new Promise(resolve => onClosed.push(resolve))
 }
 
 /** Start a fresh run for this screen, ended when the screen goes. */
@@ -89,9 +106,7 @@ export const celebrationOpen = computed(() => celebrating.value !== null)
 export function useStreakCelebration() {
   return {
     celebrating,
-    close: () => {
-      celebrating.value = null
-    }
+    close: closeCelebration
   }
 }
 
@@ -100,7 +115,7 @@ export function setStreakCelebrations(on: boolean): void {
   enabled.value = on
   if (!on) {
     cancelPending()
-    celebrating.value = null
+    closeCelebration()
   }
 }
 

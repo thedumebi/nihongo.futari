@@ -8,7 +8,7 @@ import { computed, onBeforeUnmount, ref, watch } from 'vue'
 import TokenLine from '@/components/ja/token-line.vue'
 import WordMeaning from '@/components/ja/word-meaning.vue'
 import Button from '@/components/ui/button.vue'
-import { recordAnswer } from '@/composables/use-answer-streak'
+import { recordAnswer, releaseCelebration } from '@/composables/use-answer-streak'
 import { playAudio, playAudioQueue, prefetchAudio, stopAudio } from '@/composables/use-audio'
 
 /**
@@ -117,12 +117,14 @@ function choose(reply: Reply) {
   if (chosen.value)
     return
   chosen.value = reply
-  recordAnswer(reply.isCorrect)
+  recordAnswer(reply.isCorrect, { hold: true })
   if (reply.isCorrect)
     correctCount.value += 1
 }
 
-function advance() {
+async function advance() {
+  // Moving on: a celebration the last answer earned opens first, and the next question waits for it.
+  await releaseCelebration()
   chosen.value = null
   picked.value = null
   position.value += 1

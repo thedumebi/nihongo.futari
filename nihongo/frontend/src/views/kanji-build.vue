@@ -24,7 +24,7 @@ import { useLanguageStore } from '@/store/language'
  */
 
 // ============ Stores ============
-const { recordAnswer } = useAnswerStreak()
+const { recordAnswer, releaseCelebration } = useAnswerStreak()
 const lang = useLanguageStore()
 
 // ============ Constants ============
@@ -115,12 +115,14 @@ function choose(reading: string) {
 
 function check() {
   checked.value = true
-  recordAnswer(correct.value)
+  recordAnswer(correct.value, { hold: true })
   if (correct.value)
     score.value++
 }
 
-function next() {
+async function next() {
+  // Moving on: a celebration the last answer earned opens first, and the next question waits for it.
+  await releaseCelebration()
   index.value++
   reset()
   if (finished.value)

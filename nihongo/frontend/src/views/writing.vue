@@ -20,7 +20,7 @@ import { celebrationOpen, useAnswerStreak } from '@/composables/use-answer-strea
  * feedback with no round trip.
  */
 
-const { recordAnswer } = useAnswerStreak()
+const { recordAnswer, releaseCelebration } = useAnswerStreak()
 
 const DECKS = [
   { value: 'hiragana', label: 'Hiragana', kind: 'kana' as const, script: 'hiragana' as const },
@@ -172,14 +172,16 @@ function check() {
     return
   grade.value = gradeHandwriting(drawn.value, referenceStrokes.value)
   attempted.value++
-  recordAnswer(grade.value.passed)
+  recordAnswer(grade.value.passed, { hold: true })
   if (grade.value.passed)
     passedCount.value++
 }
 
-function next() {
+async function next() {
   if (items.value.length === 0)
     return
+  // Moving on: a celebration the last answer earned opens first, and the next question waits for it.
+  await releaseCelebration()
   index.value = (index.value + 1) % items.value.length
   reset()
 }

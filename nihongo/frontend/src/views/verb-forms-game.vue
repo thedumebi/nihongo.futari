@@ -26,7 +26,7 @@ import { useLanguageStore } from '@/store/language'
  */
 
 // ============ Stores ============
-const { recordAnswer } = useAnswerStreak()
+const { recordAnswer, releaseCelebration } = useAnswerStreak()
 const lang = useLanguageStore()
 
 // ============ Constants ============
@@ -151,7 +151,7 @@ function resetAnswer() {
 
 function settle(right: boolean) {
   correct.value = right
-  recordAnswer(right)
+  recordAnswer(right, { hold: true })
   if (right) {
     score.value++
     combo.value++
@@ -177,7 +177,9 @@ function check() {
   settle(gradeAnswer('normalised-jp', typed.value, { primary: r.answer.surface, accepted: r.accepted }).correct)
 }
 
-function next() {
+async function next() {
+  // Moving on: a celebration the last answer earned opens first, and the next question waits for it.
+  await releaseCelebration()
   index.value++
   resetAnswer()
 }

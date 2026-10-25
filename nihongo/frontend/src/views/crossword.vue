@@ -14,7 +14,6 @@ import CrosswordGrid from '@/components/crossword/crossword-grid.vue'
 import AppShell from '@/components/layout/app-shell.vue'
 import Button from '@/components/ui/button.vue'
 import Segmented from '@/components/ui/segmented.vue'
-import { useAnswerStreak } from '@/composables/use-answer-streak'
 import { playAudio, prefetchAudio } from '@/composables/use-audio'
 import { useCrossword } from '@/composables/use-crossword'
 import { useLevel } from '@/composables/use-level'
@@ -31,7 +30,6 @@ import { useLanguageStore } from '@/store/language'
  */
 
 // ============ Stores ============
-const { recordAnswer } = useAnswerStreak()
 const lang = useLanguageStore()
 
 // ============ Composables ============
@@ -104,25 +102,6 @@ const doneElsewhere = computed(() => Boolean(puzzle.value?.source === 'daily' &&
 const time = computed(() => `${Math.floor(seconds.value / 60)}:${String(seconds.value % 60).padStart(2, '0')}`)
 
 // ============ Watchers ============
-// Each word filled in by hand counts as one answer right in a row. Words
-// already done when the puzzle loads are not news, and nothing here is
-// wrong unless the grid says so, so a crossword only adds to a run.
-let credited: Set<number> | null = null
-watch(puzzle, () => {
-  credited = null
-})
-watch(game.wordsByHand, (now) => {
-  if (credited === null) {
-    credited = new Set(now)
-    return
-  }
-  for (const i of now) {
-    if (!credited.has(i)) {
-      credited.add(i)
-      recordAnswer(true)
-    }
-  }
-})
 watch(solved, async (done) => {
   const p = puzzle.value
   if (!done || !p)

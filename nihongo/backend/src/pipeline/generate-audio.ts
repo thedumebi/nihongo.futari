@@ -10,6 +10,7 @@ import path, { basename } from 'node:path'
 import { promisify } from 'node:util'
 
 import { audioKeyFor, englishVoiceFor, GLOSS_AUDIO_LEVELS, VOICE_LEARNER as LEARNER_VOICE, VOICE_OTHER, VOICE_RECALL, voiceForClip } from '../lib/audio-key.js'
+import { spokenText } from '../lib/spoken-text.js'
 import { PARTICLE_SENTENCES } from './data/particles/sentences.js'
 import { READINGS } from './data/readings/index.js'
 import { SPEAK } from './data/speak/index.js'
@@ -89,7 +90,8 @@ async function synthesise(text: string, key: string, voice = VOICE): Promise<boo
   const aiff = `${stem}.aiff`
   const m4a = `${stem}.m4a`
   try {
-    await run('say', ['-v', voice, '-o', aiff, text], { timeout: CLIP_TIMEOUT_MS })
+    // Spelled for the voice where it misreads the written form (see SPOKEN_AS).
+    await run('say', ['-v', voice, '-o', aiff, spokenText(text)], { timeout: CLIP_TIMEOUT_MS })
     await run('afconvert', ['-f', 'm4af', '-d', 'aac', '-b', '32000', aiff, m4a], { timeout: CLIP_TIMEOUT_MS })
     await putAsset(key, await readFile(m4a), CONTENT_TYPES.audio!)
     return true
@@ -112,6 +114,10 @@ if (process.argv.some(a => a === '--redo' || a.startsWith('--redo=')) && redo.si
   console.error('--redo needs comma-separated ids, e.g. --redo sent-ex-desu-3,sent-ex-masu-2')
   process.exit(1)
 }
+
+// `--respelled`: record again every clip whose text holds a word in SPOKEN_AS,
+// after a word is added there, since those clips say it the wrong way.
+const respelled = process.argv.includes('--respelled')
 
 type AudioKind = 'kana' | 'words' | 'sentences' | 'dialogues' | 'speak' | 'readings' | 'glosses'
 
@@ -241,7 +247,7 @@ async function generate(kind: AudioKind) {
     const key = kind === 'kana'
       ? `audio/${kind}/${t.name}.m4a`
       : `audio/${kind}/${audioKeyFor(t.text, t.voice ?? VOICE)}.m4a`
-    if (stored.has(key) && !redo.has(t.name))
+    if (stored.has(key) && !redo.has(t.name) && !(respelled && spokenText(t.text) !== t.text))
       skipped++
     else
       todo.set(key, { text: t.text, voice: t.voice ?? VOICE })

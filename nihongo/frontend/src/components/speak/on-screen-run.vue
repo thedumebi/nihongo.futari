@@ -10,7 +10,7 @@ import TokenLine from '@/components/ja/token-line.vue'
 import WordMeaning from '@/components/ja/word-meaning.vue'
 import TeacherLine from '@/components/speak/teacher-line.vue'
 import Button from '@/components/ui/button.vue'
-import { recordAnswer } from '@/composables/use-answer-streak'
+import { recordAnswer, releaseCelebration } from '@/composables/use-answer-streak'
 import { playAudio, playAudioQueue, prefetchAudio, stopAudio } from '@/composables/use-audio'
 
 /**
@@ -185,9 +185,9 @@ function next() {
   void enter()
 }
 
-function answer(gotIt: boolean) {
+async function answer(gotIt: boolean) {
   const index = order.value[position.value]!
-  recordAnswer(gotIt)
+  recordAnswer(gotIt, { hold: true })
   if (!gotIt)
     emit('missed', props.steps[index]!.index)
   // Gone back to a prompt already answered: the first answer is the one that counts.
@@ -198,6 +198,8 @@ function answer(gotIt: boolean) {
     retried.value = new Set(retried.value).add(index)
     order.value = [...order.value, index]
   }
+  // The next prompt starts its countdown at once: a celebration comes first, and the run waits for it.
+  await releaseCelebration()
   next()
 }
 

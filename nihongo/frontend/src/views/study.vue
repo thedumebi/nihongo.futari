@@ -421,8 +421,15 @@ const current = computed<StudyQueueItem | undefined>(() => items.value[index.val
  * BEFORE the index moves — reading `isNew` there would describe the card just
  * finished, not the one arriving.
  */
+/** The facets of a word or kanji that can be met a new way after its first card. */
+const NEW_WAY_FACETS = new Set(['meaning', 'reading', 'production', 'listening', 'writing'])
+
 watch(current, (card) => {
-  introducing.value = Boolean(card?.isNew)
+  // Also a word's or kanji's card asked a new way for the first time (a
+  // kanji's reading after its meaning): it shows what it is about to ask for
+  // before asking, or it is a quiz on something never shown.
+  const newWayFirst = Boolean(card?.firstTime && (card.kind === 'word' || card.kind === 'kanji') && NEW_WAY_FACETS.has(card.facet))
+  introducing.value = Boolean(card?.isNew) || newWayFirst
 }, { immediate: true })
 
 // Kana prompts carry `character`, word prompts carry `word`. One display slot.
@@ -701,6 +708,11 @@ function lessonDone(): void {
  * trip cannot produce a double.
  */
 function introDone(): void {
+  // A card met a new way was introduced long ago: nothing to record, just ask.
+  if (!current.value?.isNew) {
+    introducing.value = false
+    return
+  }
   lessonDone()
 }
 const grammarGloss = computed(() => {
@@ -1340,7 +1352,7 @@ async function onSpeakFinished(gotIt: boolean) {
   expected.value = ''
   revealed.value = true
   sessionSeen.value += 1
-  recordAnswer(gotIt)
+  recordAnswer(gotIt, { hold: true })
   if (gotIt)
     sessionCorrect.value += 1
   await submitRating(gotIt ? 3 : 1)
@@ -1353,7 +1365,7 @@ async function submitRating(rating: 1 | 2 | 3 | 4) {
     return
   rated.value = true
   // Rated: a celebration this answer earned opens now, before the next question.
-  releaseCelebration()
+  void releaseCelebration()
   await send(item, rating, wasCorrect.value)
 }
 
@@ -1859,7 +1871,7 @@ watch(() => lang.code, async () => {
               <SeriesCard v-if="seriesView" :series="seriesView" mode="teach" :script="furiganaMode" />
               <template v-else>
                 <p class="text-sm text-[var(--color-muted)]">
-                  Something new: here it is first.
+                  {{ newWay ? 'Here it is again before you are asked.' : 'Something new: here it is first.' }}
                 </p>
                 <p v-if="intro.subject" class="mt-6 text-6xl leading-tight" style="font-family: var(--font-jp)">
                   {{ intro.subject }}

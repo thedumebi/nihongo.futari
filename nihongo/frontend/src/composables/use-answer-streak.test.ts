@@ -79,6 +79,29 @@ describe('answers in a row', () => {
     screen.unmount()
   })
 
+  it('moving on waits for the celebration to close, and goes straight on when there is none', async () => {
+    const screen = mount(Screen)
+    let movedOn = false
+    await releaseCelebration().then(() => {
+      movedOn = true
+    })
+    expect(movedOn).toBe(true)
+
+    movedOn = false
+    for (let i = 0; i < 5; i++)
+      recordAnswer(true, { hold: true })
+    const going = releaseCelebration().then(() => {
+      movedOn = true
+    })
+    await Promise.resolve()
+    expect(celebrating.value).toBe(5)
+    expect(movedOn).toBe(false)
+    close()
+    await going
+    expect(movedOn).toBe(true)
+    screen.unmount()
+  })
+
   it('stays quiet when the learner has turned it off', () => {
     setStreakCelebrations(false)
     const screen = mount(Screen)

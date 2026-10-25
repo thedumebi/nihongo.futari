@@ -34,7 +34,7 @@ import { useLanguageStore } from '@/store/language'
  * enough for the topic to enter review and for the missed ones to come back
  * first.
  */
-const { recordAnswer } = useAnswerStreak()
+const { recordAnswer, releaseCelebration } = useAnswerStreak()
 const route = useRoute()
 const router = useRouter()
 const lang = useLanguageStore()
@@ -174,7 +174,7 @@ function submit() {
 
   correct.value = gradeAnswer(q.graderCode, given, q.answer).correct
   revealed.value = true
-  recordAnswer(correct.value)
+  recordAnswer(correct.value, { hold: true })
   if (correct.value && !missed.value.has(q.id))
     firstTimeRight.value += 1
   if (!correct.value)
@@ -191,7 +191,9 @@ const willRetry = computed(() => {
   return !correct.value && q !== undefined && (attempts.value.get(q.id) ?? 0) + 1 < 2
 })
 
-function next() {
+async function next() {
+  // Moving on: a celebration the last answer earned opens first, and the next question waits for it.
+  await releaseCelebration()
   const q = queue.value.shift()
   if (!q)
     return

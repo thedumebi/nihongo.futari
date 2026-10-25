@@ -1037,6 +1037,37 @@ async function withClozeTwins(items: StudyQueueItem[], languageId: string): Prom
   })
 }
 
+/**
+ * Give each kanji card its readings to introduce it with. A kanji's meaning
+ * card carried only the English, so its introduction said "long" with no
+ * sound at all, and the reading card that followed asked for something never
+ * shown. Up to two kun readings (written out, なが.い as ながい; affix forms
+ * like -び left out), then up to two on: 明 has a dozen kun readings, and a
+ * plain "first four" never reached メイ.
+ */
+async function withKanjiReadings(items: StudyQueueItem[]): Promise<StudyQueueItem[]> {
+  const characters = [...new Set(items.filter(i => i.prompt?.kind === 'kanji' && typeof i.prompt.character === 'string').map(i => String(i.prompt!.character)))]
+  if (characters.length === 0)
+    return items
+  const rows = await db.execute<{ character: string, type: string, reading: string }>(sql`
+    select k.character, r.type, replace(r.reading, '.', '') as reading
+    from kanji_readings r
+    join kanji k on k.id = r.kanji_id
+    where k.character in ${characters} and r.type in ('kun', 'on') and r.reading not like '-%' and r.reading not like '%-'
+    order by k.character, r.is_common desc, r.sort_index, r.reading
+  `)
+  const byCharacter = new Map<string, string[]>()
+  for (const character of characters) {
+    const mine = rows.rows.filter(r => r.character === character)
+    const pick = (type: string) => [...new Set(mine.filter(r => r.type === type).map(r => r.reading))].slice(0, 2)
+    byCharacter.set(character, [...pick('kun'), ...pick('on')])
+  }
+  return items.map((item) => {
+    const readings = item.prompt?.kind === 'kanji' ? byCharacter.get(String(item.prompt.character)) : undefined
+    return readings?.length ? { ...item, prompt: { ...item.prompt, introReading: readings.join(' · ') } } : item
+  })
+}
+
 /** Kanji this learner has graduated a card for. */
 async function knownKanjiCharacters(userId: string, languageId: string): Promise<Set<string>> {
   const rows = await db.execute<{ character: string }>(sql`
@@ -1786,6 +1817,7 @@ export async function getQueue(userId: string, query: StudyQueueQuery): Promise<
   items = await withSeries(items, userId, language.id)
   items = await withSenses(items)
   items = await withClozeTwins(items, language.id)
+  items = await withKanjiReadings(items)
 
   shuffle(items)
 

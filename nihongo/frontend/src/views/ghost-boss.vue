@@ -29,7 +29,7 @@ import { useLanguageStore } from '@/store/language'
  */
 
 // ============ Stores ============
-const { recordAnswer } = useAnswerStreak()
+const { recordAnswer, releaseCelebration } = useAnswerStreak()
 const lang = useLanguageStore()
 
 // ============ Composables ============
@@ -135,7 +135,7 @@ function pick(option: string) {
   picked.value = option
   const right = option === round.value.answer
   results.value = [...results.value, { round: round.value, right }]
-  recordAnswer(right)
+  recordAnswer(right, { hold: true })
   if (right && !isRetry.value)
     score.value++
   // A miss comes round once more at the end, not forever.
@@ -143,7 +143,9 @@ function pick(option: string) {
     rounds.value = [...rounds.value, round.value]
 }
 
-function next() {
+async function next() {
+  // Moving on: a celebration the last answer earned opens first, and the next question waits for it.
+  await releaseCelebration()
   stopAudio()
   picked.value = null
   index.value++
