@@ -51,8 +51,8 @@ function toSettings() {
     @update:model-value="close"
     @opened="focusKeepGoing"
   >
-    <!-- On a phone the picture is the screen: edge to edge and square, with the
-         words and the button straight under it. From sm up, the same as a card. -->
+    <!-- On a phone the picture fills the width, square, inside a small margin,
+         with the words and the button straight under it. From sm up, a card. -->
     <div
       v-if="shown"
       class="flex w-full flex-col bg-[var(--color-card)] pb-[max(1.25rem,env(safe-area-inset-bottom))] text-center sm:mx-4 sm:max-w-md sm:overflow-hidden sm:rounded-3xl sm:border sm:border-[var(--color-border)] sm:pb-6"
@@ -60,14 +60,17 @@ function toSettings() {
       aria-labelledby="streak-celebration-title"
       aria-describedby="streak-celebration-line"
     >
-      <img
-        :key="shown.title"
-        :src="shown.art"
-        :alt="shown.alt"
-        class="streak-pop aspect-square w-full object-contain"
-        width="200"
-        height="200"
-      >
+      <!-- On a phone, a margin all round so the picture never touches the screen's edges. -->
+      <div class="px-5 pt-[max(1.25rem,env(safe-area-inset-top))] sm:p-0">
+        <img
+          :key="shown.title"
+          :src="shown.art"
+          :alt="shown.alt"
+          class="streak-pop aspect-square w-full rounded-2xl object-contain sm:rounded-none"
+          width="200"
+          height="200"
+        >
+      </div>
       <div class="flex flex-col items-center px-6 pt-6">
         <p id="streak-celebration-title" class="text-3xl font-semibold">
           {{ shown.title }}

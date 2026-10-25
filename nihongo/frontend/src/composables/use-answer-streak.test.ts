@@ -2,7 +2,7 @@ import { mount } from '@vue/test-utils'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { defineComponent, h } from 'vue'
 
-import { recordAnswer, setStreakCelebrations, useAnswerStreak, useStreakCelebration } from './use-answer-streak'
+import { recordAnswer, releaseCelebration, setStreakCelebrations, useAnswerStreak, useStreakCelebration } from './use-answer-streak'
 
 const { celebrating, close } = useStreakCelebration()
 
@@ -63,6 +63,20 @@ describe('answers in a row', () => {
     right(4)
     expect(celebrating.value).toBeNull()
     second.unmount()
+  })
+
+  it('in Study, waits for the rating: held through the verdict, opened once the card is rated', () => {
+    const screen = mount(Screen)
+    right(4)
+    recordAnswer(true, { hold: true })
+    vi.runAllTimers()
+    expect(celebrating.value).toBeNull()
+    releaseCelebration()
+    expect(celebrating.value).toBe(5)
+    close()
+    releaseCelebration()
+    expect(celebrating.value).toBeNull()
+    screen.unmount()
   })
 
   it('stays quiet when the learner has turned it off', () => {

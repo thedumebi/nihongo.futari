@@ -120,7 +120,7 @@ function clearFocus() {
 
 const lang = useLanguageStore()
 const { mode: furiganaMode, knownKanji, loadKnownKanji, loadSettings } = useFurigana()
-const { recordAnswer } = useAnswerStreak()
+const { recordAnswer, releaseCelebration } = useAnswerStreak()
 
 // Which deck to study. Remembered, because you usually pick up where you left
 // off rather than re-choosing every session.
@@ -1267,7 +1267,8 @@ function check() {
     expected.value = item.answer.primary
     revealed.value = true
     sessionSeen.value += 1
-    recordAnswer(grade.passed)
+    // A pass waits for the learner's rating; the celebration waits with it.
+    recordAnswer(grade.passed, { hold: true })
     if (grade.passed)
       sessionCorrect.value += 1
     play()
@@ -1298,7 +1299,7 @@ function check() {
     void lookUpOtherWord(answer.value.trim(), item.answer.primary)
   revealed.value = true
   sessionSeen.value += 1
-  recordAnswer(result.correct)
+  recordAnswer(result.correct, { hold: true })
   if (result.correct)
     sessionCorrect.value += 1
 
@@ -1351,6 +1352,8 @@ async function submitRating(rating: 1 | 2 | 3 | 4) {
   if (!item || rated.value)
     return
   rated.value = true
+  // Rated: a celebration this answer earned opens now, before the next question.
+  releaseCelebration()
   await send(item, rating, wasCorrect.value)
 }
 

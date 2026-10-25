@@ -26,15 +26,25 @@ const count = ref(0)
 /** The run length being celebrated, or null when nothing is open. */
 const celebrating = ref<number | null>(null)
 let timer: ReturnType<typeof setTimeout> | null = null
+/** A celebration earned but held until the learner has rated the card (Study). */
+let held: number | null = null
 
 function cancelPending(): void {
   if (timer)
     clearTimeout(timer)
   timer = null
+  held = null
 }
 
-/** Count one graded answer. A right one may open a celebration; a wrong one ends the run. */
-export function recordAnswer(correct: boolean): void {
+/**
+ * Count one graded answer. A right one may open a celebration; a wrong one
+ * ends the run.
+ *
+ * `hold`: the answer still needs the learner's rating (Hard, Good, Easy), so
+ * the celebration waits for `releaseCelebration()` instead of covering the
+ * rating buttons.
+ */
+export function recordAnswer(correct: boolean, options: { hold?: boolean } = {}): void {
   if (!correct) {
     count.value = 0
     cancelPending()
@@ -45,20 +55,32 @@ export function recordAnswer(correct: boolean): void {
     return
   const reached = count.value
   cancelPending()
+  if (options.hold) {
+    held = reached
+    return
+  }
   timer = setTimeout(() => {
     timer = null
     celebrating.value = reached
   }, OPEN_DELAY_MS)
 }
 
+/** The card is rated: open the celebration it earned, if any, before the next question. */
+export function releaseCelebration(): void {
+  if (held === null)
+    return
+  celebrating.value = held
+  held = null
+}
+
 /** Start a fresh run for this screen, ended when the screen goes. */
-export function useAnswerStreak(): { recordAnswer: typeof recordAnswer } {
+export function useAnswerStreak(): { recordAnswer: typeof recordAnswer, releaseCelebration: typeof releaseCelebration } {
   count.value = 0
   onBeforeUnmount(() => {
     count.value = 0
     cancelPending()
   })
-  return { recordAnswer }
+  return { recordAnswer, releaseCelebration }
 }
 
 /** True while a celebration is open: answering screens ignore their keys meanwhile. */
