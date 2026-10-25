@@ -1,4 +1,4 @@
-import type { Today } from '@nihongo/shared/types'
+import type { LessonFirst, LessonListResponse, Today } from '@nihongo/shared/types'
 
 import db from '@nihongo/shared/db'
 import { languages } from '@nihongo/shared/db/schema'
@@ -7,10 +7,28 @@ import { eq } from 'drizzle-orm'
 import { unseenAchievements } from './achievements.service.js'
 import { pendingRequestCount } from './friends.service.js'
 import { listLessons } from './lesson.service.js'
-import { getSummary, studiedToday, todayQuests } from './progress.service.js'
+import { getSummary, lessonDoneToday, studiedToday, todayQuests } from './progress.service.js'
 import { listReadings } from './readings.service.js'
 import { listSpeak } from './speak.service.js'
 import { claimStageCelebration, countDue, newLeftToday, nextDueAfter, stageProgress } from './srs.service.js'
+
+/**
+ * Lesson first, then words: until a lesson is finished today, today's new
+ * words wait on the next one, so a learner meets how the language works before
+ * the words to use with it. Kana rows are lessons too, and come first in that
+ * order. Nothing waits when there is no lesson left to take.
+ */
+export async function lessonFirst(userId: string, languageCode: string, lessons?: LessonListResponse): Promise<LessonFirst | null> {
+  const [language] = await db.select({ id: languages.id }).from(languages).where(eq(languages.code, languageCode)).limit(1)
+  if (!language)
+    return null
+  const [{ done, day }, list] = await Promise.all([
+    lessonDoneToday(userId, language.id),
+    lessons ?? listLessons(userId, languageCode)
+  ])
+  const next = list.next
+  return done || !next ? null : { level: next.level, slug: next.slug, title: next.title, day }
+}
 
 /**
  * The Today screen, assembled from what each feature already knows.
@@ -40,7 +58,10 @@ export async function getToday(userId: string, languageCode: string, moreNew = 0
   ])
   // A stage passed while reviewing, or on another device, is announced here
   // too, not only on the next Study batch.
-  const celebrate = await claimStageCelebration(userId, progress)
+  const [celebrate, first] = await Promise.all([
+    claimStageCelebration(userId, progress),
+    lessonFirst(userId, languageCode, lessons)
+  ])
 
   // The unread speech most within reach; ties go to the easier level, which
   // the list is already ordered by.
@@ -61,6 +82,7 @@ export async function getToday(userId: string, languageCode: string, moreNew = 0
     stageWait: newToday.stageWait,
     celebrate,
     nextLesson: lessons.next ?? null,
+    lessonFirst: first,
     nextSpeak: nextSpeak ? { code: nextSpeak.code, number: nextSpeak.number, level: nextSpeak.level, titleEn: nextSpeak.titleEn } : null,
     streak: { current: summary.currentStreak, longest: summary.longestStreak, studiedToday: today },
     xp: { total: summary.totalXp, level: summary.level },

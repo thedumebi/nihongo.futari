@@ -75,7 +75,7 @@ const SAMPLE_SEGMENTS = [
 const TOUR = [
   { title: 'Today', body: 'Opens every time: what is due, what to learn next, your streak and three small goals for the day.' },
   { title: 'Review', body: 'Words come back just before you would forget them. A few minutes a day keeps everything you have learned.' },
-  { title: 'Learn and Practice', body: 'Learn brings new words in stages, with lessons and writing. Finish most of a stage and the next one opens. Practice is for using them: speaking, conversations, reading and games.' }
+  { title: 'Learn and Practice', body: 'Learn is a lesson, then new words, each day: the lesson shows how Japanese works, the words give you things to say with it. Practice is for using them: speaking, conversations, reading and games.' }
 ]
 
 // ============ Reactive State ============

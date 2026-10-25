@@ -3,6 +3,7 @@ import { HttpStatusCodes } from '@nihongo/shared/constants'
 import type { AppRouteHandler } from '@/lib/types.js'
 
 import { getCourse, getDecks, getDueList, getQueue, markCelebrationSeen, markLessonSeen, saveWord as saveWordForReview, wordStatuses as statusesOfWords, wordStatus as statusOfWord, submitAnswer } from '@/services/srs.service.js'
+import { lessonFirst } from '@/services/today.service.js'
 
 import type { AnswerRoute, CelebrationSeenRoute, CourseRoute, DecksRoute, DueRoute, LessonSeenRoute, QueueRoute, SaveWordRoute, WordStatusesRoute, WordStatusRoute } from './study.routes.js'
 
@@ -14,8 +15,13 @@ export const decks: AppRouteHandler<DecksRoute> = async (c) => {
 
 export const queue: AppRouteHandler<QueueRoute> = async (c) => {
   const user = c.get('user')!
-  const result = await getQueue(user.id, c.req.valid('query'))
-  return c.json(result, HttpStatusCodes.OK)
+  const query = c.req.valid('query')
+  // New words wait on today's lesson; the page says so, and the learner may go on anyway.
+  const [result, first] = await Promise.all([
+    getQueue(user.id, query),
+    query.mode === 'new' ? lessonFirst(user.id, query.languageCode) : null
+  ])
+  return c.json({ ...result, lessonFirst: first }, HttpStatusCodes.OK)
 }
 
 export const course: AppRouteHandler<CourseRoute> = async (c) => {

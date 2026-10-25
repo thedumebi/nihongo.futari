@@ -95,8 +95,9 @@ const dailyLinks = computed<NavLink[]>(() => {
 })
 
 const learnMenu: NavMenuItem[] = [
-  { label: 'New words', to: ROUTES.LEARN, hint: 'Today\'s new words, kanji and kana' },
-  { label: 'Lessons', to: ROUTES.LESSONS, hint: 'Kana and grammar: learn one, then a quiz' },
+  { label: 'Lessons', to: ROUTES.LESSONS, hint: 'Kana and grammar: learn one, then a quiz. One a day comes first' },
+  { label: 'New words', to: ROUTES.LEARN, hint: 'Today\'s new words, kanji and kana, after the lesson' },
+  { label: 'Course map', to: ROUTES.COURSE, hint: 'Every stage, and where you are' },
   { label: 'Grammar', to: ROUTES.GRAMMAR, hint: 'Look up any pattern' },
   { label: 'Writing', to: ROUTES.WRITING, hint: 'Kana and kanji, stroke by stroke' },
   { label: 'Sounds', to: ROUTES.SOUND_SERIES, hint: 'Parts that tell you a kanji\'s reading' }

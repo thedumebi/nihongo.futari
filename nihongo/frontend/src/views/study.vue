@@ -46,6 +46,7 @@ import WritingCanvas from '@/components/writing/writing-canvas.vue'
 import { celebrationOpen, useAnswerStreak } from '@/composables/use-answer-streak'
 import { playAudio } from '@/composables/use-audio'
 import { useFurigana } from '@/composables/use-furigana'
+import { useLessonFirst } from '@/composables/use-lesson-first'
 import { useLevel } from '@/composables/use-level'
 import { ROUTES } from '@/constants'
 import { addMoreNew, readMoreNew } from '@/lib/more-new'
@@ -251,6 +252,11 @@ const queueCelebration = ref<StageCelebration | null>(null)
  * will never produce it.
  */
 const gate = ref<StudyQueueResponse['gate']>(null)
+/** In new-words mode: today's lesson, while today's words wait on it. */
+const lessonFirst = ref<StudyQueueResponse['lessonFirst']>(null)
+const { wordsOpen, learnWordsAnyway } = useLessonFirst()
+/** New words are waiting on today's lesson, and the learner has not chosen to go on anyway. */
+const lessonWaits = computed(() => mode.value === 'new' && !wordsOpen(lessonFirst.value))
 
 /** The level being studied, or the earliest unfinished one when showing all. */
 /**
@@ -1167,6 +1173,7 @@ async function load() {
     progress.value = queue.progress
     queueCelebration.value = queue.celebrate ?? null
     gate.value = queue.gate
+    lessonFirst.value = queue.lessonFirst ?? null
     index.value = 0
     // Keep the last good queue so a session survives losing signal mid-way.
     await cacheBundle(cacheKey, { items: queue.items, counts: queue.counts })
@@ -1659,6 +1666,27 @@ watch(() => lang.code, async () => {
       <p v-if="loading" class="text-center text-[var(--color-muted)]">
         Loading…
       </p>
+
+      <!-- Lesson first, then words: the same step Today shows. -->
+      <div v-else-if="lessonWaits && lessonFirst" class="rounded-xl border border-[var(--color-border)] p-8 text-center">
+        <p class="text-xs uppercase tracking-wide text-[var(--color-muted)]">
+          Today's lesson first · {{ lessonFirst.level }}
+        </p>
+        <p class="mt-2 text-xl font-semibold" style="font-family: var(--font-jp)">
+          {{ lessonFirst.title }}
+        </p>
+        <p class="mx-auto mt-2 max-w-sm text-sm text-[var(--color-muted)]">
+          A lesson shows how Japanese works, so today's words have somewhere to go. Your words open as soon as it is done.
+        </p>
+        <Button class="mt-5" variant="primary" :to="ROUTES.LESSON_DETAIL(lessonFirst.slug)">
+          Start lesson
+        </Button>
+        <p class="mt-4">
+          <button type="button" class="text-sm text-[var(--color-muted)] underline underline-offset-4" @click="learnWordsAnyway(lessonFirst)">
+            Learn words anyway
+          </button>
+        </p>
+      </div>
 
       <div v-else-if="finished" class="rounded-xl border border-[var(--color-border)] p-10 text-center">
         <!--

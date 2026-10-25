@@ -470,7 +470,24 @@ export const celebrationSeenSchema = z.object({
 
 export type CelebrationSeenInput = z.infer<typeof celebrationSeenSchema>
 
+/**
+ * Today's lesson, while it still comes before today's new words: a lesson
+ * shows how the language works, so the words that follow have somewhere to
+ * go. Null once a lesson is done today, or when there is none left to take.
+ * `day` is the learner's study day, which "Learn words anyway" is kept for.
+ */
+export const lessonFirstSchema = z.object({
+  level: z.string(),
+  slug: z.string(),
+  title: z.string(),
+  day: z.string()
+}).openapi('LessonFirst')
+
+export type LessonFirst = z.infer<typeof lessonFirstSchema>
+
 export const studyQueueResponseSchema = z.object({
+  /** In new-words mode: today's lesson, when it comes first. */
+  lessonFirst: lessonFirstSchema.nullish(),
   /** Set once, by the server, when a stage is genuinely passed. */
   celebrate: stageCelebrationSchema.nullish(),
   items: z.array(studyQueueItemSchema),

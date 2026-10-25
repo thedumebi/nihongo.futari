@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { levelProgress } from '@nihongo/shared/lib'
-import { BookOpen, Check, ChevronRight, Flame, Grid3x3, Headphones, Layers, Mic, RotateCcw, ScrollText, Target } from 'lucide-vue-next'
+import { Check, ChevronRight, Flame, Grid3x3, Headphones, Layers, Mic, RotateCcw, ScrollText, Target } from 'lucide-vue-next'
 import { computed, onMounted, ref } from 'vue'
 
 import CoverageBadge from '@/components/ja/coverage-badge.vue'
@@ -9,6 +9,7 @@ import GettingStarted from '@/components/onboarding/getting-started.vue'
 import StageUpModal from '@/components/study/stage-up-modal.vue'
 import StageWait from '@/components/study/stage-wait.vue'
 import Button from '@/components/ui/button.vue'
+import { useLessonFirst } from '@/composables/use-lesson-first'
 import { ROUTES } from '@/constants'
 import { useAuthStore } from '@/store/auth'
 import { useLanguageStore } from '@/store/language'
@@ -18,7 +19,8 @@ import { useTodayStore } from '@/store/today'
  * Today: what to do now, in the order worth doing it.
  *
  * Reviews first — they are what keeps what you have learned — then something
- * new: today's words, the next lesson, the next Speak session, the crossword.
+ * new: today's lesson, then today's words (a lesson shows how the language
+ * works, so the words have somewhere to go), then Speak, reading, games.
  * The app opened on a sales page and then a choice of thirteen tabs; this is
  * the one screen that answers "where do I start".
  */
@@ -51,6 +53,8 @@ const lang = useLanguageStore()
 const store = useTodayStore()
 
 // ============ Reactive State ============
+const { wordsOpen, learnWordsAnyway } = useLessonFirst()
+
 const loading = ref(true)
 
 // ============ Computed Properties ============
@@ -72,6 +76,12 @@ const stageWait = computed(() => today.value?.stageWait ?? null)
 const celebrate = computed(() => today.value?.celebrate ?? null)
 /** Extra practice (other cards of words already met) still to come once the new words are done. */
 const extrasLeft = computed(() => today.value?.extrasLeft ?? 0)
+/** Today's lesson, while today's words wait on it. */
+const lessonFirst = computed(() => today.value?.lessonFirst ?? null)
+/** Words are open: a lesson is done today, none is left, or "Learn words anyway". */
+const wordsReady = computed(() => wordsOpen(lessonFirst.value))
+/** A lesson was finished today and there are more to take. */
+const lessonDone = computed(() => !lessonFirst.value && Boolean(today.value?.nextLesson))
 
 // ============ Lifecycle Hooks ============
 onMounted(async () => {
@@ -134,51 +144,95 @@ onMounted(async () => {
           </p>
         </section>
 
-        <!-- 2. New words, within today's limit. -->
+        <!-- 2. Learn today: the lesson, then the words. Words wait on a lesson
+             so a learner knows how to use them; "anyway" is always there. -->
         <section class="mt-4 rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] p-5">
           <div class="flex items-center gap-2 text-sm text-[var(--color-muted)]">
-            <Layers class="h-4 w-4" /> Learn
+            <Layers class="h-4 w-4" /> Learn today
           </div>
-          <template v-if="newLeft > 0">
-            <p class="mt-2 text-xl font-semibold">
-              {{ newLeft }} new {{ newLeft === 1 ? 'word' : 'words' }} for today
+          <p v-if="today.nextLesson" class="mt-1 text-sm text-[var(--color-muted)]">
+            Lessons teach how Japanese works. Words give you things to say with it. One lesson, then your words, each day.
+          </p>
+
+          <!-- Step 1: today's lesson. -->
+          <div v-if="lessonFirst" class="mt-4">
+            <p class="text-xs uppercase tracking-wide text-[var(--color-muted)]">
+              1 · Today's lesson · {{ lessonFirst.level }}
             </p>
-            <p class="mt-1 text-sm text-[var(--color-muted)]">
-              {{ today.newToday }} of {{ today.newLimit }} learned so far today.
+            <p class="mt-1 text-xl font-semibold" style="font-family: var(--font-jp)">
+              {{ lessonFirst.title }}
             </p>
-            <Button class="mt-4" :variant="today.due > 0 ? 'ghost' : 'primary'" :to="ROUTES.LEARN">
-              Learn new words
+            <Button class="mt-3" :variant="today.due > 0 ? 'ghost' : 'primary'" :to="ROUTES.LESSON_DETAIL(lessonFirst.slug)">
+              Start lesson
             </Button>
-          </template>
-          <template v-else-if="stageWait">
-            <StageWait :stage="stageWait" />
-            <Button v-if="extrasLeft > 0" class="mt-4" :variant="today.due > 0 ? 'ghost' : 'primary'" :to="ROUTES.LEARN">
-              Keep practising
-            </Button>
-          </template>
-          <template v-else-if="extrasLeft > 0">
-            <p class="mt-2 text-xl font-semibold">
-              Practising words you've met
+          </div>
+          <p v-else-if="lessonDone && today.nextLesson" class="mt-4 flex flex-wrap items-center gap-x-2 text-sm">
+            <span class="flex items-center gap-1 font-medium text-[var(--color-success)]"><Check class="h-4 w-4" /> Today's lesson done</span>
+            <router-link :to="ROUTES.LESSON_DETAIL(today.nextLesson.slug)" class="text-[var(--color-muted)] underline underline-offset-4">
+              Take another: <span style="font-family: var(--font-jp)">{{ today.nextLesson.title }}</span>
+            </router-link>
+          </p>
+
+          <!-- Step 2: today's words. -->
+          <div :class="today.nextLesson ? 'mt-5 border-t border-[var(--color-border)] pt-4' : ''">
+            <p v-if="today.nextLesson" class="text-xs uppercase tracking-wide text-[var(--color-muted)]">
+              {{ lessonFirst ? '2 · ' : '' }}Today's words
             </p>
-            <p class="mt-1 text-sm text-[var(--color-muted)]">
-              Today's {{ today.newLimit }} new words are done. {{ extrasLeft }} more {{ extrasLeft === 1 ? 'card' : 'cards' }}
-              of words you have met: another way to practise each.
-            </p>
-            <Button class="mt-4" :variant="today.due > 0 ? 'ghost' : 'primary'" :to="ROUTES.LEARN">
-              Keep practising
-            </Button>
-          </template>
-          <template v-else>
-            <p class="mt-2 text-lg">
-              You have learned today's {{ today.newLimit }} new words.
-            </p>
-            <p class="mt-1 text-sm text-[var(--color-muted)]">
-              Letting them settle beats piling on more. You can change the daily number in
-              <router-link :to="ROUTES.SETTINGS" class="underline underline-offset-4">
-                Settings
-              </router-link>.
-            </p>
-          </template>
+            <template v-if="lessonFirst && !wordsReady && newLeft > 0">
+              <p class="mt-1 text-lg">
+                {{ newLeft }} new {{ newLeft === 1 ? 'word opens' : 'words open' }} after today's lesson, so you know how to use them.
+              </p>
+              <button
+                type="button"
+                class="mt-2 text-sm text-[var(--color-muted)] underline underline-offset-4"
+                @click="learnWordsAnyway(lessonFirst)"
+              >
+                Learn words anyway
+              </button>
+            </template>
+            <template v-else>
+              <template v-if="newLeft > 0">
+                <p class="mt-2 text-xl font-semibold">
+                  {{ newLeft }} new {{ newLeft === 1 ? 'word' : 'words' }} for today
+                </p>
+                <p class="mt-1 text-sm text-[var(--color-muted)]">
+                  {{ today.newToday }} of {{ today.newLimit }} learned so far today.
+                </p>
+                <Button class="mt-4" :variant="today.due > 0 ? 'ghost' : 'primary'" :to="ROUTES.LEARN">
+                  Learn today's words
+                </Button>
+              </template>
+              <template v-else-if="stageWait">
+                <StageWait :stage="stageWait" />
+                <Button v-if="extrasLeft > 0" class="mt-4" :variant="today.due > 0 ? 'ghost' : 'primary'" :to="ROUTES.LEARN">
+                  Keep practising
+                </Button>
+              </template>
+              <template v-else-if="extrasLeft > 0">
+                <p class="mt-2 text-xl font-semibold">
+                  Practising words you've met
+                </p>
+                <p class="mt-1 text-sm text-[var(--color-muted)]">
+                  Today's {{ today.newLimit }} new words are done. {{ extrasLeft }} more {{ extrasLeft === 1 ? 'card' : 'cards' }}
+                  of words you have met: another way to practise each.
+                </p>
+                <Button class="mt-4" :variant="today.due > 0 ? 'ghost' : 'primary'" :to="ROUTES.LEARN">
+                  Keep practising
+                </Button>
+              </template>
+              <template v-else>
+                <p class="mt-2 text-lg">
+                  You have learned today's {{ today.newLimit }} new words.
+                </p>
+                <p class="mt-1 text-sm text-[var(--color-muted)]">
+                  Letting them settle beats piling on more. You can change the daily number in
+                  <router-link :to="ROUTES.SETTINGS" class="underline underline-offset-4">
+                    Settings
+                  </router-link>.
+                </p>
+              </template>
+            </template>
+          </div>
         </section>
 
         <!-- Today's quests: small goals that nudge variety, the same all day. -->
@@ -210,18 +264,6 @@ onMounted(async () => {
 
         <!-- 3. Something to work through. -->
         <div class="mt-4 grid gap-4 sm:grid-cols-2">
-          <router-link
-            v-if="today.nextLesson"
-            :to="ROUTES.LESSON_DETAIL(today.nextLesson.slug)"
-            class="rounded-xl border border-[var(--color-border)] p-5 transition hover:border-[var(--color-text)]"
-          >
-            <div class="flex items-center gap-2 text-sm text-[var(--color-muted)]">
-              <BookOpen class="h-4 w-4" /> Next lesson · {{ today.nextLesson.level }}
-            </div>
-            <p class="mt-2 font-semibold" style="font-family: var(--font-jp)">
-              {{ today.nextLesson.title }}
-            </p>
-          </router-link>
           <router-link
             v-if="today.nextSpeak"
             :to="ROUTES.SPEAK_SESSION(today.nextSpeak.code)"

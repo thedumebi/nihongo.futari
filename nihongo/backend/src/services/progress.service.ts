@@ -379,6 +379,26 @@ async function persistStreak(
   return streak
 }
 
+/**
+ * Whether a lesson (kana or grammar) was finished today, in the learner's own
+ * study day, and which day that is. The same log the "Finish a lesson" quest reads.
+ */
+export async function lessonDoneToday(userId: string, languageId: string, now = new Date()): Promise<{ done: boolean, day: string }> {
+  const { timezone, dayBoundaryHour } = await loadUserContext(userId)
+  const day = studyDateFor(now, timezone, dayBoundaryHour)
+  const [row] = await db
+    .select({ id: learningActivities.id })
+    .from(learningActivities)
+    .where(and(
+      eq(learningActivities.userId, userId),
+      eq(learningActivities.languageId, languageId),
+      eq(learningActivities.localDate, day),
+      inArray(learningActivities.kind, ['lesson', 'kana-lesson'])
+    ))
+    .limit(1)
+  return { done: row !== undefined, day }
+}
+
 /** Whether the learner has done anything counted today, in their own study day. */
 export async function studiedToday(userId: string, languageId: string, now = new Date()): Promise<boolean> {
   const { timezone, dayBoundaryHour } = await loadUserContext(userId)

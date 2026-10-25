@@ -76,12 +76,12 @@ const STEPS: Record<GuideCode, Omit<GuideStep, 'code'>> = {
   recall: { title: 'Try Recall, hands-free', why: 'Your shaky words, said aloud, good for a walk or a commute.' }
 }
 
-/** What each starting point needs first. */
+/** What each starting point needs first. A lesson comes before words, as it does every day. */
 const BY_START: Record<OnboardingStart, GuideCode[]> = {
-  'new': ['kana', 'words', 'grammar', 'speak', 'review'],
-  'some-kana': ['kana', 'words', 'grammar', 'speak', 'review'],
-  'kana': ['words', 'grammar', 'speak', 'conversation', 'review'],
-  'studied': ['words', 'grammar', 'reading', 'conversation', 'review']
+  'new': ['kana', 'grammar', 'words', 'speak', 'review'],
+  'some-kana': ['kana', 'grammar', 'words', 'speak', 'review'],
+  'kana': ['grammar', 'words', 'speak', 'conversation', 'review'],
+  'studied': ['grammar', 'words', 'reading', 'conversation', 'review']
 }
 
 /** What each goal adds, if the start did not already include it. */

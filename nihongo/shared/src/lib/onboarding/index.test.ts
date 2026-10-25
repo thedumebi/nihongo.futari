@@ -28,12 +28,12 @@ describe('studyLevelFor', () => {
 
 describe('guideFor', () => {
   it('starts a beginner with the kana and ends with coming back tomorrow', () => {
-    expect(guideFor({ start: 'new', goals: [] }).map(s => s.code)).toEqual(['kana', 'words', 'grammar', 'speak', 'review'])
+    expect(guideFor({ start: 'new', goals: [] }).map(s => s.code)).toEqual(['kana', 'grammar', 'words', 'speak', 'review'])
   })
 
   it('adds what a goal needs before the last step, without repeating a step', () => {
     expect(guideFor({ start: 'kana', goals: ['travel', 'family'] }).map(s => s.code))
-      .toEqual(['words', 'grammar', 'speak', 'conversation', 'story', 'review'])
+      .toEqual(['grammar', 'words', 'speak', 'conversation', 'story', 'review'])
   })
 
   it('never runs past the cap, and always keeps the review step last', () => {
