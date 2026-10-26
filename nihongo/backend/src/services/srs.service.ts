@@ -2,12 +2,15 @@ import type { CardOrigin } from '@nihongo/shared/constants'
 import type {
   AnswerResult,
   CardState,
+  Catalogue,
   CourseLevel,
   CourseResponse,
   DeferredRecompute,
   DueListQuery,
   DueListResponse,
   GhostPolicy,
+  ItemFilter,
+  LearnerState,
   LessonSeenResult,
   NewBudget,
   ReviewEvent,
@@ -15,6 +18,7 @@ import type {
   SrsCard,
   StageCelebration,
   StageProgress,
+  StageRow,
   StudyDecksResponse,
   StudyQueueItem,
   StudyQueueQuery,
@@ -54,16 +58,21 @@ import {
 } from '@nihongo/shared/db/schema'
 import {
   applyReview,
+  availableNew,
   canFastForward,
+  ceilingsFrom,
   clampReviewedAt,
   distinguishingStart,
   effectiveCardState,
   emptyCardState,
   evaluateGhost,
+  heldBack,
   newBudget,
+  newCandidates,
   nextCelebration,
+  progressFrom,
   replay,
-  SERIES_KNOWN_MIN,
+  rollupStages,
   streakSpanDays,
   studyDateFor,
   studyDayRange
@@ -73,9 +82,11 @@ import { and, asc, desc, eq, gt, gte, inArray, isNotNull, isNull, lt, lte, or, s
 
 import { assetUrl, withAssetUrls, withDialogueAudio, withSpeakAudio } from '@/lib/assets.js'
 
+import { catalogue } from './catalogue.service.js'
 import { withCurrentAudio } from './clips.service.js'
 import { glossary, withDialogueTokens, withPromptTokens } from './glossary.service.js'
 import { hintFromLesson, loadLessons } from './grammar.service.js'
+import { loadLearnerState } from './learner-state.service.js'
 import { loadSeries } from './phonetics.service.js'
 import { loadUserContext, recomputeProgress } from './progress.service.js'
 import { deferProgress } from './recompute.service.js'
@@ -87,6 +98,14 @@ import { deferProgress } from './recompute.service.js'
  * truth and `srs_cards` is a cache of the fold over it. Every write here either
  * appends to the log and re-derives the card, or it is a bug.
  */
+
+/**
+ * New-card candidates whose prompts are fetched per query (see `pickNew` in
+ * `getQueue`): the first chunk is twice the batch, at least this, and each
+ * next one four times larger, up to the most.
+ */
+const PROMPT_CHUNK_MIN = 40
+const PROMPT_CHUNK_MAX = 2000
 
 function toCardState(row: SrsCard): CardState {
   return {
@@ -667,6 +686,15 @@ async function cardFirstFacet(userId: string, target: SQL, origin: CardOrigin): 
  */
 
 /**
+ * A learner snapshot, or one already loading, so a caller can start the load
+ * early and share it between reads.
+ */
+type Snapshot = LearnerState | Promise<LearnerState>
+
+/** Rollups already worked out, per snapshot and catalogue: both are immutable. */
+const rollups = new WeakMap<LearnerState, WeakMap<Catalogue, StageRow[]>>()
+
+/**
  * Stage progress, defined ONCE.
  *
  * Three places report this — the gate that decides what may be introduced, the
@@ -674,8 +702,9 @@ async function cardFirstFacet(userId: string, target: SQL, origin: CardOrigin): 
  * three copies of nearly the same SQL. The last drift shipped: the gate counted
  * items while the course counted cards, so the two pages disagreed about which
  * stage you were on and the course drew a padlock on a stage the gate had
- * already opened. Anything that reports a stage now reads this fragment, so
- * there is one place to change and no way for them to disagree.
+ * already opened. Anything that reports a stage now reads `rollupStages`
+ * (`lib/srs/curriculum.ts`), so there is one place to change and no way for
+ * them to disagree.
  *
  * A row per (level, stage, kind). Callers roll it up as they need: the gate and
  * the header sum over kind, the course keeps the breakdown so it can say what a
@@ -685,50 +714,13 @@ async function cardFirstFacet(userId: string, target: SQL, origin: CardOrigin): 
  * finished because one way of drilling it stuck; recognising 日 does not mean
  * you can write it.
  */
-function stageRollup(userId: string, languageId: string) {
-  return sql`
-    select
-      si.level_id,
-      ceil(si.sort_index::float / ${STAGE_SIZE}) as stage,
-      si.kind,
-      -- Suspended cards are excluded from BOTH halves of the ratio.
-      --
-      -- A leech you have given up on should not hold a stage shut: with the
-      -- pass mark at 100% one suspended card made a stage unpassable forever,
-      -- and counting it as unlearned-but-required is the opposite of what
-      -- suspending it meant.
-      count(*) filter (where sc.id is null or not sc.suspended) as total,
-      count(*) filter (where sc.state >= 2 and not sc.suspended) as learned,
-      -- Met at least once: the difference from learned is what is still settling.
-      count(*) filter (where sc.id is not null and not sc.suspended) as started,
-      -- Both units, because a stage needs both to describe itself honestly:
-      -- "50 kana" is what the stage IS, "14/96" is how far through its cards
-      -- you are. Printing the card count as the content count is what made a
-      -- 50-kana stage announce itself as "96 kana".
-      count(distinct si.id) as items
-    from study_items si
-    join study_item_facets f on f.study_item_id = si.id and f.enabled
-    left join srs_cards sc on sc.facet_id = f.id and sc.user_id = ${userId}
-    where si.published and si.active
-      and si.level_id is not null
-      and si.language_id = ${languageId}
-      -- Grammar topics are not part of the stage system.
-      --
-      -- A topic is admitted to review by reading its lesson, and Lessons is a
-      -- surface of its own that a reader moves through in their own order. Two
-      -- gates on the same content meant a topic could be unlocked by the
-      -- curriculum and barred by the lesson, or the reverse; and it made the
-      -- stage a reader is on depend on how much grammar they happened to have
-      -- read, which is not what a stage is for.
-      --
-      -- Speak prompts neither: they become cards only by being missed in a
-      -- session, so they are never material a stage is waiting on.
-      --
-      -- Nor sound series: one is offered only once its kanji are known (see
-      -- seriesReady), so a stage must not wait on it.
-      and si.kind not in ('grammar', 'speak', 'phonetic-series')
-    group by 1, 2, 3
-  `
+async function stageRows(userId: string, languageId: string, state?: Snapshot): Promise<{ rows: StageRow[], cat: Catalogue }> {
+  const [cat, learner] = await Promise.all([catalogue(languageId), state ?? loadLearnerState(userId, languageId)])
+  const byCatalogue = rollups.get(learner) ?? new WeakMap<Catalogue, StageRow[]>()
+  rollups.set(learner, byCatalogue)
+  const rows = byCatalogue.get(cat) ?? rollupStages(cat, learner)
+  byCatalogue.set(cat, rows)
+  return { rows, cat }
 }
 
 /**
@@ -741,34 +733,8 @@ function stageRollup(userId: string, languageId: string) {
  * Returns a sort_index ceiling per level. A level with every stage complete is
  * absent from the map, which means no ceiling at all.
  */
-export async function stageCeilings(userId: string, languageId: string): Promise<Map<string, number>> {
-  const result = await db.execute(sql`
-    with rollup as (${stageRollup(userId, languageId)}),
-    stages as (
-      select level_id, stage, sum(total) as total, sum(learned) as learned
-      from rollup group by 1, 2
-    )
-    select level_id, min(stage) as first_open
-    from stages
-    -- The first stage not yet retained well enough. Everything before it is
-    -- done; it is the one you are on; nothing after it is offered yet.
-    -- The total > 0 test is so a stage whose every card is suspended cannot
-    -- become an eternal wall. Suspended cards leave both halves of the ratio,
-    -- so such a stage reports 0/0 — less than any pass mark — and it would be
-    -- the first open stage forever, blocking everything after it.
-    -- Nothing left to learn there is passed, not failed.
-    where total > 0 and learned::float / total < ${STAGE_PASS}
-    group by 1
-  `)
-
-  const ceilings = new Map<string, number>()
-  for (const row of (result.rows ?? []) as Array<Record<string, unknown>>) {
-    const levelId = String(row.level_id)
-    const firstOpen = Number(row.first_open)
-    // Inclusive: the stage you are on is fully available.
-    ceilings.set(levelId, firstOpen * STAGE_SIZE)
-  }
-  return ceilings
+export async function stageCeilings(userId: string, languageId: string, state?: Snapshot): Promise<Map<string, number>> {
+  return ceilingsFrom((await stageRows(userId, languageId, state)).rows)
 }
 
 /**
@@ -777,41 +743,9 @@ export async function stageCeilings(userId: string, languageId: string): Promise
  * Same shape as `stageCeilings` but carrying the numbers a person can read:
  * which stage, out of how many, and how far through it they are.
  */
-export async function stageProgress(userId: string, languageId: string): Promise<StageProgress[]> {
-  const result = await db.execute(sql`
-    with rollup as (${stageRollup(userId, languageId)}),
-    stages as (
-      select level_id, stage, sum(total) as total, sum(learned) as learned
-      from rollup group by 1, 2
-    ),
-    current as (
-      select level_id, min(stage) as stage
-      from stages
-      -- total > 0, as the gate has it: a stage whose every card is suspended
-      -- is passed, not current. Without it this reported a stage the gate had
-      -- already moved past, and a celebration could name the wrong one.
-      where total > 0 and learned::float / total < ${STAGE_PASS}
-      group by 1
-    )
-    select
-      l.code as level,
-      c.stage,
-      (select count(*) from stages s where s.level_id = c.level_id) as stages,
-      s.learned,
-      s.total
-    from current c
-    join stages s on s.level_id = c.level_id and s.stage = c.stage
-    join language_levels l on l.id = c.level_id
-    order by l.sort_index
-  `)
-
-  return ((result.rows ?? []) as Array<Record<string, unknown>>).map(row => ({
-    level: String(row.level),
-    stage: Number(row.stage),
-    stages: Number(row.stages),
-    learned: Number(row.learned),
-    total: Number(row.total)
-  }))
+export async function stageProgress(userId: string, languageId: string, state?: Snapshot): Promise<StageProgress[]> {
+  const { rows, cat } = await stageRows(userId, languageId, state)
+  return progressFrom(rows, cat)
 }
 
 /**
@@ -881,72 +815,6 @@ function promptPick(
       end,
       md5(p.id || ${salt})
     limit 1
-  )`
-}
-
-/**
- * The ONE facet of an item that may enter the new pool next.
- *
- * A word is several cards — 仕事 is `meaning`, `reading`, `production` and
- * `listening` — and the pool selected all four the moment the word came up.
- * Shuffled apart, each carrying `isNew`, that is four introductions of the same
- * word scattered through a session.
- *
- * So an item offers its LOWEST `intro_order` uncarded facet and nothing else.
- * That column has been written by ten importers since the beginning — meaning
- * 0, reading 1, production 2, writing 5, listening 6 — and read by nothing.
- * Reading it now means a word is met by its meaning first, and the rest follow
- * one at a time as each previous facet earns a card.
- */
-/**
- * A topic is only offered once its lesson has been opened.
- *
- * Reading the lesson is what admits a grammar point to review — that is the
- * whole shape of the app now: you learn a topic, then it comes back. Without
- * this the queue would go on introducing topics cold, which is the thing being
- * fixed: "everything is a quiz. Nothing teaches me stuff before quizzing me".
- *
- * Only grammar. Words, kanji and kana have no lesson and are unaffected.
- */
-function lessonOpened(userId: string): SQL {
-  return sql`(
-    ${studyItems.kind} <> 'grammar'
-    or exists (
-      select 1 from lesson_views lv
-      where lv.user_id = ${userId} and lv.study_item_id = ${studyItems.id}
-    )
-  )`
-}
-
-/**
- * Whether the queue may introduce an item as new.
- *
- * Not Speak prompts: one becomes a card only when the learner misses it in a
- * session (`saveSpeakStep`). Offered cold, a prompt out of its build-up is just
- * a hard sentence — the session is what teaches it. Every surface that counts
- * or serves NEW material applies this, so none of them advertises a Speak card
- * the queue would never give.
- */
-
-/**
- * A sound series is only worth teaching once its kanji are familiar.
- *
- * "共 is read キョウ in 供 and 恭" means nothing to someone who has met neither,
- * and the card arrived regardless — three unknown kanji and a rule about them.
- * So a series is offered only when the learner already knows (has graduated a
- * card for) at least two kanji that follow it. Anything else passes.
- */
-function seriesReady(userId: string): SQL {
-  return sql`(
-    ${studyItems.phoneticSeriesId} is null
-    or (
-      select count(distinct m.kanji_id)
-      from phonetic_series_members m
-      join study_items ki on ki.kanji_id = m.kanji_id
-      join study_item_facets kf on kf.study_item_id = ki.id
-      join srs_cards kc on kc.facet_id = kf.id and kc.user_id = ${userId} and kc.state >= 2
-      where m.series_id = ${studyItems.phoneticSeriesId} and m.follows_series
-    ) >= ${SERIES_KNOWN_MIN}
   )`
 }
 
@@ -1094,23 +962,9 @@ async function knownKanjiCharacters(userId: string, languageId: string): Promise
   return new Set(rows.rows.map(r => r.character))
 }
 
+/** Speak prompts are never introduced by the queue (see `newCandidates`). */
 function introducedByQueue(): SQL {
   return sql`${studyItems.kind} <> 'speak'`
-}
-
-function firstUncardedFacet(userId: string): SQL {
-  return sql`not exists (
-    select 1
-    from study_item_facets f2
-    left join srs_cards c2 on c2.facet_id = f2.id and c2.user_id = ${userId}
-    where f2.study_item_id = ${studyItems.id}
-      and f2.enabled
-      and c2.id is null
-      and (
-        f2.intro_order < ${studyItemFacets.introOrder}
-        or (f2.intro_order = ${studyItemFacets.introOrder} and f2.id < ${studyItemFacets.id})
-      )
-  )`
 }
 
 /**
@@ -1286,42 +1140,19 @@ export async function newWordsToday(userId: string, languageId: string, now: Dat
   return res.rows[0]?.n ?? 0
 }
 
-/** The item already has a card for this learner: met before. */
-function itemHasCard(userId: string): SQL {
-  return sql`exists (
-    select 1 from srs_cards c3
-    join study_item_facets f3 on f3.id = c3.facet_id
-    where f3.study_item_id = ${studyItems.id} and c3.user_id = ${userId}
-  )`
-}
-
 /**
  * What the queue could still offer, in ITEMS: words never met (new words) and
  * words already met with a card not yet started (extra practice). One number
  * used to cover both, so "136 new" counted words already known.
  */
-async function countAvailableNew(userId: string, languageId: string, filters: SQL[]): Promise<{ words: number, extras: number }> {
-  const count = (kind: SQL) => db
-    .select({ total: sql<number>`count(distinct ${studyItems.id})`.mapWith(Number) })
-    .from(studyItemFacets)
-    .innerJoin(studyItems, eq(studyItems.id, studyItemFacets.studyItemId))
-    .leftJoin(srsCards, and(eq(srsCards.facetId, studyItemFacets.id), eq(srsCards.userId, userId)))
-    .where(and(
-      eq(studyItems.languageId, languageId),
-      eq(studyItems.published, true),
-      eq(studyItems.active, true),
-      eq(studyItemFacets.enabled, true),
-      isNull(srsCards.id),
-      introducedByQueue(),
-      seriesReady(userId),
-      ...filters,
-      kind
-    ))
-  const [[words], [extras]] = await Promise.all([
-    count(sql`not ${itemHasCard(userId)}`),
-    count(sql`${itemHasCard(userId)} and ${lessonOpened(userId)}`)
-  ])
-  return { words: words?.total ?? 0, extras: extras?.total ?? 0 }
+async function countAvailableNew(
+  languageId: string,
+  state: Snapshot,
+  filter: ItemFilter,
+  ceilings: ReadonlyMap<string, number>
+): Promise<{ words: number, extras: number }> {
+  const [cat, learner] = await Promise.all([catalogue(languageId), state])
+  return availableNew(cat, learner, filter, ceilings)
 }
 
 /**
@@ -1333,28 +1164,26 @@ async function countAvailableNew(userId: string, languageId: string, filters: SQ
  * page used to say "11 new words for today" right then, and Study served thirty
  * cards of words already met with nothing to say why.
  */
-export async function newLeftToday(userId: string, languageId: string, now: Date, moreNew = 0): Promise<{
+export async function newLeftToday(userId: string, languageId: string, now: Date, moreNew = 0, state?: Snapshot): Promise<{
   budget: NewBudget
   extrasLeft: number
   newAvailable: number
   stageWait: StageProgress | null
 }> {
-  const [ceilings, [settings]] = await Promise.all([
-    stageCeilings(userId, languageId),
+  const learner = state ?? loadLearnerState(userId, languageId)
+  const [{ rows, cat }, [settings]] = await Promise.all([
+    stageRows(userId, languageId, learner),
     db.select({ studyLevel: userSettings.studyLevel }).from(userSettings).where(eq(userSettings.userId, userId)).limit(1)
   ])
+  const ceilings = ceilingsFrom(rows)
   const levelCode = settings?.studyLevel ?? ''
-  const [level] = levelCode
-    ? await db.select({ id: languageLevels.id }).from(languageLevels).where(and(eq(languageLevels.languageId, languageId), eq(languageLevels.code, levelCode))).limit(1)
-    : []
-  const levelFilter = level ? [or(eq(studyItems.levelId, level.id), isNull(studyItems.levelId))!] : []
-  const withinCurriculum = ceilings.size === 0 ? [] : [sql.raw(curriculumPredicate(ceilings))]
+  const level = levelCode ? cat.levels.find(l => l.code === levelCode) : undefined
   const [budget, available] = await Promise.all([
     todayBudget(userId, languageId, now, moreNew),
-    countAvailableNew(userId, languageId, [...withinCurriculum, ...levelFilter])
+    countAvailableNew(languageId, learner, level ? { levelId: level.id } : {}, ceilings)
   ])
   const waiting = available.words === 0 && budget.wordsLeft > 0 && ceilings.size > 0
-  const stages = waiting ? await stageProgress(userId, languageId) : []
+  const stages = waiting ? progressFrom(rows, cat) : []
   const stageWait = (level ? stages.find(s => s.level === levelCode) : stages[0]) ?? null
   return {
     budget,
@@ -1429,7 +1258,11 @@ export async function getQueue(userId: string, query: StudyQueueQuery): Promise<
   // "Learn 5 more anyway" raises TODAY's limit. The page sends what it has
   // been granted today on every request — it used to send it once, so the
   // next refill counted the day afresh and the wall came straight back.
-  const budget = await todayBudget(userId, language.id, now, query.moreNew ?? 0)
+  const [budget, learner, cat] = await Promise.all([
+    todayBudget(userId, language.id, now, query.moreNew ?? 0),
+    loadLearnerState(userId, language.id),
+    catalogue(language.id)
+  ])
 
   // Deck filters. `kind` narrows the content type, `unit` narrows to a
   // curriculum unit — a script (hiragana) or a scenario (at a restaurant).
@@ -1480,6 +1313,12 @@ export async function getQueue(userId: string, query: StudyQueueQuery): Promise<
     : null
   // An empty unit must match nothing, not everything.
   const unitFilter = unitIds ? [inArray(studyItems.id, unitIds.length > 0 ? unitIds : [''])] : []
+  // The same three filters, for the rules worked out in memory.
+  const filter: ItemFilter = {
+    ...(query.kind ? { kind: query.kind } : {}),
+    ...(levelId === null ? {} : { levelId }),
+    ...(unitIds ? { unitItemIds: new Set(unitIds) } : {})
+  }
 
   const promptColumns = {
     /**
@@ -1578,8 +1417,8 @@ export async function getQueue(userId: string, query: StudyQueueQuery): Promise<
   // corpus at once, so there was no progression — just 12,000 items in an
   // order nothing had set. Reviews are deliberately NOT bounded: anything
   // already started keeps coming back regardless of where it sits.
-  const ceilings = await stageCeilings(userId, language.id)
-  const withinCurriculum = ceilings.size === 0 ? [] : [sql.raw(curriculumPredicate(ceilings))]
+  const ceilings = await stageCeilings(userId, language.id, learner)
+  const curriculumBounded = ceilings.size > 0
   // Without this a fresh account gets an empty queue forever, because a card
   // only comes into existence when the first answer is recorded.
   //
@@ -1589,52 +1428,55 @@ export async function getQueue(userId: string, query: StudyQueueQuery): Promise<
   // multiple). Introductions first; in a mixed session extras fill what is
   // left of the batch, and in any session they carry on alone once the day's
   // words are done.
-  const pickNew = (kind: SQL, limit: number) => limit <= 0
-    ? Promise.resolve([])
-    : db
-        .select({
-          facetId: studyItemFacets.id,
-          studyItemId: studyItems.id,
-          kind: studyItems.kind,
-          facet: studyItemFacets.facet,
-          sortIndex: studyItems.sortIndex,
-          ...promptColumns
-        })
-        .from(studyItemFacets)
-        .innerJoin(studyItems, eq(studyItems.id, studyItemFacets.studyItemId))
-        .innerJoin(exercisePrompts, and(
-          eq(exercisePrompts.facetId, studyItemFacets.id),
-          // No srs_cards row exists yet, so state and reps are zero by definition.
-          eq(exercisePrompts.id, promptPick(language.id, userId, promptSalt, sql`0`, sql`0`))
-        ))
-        .innerJoin(exerciseTemplates, eq(exerciseTemplates.id, exercisePrompts.templateId))
-        .leftJoin(srsCards, and(eq(srsCards.facetId, studyItemFacets.id), eq(srsCards.userId, userId)))
-        .where(and(
-          eq(studyItems.languageId, language.id),
-          eq(studyItems.published, true),
-          eq(studyItems.active, true),
-          eq(studyItemFacets.enabled, true),
-          isNull(srsCards.id),
-          firstUncardedFacet(userId),
-          lessonOpened(userId),
-          introducedByQueue(),
-          seriesReady(userId),
-          ...withinCurriculum,
-          ...kindFilter,
-          ...unitFilter,
-          ...levelFilter,
-          kind
-        ))
-        .orderBy(asc(studyItems.sortIndex), asc(studyItemFacets.id))
-        .limit(limit)
+  //
+  // Which facets qualify is worked out in memory (`newCandidates`), in the
+  // order they are introduced. Postgres then picks each one's prompt, a chunk
+  // at a time: a facet with no prompt this learner may see yet drops out, and
+  // the next chunk fills its place. Chunks grow, so a deck whose first
+  // thousand candidates all drop out costs a few queries, not hundreds. The
+  // published / active / enabled tests repeat what the catalogue already
+  // applied, so a catalogue a moment stale can never serve withdrawn content.
+  const promptsFor = (facetIds: string[], limit: number) => db
+    .select({
+      facetId: studyItemFacets.id,
+      studyItemId: studyItems.id,
+      kind: studyItems.kind,
+      facet: studyItemFacets.facet,
+      sortIndex: studyItems.sortIndex,
+      ...promptColumns
+    })
+    .from(studyItemFacets)
+    .innerJoin(studyItems, eq(studyItems.id, studyItemFacets.studyItemId))
+    .innerJoin(exercisePrompts, and(
+      eq(exercisePrompts.facetId, studyItemFacets.id),
+      // No srs_cards row exists yet, so state and reps are zero by definition.
+      eq(exercisePrompts.id, promptPick(language.id, userId, promptSalt, sql`0`, sql`0`))
+    ))
+    .innerJoin(exerciseTemplates, eq(exerciseTemplates.id, exercisePrompts.templateId))
+    .where(and(
+      inArray(studyItemFacets.id, facetIds),
+      eq(studyItems.published, true),
+      eq(studyItems.active, true),
+      eq(studyItemFacets.enabled, true)
+    ))
+    .orderBy(asc(studyItems.sortIndex), asc(studyItemFacets.id))
+    .limit(limit)
+  const pickNew = async (met: boolean, limit: number) => {
+    const candidates = limit <= 0 ? [] : newCandidates(cat, learner, filter, ceilings, met).map(f => f.id)
+    const rows: Awaited<ReturnType<typeof promptsFor>> = []
+    let chunk = Math.max(2 * limit, PROMPT_CHUNK_MIN)
+    for (let i = 0; i < candidates.length && rows.length < limit; i += chunk, chunk = Math.min(chunk * 4, PROMPT_CHUNK_MAX))
+      rows.push(...await promptsFor(candidates.slice(i, i + chunk), limit - rows.length))
+    return rows
+  }
   const slots = Math.max(0, query.limit - dueRows.length)
-  const introRows = query.mode === 'due' ? [] : await pickNew(sql`not ${itemHasCard(userId)}`, Math.min(budget.wordsLeft, slots))
+  const introRows = query.mode === 'due' ? [] : await pickNew(false, Math.min(budget.wordsLeft, slots))
   // "Learning new words" means new words: a met word's next card only comes
   // once there are none to give, never shuffled in among them. Mixed
   // sessions still fill the batch with both.
   const extraRows = query.mode === 'due' || (query.mode === 'new' && introRows.length > 0)
     ? []
-    : await pickNew(itemHasCard(userId), Math.min(budget.extrasLeft, slots - introRows.length))
+    : await pickNew(true, Math.min(budget.extrasLeft, slots - introRows.length))
   const newRows = [...introRows, ...extraRows]
 
   // --- Finish the stage -----------------------------------------------------
@@ -1789,7 +1631,7 @@ export async function getQueue(userId: string, query: StudyQueueQuery): Promise<
 
   // One card per item per queue.
   //
-  // `firstUncardedFacet` bounds the NEW pool, but the due pool legitimately
+  // `newCandidates` bounds the NEW pool, but the due pool legitimately
   // holds every facet of an item at once — 仕事's meaning, reading, production
   // and listening all come due together — so a twenty-card session showed the
   // same word four times: "I see card that introduces shigoto, then study card
@@ -1967,7 +1809,7 @@ export async function getQueue(userId: string, query: StudyQueueQuery): Promise<
       ...levelFilter
     ))
 
-  const available = await countAvailableNew(userId, language.id, [...withinCurriculum, ...kindFilter, ...unitFilter, ...levelFilter])
+  const available = await countAvailableNew(language.id, learner, filter, ceilings)
 
   // What this deck is holding back, if anything. Only worth asking when the
   // deck came up empty of new material — otherwise there is nothing to explain.
@@ -1975,11 +1817,11 @@ export async function getQueue(userId: string, query: StudyQueueQuery): Promise<
   // is no longer sufficient: the stage fallback above may have filled the queue
   // with the current stage's unfinished cards, and explaining that material is
   // locked ahead while handing the reader twenty cards is simply false.
-  const gate = items.length > 0 || available.words || withinCurriculum.length === 0
+  const gate = items.length > 0 || available.words || !curriculumBounded
     ? null
-    : await deckGate(userId, language.id, [...kindFilter, ...unitFilter, ...levelFilter])
+    : heldBack(cat, learner, filter)
 
-  const progress = await stageProgress(userId, language.id)
+  const progress = await stageProgress(userId, language.id, learner)
 
   return {
     items,
@@ -2420,6 +2262,10 @@ function currentStagePredicate(ceilings: Map<string, number>, stageSize: number)
   )`
 }
 
+/**
+ * The curriculum bound as SQL, for the deck counts that still run in Postgres.
+ * The same rule as `inCurriculum` in `lib/srs/curriculum.ts`: change both.
+ */
 function curriculumPredicate(ceilings: Map<string, number>): string {
   const quote = (value: string) => `'${value.replace(/'/gu, "''")}'`
   const ids = [...ceilings.keys()].map(quote).join(', ')
@@ -2444,41 +2290,6 @@ function curriculumPredicate(ceilings: Map<string, number>): string {
 }
 
 /**
- * Why a deck has no new material, when the curriculum is the reason.
- *
- * Runs the same filters as the queue MINUS the stage ceiling. If items turn up,
- * they are waiting behind the gate rather than absent, and the first one's
- * position says which stage opens them.
- */
-async function deckGate(
-  userId: string,
-  languageId: string,
-  filters: SQL[]
-): Promise<{ waiting: number, opensAtStage: number } | null> {
-  const [row] = await db
-    .select({
-      waiting: sql<number>`count(*)`.mapWith(Number),
-      firstAt: sql<number | null>`min(${studyItems.sortIndex})`
-    })
-    .from(studyItemFacets)
-    .innerJoin(studyItems, eq(studyItems.id, studyItemFacets.studyItemId))
-    .leftJoin(srsCards, and(eq(srsCards.facetId, studyItemFacets.id), eq(srsCards.userId, userId)))
-    .where(and(
-      eq(studyItems.languageId, languageId),
-      eq(studyItems.published, true),
-      eq(studyItems.active, true),
-      eq(studyItemFacets.enabled, true),
-      isNull(srsCards.id),
-      introducedByQueue(),
-      ...filters
-    ))
-
-  if (!row || row.waiting === 0 || row.firstAt === null)
-    return null
-  return { waiting: row.waiting, opensAtStage: Math.ceil(row.firstAt / STAGE_SIZE) }
-}
-
-/**
  * The course: every level as an ordered path of stages.
  *
  * The study page is a set of filters over a corpus, which is the right tool
@@ -2499,23 +2310,13 @@ export async function getCourse(userId: string, languageCode: string): Promise<C
   if (!language)
     return { levels: [] }
 
-  const rollup = await db.execute(sql`
-    with stages as (${stageRollup(userId, language.id)})
-    select l.code as level, l.sort_index as level_order, s.stage, s.kind, s.total, s.learned, s.started, s.items
-    from stages s
-    join language_levels l on l.id = s.level_id
-    order by l.sort_index, s.stage, s.kind
-  `)
-
-  interface Row { level: string, level_order: number, stage: number, kind: string, total: number, learned: number, started: number, items: number }
-  const rows = ((rollup.rows ?? []) as unknown as Row[]).map(r => ({
-    ...r,
-    stage: Number(r.stage),
-    total: Number(r.total),
-    learned: Number(r.learned),
-    started: Number(r.started),
-    items: Number(r.items)
-  }))
+  const { rows: rollup, cat } = await stageRows(userId, language.id)
+  const levelCode = new Map(cat.levels.map(l => [l.id, l.code]))
+  // In level, stage, kind order, as the rollup returns them.
+  const rows = rollup.flatMap((r) => {
+    const level = levelCode.get(r.levelId)
+    return level === undefined ? [] : [{ ...r, level }]
+  })
 
   // Group into levels, then stages.
   const byLevel = new Map<string, Map<number, { total: number, learned: number, started: number, kinds: Map<string, number> }>>()

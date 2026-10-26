@@ -30,6 +30,8 @@ import { clozeFurigana, correctedAnswers, withLineReading } from '@nihongo/share
 import { correctionProposalSchema, particleProposalSchema } from '@nihongo/shared/types'
 import { aliasedTable, and, asc, eq, inArray, like, sql } from 'drizzle-orm'
 
+import { invalidateCatalogue } from './catalogue.service.js'
+
 /** Second alias: a queue row can point straight at a grammar point. */
 const directPoint = aliasedTable(grammarPoints, 'direct_point')
 /** A Speak session's level, joined beside a speech's. */
@@ -300,7 +302,7 @@ export async function listPending(
  * behaviour we want: there is no code path that publishes unreviewed content.
  */
 export async function approve(id: string, reviewerId: string, note?: string): Promise<boolean> {
-  return db.transaction(async (tx) => {
+  const approved = await db.transaction(async (tx) => {
     const [row] = await tx
       .select({ targetId: contentReviewQueue.targetId, targetTable: contentReviewQueue.targetTable, proposed: contentReviewQueue.proposed })
       .from(contentReviewQueue)
@@ -395,6 +397,11 @@ export async function approve(id: string, reviewerId: string, note?: string): Pr
 
     return true
   })
+  // Approval can publish study items: the in-memory catalogue reloads, after
+  // the commit so the reload sees them.
+  if (approved)
+    invalidateCatalogue()
+  return approved
 }
 
 export async function reject(id: string, reviewerId: string, note?: string): Promise<boolean> {

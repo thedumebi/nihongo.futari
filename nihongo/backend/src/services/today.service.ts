@@ -6,6 +6,7 @@ import { eq } from 'drizzle-orm'
 
 import { unseenAchievements } from './achievements.service.js'
 import { pendingRequestCount } from './friends.service.js'
+import { loadLearnerState } from './learner-state.service.js'
 import { listLessons } from './lesson.service.js'
 import { getSummary, lessonDoneToday, studiedToday, todayQuests } from './progress.service.js'
 import { listReadings } from './readings.service.js'
@@ -42,10 +43,12 @@ export async function getToday(userId: string, languageCode: string, moreNew = 0
   if (!language)
     return null
 
+  // One read of the learner's cards for the two that need them.
+  const learner = await loadLearnerState(userId, language.id)
   const [due, nextDueAt, newToday, lessons, speak, summary, today, quests, unseen, readings, friendRequests, progress] = await Promise.all([
     countDue(userId, language.id),
     nextDueAfter(userId, language.id, new Date()),
-    newLeftToday(userId, language.id, new Date(), moreNew),
+    newLeftToday(userId, language.id, new Date(), moreNew, learner),
     listLessons(userId, languageCode),
     listSpeak(userId, languageCode),
     getSummary(userId, languageCode),
@@ -54,7 +57,7 @@ export async function getToday(userId: string, languageCode: string, moreNew = 0
     unseenAchievements(userId),
     listReadings(languageCode, undefined, userId),
     pendingRequestCount(userId),
-    stageProgress(userId, language.id)
+    stageProgress(userId, language.id, learner)
   ])
   // A stage passed while reviewing, or on another device, is announced here
   // too, not only on the next Study batch.

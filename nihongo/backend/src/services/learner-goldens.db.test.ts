@@ -40,7 +40,7 @@ async function celebrations(userId: string): Promise<unknown[]> {
 
 /**
  * How many kanji of a sound series this learner has learned, which is what
- * makes the series ready (`seriesReady` in srs.service.ts).
+ * makes the series ready (`seriesReady` in lib/srs/curriculum.ts).
  */
 async function seriesKanjiLearned(userId: string, seriesId: string): Promise<number> {
   const result = await db.execute<{ n: number }>(sql`
