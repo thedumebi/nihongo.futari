@@ -7,7 +7,6 @@ import { recordActivity } from '@/api/activities'
 import { getKanjiBuildGame } from '@/api/games'
 import GameEnd from '@/components/games/game-end.vue'
 import AppShell from '@/components/layout/app-shell.vue'
-import AnswerBar from '@/components/ui/answer-bar.vue'
 import Button from '@/components/ui/button.vue'
 import { useAnswerStreak } from '@/composables/use-answer-streak'
 import { ROUTES } from '@/constants'
@@ -231,12 +230,10 @@ async function next() {
           <p class="font-semibold" :class="correct ? 'text-[var(--color-success)]' : 'text-[var(--color-danger)]'">
             {{ correct ? 'Right.' : 'Not quite.' }}
           </p>
-        </div>
-        <AnswerBar v-if="checked" class="mt-4 text-center">
-          <Button @click="next">
+          <Button class="mt-4" @click="next">
             Next
           </Button>
-        </AnswerBar>
+        </div>
       </template>
     </div>
   </AppShell>

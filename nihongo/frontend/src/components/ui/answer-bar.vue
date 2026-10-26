@@ -54,6 +54,9 @@ const phone = useMediaQuery('(max-width: 639.98px)')
 // ============ Reactive State ============
 const bar = ref<HTMLElement | null>(null)
 const { height } = useElementSize(bar, undefined, { box: 'border-box' })
+/** Where the bar sits in the page: the width its buttons had before it was fixed. */
+const place = ref<HTMLElement | null>(null)
+const { width } = useElementSize(place)
 const id = Symbol('answer-bar')
 
 // ============ Watchers ============
@@ -64,12 +67,14 @@ onBeforeUnmount(() => reserve(id, null))
 </script>
 
 <template>
-  <div class="sm:sticky sm:bottom-0 sm:z-20 sm:bg-[var(--color-bg)]" @click.stop>
+  <div ref="place" class="sm:sticky sm:bottom-0 sm:z-20 sm:bg-[var(--color-bg)]" @click.stop>
     <div
       ref="bar"
       class="answer-bar bg-[var(--color-bg)] pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] max-sm:fixed max-sm:inset-x-0 max-sm:bottom-0 max-sm:z-30 max-sm:border-t max-sm:border-[var(--color-border)] max-sm:px-4"
     >
-      <div class="mx-auto max-w-xl" :class="contentClass">
+      <!-- Fixed, the bar spans the screen; its buttons keep the width of the
+           space they sit in, so they are the size they were in the page. -->
+      <div class="mx-auto max-w-xl" :class="contentClass" :style="phone && width ? { width: `${width}px` } : undefined">
         <slot />
       </div>
       <div v-if="$slots.hint" class="mt-2 text-center text-xs text-[var(--color-muted)]">

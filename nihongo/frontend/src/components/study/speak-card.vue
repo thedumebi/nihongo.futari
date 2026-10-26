@@ -8,7 +8,6 @@ import { onBeforeUnmount, ref, watch } from 'vue'
 import TokenLine from '@/components/ja/token-line.vue'
 import WordMeaning from '@/components/ja/word-meaning.vue'
 import TeacherLine from '@/components/speak/teacher-line.vue'
-import AnswerBar from '@/components/ui/answer-bar.vue'
 import Button from '@/components/ui/button.vue'
 import { playAudio, playAudioQueue, stopAudio } from '@/composables/use-audio'
 
@@ -96,7 +95,7 @@ function onPick(index: number | null) {
       </p>
     </div>
 
-    <AnswerBar class="mt-8" content-class="flex flex-wrap items-center justify-center gap-3">
+    <div class="mt-8 flex flex-wrap items-center justify-center gap-3">
       <Button variant="ghost" round aria-label="Hear it again" @click="replay">
         <Volume2 class="h-5 w-5" />
       </Button>
@@ -113,7 +112,7 @@ function onPick(index: number | null) {
           Got it
         </Button>
       </template>
-    </AnswerBar>
+    </div>
 
     <WordMeaning v-if="word" :word="word" @close="onPick(null)" />
   </div>

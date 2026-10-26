@@ -14,7 +14,6 @@ import ClozePrompt from '@/components/study/cloze-prompt.vue'
 import GrammarLesson from '@/components/study/grammar-lesson.vue'
 import KanaLesson from '@/components/study/kana-lesson.vue'
 import OrderInput from '@/components/study/order-input.vue'
-import AnswerBar from '@/components/ui/answer-bar.vue'
 import Button from '@/components/ui/button.vue'
 import Input from '@/components/ui/input.vue'
 import { useAnswerStreak } from '@/composables/use-answer-streak'
@@ -344,7 +343,7 @@ onMounted(async () => {
             {{ isListening ? 'Play again' : 'Listen' }}
           </button>
 
-          <form id="lesson-answer" class="flex flex-col gap-4" @submit.prevent="revealed ? next() : submit()">
+          <form class="flex flex-col gap-4" @submit.prevent="revealed ? next() : submit()">
             <ChoiceInput
               v-if="isChoice"
               :options="choices"
@@ -389,15 +388,11 @@ onMounted(async () => {
             <p v-if="revealed && explanation" class="text-center text-sm text-[var(--color-muted)]">
               {{ explanation }}
             </p>
-          </form>
 
-          <!-- Outside the form, as the quiz's last child, so it stays in view
-               on a long question; it submits through form="lesson-answer". -->
-          <AnswerBar>
-            <Button type="submit" form="lesson-answer" variant="primary" class="w-full">
+            <Button type="submit" variant="primary">
               {{ revealed ? (queue.length > 1 || willRetry ? 'Next' : 'Finish') : 'Check' }}
             </Button>
-          </AnswerBar>
+          </form>
         </div>
 
         <!-- DONE -->

@@ -7,7 +7,6 @@ import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 
 import { getQueue } from '@/api/writing'
 import AppShell from '@/components/layout/app-shell.vue'
-import AnswerBar from '@/components/ui/answer-bar.vue'
 import Dropdown from '@/components/ui/dropdown.vue'
 import Tooltip from '@/components/ui/tooltip.vue'
 import WritingCanvas from '@/components/writing/writing-canvas.vue'
@@ -414,7 +413,7 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
              only centred its own contents inside whatever width it had landed
              in. On a phone the three spread to the full width; from `sm` up
              they sit together in the middle. -->
-        <AnswerBar class="w-full" content-class="flex w-full items-center justify-between gap-3 sm:justify-center">
+        <div class="flex w-full items-center justify-between gap-3 sm:justify-center">
           <button
             type="button"
             class="rounded-lg px-2 py-1 text-sm text-[var(--color-muted)] transition hover:text-[var(--color-text)] disabled:opacity-40"
@@ -448,7 +447,7 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
           >
             Skip &rarr;
           </button>
-        </AnswerBar>
+        </div>
 
         <div
           v-if="grade"

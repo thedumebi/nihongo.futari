@@ -1939,11 +1939,11 @@ watch(() => lang.code, async () => {
                   </button>
                 </div>
               </template>
-              <AnswerBar class="-mx-8 mt-8 px-8">
+              <div class="mt-8">
                 <Button variant="primary" @click="introDone">
                   Got it, ask me
                 </Button>
-              </AnswerBar>
+              </div>
             </template>
           </div>
 
@@ -2295,13 +2295,46 @@ watch(() => lang.code, async () => {
               >
                 <img :src="shownArt" alt="" class="h-36 w-36 object-contain" loading="lazy">
               </button>
+
+              <Button
+                v-if="!revealed && !isChoice"
+                type="submit"
+                variant="primary"
+                :disabled="isOrdering && placed.length !== orderTiles.length"
+              >
+                Check
+              </Button>
+
+              <!--
+              Move through the queue without answering. Quiet styling on
+              purpose: this is an escape hatch from a card you do not want right
+              now, not a third way to finish one.
+            -->
+              <div class="flex items-center justify-between pt-1">
+                <button
+                  type="button"
+                  class="rounded-lg px-2 py-1 text-sm text-[var(--color-muted)] transition enabled:hover:text-[var(--color-text)] disabled:opacity-40"
+                  :disabled="!canGoBack"
+                  @click="back"
+                >
+                  &larr; Back
+                </button>
+                <button
+                  type="button"
+                  class="rounded-lg px-2 py-1 text-sm text-[var(--color-muted)] transition hover:text-[var(--color-text)]"
+                  @click="skip"
+                >
+                  Skip &rarr;
+                </button>
+              </div>
             </form>
 
-            <!-- Outside the form, in the card itself, so it stays in view from
-                 the top of the card down; the submit button still belongs to
-                 the form through form="study-answer". -->
-            <AnswerBar v-if="!isDialogue && !isSpeak && (revealed || !isChoice)" class="-mx-8 mt-4 px-8">
-              <div v-if="revealed && wasCorrect" class="flex gap-2">
+            <!-- Once answered, what moves on to the next card stays in view: the
+                 ratings, or Next after a miss. Outside the form, in the card
+                 itself, so it holds from the top of the card down; Next still
+                 submits the form through form="study-answer". -->
+            <AnswerBar v-if="!isDialogue && !isSpeak && revealed" class="-mx-8 mt-4 px-8">
+              <div v-if="wasCorrect" class="flex gap-2">
                 <button
                   v-for="r in RATINGS"
                   :key="r.value"
@@ -2316,17 +2349,16 @@ watch(() => lang.code, async () => {
                 </button>
               </div>
               <Button
-                v-else-if="!isChoice || revealed"
+                v-else
                 type="submit"
                 form="study-answer"
                 variant="primary"
                 class="w-full"
-                :disabled="isOrdering && !revealed && placed.length !== orderTiles.length"
               >
-                {{ revealed ? 'Next' : 'Check' }}
+                Next
               </Button>
               <!-- Keyboard shortcuts: no use on a phone, where they only take room. -->
-              <template v-if="canAutoFocus && revealed && wasCorrect" #hint>
+              <template v-if="canAutoFocus && wasCorrect" #hint>
                 <template v-if="suggested">
                   Enter for {{ RATINGS.find(r => r.value === suggested)?.label }}, from the stroke score
                 </template>
@@ -2336,29 +2368,6 @@ watch(() => lang.code, async () => {
                 &middot; space to replay
               </template>
             </AnswerBar>
-
-            <!--
-              Move through the queue without answering. Quiet styling on
-              purpose: this is an escape hatch from a card you do not want right
-              now, not a third way to finish one.
-            -->
-            <div v-if="!isDialogue && !isSpeak" class="flex items-center justify-between pt-1">
-              <button
-                type="button"
-                class="rounded-lg px-2 py-1 text-sm text-[var(--color-muted)] transition enabled:hover:text-[var(--color-text)] disabled:opacity-40"
-                :disabled="!canGoBack"
-                @click="back"
-              >
-                &larr; Back
-              </button>
-              <button
-                type="button"
-                class="rounded-lg px-2 py-1 text-sm text-[var(--color-muted)] transition hover:text-[var(--color-text)]"
-                @click="skip"
-              >
-                Skip &rarr;
-              </button>
-            </div>
           </template>
         </div>
       </div>
