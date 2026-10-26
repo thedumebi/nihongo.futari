@@ -547,7 +547,9 @@ Actions):
 | `DEPLOY_PORT` | only if SSH is not on 22 |
 
 After that, every push to `master` runs lint, typecheck and tests, then
-fast-forwards and rebuilds on the server.
+fast-forwards and rebuilds on the server. A push that touches only `.claude/`,
+`.husky/` or root `*.md` files skips the deploy (`paths-ignore` in
+`deploy-nagaya.yml`).
 
 ---
 

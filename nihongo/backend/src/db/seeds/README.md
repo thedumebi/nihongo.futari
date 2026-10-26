@@ -31,3 +31,22 @@ Write them to be **derived and idempotent**: `036-cloze-answer-readings.sql`
 recomputes readings from `sentence_tokens` rather than carrying 1,659 literals,
 and its `WHERE` clause excludes rows that already hold the value, so a second
 run reports `UPDATE 0`.
+
+## A fresh database
+
+Migrations plus these seeds build a database with everything production has.
+That was not always true: the lexicon came from `pnpm import:*` run by hand,
+and admins publish through the review queue, so neither ever passed through a
+seed. Two snapshots of production, taken on 2026-10-26, close the gap:
+
+- `007a-imported-lexicon-NN.sql`: kanji, words and everything hanging off
+  them. Lettered so it sorts between the kana seeds and the first seed that
+  needs a word (064).
+- `185-fresh-database-catch-up-NN.sql`: the rest, row for row.
+
+Each is split into parts of about 4 MB, so no one transaction or seed-runner
+string grows large; each part is its own `seed_history` row, so never rename one.
+Every part opens with a gate that returns at once on a database whose first
+seed ran before the snapshot, which is production and every older local copy.
+They are a one-off snapshot, not regenerated: content added later arrives as
+ordinary numbered seeds after 185, which run on a fresh database too.

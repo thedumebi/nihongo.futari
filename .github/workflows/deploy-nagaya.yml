@@ -4,12 +4,20 @@
 # to run them. Nothing is built on the box.
 #
 # nihongo runs on nagaya since its cutover (RUNBOOK.md §6.1): every push to
-# master builds and deploys. Run it by hand to rebuild or redeploy a commit.
+# master builds and deploys, unless it touches only tooling or docs (see
+# paths-ignore). Run it by hand to rebuild or redeploy a commit.
 name: Deploy (nagaya)
 
 on:
   push:
     branches: [master]
+    # Tooling and docs never reach the images; a push touching only these
+    # skips the deploy. Anything else, including a file not listed, deploys.
+    paths-ignore:
+      - '.claude/**'
+      - '.claudeignore'
+      - '.husky/**'
+      - '*.md'
   workflow_dispatch:
     inputs:
       deploy:
