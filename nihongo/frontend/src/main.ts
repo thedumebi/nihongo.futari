@@ -18,3 +18,8 @@ app.mount('#app')
 // iOS refuses to play audio from an element it has never seen a gesture
 // against. One listener, once, unlocks the shared player for the session.
 armAudioUnlock()
+
+// Today is where a signed-in learner opens; fetch its code alongside the
+// session check rather than after it.
+// Offline, or a deploy renamed it: the route loads it when it is needed.
+import('@/views/today.vue').catch(() => {})

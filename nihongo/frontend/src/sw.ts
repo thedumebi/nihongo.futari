@@ -5,7 +5,7 @@ import { ExpirationPlugin } from 'workbox-expiration'
 import { cleanupOutdatedCaches, precacheAndRoute } from 'workbox-precaching'
 import { RangeRequestsPlugin } from 'workbox-range-requests'
 import { registerRoute } from 'workbox-routing'
-import { CacheFirst, NetworkFirst } from 'workbox-strategies'
+import { CacheFirst, NetworkFirst, StaleWhileRevalidate } from 'workbox-strategies'
 
 declare const self: ServiceWorkerGlobalScope
 
@@ -128,7 +128,7 @@ registerRoute(
 
 /**
  * Everything else a learner reads: lessons, Speak sessions, conversations,
- * speeches, words, the crossword, Today, progress.
+ * speeches, the crossword, Today, progress.
  *
  * Without this only Review and grammar worked offline, so on a train the
  * Lessons tab — the app's starting point — and every Speak session came up
@@ -141,18 +141,47 @@ const READ_PREFIXES: string[] = [
   ROUTE_BASE_PATHS.SPEAK,
   ROUTE_BASE_PATHS.DIALOGUES,
   ROUTE_BASE_PATHS.READINGS,
-  ROUTE_BASE_PATHS.WORDS,
-  ROUTE_BASE_PATHS.KANJI,
-  ROUTE_BASE_PATHS.DICTIONARY,
   ROUTE_BASE_PATHS.PHONETICS,
   ROUTE_BASE_PATHS.CROSSWORD,
   ROUTE_BASE_PATHS.TODAY,
   ROUTE_BASE_PATHS.PROGRESS
 ]
+/**
+ * Reference content: a kanji, a word, a dictionary search. Public, the same
+ * for every learner, and changed only by a deploy or an approval, so a copy
+ * already here is shown at once and refreshed behind it for next time. These
+ * were NetworkFirst with the rest, so every tap on a word waited on a round
+ * trip to Europe for an answer the device already had.
+ *
+ * Nothing that carries a learner's own state belongs here (dialogue and
+ * reading lists show what you know; sound series which kanji you have): a
+ * stale copy of those would show yesterday's progress.
+ */
+const CONTENT_PREFIXES: string[] = [
+  ROUTE_BASE_PATHS.WORDS,
+  ROUTE_BASE_PATHS.KANJI,
+  ROUTE_BASE_PATHS.DICTIONARY
+]
+
+function isApiUnder(url: URL, prefixes: string[]): boolean {
+  return prefixes.some(p => url.pathname === p || url.pathname.startsWith(`${p}/`) || url.pathname.includes(`/api${p}`))
+}
+
+registerRoute(
+  ({ url, request }) => request.method === 'GET' && request.destination === '' && isApiUnder(url, CONTENT_PREFIXES),
+  new StaleWhileRevalidate({
+    cacheName: 'go-content',
+    plugins: [
+      new CacheableResponsePlugin({ statuses: [200] }),
+      new ExpirationPlugin({ maxEntries: 2000, maxAgeSeconds: 30 * 24 * 60 * 60, purgeOnQuotaError: true })
+    ]
+  })
+)
+
 registerRoute(
   ({ url, request }) => request.method === 'GET'
     && request.destination === ''
-    && READ_PREFIXES.some(p => url.pathname === p || url.pathname.startsWith(`${p}/`) || url.pathname.includes(`/api${p}`)),
+    && isApiUnder(url, READ_PREFIXES),
   new NetworkFirst({
     cacheName: 'go-reading',
     networkTimeoutSeconds: 3,

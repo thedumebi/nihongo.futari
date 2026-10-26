@@ -324,18 +324,20 @@ router.beforeEach(async (to) => {
   if (!to.meta.requiresAuth && !to.meta.isAdmin)
     return true
 
-  if (!auth.isAuthenticated)
+  // The admin surface waits for the server: a role this device remembers is
+  // not enough to draw it, and offline there is no answer to draw it from
+  // (the API re-checks the role on every request regardless).
+  const confirmed = to.meta.isAdmin ? await auth.confirmSession() : true
+
+  if (!auth.isAuthenticated || !auth.user)
     return { name: 'login', query: { redirect: to.fullPath } }
-  if (to.meta.isAdmin && !auth.isAdmin)
+  if (to.meta.isAdmin && (!confirmed || !auth.isAdmin))
     return { name: 'home' }
 
   // A new account starts with the welcome flow, once. Someone who skipped it,
   // finished it, or had an account before it existed is never sent there.
-  if (to.name !== 'welcome' && !to.meta.isAdmin) {
-    const onboarding = await useOnboardingStore().load()
-    if (onboarding?.status === 'pending')
-      return { name: 'welcome' }
-  }
+  if (to.name !== 'welcome' && !to.meta.isAdmin && await useOnboardingStore().isPending(auth.user.id))
+    return { name: 'welcome' }
 
   return true
 })
