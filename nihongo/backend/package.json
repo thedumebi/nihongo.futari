@@ -11,6 +11,7 @@
     "lint:fix": "npm run lint -- --cache --fix",
     "test": "NODE_ENV=test vitest run",
     "test:db": "NODE_ENV=test vitest run --config vitest.db.config.ts",
+    "bench:reads": "NODE_ENV=test PG_DATABASE=nihongo_test LOG_LEVEL=silent tsx src/test/bench-reads.ts",
     "drizzle": "NODE_OPTIONS='--import tsx' dotenvx run -- drizzle-kit",
     "drizzle:generate": "NODE_OPTIONS='--import tsx' dotenvx run -- drizzle-kit generate",
     "drizzle:studio": "NODE_OPTIONS='--import tsx' drizzle-kit studio",

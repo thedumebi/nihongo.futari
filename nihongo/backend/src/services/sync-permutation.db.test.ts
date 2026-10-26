@@ -6,7 +6,7 @@ import { sql } from 'drizzle-orm'
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 
 import { resetClock, seedRandom, setClock } from '@/test/clock.js'
-import { DAY_MS, LANGUAGE_ID, START, uuidFrom } from '@/test/learners.js'
+import { DAY_MS, LANGUAGE_ID, START, uuidFrom } from '@/test/learner-specs.js'
 
 import { completeLesson, listLessons } from './lesson.service.js'
 import { recomputeProgress } from './progress.service.js'

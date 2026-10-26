@@ -26,6 +26,13 @@ const ssl = buildSslConfig()
 
 export const connection = new Pool({
   connectionString: env.DATABASE_URL,
+  // No JIT. Postgres compiles a query to machine code once its estimated cost
+  // passes `jit_above_cost`, and the catalogue-wide queries here do: in
+  // production the lessons list spent 1.45 s of its 1.5 s compiling, on every
+  // request, to save a few milliseconds of running. Compiling only pays for
+  // long analytical queries, which this app does not run. Set per connection,
+  // so the other databases on the shared server keep their own setting.
+  options: '-c jit=off',
   max: (env.DB_MIGRATING || env.DB_SEEDING) ? 1 : env.DB_POOL_MAX,
   idleTimeoutMillis: env.DB_POOL_IDLE_TIMEOUT_MS,
   connectionTimeoutMillis: env.DB_POOL_CONNECTION_TIMEOUT_MS,

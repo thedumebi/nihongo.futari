@@ -4,7 +4,8 @@ import { eq, sql } from 'drizzle-orm'
 import { afterAll, describe, expect, it } from 'vitest'
 
 import { resetClock, seedRandom, setClock } from '@/test/clock.js'
-import { afterFixture, createLearner, LANGUAGE_ID, LEARNERS } from '@/test/learners.js'
+import { afterFixture, LANGUAGE_ID, LEARNERS } from '@/test/learner-specs.js'
+import { createLearner } from '@/test/learners.js'
 
 import { knownWordIds } from './coverage.service.js'
 import { getCrossword } from './crossword.service.js'
