@@ -82,5 +82,11 @@ export interface StageRow {
   items: number
 }
 
+/** What cards a page still holds will take from today's limits once answered. */
+export interface InFlightCharge {
+  words: number
+  extras: number
+}
+
 /** The numbers on one deck in the picker. */
 export type DeckCounts = Pick<StudyDeck, 'total' | 'due' | 'learning' | 'unseen' | 'locked'>

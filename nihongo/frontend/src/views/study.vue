@@ -12,6 +12,7 @@ import type {
   Stroke,
   StudyDeck,
   StudyQueueItem,
+  StudyQueueQuery,
   StudyQueueResponse,
   WordGloss
 } from '@nihongo/shared/types'
@@ -161,7 +162,7 @@ function selectLevel(code: string) {
   levelCode.value = code
   // Both have to be refetched: the deck counts are per level, and a deck can
   // disappear entirely at a level that has none of it.
-  void loadDecks().then(load)
+  void loadDecksAndQueue()
 }
 const activeDeck = computed(() => decks.value.find(d => d.id === deckId.value))
 
@@ -1158,48 +1159,163 @@ function queueLevel(): string {
   return focused.value && mode.value === 'due' ? '' : levelCode.value
 }
 
+/**
+ * The next batch, fetched while the last few cards of this one are on screen,
+ * so the end of a batch is not a wait on the network.
+ *
+ * It names the cards still held (`inFlight`): the server leaves them out of the
+ * next batch and counts the new ones against today's limits as though already
+ * answered, which keeps the day's new words exact across the join.
+ */
+let ahead: { key: string, result: Promise<StudyQueueResponse | null> } | null = null
+/**
+ * Which load is current. Loads overlap (a deck change while a batch is still
+ * arriving), and only the latest may put its batch on screen.
+ */
+let loadGeneration = 0
+/** Cards left on screen when the next batch is fetched. */
+const FETCH_AHEAD_AT = 5
+
+function fetchAhead() {
+  if (ahead || items.value.length === 0 || items.value.length - index.value > FETCH_AHEAD_AT)
+    return
+  const { key, params } = queueRequest()
+  // From the card before this one: its answer may still be on its way into
+  // the outbox, so the flush below could miss it.
+  const held = items.value.slice(Math.max(0, index.value - 1)).map(i => i.facetId).join(',')
+  ahead = {
+    key,
+    result: settle()
+      .catch(() => {})
+      .then(() => getQueue({ ...params, inFlight: held }))
+      .catch(() => null)
+  }
+}
+
+/**
+ * Give up a batch fetched ahead: the deck, level or mode changed. The server
+ * recorded any stage celebration it carried as announced, so announce it.
+ */
+function dropAhead() {
+  const dropped = ahead
+  ahead = null
+  void dropped?.result.then((queue) => {
+    if (queue?.celebrate)
+      stageUp.value = queue.celebrate
+  })
+}
+
+/** The end of a batch: the one fetched ahead if it still fits, a fresh load otherwise. */
+async function advance() {
+  const pending = ahead
+  const { key } = queueRequest()
+  if (!pending || pending.key !== key) {
+    await load()
+    return
+  }
+  ahead = null
+  const generation = ++loadGeneration
+  loading.value = true
+  const queue = await pending.result
+  // Straight to the modal, whatever happens next: the server has already
+  // recorded this one as announced, and no later load will bring it again.
+  if (queue?.celebrate)
+    stageUp.value = queue.celebrate
+  // A deck, level or language change while it was arriving: that load wins.
+  if (generation !== loadGeneration)
+    return
+  loading.value = false
+  if (!queue || queue.items.length === 0) {
+    // Nothing more, or no answer: a fresh load says why, with every answer in.
+    await load()
+    return
+  }
+  try {
+    await showQueue(queue, key, { fetchedAhead: true })
+  } catch {
+    await load()
+  }
+}
+
+/**
+ * The deck's filter, read from its id (`kind:word`, `unit:konbini`, as
+ * `getDecks` builds them) rather than from the loaded deck list, so the queue
+ * need not wait for the decks to arrive.
+ *
+ * A focused session ignores the remembered deck. Applying both narrowed
+ * "everything due" down to whatever deck was last picked — the page said 3 due
+ * and handed over 0, because the deck filter was still on underneath a session
+ * the reader had no way of knowing was filtered.
+ */
+function deckFilter(): Pick<StudyQueueQuery, 'kind' | 'unit'> {
+  const split = deckId.value.indexOf(':')
+  if (focused.value || split < 0)
+    return {}
+  const group = deckId.value.slice(0, split)
+  const value = deckId.value.slice(split + 1)
+  if (group === 'kind')
+    return { kind: value }
+  if (group === 'unit')
+    return { unit: value }
+  return {}
+}
+
+/** The queue this page is showing: its request, and the key its offline copy is kept under. */
+function queueRequest(): { key: string, params: Partial<StudyQueueQuery> } {
+  const deck = deckFilter()
+  const level = queueLevel()
+  return {
+    key: `${lang.code}:${mode.value}:${level}:${deck.kind ?? ''}:${deck.unit ?? ''}`,
+    params: {
+      languageCode: lang.code,
+      mode: mode.value,
+      limit: 20,
+      ...(level ? { level } : {}),
+      ...deck,
+      ...(readMoreNew(lang.code) ? { moreNew: readMoreNew(lang.code) } : {})
+    }
+  }
+}
+
+/** Put a batch on screen. One fetched ahead keeps today's counts that answers have since moved. */
+async function showQueue(queue: StudyQueueResponse, key: string, { fetchedAhead = false } = {}) {
+  items.value = queue.items
+  counts.value = fetchedAhead
+    ? { ...queue.counts, newToday: Math.max(queue.counts.newToday, counts.value.newToday), extrasToday: Math.max(queue.counts.extrasToday, counts.value.extrasToday) }
+    : queue.counts
+  progress.value = queue.progress
+  queueCelebration.value = queue.celebrate ?? null
+  gate.value = queue.gate
+  lessonFirst.value = queue.lessonFirst ?? null
+  index.value = 0
+  // Keep the last good queue so a session survives losing signal mid-way.
+  await cacheBundle(key, { items: queue.items, counts: queue.counts })
+  await focusInput()
+}
+
 async function load() {
+  dropAhead()
+  const generation = ++loadGeneration
   loading.value = true
   errorMsg.value = ''
   // Before the request, not after: the old card's verdict must not survive
   // even the moment the new queue is in flight.
   resetCard()
+  const { key, params } = queueRequest()
   try {
     // Answers first, then the next batch: the server counts today's new words
     // and extras from what has arrived, and an answer still in the outbox let
     // one more through the limit (41 of 40). Bounded, so offline never hangs.
     await settle().catch(() => {})
-    // A focused session ignores the remembered deck. Applying both narrowed
-    // "everything due" down to whatever deck was last picked — the page said
-    // 3 due and handed over 0, because the deck filter was still on underneath
-    // a session the reader had no way of knowing was filtered.
-    const deck = focused.value ? undefined : activeDeck.value
-    const level = queueLevel()
-    const cacheKey = `${lang.code}:${mode.value}:${level}:${deck?.kind ?? ''}:${deck?.unit ?? ''}`
-    const queue = await getQueue({
-      languageCode: lang.code,
-      mode: mode.value,
-      limit: 20,
-      ...(level ? { level } : {}),
-      ...(deck?.kind ? { kind: deck.kind } : {}),
-      ...(deck?.unit ? { unit: deck.unit } : {}),
-      ...(readMoreNew(lang.code) ? { moreNew: readMoreNew(lang.code) } : {})
-    })
-    items.value = queue.items
-    counts.value = queue.counts
-    progress.value = queue.progress
-    queueCelebration.value = queue.celebrate ?? null
-    gate.value = queue.gate
-    lessonFirst.value = queue.lessonFirst ?? null
-    index.value = 0
-    // Keep the last good queue so a session survives losing signal mid-way.
-    await cacheBundle(cacheKey, { items: queue.items, counts: queue.counts })
-    await focusInput()
+    const queue = await getQueue(params)
+    if (generation === loadGeneration)
+      await showQueue(queue, key)
   } catch {
+    if (generation !== loadGeneration)
+      return
     // Offline, or the server is unreachable: fall back to the cached bundle
     // rather than showing an error over a perfectly usable session.
-    const deck = focused.value ? undefined : activeDeck.value
-    const cached = await readBundle(`${lang.code}:${mode.value}:${queueLevel()}:${deck?.kind ?? ''}:${deck?.unit ?? ''}`)
+    const cached = await readBundle(key)
     if (cached && cached.items.length > 0) {
       items.value = cached.items
       // A bundle cached before `dueCards` existed has no such field, and the
@@ -1221,7 +1337,8 @@ async function load() {
         : "You're offline and this deck isn't cached yet."
     }
   } finally {
-    loading.value = false
+    if (generation === loadGeneration)
+      loading.value = false
   }
 }
 
@@ -1496,9 +1613,10 @@ async function skip() {
   resetCard()
   index.value += 1
   if (index.value >= items.value.length) {
-    await load()
+    await advance()
     return
   }
+  fetchAhead()
   await focusInput()
 }
 
@@ -1512,9 +1630,10 @@ async function next() {
   resetCard()
   index.value += 1
   if (index.value >= items.value.length) {
-    await load()
+    await advance()
     return
   }
+  fetchAhead()
   await focusInput()
 }
 
@@ -1557,6 +1676,18 @@ async function loadDecks() {
   }
 }
 
+/**
+ * Decks and queue together: the queue reads its filter from the deck id, not
+ * the deck list. Only when the remembered deck has gone does the queue load
+ * again, for the deck the page fell back to.
+ */
+async function loadDecksAndQueue() {
+  const before = deckId.value
+  await Promise.all([loadDecks(), load()])
+  if (deckId.value !== before)
+    await load()
+}
+
 async function selectDeck(id: string) {
   deckId.value = id || 'all'
   sessionSeen.value = 0
@@ -1572,16 +1703,12 @@ onMounted(async () => {
   void requestPersistence()
   void loadKnownKanji(lang.code)
   void loadSettings()
-  await loadDecks()
-  await load()
+  await loadDecksAndQueue()
 })
 onUnmounted(() => {
   window.removeEventListener('keydown', onKey)
 })
-watch(() => lang.code, async () => {
-  await loadDecks()
-  await load()
-})
+watch(() => lang.code, loadDecksAndQueue)
 </script>
 
 <template>

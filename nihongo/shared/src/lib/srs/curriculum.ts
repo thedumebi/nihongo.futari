@@ -1,4 +1,4 @@
-import type { Catalogue, CatalogueFacet, CatalogueItem, DeckCounts, ItemFilter, LearnerState, StageRow } from '@/types/curriculum.js'
+import type { Catalogue, CatalogueFacet, CatalogueItem, DeckCounts, InFlightCharge, ItemFilter, LearnerState, StageRow } from '@/types/curriculum.js'
 import type { StageProgress } from '@/types/study.js'
 
 import { STAGE_PASS, STAGE_SIZE } from '@/constants/endpoints.js'
@@ -313,4 +313,32 @@ export function deckCounts(items: Iterable<CatalogueItem>, state: LearnerState, 
       counts.due++
   }
   return counts
+}
+
+/**
+ * What cards the page still holds will take from today's limits once answered:
+ * a facet with no card yet is an introduction if its item has none either (one
+ * per item), and extra practice otherwise. Facets already carded take nothing.
+ */
+export function inFlightCharge(catalogue: Catalogue, state: LearnerState, inFlight: ReadonlySet<string>): InFlightCharge {
+  let words = 0
+  let extras = 0
+  if (inFlight.size === 0)
+    return { words, extras }
+  for (const item of catalogue.items) {
+    let uncarded = 0
+    for (const facet of item.facets) {
+      if (inFlight.has(facet.id) && !state.cards.has(facet.id))
+        uncarded++
+    }
+    if (uncarded === 0)
+      continue
+    if (state.itemsWithCard.has(item.id)) {
+      extras += uncarded
+    } else {
+      words++
+      extras += uncarded - 1
+    }
+  }
+  return { words, extras }
 }

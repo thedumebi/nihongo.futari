@@ -117,7 +117,15 @@ export const studyQueueQuerySchema = z.object({
    * page keeps the total for the day and sends it with every request, and a
    * new day starts from zero.
    */
-  moreNew: z.coerce.number().int().min(0).max(50).optional()
+  moreNew: z.coerce.number().int().min(0).max(50).optional(),
+  /**
+   * Facet ids of the cards the page still holds, comma-separated, when it
+   * fetches the next batch before the current one is finished. Those are left
+   * out of the batch, and the ones not yet answered count against today's
+   * limits as if they had been, so a prefetch never hands over a 41st word of
+   * 40.
+   */
+  inFlight: z.string().max(8000).optional()
 }).openapi('StudyQueueQuery')
 
 export type StudyQueueQuery = z.infer<typeof studyQueueQuerySchema>

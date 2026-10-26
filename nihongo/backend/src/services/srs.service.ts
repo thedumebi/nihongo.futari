@@ -72,6 +72,7 @@ import {
   emptyCardState,
   evaluateGhost,
   heldBack,
+  inFlightCharge,
   matchesFilter,
   newBudget,
   newCandidates,
@@ -84,7 +85,7 @@ import {
   studyDayRange
 } from '@nihongo/shared/lib'
 import { ghostPolicySchema } from '@nihongo/shared/types'
-import { and, asc, desc, eq, gt, gte, inArray, isNotNull, isNull, lt, lte, or, sql } from 'drizzle-orm'
+import { and, asc, desc, eq, gt, gte, inArray, isNotNull, isNull, lt, lte, notInArray, or, sql } from 'drizzle-orm'
 
 import { assetUrl, withAssetUrls, withDialogueAudio, withSpeakAudio } from '@/lib/assets.js'
 import { pickPrompt } from '@/lib/prompt-pick.js'
@@ -1414,6 +1415,14 @@ export async function getQueue(userId: string, query: StudyQueueQuery): Promise<
   }
 
   const prompting = { ...learnerPrompting, salt: promptSalt }
+
+  // Cards the page still holds, when it fetches ahead (see `inFlight` on the
+  // query): left out of this batch, and their unanswered new ones charged to
+  // today's limits as though answered.
+  const inFlight = new Set(query.inFlight?.split(',').filter(Boolean) ?? [])
+  const charge = inFlightCharge(cat, learner, inFlight)
+  const wordsLeft = Math.max(0, budget.wordsLeft - charge.words)
+  const extrasLeft = Math.max(0, budget.extrasLeft - charge.extras)
   const fill = <R extends PickableRow>(nextChunk: (offset: number, size: number) => Promise<R[]>, limit: number) =>
     withPrompts(language.id, prompting, nextChunk, limit)
 
@@ -1453,6 +1462,7 @@ export async function getQueue(userId: string, query: StudyQueueQuery): Promise<
       ...kindFilter,
       ...unitFilter,
       ...levelFilter,
+      ...(inFlight.size > 0 ? [notInArray(srsCards.facetId, [...inFlight])] : []),
       ...where
     ))
     .orderBy(asc(srsCards.due), asc(srsCards.facetId))
@@ -1497,18 +1507,18 @@ export async function getQueue(userId: string, query: StudyQueueQuery): Promise<
   const pickNew = async (met: boolean, limit: number) => {
     if (limit <= 0)
       return []
-    const candidates = newCandidates(cat, learner, filter, ceilings, met)
+    const candidates = newCandidates(cat, learner, filter, ceilings, met).filter(f => !inFlight.has(f.id))
     return fill(async (offset, size) => candidates.slice(offset, offset + size).map(f => ({ facetId: f.id, state: 0, reps: 0 })), limit)
   }
 
   const slots = Math.max(0, query.limit - dueRows.length)
-  const introRows = query.mode === 'due' ? [] : await pickNew(false, Math.min(budget.wordsLeft, slots))
+  const introRows = query.mode === 'due' ? [] : await pickNew(false, Math.min(wordsLeft, slots))
   // "Learning new words" means new words: a met word's next card only comes
   // once there are none to give, never shuffled in among them. Mixed
   // sessions still fill the batch with both.
   const extraRows = query.mode === 'due' || (query.mode === 'new' && introRows.length > 0)
     ? []
-    : await pickNew(true, Math.min(budget.extrasLeft, slots - introRows.length))
+    : await pickNew(true, Math.min(extrasLeft, slots - introRows.length))
   const newRows = [...introRows, ...extraRows]
 
   // --- Finish the stage -----------------------------------------------------
@@ -1527,7 +1537,7 @@ export async function getQueue(userId: string, query: StudyQueueQuery): Promise<
   // Only when the stage is out of new material, not when today's limits are
   // reached: then the day is done, and the page says so, instead of carrying
   // on with the stage's started cards under "Practising words you've met".
-  if (query.mode === 'new' && newRows.length === 0 && ceilings.size > 0 && budget.wordsLeft > 0) {
+  if (query.mode === 'new' && newRows.length === 0 && ceilings.size > 0 && wordsLeft > 0) {
     dueRows = await fill(dueCards(
       // Not yet learned. A graduated card in this stage is finished; its
       // review belongs in the review queue, not in "finish the stage".

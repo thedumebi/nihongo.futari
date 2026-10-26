@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 
 import type { Catalogue, CatalogueItem, LearnerCard, LearnerState } from '@/types/curriculum.js'
 
-import { availableNew, ceilingsFrom, deckCounts, heldBack, inCurriculum, matchesFilter, newCandidates, progressFrom, rollupStages, seriesReady } from './curriculum.js'
+import { availableNew, ceilingsFrom, deckCounts, heldBack, inCurriculum, inFlightCharge, matchesFilter, newCandidates, progressFrom, rollupStages, seriesReady } from './curriculum.js'
 
 /** An item with `facets` facets named `<id>.<n>`, ranked by sort_index then n. */
 function item(id: string, sortIndex: number, extra: Partial<CatalogueItem> = {}, facets = 1): CatalogueItem {
@@ -164,5 +164,15 @@ describe('deckCounts', () => {
   it('leaves out a Speak prompt until it is the reader\'s own card', () => {
     const cat = catalogueOf([item('s', 1, { kind: 'speak' }, 2)])
     expect(deckCounts(cat.items, stateOf({ 's.0': learning }), new Map(), now)).toEqual({ total: 1, due: 1, learning: 1, unseen: 0, locked: 0 })
+  })
+})
+
+describe('inFlightCharge', () => {
+  it('counts an unmet item once as a word, other uncarded facets as extras, and carded ones not at all', () => {
+    const cat = catalogueOf([item('new', 1, {}, 2), item('met', 2, {}, 2), item('done', 3)])
+    const state = stateOf({ 'met.0': learning, 'done.0': learned })
+    const inFlight = new Set(['new.0', 'new.1', 'met.1', 'done.0'])
+    expect(inFlightCharge(cat, state, inFlight)).toEqual({ words: 1, extras: 2 })
+    expect(inFlightCharge(cat, state, new Set())).toEqual({ words: 0, extras: 0 })
   })
 })
