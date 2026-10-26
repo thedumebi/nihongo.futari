@@ -11,8 +11,8 @@ import { sql } from 'drizzle-orm'
  */
 export async function loadLearnerState(userId: string, languageId: string): Promise<LearnerState> {
   const [cards, views] = await Promise.all([
-    db.execute<{ facet_id: string, state: number, suspended: boolean, study_item_id: string, kanji_id: string | null }>(sql`
-      select c.facet_id, c.state, c.suspended, f.study_item_id, si.kanji_id
+    db.execute<{ facet_id: string, state: number, suspended: boolean, due: Date | string, study_item_id: string, kanji_id: string | null }>(sql`
+      select c.facet_id, c.state, c.suspended, c.due, f.study_item_id, si.kanji_id
       from srs_cards c
       join study_item_facets f on f.id = c.facet_id
       join study_items si on si.id = f.study_item_id
@@ -29,7 +29,7 @@ export async function loadLearnerState(userId: string, languageId: string): Prom
     lessonsViewed: new Set(views.rows.map(r => r.study_item_id))
   }
   for (const row of cards.rows) {
-    state.cards.set(row.facet_id, { state: row.state, suspended: row.suspended })
+    state.cards.set(row.facet_id, { state: row.state, suspended: row.suspended, due: new Date(row.due) })
     state.itemsWithCard.add(row.study_item_id)
     state.itemStates.set(row.study_item_id, Math.max(row.state, state.itemStates.get(row.study_item_id) ?? 0))
     if (row.kanji_id !== null && row.state >= 2)

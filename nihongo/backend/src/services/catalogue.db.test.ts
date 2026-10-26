@@ -5,7 +5,7 @@ import { afterAll, afterEach, describe, expect, it, vi } from 'vitest'
 
 import { LANGUAGE_ID } from '@/test/learner-specs.js'
 
-import { cachedContent, catalogue, invalidateCatalogue } from './catalogue.service.js'
+import { cachedContent, catalogue, catalogueUnits, invalidateCatalogue } from './catalogue.service.js'
 
 /** A published item, to withdraw and put back. */
 async function publishedItem(): Promise<string> {
@@ -85,6 +85,17 @@ describe('the catalogue', () => {
     } finally {
       await setPublished(id, true)
     }
+  })
+
+  it('holds the published units in sort_index order, each with its items', async () => {
+    const expected = await db.execute<{ code: string, study_item_id: string }>(sql`
+      select u.code, ui.study_item_id from curriculum_units u
+      join curriculum_unit_items ui on ui.unit_id = u.id
+      where u.language_id = ${LANGUAGE_ID} and u.published
+      order by u.sort_index, u.id`)
+    const units = await catalogueUnits(LANGUAGE_ID)
+    expect(units.map(u => u.code)).toEqual([...new Set(expected.rows.map(r => r.code))])
+    expect(units.flatMap(u => [...u.itemIds].map(id => `${u.code}:${id}`)).sort()).toEqual(expected.rows.map(r => `${r.code}:${r.study_item_id}`).sort())
   })
 
   it('runs a loader once, even one that hands back a query builder un-awaited', async () => {

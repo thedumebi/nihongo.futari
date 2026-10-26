@@ -1,4 +1,4 @@
-import type { Catalogue, CatalogueItem } from '@nihongo/shared/types'
+import type { Catalogue, CatalogueItem, CatalogueUnit } from '@nihongo/shared/types'
 
 import { pino } from '@nihongo/shared'
 import db from '@nihongo/shared/db'
@@ -139,6 +139,30 @@ export async function cachedContent<T>(key: string, loader: () => Promise<T>): P
 /** The catalogue of one language; see the top of this file for how fresh it is. */
 export async function catalogue(languageId: string): Promise<Catalogue> {
   return cachedContent(`catalogue:${languageId}`, () => loadCatalogue(languageId))
+}
+
+async function loadUnits(languageId: string): Promise<CatalogueUnit[]> {
+  const rows = await db.execute<{ code: string, title: string, description: string | null, image_url: string | null, sort_index: number, study_item_id: string }>(sql`
+    select u.code, u.title, u.description, u.image_url, u.sort_index, ui.study_item_id
+    from curriculum_units u
+    join curriculum_unit_items ui on ui.unit_id = u.id
+    where u.language_id = ${languageId} and u.published
+    order by u.sort_index, u.id`)
+  const units = new Map<string, CatalogueUnit>()
+  for (const row of rows.rows) {
+    let unit = units.get(row.code)
+    if (!unit) {
+      unit = { code: row.code, title: row.title, description: row.description, imageUrl: row.image_url, sortIndex: row.sort_index, itemIds: new Set() }
+      units.set(row.code, unit)
+    }
+    unit.itemIds.add(row.study_item_id)
+  }
+  return [...units.values()]
+}
+
+/** A language's published units that hold items, in `sort_index` order, cached like the catalogue. */
+export async function catalogueUnits(languageId: string): Promise<CatalogueUnit[]> {
+  return cachedContent(`units:${languageId}`, () => loadUnits(languageId))
 }
 
 /**

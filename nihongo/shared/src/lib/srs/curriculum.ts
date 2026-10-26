@@ -1,4 +1,4 @@
-import type { Catalogue, CatalogueFacet, CatalogueItem, ItemFilter, LearnerState, StageRow } from '@/types/curriculum.js'
+import type { Catalogue, CatalogueFacet, CatalogueItem, DeckCounts, ItemFilter, LearnerState, StageRow } from '@/types/curriculum.js'
 import type { StageProgress } from '@/types/study.js'
 
 import { STAGE_PASS, STAGE_SIZE } from '@/constants/endpoints.js'
@@ -128,7 +128,16 @@ export function progressFrom(rows: StageRow[], catalogue: Catalogue): StageProgr
   return progress
 }
 
-/** Within the curriculum: new material up to the top of the current stage. */
+/**
+ * Within the curriculum: new material up to the top of the current stage.
+ *
+ * Grammar is admitted by its LESSON, not by the curriculum (`lessonOpened`).
+ * Taking grammar out of the stage rollup stopped topics counting towards a
+ * stage, but the bound still applied to them, so a topic whose lesson had been
+ * read was barred anyway if it sorted past the ceiling. A sound series is
+ * admitted by knowing its kanji (`seriesReady`). A level with no ceiling is
+ * unrestricted.
+ */
 export function inCurriculum(item: CatalogueItem, ceilings: ReadonlyMap<string, number>): boolean {
   if (item.levelId === null || item.kind === 'grammar' || item.kind === 'phonetic-series')
     return true
@@ -265,4 +274,43 @@ export function heldBack(catalogue: Catalogue, state: LearnerState, filter: Item
     firstAt = firstAt === null ? item.sortIndex : Math.min(firstAt, item.sortIndex)
   }
   return waiting === 0 || firstAt === null ? null : { waiting, opensAtStage: stageOf(firstAt) }
+}
+
+/**
+ * One deck's numbers, over the items in it.
+ *
+ * In ITEMS for `due`: states 1-3, unsuspended, counted per distinct item, the
+ * same definition every other surface uses. The picker sits directly above the
+ * Study header, and while this counted state-2 cards the two disagreed on the
+ * same screen. `learning` counts cards in steps, and `total`, `unseen` and
+ * `locked` count facets: unseen within the curriculum, locked beyond it.
+ *
+ * A Speak prompt is in a deck only once it is the reader's own card.
+ */
+export function deckCounts(items: Iterable<CatalogueItem>, state: LearnerState, ceilings: ReadonlyMap<string, number>, now: Date): DeckCounts {
+  const counts: DeckCounts = { total: 0, due: 0, learning: 0, unseen: 0, locked: 0 }
+  const at = now.getTime()
+  for (const item of items) {
+    const open = inCurriculum(item, ceilings)
+    let due = false
+    for (const facet of item.facets) {
+      const card = state.cards.get(facet.id)
+      if (!card) {
+        if (item.kind === 'speak')
+          continue
+        if (open)
+          counts.unseen++
+        else
+          counts.locked++
+      } else if (!card.suspended && card.due.getTime() <= at) {
+        due ||= card.state >= 1 && card.state <= 3
+        if (card.state === 1 || card.state === 3)
+          counts.learning++
+      }
+      counts.total++
+    }
+    if (due)
+      counts.due++
+  }
+  return counts
 }

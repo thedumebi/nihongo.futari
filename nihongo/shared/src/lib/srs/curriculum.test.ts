@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 
 import type { Catalogue, CatalogueItem, LearnerCard, LearnerState } from '@/types/curriculum.js'
 
-import { availableNew, ceilingsFrom, heldBack, inCurriculum, matchesFilter, newCandidates, progressFrom, rollupStages, seriesReady } from './curriculum.js'
+import { availableNew, ceilingsFrom, deckCounts, heldBack, inCurriculum, matchesFilter, newCandidates, progressFrom, rollupStages, seriesReady } from './curriculum.js'
 
 /** An item with `facets` facets named `<id>.<n>`, ranked by sort_index then n. */
 function item(id: string, sortIndex: number, extra: Partial<CatalogueItem> = {}, facets = 1): CatalogueItem {
@@ -37,13 +37,14 @@ function stateOf(cards: Record<string, LearnerCard> = {}, extra: Partial<Learner
   }
 }
 
-const learned = { state: 2, suspended: false }
-const learning = { state: 1, suspended: false }
+const DUE = new Date('2026-01-01T00:00:00Z')
+const learned: LearnerCard = { state: 2, suspended: false, due: DUE }
+const learning: LearnerCard = { state: 1, suspended: false, due: DUE }
 
 describe('rollupStages', () => {
   it('counts cards per stage and kind, leaving suspended cards out of both halves', () => {
     const cat = catalogueOf([item('a', 1, {}, 2), item('b', 2), item('c', 51), item('g', 3, { kind: 'grammar' })])
-    const rows = rollupStages(cat, stateOf({ 'a.0': learned, 'a.1': { state: 2, suspended: true }, 'b.0': learning }))
+    const rows = rollupStages(cat, stateOf({ 'a.0': learned, 'a.1': { ...learned, suspended: true }, 'b.0': learning }))
     expect(rows).toEqual([
       { levelId: 'n5', stage: 1, kind: 'word', total: 2, learned: 1, started: 2, items: 2 },
       { levelId: 'n5', stage: 2, kind: 'word', total: 1, learned: 0, started: 0, items: 1 }
@@ -66,7 +67,7 @@ describe('ceilingsFrom and progressFrom', () => {
 
   it('passes a stage whose every card is suspended, and drops a finished level', () => {
     const cat = catalogueOf([item('a', 1), item('b', 51)])
-    const rows = rollupStages(cat, stateOf({ 'a.0': { state: 1, suspended: true }, 'b.0': learned }))
+    const rows = rollupStages(cat, stateOf({ 'a.0': { ...learning, suspended: true }, 'b.0': learned }))
     expect(ceilingsFrom(rows)).toEqual(new Map())
     expect(progressFrom(rows, cat)).toEqual([])
   })
@@ -140,5 +141,28 @@ describe('availableNew and heldBack', () => {
     expect(availableNew(cat, state, {}, new Map([['n5', 50]]))).toEqual({ words: 0, extras: 0 })
     expect(heldBack(cat, state, {})).toEqual({ waiting: 2, opensAtStage: 3 })
     expect(heldBack(cat, stateOf({ 'a.0': learning, 'far.0': learning, 'far.1': learning }), {})).toBeNull()
+  })
+})
+
+describe('deckCounts', () => {
+  const now = new Date('2026-06-01T00:00:00Z')
+  const later = new Date('2026-07-01T00:00:00Z')
+
+  it('counts due items, learning cards, and unseen facets within the curriculum and locked beyond it', () => {
+    const cat = catalogueOf([item('a', 1, {}, 2), item('b', 2, {}, 2), item('c', 3), item('far', 120, {}, 2)])
+    const state = stateOf({
+      'a.0': learning,
+      'a.1': { ...learning, state: 3 },
+      'b.0': learned,
+      'b.1': { ...learning, due: later },
+      'c.0': { ...learning, suspended: true }
+    })
+    expect(deckCounts(cat.items, state, new Map([['n5', 50]]), now)).toEqual({ total: 7, due: 2, learning: 2, unseen: 0, locked: 2 })
+    expect(deckCounts(cat.items, state, new Map(), now)).toEqual({ total: 7, due: 2, learning: 2, unseen: 2, locked: 0 })
+  })
+
+  it('leaves out a Speak prompt until it is the reader\'s own card', () => {
+    const cat = catalogueOf([item('s', 1, { kind: 'speak' }, 2)])
+    expect(deckCounts(cat.items, stateOf({ 's.0': learning }), new Map(), now)).toEqual({ total: 1, due: 1, learning: 1, unseen: 0, locked: 0 })
   })
 })

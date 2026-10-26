@@ -1,6 +1,7 @@
 import type { LanguageLevel } from './languages.js'
 import type { SrsCard } from './srs.js'
-import type { StudyItem, StudyItemFacet } from './study-items.js'
+import type { CurriculumUnit, StudyItem, StudyItemFacet } from './study-items.js'
+import type { StudyDeck } from './study.js'
 
 /**
  * The curriculum held in memory, and what one learner has of it.
@@ -29,6 +30,11 @@ export type CatalogueItem = Pick<StudyItem, 'id' | 'kind' | 'levelId' | 'sortInd
 
 export type CatalogueLevel = Pick<LanguageLevel, 'id' | 'code' | 'sortIndex'>
 
+/** A published curriculum unit and the items in it. */
+export type CatalogueUnit = Pick<CurriculumUnit, 'code' | 'title' | 'description' | 'imageUrl' | 'sortIndex'> & {
+  itemIds: Set<string>
+}
+
 export interface Catalogue {
   languageId: string
   /** In `sort_index` order. */
@@ -38,7 +44,7 @@ export interface Catalogue {
   seriesKanji: Map<string, string[]>
 }
 
-export type LearnerCard = Pick<SrsCard, 'state' | 'suspended'>
+export type LearnerCard = Pick<SrsCard, 'state' | 'suspended' | 'due'>
 
 /** One learner's cards in one language, and the lessons they have opened. */
 export interface LearnerState {
@@ -75,3 +81,6 @@ export interface StageRow {
   started: number
   items: number
 }
+
+/** The numbers on one deck in the picker. */
+export type DeckCounts = Pick<StudyDeck, 'total' | 'due' | 'learning' | 'unseen' | 'locked'>

@@ -3,6 +3,7 @@ import type {
   AnswerResult,
   CardState,
   Catalogue,
+  CatalogueItem,
   CourseLevel,
   CourseResponse,
   DeferredRecompute,
@@ -65,11 +66,13 @@ import {
   canFastForward,
   ceilingsFrom,
   clampReviewedAt,
+  deckCounts,
   distinguishingStart,
   effectiveCardState,
   emptyCardState,
   evaluateGhost,
   heldBack,
+  matchesFilter,
   newBudget,
   newCandidates,
   nextCelebration,
@@ -86,7 +89,7 @@ import { and, asc, desc, eq, gt, gte, inArray, isNotNull, isNull, lt, lte, or, s
 import { assetUrl, withAssetUrls, withDialogueAudio, withSpeakAudio } from '@/lib/assets.js'
 import { pickPrompt } from '@/lib/prompt-pick.js'
 
-import { catalogue } from './catalogue.service.js'
+import { catalogue, catalogueUnits } from './catalogue.service.js'
 import { withCurrentAudio } from './clips.service.js'
 import { glossary, withDialogueTokens, withPromptTokens } from './glossary.service.js'
 import { hintFromLesson, loadLessons } from './grammar.service.js'
@@ -1861,84 +1864,43 @@ export async function getDecks(userId: string, languageCode: string, level?: str
         .limit(1)
       )[0]?.id ?? ''
     : null
-  // Unlevelled items pass every level filter.
+  // Unlevelled items pass every level filter (see `matchesFilter`).
   //
   // The 63 sound-series items carry no JLPT level, because the concept is not
   // JLPT-graded. Excluding them is the filter's literal meaning and the wrong
   // reading of it: picking N5 silently dropped a whole deck rather than
   // narrowing to a level, and nothing said so.
-  const levelFilter = levelId === null
-    ? []
-    : [or(eq(studyItems.levelId, levelId), isNull(studyItems.levelId))!]
+  const filter: ItemFilter = levelId === null ? {} : { levelId }
 
+  // Everything the counts need is in memory: no per-deck SQL.
+  const [learner, cat, units] = await Promise.all([
+    loadLearnerState(userId, language.id),
+    catalogue(language.id),
+    catalogueUnits(language.id)
+  ])
   // The unseen counts must respect the curriculum too. Without this the picker
   // advertised "Kanji 1351 new" while the queue, correctly gated, served none
   // of them — the same defect the level filter had, in a second place.
-  const ceilings = await stageCeilings(userId, language.id)
+  const ceilings = await stageCeilings(userId, language.id, learner)
+  const items = new Map<string, CatalogueItem>()
+  const itemsOfKind = new Map<string, CatalogueItem[]>()
+  for (const item of cat.items) {
+    if (!matchesFilter(item, filter))
+      continue
+    items.set(item.id, item)
+    const ofKind = itemsOfKind.get(item.kind)
+    if (ofKind)
+      ofKind.push(item)
+    else
+      itemsOfKind.set(item.kind, [item])
+  }
 
-  const byKind = await db
-    .select({
-      kind: studyItems.kind,
-      total: sql<number>`count(distinct ${studyItemFacets.id})`.mapWith(Number),
-      // The same definition every other surface uses, in ITEMS: states 1-3,
-      // unsuspended, counted per distinct item. These sit in the deck picker
-      // directly above the Study header, and while this counted state-2 cards
-      // the two disagreed on the same screen — 18 here against 12 there.
-      due: sql<number>`count(distinct ${studyItems.id}) filter (where ${srsCards.due} <= ${now} and ${srsCards.state} in (1, 2, 3) and not ${srsCards.suspended})`.mapWith(Number),
-      learning: sql<number>`count(distinct ${srsCards.id}) filter (where ${srsCards.due} <= ${now} and ${srsCards.state} in (1, 3) and not ${srsCards.suspended})`.mapWith(Number),
-      unseen: sql<number>`count(distinct ${studyItemFacets.id}) filter (where ${srsCards.id} is null${sql.raw(ceilings.size === 0 ? '' : ` and ${curriculumPredicate(ceilings)}`)})`.mapWith(Number),
-      locked: sql<number>`count(distinct ${studyItemFacets.id}) filter (where ${srsCards.id} is null${sql.raw(ceilings.size === 0 ? ' and false' : ` and not ${curriculumPredicate(ceilings)}`)})`.mapWith(Number)
-    })
-    .from(studyItems)
-    .innerJoin(studyItemFacets, eq(studyItemFacets.studyItemId, studyItems.id))
-    .leftJoin(srsCards, and(eq(srsCards.facetId, studyItemFacets.id), eq(srsCards.userId, userId)))
-    .where(and(
-      eq(studyItems.languageId, language.id),
-      eq(studyItems.published, true),
-      eq(studyItems.active, true),
-      eq(studyItemFacets.enabled, true),
-      // A Speak prompt is in a deck only once it is the reader's own card.
-      or(introducedByQueue(), isNotNull(srsCards.id)),
-      ...levelFilter
-    ))
-    .groupBy(studyItems.kind)
-
-  const byUnit = await db
-    .select({
-      code: curriculumUnits.code,
-      title: curriculumUnits.title,
-      description: curriculumUnits.description,
-      imageUrl: curriculumUnits.imageUrl,
-      sortIndex: curriculumUnits.sortIndex,
-      total: sql<number>`count(distinct ${studyItemFacets.id})`.mapWith(Number),
-      // The same definition every other surface uses, in ITEMS: states 1-3,
-      // unsuspended, counted per distinct item. These sit in the deck picker
-      // directly above the Study header, and while this counted state-2 cards
-      // the two disagreed on the same screen — 18 here against 12 there.
-      due: sql<number>`count(distinct ${studyItems.id}) filter (where ${srsCards.due} <= ${now} and ${srsCards.state} in (1, 2, 3) and not ${srsCards.suspended})`.mapWith(Number),
-      learning: sql<number>`count(distinct ${srsCards.id}) filter (where ${srsCards.due} <= ${now} and ${srsCards.state} in (1, 3) and not ${srsCards.suspended})`.mapWith(Number),
-      unseen: sql<number>`count(distinct ${studyItemFacets.id}) filter (where ${srsCards.id} is null${sql.raw(ceilings.size === 0 ? '' : ` and ${curriculumPredicate(ceilings)}`)})`.mapWith(Number),
-      locked: sql<number>`count(distinct ${studyItemFacets.id}) filter (where ${srsCards.id} is null${sql.raw(ceilings.size === 0 ? ' and false' : ` and not ${curriculumPredicate(ceilings)}`)})`.mapWith(Number)
-    })
-    .from(curriculumUnits)
-    .innerJoin(curriculumUnitItems, eq(curriculumUnitItems.unitId, curriculumUnits.id))
-    .innerJoin(studyItems, eq(studyItems.id, curriculumUnitItems.studyItemId))
-    .innerJoin(studyItemFacets, eq(studyItemFacets.studyItemId, studyItems.id))
-    .leftJoin(srsCards, and(eq(srsCards.facetId, studyItemFacets.id), eq(srsCards.userId, userId)))
-    .where(and(
-      eq(curriculumUnits.languageId, language.id),
-      eq(curriculumUnits.published, true),
-      eq(studyItems.published, true),
-      // The sibling query on `kind` filters this and this one did not, so a
-      // unit holding a deactivated item counted it in every one of its numbers
-      // while no other surface did. Nothing is inactive today, which is exactly
-      // how a drift like this survives until it matters.
-      eq(studyItems.active, true),
-      eq(studyItemFacets.enabled, true),
-      ...levelFilter
-    ))
-    .groupBy(curriculumUnits.code, curriculumUnits.title, curriculumUnits.description, curriculumUnits.imageUrl, curriculumUnits.sortIndex)
-    .orderBy(asc(curriculumUnits.sortIndex))
+  // Kinds in the order Postgres grouped them: by code point, not by locale,
+  // so not `localeCompare`.
+  const byKind = [...itemsOfKind]
+    .sort(([a], [b]) => a < b ? -1 : a > b ? 1 : 0)
+    .map(([kind, ofKind]) => ({ kind, ...deckCounts(ofKind, learner, ceilings, now) }))
+  const byUnit = units.map(u => ({ ...u, ...deckCounts([...u.itemIds].flatMap(id => items.get(id) ?? []), learner, ceilings, now) }))
 
   const KIND_LABELS: Record<string, { label: string, description: string }> = {
     'kana': { label: 'Kana', description: 'Hiragana and katakana' },
@@ -2213,26 +2175,16 @@ export async function getDueList(userId: string, query: DueListQuery): Promise<D
 }
 
 /**
- * "This item is at or before the point the reader has reached in its level."
+ * Just the stage the reader is ON, not everything up to it.
  *
- * Written without a sentinel. The first version coalesced the CASE to
- * Number.MAX_SAFE_INTEGER for levels with no ceiling, and `sort_index` is an
- * int4 — Postgres rejected the value outright, the endpoint 500'd, and the
- * client quietly served its offline cache, so the gate looked like it simply
- * had no effect. Saying "a level with no ceiling is unrestricted" directly
- * needs no magic number to be out of range.
+ * `inCurriculum` bounds new material at the top of the current stage, which
+ * is right for introducing things. Finishing a stage needs the narrower
+ * window: cards from earlier stages are already learned and their reviews are
+ * not what "finish stage 4" means.
  *
  * Inlined rather than parameterised because the map holds one row per level.
  * The ids come from the database, never from user input, and are quoted
  * regardless.
- */
-/**
- * Just the stage the reader is ON, not everything up to it.
- *
- * `curriculumPredicate` bounds new material at the top of the current stage,
- * which is right for introducing things. Finishing a stage needs the narrower
- * window: cards from earlier stages are already learned and their reviews are
- * not what "finish stage 4" means.
  */
 function currentStagePredicate(ceilings: Map<string, number>, stageSize: number): string {
   const quote = (value: string) => `'${value.replace(/'/gu, "''")}'`
@@ -2247,33 +2199,6 @@ function currentStagePredicate(ceilings: Map<string, number>, stageSize: number)
     study_items.level_id in (${ids})
     and study_items.sort_index > (case study_items.level_id ${lo} end)
     and study_items.sort_index <= (case study_items.level_id ${hi} end)
-  )`
-}
-
-/**
- * The curriculum bound as SQL, for the deck counts that still run in Postgres.
- * The same rule as `inCurriculum` in `lib/srs/curriculum.ts`: change both.
- */
-function curriculumPredicate(ceilings: Map<string, number>): string {
-  const quote = (value: string) => `'${value.replace(/'/gu, "''")}'`
-  const ids = [...ceilings.keys()].map(quote).join(', ')
-  const arms = [...ceilings]
-    .map(([levelId, ceiling]) => `when ${quote(levelId)} then ${Math.floor(ceiling)}`)
-    .join(' ')
-  return `(
-    study_items.level_id is null
-    or study_items.level_id not in (${ids})
-    -- Grammar is admitted by its LESSON, not by the curriculum.
-    --
-    -- Taking grammar out of the stage rollup stopped topics counting towards a
-    -- stage, but this predicate still bounded them by one — so a topic whose
-    -- lesson had been read was barred anyway if it sorted past the ceiling, and
-    -- the double gate the exclusion was meant to remove survived here. The
-    -- lesson gate in \`getQueue\` is the whole of it now.
-    or study_items.kind = 'grammar'
-    -- A sound series is admitted by knowing its kanji, not by the curriculum.
-    or study_items.kind = 'phonetic-series'
-    or study_items.sort_index <= (case study_items.level_id ${arms} end)
   )`
 }
 
