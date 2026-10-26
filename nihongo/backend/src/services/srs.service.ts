@@ -90,7 +90,7 @@ import { and, asc, desc, eq, gt, gte, inArray, isNotNull, isNull, lt, lte, notIn
 import { assetUrl, withAssetUrls, withDialogueAudio, withSpeakAudio } from '@/lib/assets.js'
 import { pickPrompt } from '@/lib/prompt-pick.js'
 
-import { catalogue, catalogueUnits } from './catalogue.service.js'
+import { cachedContent, catalogue, catalogueUnits } from './catalogue.service.js'
 import { withCurrentAudio } from './clips.service.js'
 import { glossary, withDialogueTokens, withPromptTokens } from './glossary.service.js'
 import { hintFromLesson, loadLessons } from './grammar.service.js'
@@ -2233,7 +2233,7 @@ export async function getCourse(userId: string, languageCode: string): Promise<C
   if (!language)
     return { levels: [] }
 
-  const { rows: rollup, cat } = await stageRows(userId, language.id)
+  const [{ rows: rollup, cat }, samples] = await Promise.all([stageRows(userId, language.id), stageSamples(language.id)])
   const levelCode = new Map(cat.levels.map(l => [l.id, l.code]))
   // In level, stage, kind order, as the rollup returns them.
   const rows = rollup.flatMap((r) => {
@@ -2254,8 +2254,6 @@ export async function getCourse(userId: string, languageCode: string): Promise<C
     level.set(row.stage, stage)
     byLevel.set(row.level, level)
   }
-
-  const samples = await stageSamples(language.id)
 
   const levels: CourseLevel[] = []
   for (const [level, stageMap] of byLevel) {
@@ -2285,8 +2283,15 @@ export async function getCourse(userId: string, languageCode: string): Promise<C
   return { levels }
 }
 
-/** Up to four subjects per stage, so a stage can be described by its content. */
+/**
+ * Up to four subjects per stage, so a stage can be described by its content.
+ * Content only, so cached with the catalogue.
+ */
 async function stageSamples(languageId: string): Promise<Map<string, string[]>> {
+  return cachedContent(`stage-samples:${languageId}`, () => loadStageSamples(languageId))
+}
+
+async function loadStageSamples(languageId: string): Promise<Map<string, string[]>> {
   const result = await db.execute(sql`
     with numbered as (
       select
