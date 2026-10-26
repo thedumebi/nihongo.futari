@@ -167,7 +167,10 @@ export const curriculumUnitItems = pgTable('curriculum_unit_items', {
   sortIndex: integer('sort_index').notNull().default(0),
   ...timestamps
 }, t => ({
-  pk: primaryKey({ columns: [t.unitId, t.studyItemId] })
+  pk: primaryKey({ columns: [t.unitId, t.studyItemId] }),
+  // Lessons and the course join from the item to its unit; the primary key
+  // leads on the unit and cannot serve that.
+  itemIdx: index('curriculum_unit_items_item_idx').on(t.studyItemId)
 }))
 
 export const studyItemsRelations = relations(studyItems, ({ one, many }) => ({

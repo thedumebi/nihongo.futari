@@ -41,7 +41,10 @@ export const EnvSchema = z.object({
   // DB like Neon/RDS that requires SSL.
   DB_SSL: stringBoolean,
   DB_SSL_CA: z.string().optional(),
-  DB_POOL_MAX: z.coerce.number().default(10),
+  // Today alone runs a dozen queries side by side, so 10 let one learner's
+  // open fill the pool and queue the next request behind it. pg-main allows
+  // 100 connections across every site on the box.
+  DB_POOL_MAX: z.coerce.number().default(20),
   DB_POOL_IDLE_TIMEOUT_MS: z.coerce.number().default(30000),
   DB_POOL_CONNECTION_TIMEOUT_MS: z.coerce.number().default(10000),
 

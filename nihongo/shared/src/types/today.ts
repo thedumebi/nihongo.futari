@@ -9,6 +9,10 @@ import { lessonFirstSchema, stageCelebrationSchema, stageProgressSchema } from '
  * Speak session, the streak — but scattered over a dozen pages, so a learner
  * opening the app met a choice of destinations and no direction. Today puts
  * them in the order worth doing: reviews first, then something new.
+ *
+ * The app keeps the last one on the device to show while a fresh one loads.
+ * Renaming or removing a field here: bump `VERSION` in the frontend's
+ * `lib/last-today.ts`, so no screen is handed a copy from before the change.
  */
 export const todaySchema = z.object({
   /** Items due now, as every other surface counts them. */

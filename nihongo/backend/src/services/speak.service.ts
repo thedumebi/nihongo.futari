@@ -1,4 +1,4 @@
-import type { SaveWordResult, SpeakCompleteInput, SpeakListResponse, SpeakSessionView, SpeakStepView } from '@nihongo/shared/types'
+import type { DeferredRecompute, SaveWordResult, SpeakCompleteInput, SpeakListResponse, SpeakSessionView, SpeakStepView } from '@nihongo/shared/types'
 
 import db from '@nihongo/shared/db'
 import { languageLevels, languages, speakProgress, speakSessions, speakSteps } from '@nihongo/shared/db/schema'
@@ -114,7 +114,7 @@ export async function getSpeakSession(
  * One row per learner and session, replaced each time — a marker of the latest
  * run rather than a tally, so a retried request cannot double anything.
  */
-export async function completeSpeakSession(userId: string, languageCode: string, code: string, input: SpeakCompleteInput): Promise<boolean> {
+export async function completeSpeakSession(userId: string, languageCode: string, code: string, input: SpeakCompleteInput, deferred?: DeferredRecompute): Promise<boolean> {
   const [session] = await db
     .select({ id: speakSessions.id, languageId: speakSessions.languageId, kind: speakSessions.kind })
     .from(speakSessions)
@@ -133,7 +133,7 @@ export async function completeSpeakSession(userId: string, languageCode: string,
       set: { completedAt: now, gotIt: input.gotIt, total: input.total, updatedAt: sql`now()` }
     })
   // A story is its own activity, so the story quest can tell it from the course.
-  await recordActivity(userId, session.languageId, { kind: session.kind === 'story' ? 'story' : 'speak', refId: code, score: input.gotIt, total: input.total })
+  await recordActivity(userId, session.languageId, { kind: session.kind === 'story' ? 'story' : 'speak', refId: code, score: input.gotIt, total: input.total }, { now, deferred })
   return true
 }
 

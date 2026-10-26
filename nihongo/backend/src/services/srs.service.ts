@@ -4,6 +4,7 @@ import type {
   CardState,
   CourseLevel,
   CourseResponse,
+  DeferredRecompute,
   DueListQuery,
   DueListResponse,
   GhostPolicy,
@@ -77,6 +78,7 @@ import { glossary, withDialogueTokens, withPromptTokens } from './glossary.servi
 import { hintFromLesson, loadLessons } from './grammar.service.js'
 import { loadSeries } from './phonetics.service.js'
 import { loadUserContext, recomputeProgress } from './progress.service.js'
+import { deferProgress } from './recompute.service.js'
 
 /**
  * SRS persistence.
@@ -222,7 +224,7 @@ export async function countDue(
   return { items: row?.items ?? 0, cards: row?.cards ?? 0 }
 }
 
-export async function submitAnswer(userId: string, input: SubmitAnswerInput): Promise<AnswerResult> {
+export async function submitAnswer(userId: string, input: SubmitAnswerInput, deferred?: DeferredRecompute): Promise<AnswerResult> {
   const receivedAt = new Date()
   const { policy, fsrsParams } = await loadPolicy(userId)
 
@@ -476,12 +478,23 @@ export async function submitAnswer(userId: string, input: SubmitAnswerInput): Pr
   // Aggregates are recomputed OUTSIDE the card transaction so a slow rebuild
   // never holds the card lock. After a replay the whole history is redone: a
   // review inserted mid-history can change any later day, and there is no
-  // cheaper correct answer.
+  // cheaper correct answer. A batch passes `deferred` and rebuilds once at
+  // its end instead.
+  //
+  // A duplicate in a batch means the client is resending one it already sent,
+  // most likely because the first attempt's response never arrived, so that
+  // attempt's rebuild may never have finished either. It asks for the whole
+  // history again rather than trust it did.
+  if (deferred && !outcome.result.applied)
+    deferProgress(deferred, outcome.languageId, undefined)
   if (outcome.result.applied) {
     const since = outcome.result.replayed
       ? undefined
       : new Date(new Date(input.reviewedAt).getTime() - 2 * 24 * 60 * 60 * 1000)
-    await recomputeProgress(userId, outcome.languageId, since)
+    if (deferred)
+      deferProgress(deferred, outcome.languageId, since)
+    else
+      await recomputeProgress(userId, outcome.languageId, since)
   }
 
   return outcome.result

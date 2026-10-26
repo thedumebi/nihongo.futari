@@ -3,6 +3,7 @@ import { computed, ref } from 'vue'
 
 import { syncTimezone } from '@/api/notifications'
 import { authClient } from '@/lib/auth-client'
+import { forgetLastToday } from '@/lib/last-today'
 
 import { useOnboardingStore } from './onboarding'
 
@@ -40,11 +41,16 @@ export const useAuthStore = defineStore('auth', () => {
       return inflight
 
     inflight = (async () => {
-      const { data } = await authClient.getSession()
+      const { data, error } = await authClient.getSession()
       // getSession returns `undefined` (not `null`) when there's no session —
       // coalesce so `isAuthenticated` doesn't read undefined as "signed in".
       user.value = (data?.user as SessionUser | undefined) ?? null
       ready.value = true
+      // The server says nobody is signed in (expired, or signed out on another
+      // device): drop the day this device saved for whoever was. Not on a
+      // failed request, which is usually just being offline.
+      if (!error && !user.value)
+        forgetLastToday()
 
       // A reminder hour is meaningless without the zone it is measured in, and
       // nothing else in the app ever set it. Fire and forget — nothing on
@@ -74,8 +80,10 @@ export const useAuthStore = defineStore('auth', () => {
     ready.value = true
     // This learner's cached API responses must not outlive their session.
     navigator.serviceWorker?.controller?.postMessage({ type: 'CLEAR_USER_CACHES' })
-    // Nor where they were with onboarding: the next person here is someone else.
+    // Nor where they were with onboarding, or their day: the next person here
+    // is someone else.
     useOnboardingStore().reset()
+    forgetLastToday()
   }
 
   return { user, isAuthenticated, isAdmin, ready, syncSession, logout, forgetLocally }

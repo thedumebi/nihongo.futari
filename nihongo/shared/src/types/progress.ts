@@ -229,3 +229,17 @@ export const achievementsSeenSchema = z.object({
 }).openapi('AchievementsSeen')
 
 export type AchievementsSeenInput = z.infer<typeof achievementsSeenSchema>
+
+/**
+ * Rebuilds a batch owes, collected so each runs once at the end of the batch
+ * instead of once per item. A 20-answer sync used to rebuild the same days 20
+ * times and then once more over the whole history.
+ *
+ * `progress` maps a language to the earliest day that must be redone, or
+ * `null` for its whole history (after a replay). `habit` holds languages whose
+ * XP and streak need a rebuild without any review having changed.
+ */
+export interface DeferredRecompute {
+  progress: Map<string, Date | null>
+  habit: Set<string>
+}

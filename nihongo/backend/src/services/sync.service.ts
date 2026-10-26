@@ -1,4 +1,4 @@
-import type { SyncAction, SyncMutationsInput, SyncResult } from '@nihongo/shared/types'
+import type { DeferredRecompute, SyncAction, SyncMutationsInput, SyncResult } from '@nihongo/shared/types'
 
 import db from '@nihongo/shared/db'
 import { srsCards } from '@nihongo/shared/db/schema'
@@ -6,7 +6,7 @@ import { inArray } from 'drizzle-orm'
 
 import { recordActivityFor } from './activities.service.js'
 import { completeLesson } from './lesson.service.js'
-import { recomputeProgress } from './progress.service.js'
+import { deferRecompute, runDeferred } from './recompute.service.js'
 import { completeSpeakSession, missSpeakStep } from './speak.service.js'
 import { saveWord, submitAnswer } from './srs.service.js'
 
@@ -24,16 +24,17 @@ import { saveWord, submitAnswer } from './srs.service.js'
  *
  * What this layer adds is batching discipline: mutations are applied in
  * `reviewedAt` order so the common case takes the cheap path, one failure does
- * not abandon the rest, and progress is recomputed ONCE at the end rather than
- * per mutation — a 200-item flush would otherwise rebuild the same days 200
- * times.
+ * not abandon the rest, and progress is recomputed ONCE per language at the
+ * end, from the earliest day any item touched (the whole history if one
+ * replayed). Each item hands its rebuild to `deferred` instead of running it,
+ * so a 200-item flush does not rebuild the same days 200 times.
  */
 export async function applyMutations(userId: string, input: SyncMutationsInput): Promise<SyncResult> {
   const accepted: string[] = []
   const duplicates: string[] = []
   const rejected: Array<{ id: string, reason: string }> = []
   const touchedCards = new Set<string>()
-  const languageIds = new Set<string>()
+  const deferred = deferRecompute()
 
   // Oldest first. Out-of-order arrivals are handled by replay regardless, but
   // applying them in order means most batches never trigger one.
@@ -43,7 +44,7 @@ export async function applyMutations(userId: string, input: SyncMutationsInput):
 
   for (const mutation of ordered) {
     try {
-      const result = await submitAnswer(userId, { ...mutation, offline: true, clientId: input.deviceId })
+      const result = await submitAnswer(userId, { ...mutation, offline: true, clientId: input.deviceId }, deferred)
       if (result.applied)
         accepted.push(mutation.id)
       else duplicates.push(mutation.id)
@@ -62,7 +63,7 @@ export async function applyMutations(userId: string, input: SyncMutationsInput):
   // online route, so idempotency and the habit recompute come with it.
   for (const action of input.actions ?? []) {
     try {
-      const applied = await applyAction(userId, action)
+      const applied = await applyAction(userId, action, deferred)
       if (applied === null)
         rejected.push({ id: action.id, reason: 'Nothing to apply it to' })
       else if (applied)
@@ -73,19 +74,7 @@ export async function applyMutations(userId: string, input: SyncMutationsInput):
     }
   }
 
-  // Which languages were touched, so the recompute is scoped rather than global.
-  if (touchedCards.size > 0) {
-    const rows = await db
-      .select({ languageId: srsCards.languageId })
-      .from(srsCards)
-      .where(inArray(srsCards.id, [...touchedCards]))
-    for (const r of rows) languageIds.add(r.languageId)
-  }
-
-  for (const languageId of languageIds) {
-    // Full rebuild: a batch can contain reviews from any point in history.
-    await recomputeProgress(userId, languageId)
-  }
+  await runDeferred(userId, deferred)
 
   const cards = touchedCards.size === 0
     ? []
@@ -138,19 +127,19 @@ export async function applyMutations(userId: string, input: SyncMutationsInput):
  * it changed something, false when it was already applied, null when it names
  * something that does not exist (refused — retrying cannot help).
  */
-async function applyAction(userId: string, action: SyncAction): Promise<boolean | null> {
+async function applyAction(userId: string, action: SyncAction, deferred: DeferredRecompute): Promise<boolean | null> {
   switch (action.type) {
     case 'activity': {
       const { type: _type, languageCode, ...activity } = action
-      const result = await recordActivityFor(userId, languageCode, activity)
+      const result = await recordActivityFor(userId, languageCode, activity, deferred)
       return result ? result.recorded : null
     }
     case 'lessonComplete': {
-      const result = await completeLesson(userId, action.languageCode, action.slug, { score: action.score, missedPromptIds: action.missedPromptIds })
+      const result = await completeLesson(userId, action.languageCode, action.slug, { score: action.score, missedPromptIds: action.missedPromptIds }, deferred)
       return result ? true : null
     }
     case 'speakComplete':
-      return (await completeSpeakSession(userId, action.languageCode, action.code, { gotIt: action.gotIt, total: action.total })) ? true : null
+      return (await completeSpeakSession(userId, action.languageCode, action.code, { gotIt: action.gotIt, total: action.total }, deferred)) ? true : null
     case 'speakMiss': {
       const result = await missSpeakStep(userId, action.languageCode, action.code, action.index)
       return result ? result.added : null

@@ -14,10 +14,25 @@
     <title>語 go</title>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <!--
+      Fonts load without holding up the first paint: the stylesheet is fetched
+      as "print" (which never blocks rendering) and switched on once it
+      arrives. Text shows in the system font until then; display=swap was
+      already letting it trade over, but the page waited for this stylesheet,
+      a second origin, before drawing anything at all.
+    -->
     <link
       href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Noto+Sans+JP:wght@400;500;700&display=swap"
       rel="stylesheet"
+      media="print"
+      onload="this.media = 'all'"
     />
+    <noscript>
+      <link
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Noto+Sans+JP:wght@400;500;700&display=swap"
+        rel="stylesheet"
+      />
+    </noscript>
     <script>
       // Set theme before first paint to avoid a flash of the wrong theme.
       // useLocalStorage stores the string value raw (no JSON quotes). Key and

@@ -1,6 +1,7 @@
 import type {
   CompleteLessonInput,
   CompleteLessonResult,
+  DeferredRecompute,
   GlossedToken,
   LessonDetail,
   LessonListResponse,
@@ -404,7 +405,8 @@ export async function completeLesson(
   userId: string,
   languageCode: string,
   slug: string,
-  input: CompleteLessonInput
+  input: CompleteLessonInput,
+  deferred?: DeferredRecompute
 ): Promise<CompleteLessonResult | null> {
   if (slug.startsWith(KANA_SLUG_PREFIX)) {
     const [language] = await db.select({ id: languages.id }).from(languages).where(eq(languages.code, languageCode)).limit(1)
@@ -432,7 +434,7 @@ export async function completeLesson(
       const saved = await saveStudyItem(userId, studyItemId, 'kana-lesson')
       added ||= saved?.added ?? false
     }
-    await recordActivity(userId, language!.id, { kind: 'kana-lesson', refId: slug, score: input.score })
+    await recordActivity(userId, language!.id, { kind: 'kana-lesson', refId: slug, score: input.score }, { deferred })
     return {
       studyItemId: items[0]!,
       completedAt: new Date().toISOString(),
@@ -476,7 +478,7 @@ export async function completeLesson(
   }
 
   const addedToReview = await enterReview(userId, point.studyItemId, input, now)
-  await recordActivity(userId, point.languageId, { kind: 'lesson', refId: slug, score: input.score })
+  await recordActivity(userId, point.languageId, { kind: 'lesson', refId: slug, score: input.score }, { now, deferred })
 
   return {
     studyItemId: row!.studyItemId,

@@ -225,7 +225,7 @@ export async function recomputeHabit(userId: string, languageId: string): Promis
 async function reviewGoalCards(userId: string, languageId: string, day: { start: Date, end: Date }): Promise<ReviewGoalCard[]> {
   const rows = await db.execute<{ id: string, state: number, due: Date, created_at: Date, reviewed: boolean }>(sql`
     select c.id, c.state, c.due, c.created_at,
-      exists (select 1 from srs_review_logs l where l.card_id = c.id and l.reviewed_at >= ${day.start} and l.reviewed_at < ${day.end}) as reviewed
+      exists (select 1 from srs_review_logs l where l.user_id = c.user_id and l.card_id = c.id and l.reviewed_at >= ${day.start} and l.reviewed_at < ${day.end}) as reviewed
     from srs_cards c
     join study_item_facets f on f.id = c.facet_id and f.enabled
     join study_items si on si.id = f.study_item_id and si.published and si.active
@@ -233,7 +233,7 @@ async function reviewGoalCards(userId: string, languageId: string, day: { start:
       and c.created_at < ${day.start}
       and (
         (c.state in (1, 2, 3) and c.due < ${day.end})
-        or exists (select 1 from srs_review_logs l where l.card_id = c.id and l.reviewed_at >= ${day.start} and l.reviewed_at < ${day.end})
+        or exists (select 1 from srs_review_logs l where l.user_id = c.user_id and l.card_id = c.id and l.reviewed_at >= ${day.start} and l.reviewed_at < ${day.end})
       )
   `)
 

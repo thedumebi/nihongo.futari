@@ -1,4 +1,4 @@
-import type { RecordActivityInput, RecordActivityResult } from '@nihongo/shared/types'
+import type { DeferredRecompute, RecordActivityInput, RecordActivityResult } from '@nihongo/shared/types'
 
 import db from '@nihongo/shared/db'
 import { languages, learningActivities, xpEvents } from '@nihongo/shared/db/schema'
@@ -8,6 +8,7 @@ import { eq } from 'drizzle-orm'
 import { randomUUID } from 'node:crypto'
 
 import { loadUserContext, recomputeHabit } from './progress.service.js'
+import { deferHabit } from './recompute.service.js'
 
 /** Later than this past the server clock is a wrong device clock, not the future. */
 const CLOCK_SLACK_MS = 5 * 60 * 1000
@@ -21,7 +22,12 @@ const CLOCK_SLACK_MS = 5 * 60 * 1000
  * awarded once however often this runs. Then the habit (XP total, streak) is
  * recomputed wholesale.
  */
-export async function recordActivity(userId: string, languageId: string, input: RecordActivityInput, now = new Date()): Promise<RecordActivityResult> {
+export async function recordActivity(
+  userId: string,
+  languageId: string,
+  input: RecordActivityInput,
+  { now = new Date(), deferred }: { now?: Date, deferred?: DeferredRecompute } = {}
+): Promise<RecordActivityResult> {
   const { timezone, dayBoundaryHour } = await loadUserContext(userId)
   const claimed = input.occurredAt ? new Date(input.occurredAt) : now
   const occurredAt = claimed.getTime() > now.getTime() + CLOCK_SLACK_MS ? now : claimed
@@ -45,8 +51,13 @@ export async function recordActivity(userId: string, languageId: string, input: 
     .onConflictDoNothing()
     .returning({ id: learningActivities.id })
 
-  if (inserted.length === 0)
+  // Already recorded. A batch resending it may be retrying a flush whose
+  // rebuild never finished, so it still asks for one; online, nothing to do.
+  if (inserted.length === 0) {
+    if (deferred)
+      deferHabit(deferred, languageId)
     return { recorded: false, xp: 0 }
+  }
 
   const amount = XP_FOR_ACTIVITY[input.kind]
   await db
@@ -54,12 +65,15 @@ export async function recordActivity(userId: string, languageId: string, input: 
     .values({ userId, languageId, source: 'activity', refId: `${input.kind}:${input.refId}:${localDate}`, amount })
     .onConflictDoNothing()
 
-  await recomputeHabit(userId, languageId)
+  if (deferred)
+    deferHabit(deferred, languageId)
+  else
+    await recomputeHabit(userId, languageId)
   return { recorded: true, xp: amount }
 }
 
 /** The same, for a caller that knows the language by its code. */
-export async function recordActivityFor(userId: string, languageCode: string, input: RecordActivityInput): Promise<RecordActivityResult | null> {
+export async function recordActivityFor(userId: string, languageCode: string, input: RecordActivityInput, deferred?: DeferredRecompute): Promise<RecordActivityResult | null> {
   const [language] = await db.select({ id: languages.id }).from(languages).where(eq(languages.code, languageCode)).limit(1)
-  return language ? recordActivity(userId, language.id, input) : null
+  return language ? recordActivity(userId, language.id, input, { deferred }) : null
 }
