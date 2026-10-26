@@ -30,6 +30,7 @@ function stateOf(cards: Record<string, LearnerCard> = {}, extra: Partial<Learner
   return {
     cards: new Map(Object.entries(cards)),
     itemsWithCard: new Set(Object.keys(cards).map(facet => facet.split('.')[0]!)),
+    itemStates: new Map(),
     knownKanji: new Set(),
     lessonsViewed: new Set(),
     ...extra

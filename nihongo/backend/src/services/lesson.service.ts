@@ -3,6 +3,7 @@ import type {
   CompleteLessonResult,
   DeferredRecompute,
   GlossedToken,
+  LearnerState,
   LessonDetail,
   LessonListResponse,
   LessonStatus,
@@ -34,10 +35,12 @@ import { DateTime } from 'luxon'
 import { withAssetUrls } from '../lib/assets.js'
 import { readingFor } from '../lib/token-reading.js'
 import { recordActivity } from './activities.service.js'
+import { cachedContent } from './catalogue.service.js'
 import { withCurrentAudio } from './clips.service.js'
 import { glossary, glossLine, withPromptTokens } from './glossary.service.js'
 import { loadExamples, loadLessons } from './grammar.service.js'
 import { getKanaLesson, KANA_SLUG_PREFIX, kanaLessonItems, kanaLessonSummaries } from './kana-lesson.service.js'
+import { loadItemStates } from './learner-state.service.js'
 import { saveStudyItem } from './srs.service.js'
 
 /**
@@ -116,16 +119,13 @@ const CATEGORY_TITLES: Record<string, string> = {
   adverb: 'Adverbs'
 }
 
-export async function listLessons(userId: string, languageCode: string): Promise<LessonListResponse> {
-  const [language] = await db
-    .select({ id: languages.id })
-    .from(languages)
-    .where(eq(languages.code, languageCode))
-    .limit(1)
-  if (!language)
-    return { levels: [], next: null }
-
-  const rows = await db
+/**
+ * Every published topic with what the list shows of it, in list order: the
+ * same for every reader, so cached with the catalogue (`cachedContent`). A
+ * topic in two units is a row in each.
+ */
+async function lessonRows(languageId: string) {
+  return await db
     .select({
       level: languageLevels.code,
       levelSort: languageLevels.sortIndex,
@@ -139,10 +139,6 @@ export async function listLessons(userId: string, languageCode: string): Promise
       unitTitle: curriculumUnits.title,
       unitImage: curriculumUnits.imageUrl,
       unitSort: curriculumUnits.sortIndex,
-      seen: sql<boolean>`${lessonViews.userId} is not null`,
-      completedAt: lessonViews.completedAt,
-      quizScore: lessonViews.quizScore,
-      cardState: sql<number | null>`max(${srsCards.state})`,
       exampleCount: sql<number>`(
         select count(*) from grammar_point_sentences gps
         join sentences s on s.id = gps.sentence_id
@@ -157,36 +153,44 @@ export async function listLessons(userId: string, languageCode: string): Promise
     .from(grammarPoints)
     .innerJoin(studyItems, eq(studyItems.grammarPointId, grammarPoints.id))
     .innerJoin(languageLevels, eq(languageLevels.id, grammarPoints.levelId))
-    .leftJoin(lessonViews, and(eq(lessonViews.studyItemId, studyItems.id), eq(lessonViews.userId, userId)))
-    .leftJoin(studyItemFacets, eq(studyItemFacets.studyItemId, studyItems.id))
-    .leftJoin(srsCards, and(eq(srsCards.facetId, studyItemFacets.id), eq(srsCards.userId, userId)))
     .leftJoin(curriculumUnitItems, eq(curriculumUnitItems.studyItemId, studyItems.id))
     .leftJoin(curriculumUnits, eq(curriculumUnits.id, curriculumUnitItems.unitId))
     .where(and(
-      eq(grammarPoints.languageId, language.id),
+      eq(grammarPoints.languageId, languageId),
       eq(grammarPoints.published, true),
       eq(studyItems.published, true),
       eq(studyItems.active, true)
     ))
-    .groupBy(
-      languageLevels.code,
-      languageLevels.sortIndex,
-      grammarPoints.id,
-      grammarPoints.slug,
-      grammarPoints.title,
-      grammarPoints.meaningShort,
-      grammarPoints.sortIndex,
-      grammarPoints.category,
-      studyItems.id,
-      curriculumUnits.code,
-      curriculumUnits.title,
-      curriculumUnits.imageUrl,
-      curriculumUnits.sortIndex,
-      lessonViews.userId,
-      lessonViews.completedAt,
-      lessonViews.quizScore
-    )
     .orderBy(asc(languageLevels.sortIndex), asc(curriculumUnits.sortIndex), asc(grammarPoints.sortIndex))
+}
+
+export async function listLessons(userId: string, languageCode: string, state?: LearnerState): Promise<LessonListResponse> {
+  const [language] = await db
+    .select({ id: languages.id })
+    .from(languages)
+    .where(eq(languages.code, languageCode))
+    .limit(1)
+  if (!language)
+    return { levels: [], next: null }
+
+  const [topics, views, itemStates] = await Promise.all([
+    cachedContent(`lessons:${language.id}`, () => lessonRows(language.id)),
+    db.select({ studyItemId: lessonViews.studyItemId, completedAt: lessonViews.completedAt, quizScore: lessonViews.quizScore })
+      .from(lessonViews)
+      .where(eq(lessonViews.userId, userId)),
+    state?.itemStates ?? loadItemStates(userId, language.id, { grammarOnly: true })
+  ])
+  const viewOf = new Map(views.map(v => [v.studyItemId, v]))
+  const rows = topics.map((t) => {
+    const view = viewOf.get(t.studyItemId)
+    return {
+      ...t,
+      seen: view !== undefined,
+      completedAt: view?.completedAt ?? null,
+      quizScore: view?.quizScore ?? null,
+      cardState: itemStates.get(t.studyItemId) ?? null
+    }
+  })
 
   // Group by level, then by unit within it. A topic belonging to no unit lands
   // in an unnamed group rather than being hidden.

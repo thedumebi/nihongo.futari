@@ -5,7 +5,7 @@ import { afterAll, describe, expect, it } from 'vitest'
 
 import { LANGUAGE_ID } from '@/test/learner-specs.js'
 
-import { loadLearnerState } from './learner-state.service.js'
+import { loadItemStates, loadLearnerState } from './learner-state.service.js'
 import { markLessonSeen, saveStudyItem } from './srs.service.js'
 
 const USER = 'learner-state-test'
@@ -34,6 +34,9 @@ describe('loadLearnerState', () => {
     expect(cards.some(c => c.itemId === kanji.id)).toBe(true)
     expect(state.cards).toEqual(new Map(cards.map(c => [c.facetId, { state: c.state, suspended: c.suspended }])))
     expect(state.itemsWithCard).toEqual(new Set(cards.map(c => c.itemId)))
+    expect(state.itemStates).toEqual(new Map(cards.map(c => [c.itemId, Math.max(...cards.filter(d => d.itemId === c.itemId).map(d => d.state))])))
+    expect(await loadItemStates(USER, LANGUAGE_ID)).toEqual(state.itemStates)
+    expect(await loadItemStates(USER, LANGUAGE_ID, { grammarOnly: true })).toEqual(new Map([...state.itemStates].filter(([id]) => id === grammar.id)))
     expect(state.knownKanji).toEqual(new Set())
     expect(state.lessonsViewed).toEqual(new Set([grammar.id]))
 

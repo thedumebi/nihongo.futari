@@ -23,7 +23,7 @@ const MAX_AGE_MS = 5 * 60 * 1000
 const RETRY_MS = 30 * 1000
 
 interface Entry {
-  loaded: Promise<Catalogue>
+  loaded: Promise<unknown>
   /** When it was loaded; 0 once invalidated. */
   at: number
   /** A reload is running beside it. */
@@ -31,7 +31,7 @@ interface Entry {
 }
 const entries = new Map<string, Entry>()
 
-async function load(languageId: string): Promise<Catalogue> {
+async function loadCatalogue(languageId: string): Promise<Catalogue> {
   const [levels, items, series] = await Promise.all([
     db.execute<{ id: string, code: string, sort_index: number }>(sql`
       select id, code, sort_index from language_levels
@@ -86,53 +86,67 @@ async function load(languageId: string): Promise<Catalogue> {
   }
 }
 
-function fresh(languageId: string): Promise<Catalogue> {
-  const entry: Entry = { loaded: load(languageId), at: Date.now() }
-  entries.set(languageId, entry)
+function fresh(key: string, loader: () => Promise<unknown>): Promise<unknown> {
+  // A real promise, run once: a query builder handed back un-awaited would run
+  // again on every `.then`.
+  const entry: Entry = { loaded: Promise.resolve().then(loader), at: Date.now() }
+  entries.set(key, entry)
   // A failed load must not stay cached: the next request tries again.
   // An invalidation meanwhile keeps the same promise in a new entry.
   entry.loaded.catch(() => {
-    if (entries.get(languageId)?.loaded === entry.loaded)
-      entries.delete(languageId)
+    if (entries.get(key)?.loaded === entry.loaded)
+      entries.delete(key)
   })
   return entry.loaded
 }
 
 /**
- * Load a fresh catalogue beside a stale one, one reload at a time. A reload
- * that started before an invalidation is not kept: the entry it would replace
- * is no longer the current one.
+ * Load a fresh copy beside a stale one, one reload at a time. A reload that
+ * started before an invalidation is not kept: the entry it would replace is no
+ * longer the current one.
  */
-function reloadBeside(languageId: string, entry: Entry): void {
+function reloadBeside(key: string, entry: Entry, loader: () => Promise<unknown>): void {
   if (entry.reloading)
     return
   entry.reloading = true
-  load(languageId).then((next) => {
-    if (entries.get(languageId) === entry)
-      entries.set(languageId, { loaded: Promise.resolve(next), at: Date.now() })
+  Promise.resolve().then(loader).then((next) => {
+    if (entries.get(key) === entry)
+      entries.set(key, { loaded: Promise.resolve(next), at: Date.now() })
   }, (err: unknown) => {
-    pino.error({ err, languageId }, '[catalogue] reload failed; serving the stale copy')
+    pino.error({ err, key }, '[catalogue] reload failed; serving the stale copy')
     entry.reloading = false
     entry.at = Date.now() - MAX_AGE_MS + RETRY_MS
   })
 }
 
+/**
+ * Content derived from the catalogue tables, cached under `key` by the rules at
+ * the top of this file. `loader` must read only content, never a learner's rows.
+ *
+ * One key, one type: a key is always used with the same `T`, which is what
+ * makes the casts below sound. Each key has one typed wrapper (`catalogue`,
+ * `kanaRows`, `levelPool`, the lesson list) and is used nowhere else.
+ */
+export async function cachedContent<T>(key: string, loader: () => Promise<T>): Promise<T> {
+  const entry = entries.get(key)
+  if (!entry)
+    return fresh(key, loader) as Promise<T>
+  if (Date.now() - entry.at > MAX_AGE_MS)
+    reloadBeside(key, entry, loader)
+  return entry.loaded as Promise<T>
+}
+
 /** The catalogue of one language; see the top of this file for how fresh it is. */
 export async function catalogue(languageId: string): Promise<Catalogue> {
-  const entry = entries.get(languageId)
-  if (!entry)
-    return fresh(languageId)
-  if (Date.now() - entry.at > MAX_AGE_MS)
-    reloadBeside(languageId, entry)
-  return entry.loaded
+  return cachedContent(`catalogue:${languageId}`, () => loadCatalogue(languageId))
 }
 
 /**
- * Content changed. Every catalogue goes stale: the next request reloads it,
- * and is served the old one meanwhile, so a run of approvals costs a reload
+ * Content changed. Everything cached goes stale: the next request reloads it,
+ * and is served the old copy meanwhile, so a run of approvals costs a reload
  * each without making a learner wait.
  */
 export function invalidateCatalogue(): void {
-  for (const [languageId, entry] of entries)
-    entries.set(languageId, { loaded: entry.loaded, at: 0 })
+  for (const [key, entry] of entries)
+    entries.set(key, { loaded: entry.loaded, at: 0 })
 }

@@ -28,6 +28,7 @@ import { assetUrl } from '../lib/assets.js'
 import { crosswordClue } from '../lib/crossword-clues.js'
 import { posLabel } from '../lib/pos.js'
 import { recordActivity } from './activities.service.js'
+import { cachedContent } from './catalogue.service.js'
 import { currentClips } from './clips.service.js'
 import { loadUserContext } from './progress.service.js'
 
@@ -68,7 +69,7 @@ interface PoolWord {
 type CrosswordError = 'no-level' | 'learn-more' | 'no-puzzle'
 
 /** The level's words that can go in a crossword, each with its clue. */
-async function levelPool(languageId: string, levelId: string): Promise<PoolWord[]> {
+async function loadLevelPool(languageId: string, levelId: string): Promise<PoolWord[]> {
   const rows = await db
     .select({
       id: words.id,
@@ -117,6 +118,11 @@ async function levelPool(languageId: string, levelId: string): Promise<PoolWord[
     })
   }
   return pool
+}
+
+/** The pool, cached with the catalogue: the same for every learner at a level. */
+function levelPool(languageId: string, levelId: string): Promise<PoolWord[]> {
+  return cachedContent(`crossword-pool:${levelId}`, () => loadLevelPool(languageId, levelId))
 }
 
 /** Words at this level the learner knows: any card on the word past learning. */

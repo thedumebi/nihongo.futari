@@ -5,7 +5,7 @@ import { afterAll, afterEach, describe, expect, it, vi } from 'vitest'
 
 import { LANGUAGE_ID } from '@/test/learner-specs.js'
 
-import { catalogue, invalidateCatalogue } from './catalogue.service.js'
+import { cachedContent, catalogue, invalidateCatalogue } from './catalogue.service.js'
 
 /** A published item, to withdraw and put back. */
 async function publishedItem(): Promise<string> {
@@ -85,5 +85,15 @@ describe('the catalogue', () => {
     } finally {
       await setPublished(id, true)
     }
+  })
+
+  it('runs a loader once, even one that hands back a query builder un-awaited', async () => {
+    let runs = 0
+    // A thenable that runs again on every `.then`, as a Drizzle query does.
+    const builder = { then: (resolve: (v: number) => void) => resolve(++runs) }
+    const loader = () => builder as unknown as Promise<number>
+    expect(await cachedContent('test:runs-once', loader)).toBe(1)
+    expect(await cachedContent('test:runs-once', loader)).toBe(1)
+    expect(runs).toBe(1)
   })
 })

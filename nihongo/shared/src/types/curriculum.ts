@@ -46,6 +46,8 @@ export interface LearnerState {
   cards: Map<string, LearnerCard>
   /** Items with a card on any facet, enabled or not. */
   itemsWithCard: Set<string>
+  /** Each such item's highest card state: 2 or more is known. */
+  itemStates: Map<string, number>
   /** Kanji with a learned card (state 2 or more) on any of their items. */
   knownKanji: Set<string>
   /** Items whose lesson has been opened. */

@@ -1,6 +1,6 @@
 import type { ActivityKind } from '@nihongo/shared/constants'
 import type { QuestProgress, ReviewGoalCard } from '@nihongo/shared/lib'
-import type { AggregateEvent, KnownKanji, ProgressSummary, Readiness, ReviewEvent, Streak } from '@nihongo/shared/types'
+import type { AggregateEvent, KnownKanji, LearnerState, ProgressSummary, Readiness, ReviewEvent, Streak } from '@nihongo/shared/types'
 
 import db from '@nihongo/shared/db'
 import {
@@ -25,7 +25,9 @@ import { aggregateReviews, computeStreak, DEFAULT_DAY_BOUNDARY_HOUR, QUEST_XP, q
 import { and, eq, gte, inArray, isNull, lt, sql } from 'drizzle-orm'
 
 import { recomputeAchievements } from './achievements.service.js'
+import { catalogue } from './catalogue.service.js'
 import { ghostBossHasCards } from './games.service.js'
+import { loadItemStates } from './learner-state.service.js'
 import { countDue, loadPolicy, newWordsToday } from './srs.service.js'
 
 /**
@@ -419,7 +421,7 @@ export async function studiedToday(userId: string, languageId: string, now = new
 }
 
 /** Headline numbers for the progress page. All scoped to one user. */
-export async function getSummary(userId: string, languageCode = 'ja'): Promise<ProgressSummary> {
+export async function getSummary(userId: string, languageCode = 'ja', state?: LearnerState): Promise<ProgressSummary> {
   const [language] = await db.select({ id: languages.id }).from(languages).where(eq(languages.code, languageCode)).limit(1)
   const empty: ProgressSummary = {
     totalXp: 0,
@@ -437,58 +439,53 @@ export async function getSummary(userId: string, languageCode = 'ja'): Promise<P
   if (!language)
     return empty
 
-  const [xp] = await db
-    .select({ totalXp: userXp.totalXp, level: userXp.level })
-    .from(userXp)
-    .where(and(eq(userXp.userId, userId), eq(userXp.languageId, language.id)))
-    .limit(1)
-
-  const [streak] = await db
-    .select({ current: userStreaks.currentStreak, longest: userStreaks.longestStreak })
-    .from(userStreaks)
-    .where(and(eq(userStreaks.userId, userId), eq(userStreaks.languageId, language.id)))
-    .limit(1)
-
-  const [cards] = await db
-    .select({
-      // Every card that EXISTS — i.e. every item started. Deliberately not
-      // called "learned" any more: it counted a card seen once the same as one
-      // genuinely retained, and sat directly above a coverage panel using the
-      // stricter graduated-only definition. Two numbers, one page, contradicting
-      // each other.
-      started: sql<number>`count(*)`.mapWith(Number),
-      // Graduated past the learning steps: the honest "learned".
-      learned: sql<number>`count(*) filter (where ${srsCards.state} >= 2)`.mapWith(Number),
-      // How many of those are on a learning step, for the caption. NOT a
-      // headline: shown as a peer number it read as a second backlog, and this
-      // page said "5 due · 21 in learning" while the list it linked to showed
-      // 26. `due` itself now comes from `countDue` below — the one definition
-      // every surface shares — rather than a fourth one written here.
-      learning: sql<number>`count(*) filter (where ${srsCards.due} <= now() and ${srsCards.state} in (1, 3) and not ${srsCards.suspended})`.mapWith(Number)
-    })
-    .from(srsCards)
-    .where(and(eq(srsCards.userId, userId), eq(srsCards.languageId, language.id)))
-
-  // The canonical count, in items, exactly as the due list and Study report it.
-  const due = await countDue(userId, language.id)
+  const [[xp], [streak], [cards], due, [settings], cat, itemStates] = await Promise.all([
+    db
+      .select({ totalXp: userXp.totalXp, level: userXp.level })
+      .from(userXp)
+      .where(and(eq(userXp.userId, userId), eq(userXp.languageId, language.id)))
+      .limit(1),
+    db
+      .select({ current: userStreaks.currentStreak, longest: userStreaks.longestStreak })
+      .from(userStreaks)
+      .where(and(eq(userStreaks.userId, userId), eq(userStreaks.languageId, language.id)))
+      .limit(1),
+    db
+      .select({
+        // Every card that EXISTS — i.e. every item started. Deliberately not
+        // called "learned" any more: it counted a card seen once the same as one
+        // genuinely retained, and sat directly above a coverage panel using the
+        // stricter graduated-only definition. Two numbers, one page, contradicting
+        // each other.
+        started: sql<number>`count(*)`.mapWith(Number),
+        // Graduated past the learning steps: the honest "learned".
+        learned: sql<number>`count(*) filter (where ${srsCards.state} >= 2)`.mapWith(Number),
+        // How many of those are on a learning step, for the caption. NOT a
+        // headline: shown as a peer number it read as a second backlog, and this
+        // page said "5 due · 21 in learning" while the list it linked to showed
+        // 26. `due` itself now comes from `countDue` below — the one definition
+        // every surface shares — rather than a fourth one written here.
+        learning: sql<number>`count(*) filter (where ${srsCards.due} <= now() and ${srsCards.state} in (1, 3) and not ${srsCards.suspended})`.mapWith(Number)
+      })
+      .from(srsCards)
+      .where(and(eq(srsCards.userId, userId), eq(srsCards.languageId, language.id))),
+    // The canonical count, in items, exactly as the due list and Study report it.
+    countDue(userId, language.id),
+    db.select({ level: userSettings.studyLevel }).from(userSettings).where(eq(userSettings.userId, userId)).limit(1),
+    catalogue(language.id),
+    state?.itemStates ?? loadItemStates(userId, language.id)
+  ])
 
   // What New words can still hand out, at the learner's level, in ITEMS. It
   // was every card at every level — 33,691 — including kinds New words never
   // gives (grammar comes through lessons, Speak through its sessions), which
-  // said nothing anyone could act on.
-  const [settings] = await db.select({ level: userSettings.studyLevel }).from(userSettings).where(eq(userSettings.userId, userId)).limit(1)
+  // said nothing anyone could act on. Items never met: no card on any facet.
   const newLevel = settings?.level ?? ''
-  const unseenRows = await db.execute<{ total: number }>(sql`
-    select count(*)::int as total
-    from study_items si
-    left join language_levels l on l.id = si.level_id
-    where si.language_id = ${language.id} and si.published and si.active
-      and si.kind not in ('grammar', 'speak')
-      and (${newLevel} = '' or l.code = ${newLevel})
-      and not exists (
-        select 1 from study_item_facets f join srs_cards c on c.facet_id = f.id
-        where f.study_item_id = si.id and c.user_id = ${userId})`)
-  const unseen = unseenRows.rows[0]
+  const levelId = cat.levels.find(l => l.code === newLevel)?.id
+  const unseen = cat.items.filter(item =>
+    item.kind !== 'grammar' && item.kind !== 'speak'
+    && (newLevel === '' || (item.levelId !== null && item.levelId === levelId))
+    && !itemStates.has(item.id)).length
 
   return {
     totalXp: xp?.totalXp ?? 0,
@@ -500,7 +497,7 @@ export async function getSummary(userId: string, languageCode = 'ja'): Promise<P
     due: due.items,
     dueCards: due.cards,
     learning: cards?.learning ?? 0,
-    newAvailable: Number(unseen?.total ?? 0),
+    newAvailable: unseen,
     newLevel
   }
 }

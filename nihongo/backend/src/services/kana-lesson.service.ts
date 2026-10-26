@@ -23,6 +23,7 @@ import { exercisePrompts, exerciseTemplates, kana, lessonViews, srsCards, studyI
 import { and, asc, eq, inArray, sql } from 'drizzle-orm'
 
 import { assetUrl, withAssetUrls } from '../lib/assets.js'
+import { cachedContent } from './catalogue.service.js'
 
 /** `kana-hiragana-base-k`, and the vowel row has no consonant to name it by. */
 export const KANA_SLUG_PREFIX = 'kana-'
@@ -53,7 +54,7 @@ interface KanaRow {
   members: Array<{ studyItemId: string, character: string, romaji: string }>
 }
 
-async function kanaRows(languageId: string): Promise<KanaRow[]> {
+async function loadKanaRows(languageId: string): Promise<KanaRow[]> {
   const rows = await db
     .select({
       studyItemId: studyItems.id,
@@ -86,6 +87,11 @@ async function kanaRows(languageId: string): Promise<KanaRow[]> {
   // carries — plain rows, then dakuten, then the combinations.
   return [...grouped.values()].sort((a, b) =>
     a.script === b.script ? a.order - b.order : (a.script === 'hiragana' ? -1 : 1))
+}
+
+/** The writing-system rows, cached with the catalogue: the same for every reader. */
+function kanaRows(languageId: string): Promise<KanaRow[]> {
+  return cachedContent(`kana:${languageId}`, () => loadKanaRows(languageId))
 }
 
 /**
