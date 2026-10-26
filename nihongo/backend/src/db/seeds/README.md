@@ -48,5 +48,7 @@ Each is split into parts of about 4 MB, so no one transaction or seed-runner
 string grows large; each part is its own `seed_history` row, so never rename one.
 Every part opens with a gate that returns at once on a database whose first
 seed ran before the snapshot, which is production and every older local copy.
+An older local copy that lacks the lexicon is rebuilt (drop it, migrate, seed),
+not re-seeded.
 They are a one-off snapshot, not regenerated: content added later arrives as
 ordinary numbered seeds after 185, which run on a fresh database too.
