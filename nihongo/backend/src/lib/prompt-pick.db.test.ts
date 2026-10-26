@@ -6,18 +6,34 @@ import { afterAll, describe, expect, it } from 'vitest'
 import { promptOrderKey } from './prompt-pick.js'
 
 /**
+ * English collations, by the names the platforms give them: ICU's, then
+ * Debian's and macOS's libc ones. CI's Alpine Postgres has no libc locales.
+ */
+const ENGLISH = ['en-US-x-icu', 'en_US.utf8', 'en_US.UTF-8']
+
+async function englishCollation(): Promise<string> {
+  const found = await db.execute<{ collname: string }>(sql`
+    select collname from pg_collation
+    where collname in ${ENGLISH} and collencoding in (-1, pg_char_to_encoding('UTF8'))`)
+  const name = ENGLISH.find(n => found.rows.some(r => r.collname === n))
+  if (!name)
+    throw new Error(`None of ${ENGLISH.join(', ')} exists on this server`)
+  return name
+}
+
+/**
  * The prompt pick moved from `order by md5(p.id || salt)` in Postgres to
  * `promptOrderKey` in Node. Same digests, same order, under the test
- * database's collation and production's (en_US, which ignores hyphens in
- * words but has none to ignore in fixed-length hex).
+ * database's collation (C) and an English one like production's (en_US,
+ * which ignores hyphens in words but has none to ignore in fixed-length hex).
  */
 describe('promptOrderKey against Postgres', () => {
   afterAll(async () => {
     await connection.end()
   })
 
-  // `en_US` is the one name both macOS and Debian give the UTF-8 collation.
-  it.each(['C', 'en_US'])('orders a sample of prompts as Postgres does under %s', async (collation) => {
+  it.each(['C', 'English'])('orders a sample of prompts as Postgres does under %s', async (name) => {
+    const collation = name === 'C' ? 'C' : await englishCollation()
     const salt = 'k3j9x0q'
     const sample = await db.select({ id: exercisePrompts.id }).from(exercisePrompts).orderBy(asc(exercisePrompts.id)).limit(500)
     const ids = sample.map(p => p.id)
