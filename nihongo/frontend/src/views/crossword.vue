@@ -7,6 +7,7 @@ import { useLocalStorage } from '@vueuse/core'
 import { isAxiosError } from 'axios'
 import { ChevronLeft, ChevronRight, Eye, Languages, RefreshCw, Type, Volume2 } from 'lucide-vue-next'
 import { computed, onMounted, ref, watch } from 'vue'
+import { useRoute } from 'vue-router'
 
 import { getCrossword, saveCrosswordResult } from '@/api/crossword'
 import CrosswordFinish from '@/components/crossword/crossword-finish.vue'
@@ -16,6 +17,7 @@ import Button from '@/components/ui/button.vue'
 import Segmented from '@/components/ui/segmented.vue'
 import { playAudio, prefetchAudio } from '@/composables/use-audio'
 import { useCrossword } from '@/composables/use-crossword'
+import { useInputLog } from '@/composables/use-input-log'
 import { useLevel } from '@/composables/use-level'
 import { useLanguageStore } from '@/store/language'
 
@@ -34,6 +36,8 @@ const lang = useLanguageStore()
 
 // ============ Composables ============
 const { level: studyLevel, loadLevel } = useLevel()
+/** `?keys=1` lists what the keyboard sent, to see on a phone why typing went missing. */
+const keyLog = useInputLog(useRoute().query.keys === '1')
 
 // ============ Reactive State ============
 const puzzle = ref<CrosswordPuzzle | null>(null)
@@ -74,6 +78,10 @@ const SENTINEL = ' '
 let composing = false
 /** When the last word was confirmed: Safari sends its Enter just after, which is not a request to move on. */
 let composedAt = 0
+/** The input's text when the word began; the word is whatever has been added to it since. */
+let composeFrom = SENTINEL
+/** A mouse or trackpad, so a keyboard is at hand: the grid takes typing as soon as it shows. */
+const canAutoFocus = typeof window !== 'undefined' && window.matchMedia('(pointer: fine)').matches
 
 const game = useCrossword(puzzle)
 const { selected, current, currentCells, typed, revealed, pending, hints, seconds, solved, bonusLetters, wordsDone, checkAsYouGo } = game
@@ -106,6 +114,8 @@ watch(solved, async (done) => {
   const p = puzzle.value
   if (!done || !p)
     return
+  // The input stays on the page now; the finished board needs no keyboard over it.
+  input.value?.blur()
   game.flush()
   best.value = null
   try {
@@ -127,8 +137,13 @@ watch(solved, async (done) => {
 // re-applied on every render (the timer renders once a second), which reset it
 // under a word being typed on a Japanese keyboard and lost the word.
 watch(input, (el) => {
-  if (el)
-    el.value = SENTINEL
+  if (!el)
+    return
+  el.value = SENTINEL
+  // Only with a keyboard at hand: on a phone a focus outside a tap raises no
+  // keyboard, and the next tap's focus would then find it already focused.
+  if (canAutoFocus)
+    el.focus({ preventScroll: true })
 })
 
 watch([level, source], () => {
@@ -219,6 +234,7 @@ async function load(fresh = false) {
  */
 function another() {
   moved.value = ''
+  focusInput()
   if (source.value === 'daily')
     source.value = 'mix'
   else
@@ -258,12 +274,32 @@ function focusInput() {
     composing = false
   }
   el.value = SENTINEL
+  composeFrom = SENTINEL
   // Synchronously, inside the tap: iOS only raises the keyboard for a focus
   // made in a user gesture.
   el.focus({ preventScroll: true })
+  el.setSelectionRange(SENTINEL.length, SENTINEL.length)
 }
 
+/**
+ * What was added to the input since `before`, wherever the caret put it: the
+ * text between what the two share at the start and at the end.
+ */
+function added(before: string, now: string): string {
+  let start = 0
+  while (start < before.length && start < now.length && before[start] === now[start])
+    start++
+  let end = 0
+  while (end < before.length - start && end < now.length - start && before[before.length - 1 - end] === now[now.length - 1 - end])
+    end++
+  return now.slice(start, now.length - end)
+}
+
+/** Text a keyboard puts in by a route other than a key press. */
+const OTHER_INSERTS = new Set(['insertReplacementText', 'insertFromPaste', 'insertFromDrop', 'insertFromYank'])
+
 function onBeforeInput(e: InputEvent) {
+  keyLog.log(e)
   // Inside a word the keyboard owns its own text, backspace included.
   if (e.isComposing || composing)
     return
@@ -273,22 +309,30 @@ function onBeforeInput(e: InputEvent) {
   } else if (e.inputType === 'deleteContentBackward') {
     e.preventDefault()
     game.backspace()
+  } else if (OTHER_INSERTS.has(e.inputType)) {
+    // A suggestion tapped, or a paste: the same as typing it. Composition's own
+    // input types are left alone; compositionend writes those.
+    e.preventDefault()
+    game.type(e.data ?? e.dataTransfer?.getData('text/plain') ?? '')
   }
-  // Composition (a Japanese keyboard) cannot be cancelled; it lands on compositionend.
 }
 
 /** While a Japanese keyboard composes, draw what it has so far into the cells. */
 function onInput(e: Event) {
+  keyLog.log(e)
   if ((e as InputEvent).isComposing && input.value)
-    game.composition(input.value.value.replace(SENTINEL, ''))
+    game.composition(added(composeFrom, input.value.value))
 }
 
-function onCompositionStart() {
+function onCompositionStart(e: CompositionEvent) {
+  keyLog.log(e)
   composing = true
+  composeFrom = input.value?.value ?? SENTINEL
   game.compositionStart()
 }
 
 function onCompositionEnd(e: CompositionEvent) {
+  keyLog.log(e)
   composing = false
   composedAt = Date.now()
   game.compositionEnd(e.data ?? '')
@@ -299,7 +343,18 @@ function onCompositionEnd(e: CompositionEvent) {
   }, 0)
 }
 
+/** The keyboard went away: whatever word it had is over, so none is open. */
+function onBlur() {
+  composing = false
+}
+
 function onKeydown(e: KeyboardEvent) {
+  keyLog.log(e)
+  // A real key, not "the keyboard is composing", means no word is open, even
+  // if its end never arrived (iOS, switching keyboards mid-word). Without this
+  // every later key was taken for part of that word and went nowhere.
+  if (composing && !e.isComposing && e.keyCode !== 229 && e.key !== 'Process')
+    composing = false
   // Keys inside a word belong to the keyboard (229 is "the keyboard is
   // composing"), and the Enter Safari sends right after confirming one is
   // the confirmation, not "next clue".
@@ -318,6 +373,8 @@ async function hear() {
   const e = current.value
   if (!e?.audio)
     return
+  // Within the tap, before the wait: iOS keeps the keyboard up only for a focus made then.
+  focusInput()
   const played = await playAudio(e.audio)
   if (played && !heard.value.has(entryKey(e))) {
     heard.value = new Set(heard.value).add(entryKey(e))
@@ -350,6 +407,29 @@ const kanjiVisible = computed(() => Boolean(current.value && kanjiShown.value.ha
         <Segmented v-model="level" label="Level" :options="LEVELS" />
         <Segmented v-model="source" label="Words" :options="SOURCES" />
       </div>
+
+      <!--
+        Off screen but focusable: it is what raises the phone keyboard. Kept
+        outside the puzzle so a new puzzle loading does not take the keyboard
+        away mid-game.
+      -->
+      <input
+        ref="input"
+        class="pointer-events-none fixed -left-[9999px] top-0 h-px w-px opacity-0"
+        type="text"
+        inputmode="text"
+        autocomplete="off"
+        autocapitalize="off"
+        autocorrect="off"
+        spellcheck="false"
+        aria-label="Type the answer"
+        @beforeinput="onBeforeInput"
+        @compositionstart="onCompositionStart"
+        @input="onInput"
+        @compositionend="onCompositionEnd"
+        @keydown="onKeydown"
+        @blur="onBlur"
+      >
 
       <p v-if="loading" class="mt-10 text-center text-[var(--color-muted)]">
         Making a puzzle…
@@ -467,23 +547,11 @@ const kanjiVisible = computed(() => Boolean(current.value && kanjiShown.value.ha
             />
           </div>
 
-          <!-- Off screen but focusable: it is what raises the phone keyboard. -->
-          <input
-            ref="input"
-            class="pointer-events-none fixed -left-[9999px] top-0 h-px w-px opacity-0"
-            type="text"
-            inputmode="text"
-            autocomplete="off"
-            autocapitalize="off"
-            autocorrect="off"
-            spellcheck="false"
-            aria-label="Type the answer"
-            @beforeinput="onBeforeInput"
-            @compositionstart="onCompositionStart"
-            @input="onInput"
-            @compositionend="onCompositionEnd"
-            @keydown="onKeydown"
-          >
+          <ol v-if="keyLog.enabled" class="mt-4 rounded-lg border border-[var(--color-border)] p-3 font-mono text-xs text-[var(--color-muted)]">
+            <li v-for="(line, i) in keyLog.lines.value" :key="i">
+              {{ line }}
+            </li>
+          </ol>
 
           <div class="mt-4 flex flex-wrap justify-center gap-2">
             <Button variant="ghost" @click="game.revealCell(); focusInput()">
@@ -503,7 +571,7 @@ const kanjiVisible = computed(() => Boolean(current.value && kanjiShown.value.ha
             {{ hints === 0 ? 'No hints used' : `${hints} hint${hints === 1 ? '' : 's'} used` }}
             ·
             <label class="inline-flex items-center gap-1">
-              <input v-model="checkAsYouGo" type="checkbox"> Mark mistakes as I type
+              <input v-model="checkAsYouGo" type="checkbox" @change="focusInput"> Mark mistakes as I type
             </label>
           </p>
 

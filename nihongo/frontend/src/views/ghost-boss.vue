@@ -10,6 +10,7 @@ import ChoiceGrid from '@/components/games/choice-grid.vue'
 import GameEnd from '@/components/games/game-end.vue'
 import FuriganaText from '@/components/ja/furigana-text.vue'
 import AppShell from '@/components/layout/app-shell.vue'
+import AnswerBar from '@/components/ui/answer-bar.vue'
 import Button from '@/components/ui/button.vue'
 import { useAnswerStreak } from '@/composables/use-answer-streak'
 import { playAudio, stopAudio } from '@/composables/use-audio'
@@ -318,10 +319,12 @@ function sideOf(g: GhostBossEntry): string {
             <p class="font-semibold" :class="picked === round.answer ? 'text-[var(--color-success)]' : 'text-[var(--color-danger)]'">
               {{ picked === round.answer ? 'Right.' : `It was ${round.answer}.` }}
             </p>
-            <Button class="mt-4" @click="next">
+          </div>
+          <AnswerBar v-if="picked" class="mt-4 text-center">
+            <Button @click="next">
               {{ index + 1 >= rounds.length ? 'See how you did' : 'Next' }}
             </Button>
-          </div>
+          </AnswerBar>
         </template>
 
         <!-- The end: each ghost beaten or still haunting. Nothing here moved

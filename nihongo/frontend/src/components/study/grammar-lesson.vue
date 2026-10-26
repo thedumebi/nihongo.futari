@@ -9,6 +9,7 @@ import { RouterLink } from 'vue-router'
 import JaProse from '@/components/ja/ja-prose.vue'
 import TokenLine from '@/components/ja/token-line.vue'
 import WordMeaning from '@/components/ja/word-meaning.vue'
+import AnswerBar from '@/components/ui/answer-bar.vue'
 import Button from '@/components/ui/button.vue'
 import { playAudio } from '@/composables/use-audio'
 import { useFurigana } from '@/composables/use-furigana'
@@ -330,18 +331,18 @@ function onTouchEnd(e: TouchEvent): void {
       </button>
     </div>
 
-    <div class="mt-8 text-center">
+    <AnswerBar class="mt-8 text-center">
       <Button variant="primary" @click="next">
         {{ last ? (finishLabel ?? 'Got it, quiz me') : 'Next' }}
       </Button>
-      <p class="mt-4">
-        <RouterLink
-          :to="lesson.href"
-          class="text-xs text-[var(--color-muted)] underline underline-offset-4 transition hover:text-[var(--color-text)]"
-        >
-          Read the full explanation
-        </RouterLink>
-      </p>
-    </div>
+    </AnswerBar>
+    <p class="mt-4 text-center">
+      <RouterLink
+        :to="lesson.href"
+        class="text-xs text-[var(--color-muted)] underline underline-offset-4 transition hover:text-[var(--color-text)]"
+      >
+        Read the full explanation
+      </RouterLink>
+    </p>
   </div>
 </template>

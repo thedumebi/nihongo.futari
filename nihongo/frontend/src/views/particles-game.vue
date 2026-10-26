@@ -12,6 +12,7 @@ import GameEnd from '@/components/games/game-end.vue'
 import WordMeaning from '@/components/ja/word-meaning.vue'
 import AppShell from '@/components/layout/app-shell.vue'
 import ClozePrompt from '@/components/study/cloze-prompt.vue'
+import AnswerBar from '@/components/ui/answer-bar.vue'
 import Button from '@/components/ui/button.vue'
 import { useAnswerStreak } from '@/composables/use-answer-streak'
 import { playAudio, stopAudio } from '@/composables/use-audio'
@@ -246,7 +247,9 @@ function onPick(half: 'before' | 'after', i: number | null) {
           <p class="mx-auto mt-1 max-w-sm text-sm text-[var(--color-muted)]">
             {{ round.question.note }}
           </p>
-          <div class="mt-4 flex items-center justify-center gap-3">
+        </div>
+        <AnswerBar v-if="picked !== null" class="mt-4">
+          <div class="flex items-center justify-center gap-3">
             <Button v-if="round.question.audio" variant="ghost" round aria-label="Hear the sentence again" @click="hear">
               <Volume2 class="h-5 w-5" />
             </Button>
@@ -254,7 +257,7 @@ function onPick(half: 'before' | 'after', i: number | null) {
               {{ hearts === 0 || index + 1 >= rounds.length ? 'See how you did' : 'Next' }}
             </Button>
           </div>
-        </div>
+        </AnswerBar>
       </template>
     </div>
   </AppShell>

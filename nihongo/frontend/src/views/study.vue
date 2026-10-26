@@ -39,6 +39,7 @@ import SeriesCard from '@/components/study/series-card.vue'
 import SpeakCard from '@/components/study/speak-card.vue'
 import StageUpModal from '@/components/study/stage-up-modal.vue'
 import StageWait from '@/components/study/stage-wait.vue'
+import AnswerBar from '@/components/ui/answer-bar.vue'
 import Button from '@/components/ui/button.vue'
 import Dropdown from '@/components/ui/dropdown.vue'
 import Tooltip from '@/components/ui/tooltip.vue'
@@ -1235,6 +1236,13 @@ async function load() {
 const canAutoFocus = typeof window !== 'undefined'
   && window.matchMedia('(pointer: fine)').matches
 
+// On a phone, answering with the return key leaves the keyboard up over the
+// answer bar, so the rating buttons sat under it. Put it away once answered.
+watch(revealed, (shown) => {
+  if (shown && !canAutoFocus)
+    answerInput.value?.blur()
+})
+
 async function focusInput() {
   buildChoices()
   await nextTick()
@@ -1817,7 +1825,7 @@ watch(() => lang.code, async () => {
 
       <div
         v-else-if="current"
-        class="relative overflow-hidden rounded-xl border border-[var(--color-border)] p-8"
+        class="relative rounded-xl border border-[var(--color-border)] p-8"
         :class="cardArt ? 'cursor-zoom-in' : ''"
         @click="openArt"
       >
@@ -1830,15 +1838,17 @@ watch(() => lang.code, async () => {
           meaning card, so announcing it would give the answer away. The tap to
           enlarge is handled on the card, not here — see openArt.
         -->
-        <img
-          v-if="cardArt"
-          :src="cardArt"
-          alt=""
-          aria-hidden="true"
-          class="pointer-events-none absolute inset-0 h-full w-full select-none object-contain p-6 transition-opacity duration-500"
-          :style="{ opacity: cardArtOpacity }"
-          loading="lazy"
-        >
+        <!-- The clip is on this wrapper, not the card: a clipping card would
+             stop the answer bar inside it from staying on screen. -->
+        <div v-if="cardArt" class="pointer-events-none absolute inset-0 overflow-hidden rounded-xl" aria-hidden="true">
+          <img
+            :src="cardArt"
+            alt=""
+            class="h-full w-full select-none object-contain p-6 transition-opacity duration-500"
+            :style="{ opacity: cardArtOpacity }"
+            loading="lazy"
+          >
+        </div>
         <div class="relative">
           <p class="text-center text-xs uppercase tracking-wide text-[var(--color-muted)]">
             {{ scriptLabel }}<span v-if="current.isNew"> &middot; new</span>
@@ -1929,11 +1939,11 @@ watch(() => lang.code, async () => {
                   </button>
                 </div>
               </template>
-              <div class="mt-8">
+              <AnswerBar class="-mx-8 mt-8 px-8">
                 <Button variant="primary" @click="introDone">
                   Got it, ask me
                 </Button>
-              </div>
+              </AnswerBar>
             </template>
           </div>
 
@@ -2151,7 +2161,7 @@ watch(() => lang.code, async () => {
               </div>
             </div>
 
-            <form v-if="!isDialogue && !isSpeak" class="flex flex-col gap-4" @submit.prevent="onEnter">
+            <form v-if="!isDialogue && !isSpeak" id="study-answer" class="flex flex-col gap-4" @submit.prevent="onEnter">
               <ChoiceInput
                 v-if="isChoice"
                 :options="choices"
@@ -2285,64 +2295,70 @@ watch(() => lang.code, async () => {
               >
                 <img :src="shownArt" alt="" class="h-36 w-36 object-contain" loading="lazy">
               </button>
+            </form>
 
-              <template v-if="revealed && wasCorrect">
-                <div class="flex gap-2">
-                  <button
-                    v-for="r in RATINGS"
-                    :key="r.value"
-                    type="button"
-                    class="flex-1 rounded-lg border px-3 py-2.5 text-sm transition hover:border-[var(--color-text)]"
-                    :class="r.value === suggested
-                      ? 'border-[var(--color-text)] font-medium'
-                      : 'border-[var(--color-border)]'"
-                    @click="submitRating(r.value); next()"
-                  >
-                    {{ r.label }} <span class="text-[var(--color-muted)]">{{ r.key }}</span>
-                  </button>
-                </div>
-                <p class="text-center text-xs text-[var(--color-muted)]">
-                  <template v-if="suggested">
-                    Enter for {{ RATINGS.find(r => r.value === suggested)?.label }}, from the stroke score
-                  </template>
-                  <template v-else>
-                    Enter for Good
-                  </template>
-                  &middot; space to replay
-                </p>
-              </template>
+            <!-- Outside the form, in the card itself, so it stays in view from
+                 the top of the card down; the submit button still belongs to
+                 the form through form="study-answer". -->
+            <AnswerBar v-if="!isDialogue && !isSpeak && (revealed || !isChoice)" class="-mx-8 mt-4 px-8">
+              <div v-if="revealed && wasCorrect" class="flex gap-2">
+                <button
+                  v-for="r in RATINGS"
+                  :key="r.value"
+                  type="button"
+                  class="flex-1 rounded-lg border px-3 py-2.5 text-sm transition hover:border-[var(--color-text)]"
+                  :class="r.value === suggested
+                    ? 'border-[var(--color-text)] font-medium'
+                    : 'border-[var(--color-border)]'"
+                  @click="submitRating(r.value); next()"
+                >
+                  {{ r.label }} <span v-if="canAutoFocus" class="text-[var(--color-muted)]">{{ r.key }}</span>
+                </button>
+              </div>
               <Button
                 v-else-if="!isChoice || revealed"
                 type="submit"
+                form="study-answer"
                 variant="primary"
+                class="w-full"
                 :disabled="isOrdering && !revealed && placed.length !== orderTiles.length"
               >
                 {{ revealed ? 'Next' : 'Check' }}
               </Button>
+              <!-- Keyboard shortcuts: no use on a phone, where they only take room. -->
+              <template v-if="canAutoFocus && revealed && wasCorrect" #hint>
+                <template v-if="suggested">
+                  Enter for {{ RATINGS.find(r => r.value === suggested)?.label }}, from the stroke score
+                </template>
+                <template v-else>
+                  Enter for Good
+                </template>
+                &middot; space to replay
+              </template>
+            </AnswerBar>
 
-              <!--
+            <!--
               Move through the queue without answering. Quiet styling on
               purpose: this is an escape hatch from a card you do not want right
               now, not a third way to finish one.
             -->
-              <div class="flex items-center justify-between pt-1">
-                <button
-                  type="button"
-                  class="rounded-lg px-2 py-1 text-sm text-[var(--color-muted)] transition enabled:hover:text-[var(--color-text)] disabled:opacity-40"
-                  :disabled="!canGoBack"
-                  @click="back"
-                >
-                  &larr; Back
-                </button>
-                <button
-                  type="button"
-                  class="rounded-lg px-2 py-1 text-sm text-[var(--color-muted)] transition hover:text-[var(--color-text)]"
-                  @click="skip"
-                >
-                  Skip &rarr;
-                </button>
-              </div>
-            </form>
+            <div v-if="!isDialogue && !isSpeak" class="flex items-center justify-between pt-1">
+              <button
+                type="button"
+                class="rounded-lg px-2 py-1 text-sm text-[var(--color-muted)] transition enabled:hover:text-[var(--color-text)] disabled:opacity-40"
+                :disabled="!canGoBack"
+                @click="back"
+              >
+                &larr; Back
+              </button>
+              <button
+                type="button"
+                class="rounded-lg px-2 py-1 text-sm text-[var(--color-muted)] transition hover:text-[var(--color-text)]"
+                @click="skip"
+              >
+                Skip &rarr;
+              </button>
+            </div>
           </template>
         </div>
       </div>

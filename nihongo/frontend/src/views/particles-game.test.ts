@@ -82,6 +82,13 @@ describe('particles game', () => {
     expect(box(wrapper, 'を').attributes('disabled')).toBeDefined()
   })
 
+  it('puts Next in the answer bar that stays on screen, only once a box is picked', async () => {
+    const wrapper = await open()
+    expect(wrapper.find('.answer-bar').exists()).toBe(false)
+    await box(wrapper, 'で').trigger('click')
+    expect(wrapper.find('.answer-bar').findAll('button').map(b => b.text())).toContain('Next')
+  })
+
   it('ends after three misses, lists them, and records the game', async () => {
     const wrapper = await open()
     for (let i = 0; i < 3; i++) {

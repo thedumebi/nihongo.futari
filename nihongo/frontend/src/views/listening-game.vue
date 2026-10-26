@@ -10,6 +10,7 @@ import ChoiceGrid from '@/components/games/choice-grid.vue'
 import GameEnd from '@/components/games/game-end.vue'
 import PitchAccent from '@/components/ja/pitch-accent.vue'
 import AppShell from '@/components/layout/app-shell.vue'
+import AnswerBar from '@/components/ui/answer-bar.vue'
 import Button from '@/components/ui/button.vue'
 import { useAnswerStreak } from '@/composables/use-answer-streak'
 import { playAudio } from '@/composables/use-audio'
@@ -152,10 +153,12 @@ async function next() {
           <p class="font-semibold" :class="picked === round.answer ? 'text-[var(--color-success)]' : 'text-[var(--color-danger)]'">
             {{ picked === round.answer ? 'Right.' : `It was ${round.contrast === 'pitch' ? round.options[round.answer]!.text : round.options[round.answer]!.reading}.` }}
           </p>
-          <Button class="mt-4" @click="next">
+        </div>
+        <AnswerBar v-if="picked !== null" class="mt-4 text-center">
+          <Button @click="next">
             Next
           </Button>
-        </div>
+        </AnswerBar>
       </template>
     </div>
   </AppShell>

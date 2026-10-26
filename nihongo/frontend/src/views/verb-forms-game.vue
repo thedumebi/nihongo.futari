@@ -10,6 +10,7 @@ import { getVerbFormsGame } from '@/api/games'
 import ChoiceGrid from '@/components/games/choice-grid.vue'
 import GameEnd from '@/components/games/game-end.vue'
 import AppShell from '@/components/layout/app-shell.vue'
+import AnswerBar from '@/components/ui/answer-bar.vue'
 import Button from '@/components/ui/button.vue'
 import { useAnswerStreak } from '@/composables/use-answer-streak'
 import { ROUTES } from '@/constants'
@@ -371,10 +372,12 @@ function backToSetup() {
           <p class="mt-1 text-sm text-[var(--color-muted)]" style="font-family: var(--font-jp)">
             {{ round.rule }}
           </p>
-          <Button class="mt-4" @click="next">
+        </div>
+        <AnswerBar v-if="correct !== null" class="mt-4 text-center">
+          <Button @click="next">
             {{ hearts === 0 || index + 1 >= rounds.length ? 'See how you did' : 'Next' }}
           </Button>
-        </div>
+        </AnswerBar>
       </template>
     </div>
   </AppShell>

@@ -2,7 +2,7 @@ import type { CrosswordDirection } from '@nihongo/shared/constants'
 import type { CrosswordEntry, CrosswordPuzzle } from '@nihongo/shared/types'
 import type { Ref } from 'vue'
 
-import { consumeRomaji, crosswordCellMatches, crosswordCells, hasHiragana, hasKatakana, inCrosswordScript } from '@nihongo/shared/lib'
+import { consumeRomaji, crosswordCellMatches, crosswordCells, hasHiragana, hasKanji, hasKatakana, inCrosswordScript } from '@nihongo/shared/lib'
 import { useDocumentVisibility, useIntervalFn, useLocalStorage } from '@vueuse/core'
 import { computed, ref, watch } from 'vue'
 
@@ -24,6 +24,9 @@ interface Saved {
 }
 
 const key = (r: number, c: number) => `${r}:${c}`
+
+/** Full-width Latin letters (ｋａ) as the ASCII a romaji table reads. */
+const halfWidth = (text: string) => text.replace(/[\uFF01-\uFF5E]/g, ch => String.fromCharCode(ch.charCodeAt(0) - 0xFEE0))
 
 export function useCrossword(puzzle: Ref<CrosswordPuzzle | null>) {
   // ============ Reactive State ============
@@ -164,6 +167,31 @@ export function useCrossword(puzzle: Ref<CrosswordPuzzle | null>) {
     selectEntry(entries[(at + by + entries.length) % entries.length]!)
   }
 
+  /**
+   * A word just finished, with the cursor on its last cell: go on to the next
+   * word with a gap. Staying put meant the next word typed without a tap went
+   * into that one last cell, each kana over the one before, so it looked as if
+   * nothing was written.
+   */
+  function moveOnIfDone() {
+    const entry = current.value
+    const s = selected.value
+    if (!entry || !s || neighbour(1))
+      return
+    const cells = cellsOf(entry)
+    if (!cells.every(([r, c]) => typed.value[r]?.[c]))
+      return
+    const entries = puzzle.value?.entries ?? []
+    const at = entries.indexOf(entry)
+    for (let i = 1; i < entries.length; i++) {
+      const next = entries[(at + i) % entries.length]!
+      if (cellsOf(next).some(([r, c]) => !typed.value[r]?.[c])) {
+        selectEntry(next)
+        return
+      }
+    }
+  }
+
   /** The next (or previous) cell along the current word, if there is one. */
   function neighbour(by: 1 | -1): [number, number] | null {
     const entry = current.value
@@ -205,18 +233,25 @@ export function useCrossword(puzzle: Ref<CrosswordPuzzle | null>) {
   }
 
   /** A key pressed or a character typed: kana go straight in, romaji waits for a whole syllable. */
-  function type(text: string) {
-    if (solved.value)
+  function type(raw: string) {
+    // A swiped word comes with a space after it, and a full-width keyboard
+    // sends ｋａ: neither should land in a cell as it is.
+    const text = halfWidth(raw).replace(/\s+/g, '')
+    if (solved.value || !text)
       return
     if (/^[a-z'-]+$/i.test(text)) {
       const { kana, rest } = consumeRomaji(pending.value + text)
       pending.value = rest
-      if (kana)
+      if (kana) {
         write(kana)
+        if (!rest)
+          moveOnIfDone()
+      }
       return
     }
     flush()
     write(text)
+    moveOnIfDone()
   }
 
   // ============ A Japanese keyboard ============
@@ -231,18 +266,45 @@ export function useCrossword(puzzle: Ref<CrosswordPuzzle | null>) {
   let anchor: { row: number, col: number, dir: CrosswordDirection } | null = null
   /** Cells the current composition has written, so a change can rewrite them. */
   let composed: Array<[number, number]> = []
+  /** The word's kana before the keyboard turned it into kanji. */
+  let lastKana = ''
+  /** The learner moved away mid-word: the rest of that word is not drawn. */
+  let abandoned = false
 
   function compositionStart() {
     flush()
     anchor = selected.value ? { ...selected.value } : null
     composed = []
+    lastKana = ''
+    abandoned = false
   }
 
-  function composition(text: string) {
-    if (!anchor || solved.value)
+  /** What a composition means in kana: romaji spelled out, a kanji choice read as the kana before it. */
+  function kanaOf(text: string, final: boolean): string {
+    const plain = halfWidth(text)
+    if (/^[a-z'-]+$/i.test(plain))
+      return consumeRomaji(plain, { final }).kana
+    // A kanji the keyboard suggests (学校 for がっこう) has no place in a kana
+    // grid; the reading typed just before it is what the learner meant.
+    if (hasKanji(plain))
+      return lastKana
+    return [...plain].filter(ch => hasHiragana(ch) || hasKatakana(ch)).join('')
+  }
+
+  function composition(text: string, final = false) {
+    if (solved.value)
       return
-    // Kana only: a kanji the keyboard suggests has no place in a kana grid.
-    const kana = [...text].filter(ch => hasHiragana(ch) || hasKatakana(ch)).join('')
+    // A word the keyboard carries on with, without saying it began (iOS, after
+    // a tap mid-word): draw it from the cursor rather than drop it.
+    if (!anchor) {
+      if (abandoned || !selected.value)
+        return
+      anchor = { ...selected.value }
+      composed = []
+    }
+    const kana = kanaOf(text, final)
+    if (!hasKanji(text))
+      lastKana = kana
     for (const [r, c] of composed) {
       if (!revealed.value.has(key(r, c)))
         setCell(r, c, '')
@@ -255,9 +317,14 @@ export function useCrossword(puzzle: Ref<CrosswordPuzzle | null>) {
   }
 
   function compositionEnd(text: string) {
-    composition(text)
+    composition(text, true)
+    const wrote = anchor !== null
     anchor = null
     composed = []
+    lastKana = ''
+    abandoned = false
+    if (wrote)
+      moveOnIfDone()
   }
 
   /**
@@ -267,6 +334,8 @@ export function useCrossword(puzzle: Ref<CrosswordPuzzle | null>) {
    * cut off at its end, so it looked as if nothing was written.
    */
   function letGoOfComposition() {
+    if (anchor)
+      abandoned = true
     anchor = null
     composed = []
   }

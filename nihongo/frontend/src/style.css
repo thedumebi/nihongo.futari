@@ -108,6 +108,11 @@
     font-size: 1rem;
   }
 
+  /* Room at the end of the page for the answer bar fixed to a phone's screen. */
+  body {
+    padding-bottom: var(--answer-bar-height, 0px);
+  }
+
   html,
   body {
     background-color: var(--color-bg);
