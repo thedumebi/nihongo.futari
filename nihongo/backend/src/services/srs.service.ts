@@ -1569,7 +1569,7 @@ export async function getQueue(userId: string, query: StudyQueueQuery): Promise<
           ...unitFilter,
           ...levelFilter
         ))
-        .orderBy(asc(srsCards.due))
+        .orderBy(asc(srsCards.due), asc(srsCards.facetId))
         .limit(query.limit)
 
   // --- New: published items this user has never seen ------------------------
@@ -1625,7 +1625,7 @@ export async function getQueue(userId: string, query: StudyQueueQuery): Promise<
           ...levelFilter,
           kind
         ))
-        .orderBy(asc(studyItems.sortIndex))
+        .orderBy(asc(studyItems.sortIndex), asc(studyItemFacets.id))
         .limit(limit)
   const slots = Math.max(0, query.limit - dueRows.length)
   const introRows = query.mode === 'due' ? [] : await pickNew(sql`not ${itemHasCard(userId)}`, Math.min(budget.wordsLeft, slots))
@@ -1701,7 +1701,7 @@ export async function getQueue(userId: string, query: StudyQueueQuery): Promise<
         ...unitFilter,
         ...levelFilter
       ))
-      .orderBy(asc(srsCards.due))
+      .orderBy(asc(srsCards.due), asc(srsCards.facetId))
       .limit(query.limit)
   }
 

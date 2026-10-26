@@ -10,6 +10,7 @@
     "lint": "eslint .",
     "lint:fix": "npm run lint -- --cache --fix",
     "test": "NODE_ENV=test vitest run",
+    "test:db": "NODE_ENV=test vitest run --config vitest.db.config.ts",
     "drizzle": "NODE_OPTIONS='--import tsx' dotenvx run -- drizzle-kit",
     "drizzle:generate": "NODE_OPTIONS='--import tsx' dotenvx run -- drizzle-kit generate",
     "drizzle:studio": "NODE_OPTIONS='--import tsx' drizzle-kit studio",

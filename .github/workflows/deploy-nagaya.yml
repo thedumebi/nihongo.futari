@@ -91,6 +91,19 @@ jobs:
     needs: changes
     if: needs.changes.outputs.services != '[]'
     runs-on: ubuntu-latest
+    # For the DB-backed tests. The same Postgres as production's: 18 on
+    # Alpine, whose musl libc sorts text byte by byte.
+    services:
+      postgres:
+        image: postgres:18-alpine
+        env:
+          POSTGRES_PASSWORD: postgres
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
     steps:
       - uses: actions/checkout@v7
       # No version: pnpm/action-setup reads packageManager from package.json,
@@ -106,6 +119,16 @@ jobs:
       - run: pnpm run lint
       - run: pnpm run typecheck
       - run: pnpm run test
+      # Builds a database from every migration and seed, then runs the
+      # goldens and the replay tests against it (vitest.db.config.ts).
+      - run: pnpm -C nihongo/backend test:db
+        # Only when the backend is built: a frontend-only push changes nothing it tests.
+        if: contains(needs.changes.outputs.services, 'backend')
+        env:
+          CI: 'true'
+          PG_HOST: localhost
+          PG_USERNAME: postgres
+          PG_PASSWORD: postgres
 
   build:
     name: Build ${{ matrix.service }}
