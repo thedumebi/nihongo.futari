@@ -1,9 +1,13 @@
 import { drizzle } from 'drizzle-orm/node-postgres'
+import { AsyncResource } from 'node:async_hooks'
 import pg, { Pool } from 'pg'
 
 import env from '@/env.js'
 
 import * as schema from './schema/index.js'
+import { startQuery, startWait } from './timing.js'
+
+export { withQueryTiming } from './timing.js'
 
 pg.types.setTypeParser(pg.types.builtins.NUMERIC, value => value === null ? null : Number.parseFloat(value))
 
@@ -38,6 +42,47 @@ export const connection = new Pool({
   connectionTimeoutMillis: env.DB_POOL_CONNECTION_TIMEOUT_MS,
   ...(ssl ? { ssl } : {})
 })
+
+type Callback = (...args: unknown[]) => void
+
+/**
+ * Every query a request makes runs on a client the pool hands out: Drizzle's
+ * own (a promise), and the pool's for `pool.query` (a callback). Each is timed
+ * once, from the moment it is sent; a cursor (`submit`) passes through.
+ */
+function timedQuery(query: (...args: unknown[]) => unknown): (...args: unknown[]) => unknown {
+  return (...args) => {
+    const last = args.at(-1)
+    if (typeof (args[0] as { submit?: unknown } | undefined)?.submit === 'function')
+      return query(...args)
+    const end = startQuery()
+    if (typeof last === 'function') {
+      return query(...args.slice(0, -1), (...result: unknown[]) => {
+        end()
+        ;(last as Callback)(...result)
+      })
+    }
+    return (query(...args) as Promise<unknown>).finally(end)
+  }
+}
+
+connection.on('connect', (client) => {
+  client.query = timedQuery(client.query.bind(client)) as typeof client.query
+})
+
+// The wait for a free client is counted apart from the queries. A callback
+// waiting in the pool's queue is called by whichever request frees a client,
+// so it is bound back to the request that asked.
+const connect = connection.connect.bind(connection) as (callback?: Callback) => Promise<unknown> | undefined
+connection.connect = ((callback?: Callback) => {
+  const end = startWait()
+  if (!callback)
+    return (connect() as Promise<unknown>).finally(end)
+  return connect(AsyncResource.bind((...result: unknown[]) => {
+    end()
+    callback(...result)
+  }))
+}) as typeof connection.connect
 
 const db = drizzle(connection, {
   schema,
