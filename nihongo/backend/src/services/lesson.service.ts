@@ -499,7 +499,7 @@ export async function completeLesson(
  * function recorded the view, recorded the questions missed, and then returned
  * `addedToReview: true` without creating anything — so a finished lesson
  * produced a topic with no card, which no queue can serve. The missed questions
- * were stored faithfully and could never come back, because `promptPick` only
+ * were stored faithfully and could never come back, because `pickPrompt` only
  * chooses a prompt for a card that is already in the queue.
  *
  * `state = 1` (Learning) rather than 0, so it counts as due under the canonical

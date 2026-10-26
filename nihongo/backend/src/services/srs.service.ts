@@ -10,9 +10,11 @@ import type {
   DueListResponse,
   GhostPolicy,
   ItemFilter,
+  LearnerPromptContext,
   LearnerState,
   LessonSeenResult,
   NewBudget,
+  PromptOption,
   ReviewEvent,
   SaveWordResult,
   SrsCard,
@@ -26,7 +28,7 @@ import type {
   SubmitAnswerInput,
   WordStatus
 } from '@nihongo/shared/types'
-import type { SQL, SQLWrapper } from 'drizzle-orm'
+import type { SQL } from 'drizzle-orm'
 
 import { ROUTE_BASE_PATHS, STAGE_PASS, STAGE_SIZE } from '@nihongo/shared/constants'
 import db from '@nihongo/shared/db'
@@ -38,6 +40,7 @@ import {
   grammarPoints,
   kana,
   kanji,
+  kindFacetTemplates,
   languageLevels,
   languages,
   lessonMisses,
@@ -81,6 +84,7 @@ import { ghostPolicySchema } from '@nihongo/shared/types'
 import { and, asc, desc, eq, gt, gte, inArray, isNotNull, isNull, lt, lte, or, sql } from 'drizzle-orm'
 
 import { assetUrl, withAssetUrls, withDialogueAudio, withSpeakAudio } from '@/lib/assets.js'
+import { pickPrompt } from '@/lib/prompt-pick.js'
 
 import { catalogue } from './catalogue.service.js'
 import { withCurrentAudio } from './clips.service.js'
@@ -100,9 +104,9 @@ import { deferProgress } from './recompute.service.js'
  */
 
 /**
- * New-card candidates whose prompts are fetched per query (see `pickNew` in
- * `getQueue`): the first chunk is twice the batch, at least this, and each
- * next one four times larger, up to the most.
+ * Rows whose prompts are chosen per round (see `withPrompts`): the first chunk
+ * is twice the batch, at least this, and each next one four times larger, up
+ * to the most.
  */
 const PROMPT_CHUNK_MIN = 40
 const PROMPT_CHUNK_MAX = 2000
@@ -749,73 +753,158 @@ export async function stageProgress(userId: string, languageId: string, state?: 
 }
 
 /**
- * WHICH prompt a facet shows this time.
- *
- * Three rules, all configured in the schema long before anything read them:
- *
- * 1. `requires_grammar_point_id` — withhold a drill until the grammar that
- *    explains it has been learned. This is what stops 仕事's te-form drill
- *    arriving at sort_index 154 when 〜て form is at 165. A HARD filter.
- *
- * 2. `first_exposure_only` — the introduction goes first on first exposure and
- *    last afterwards. Deliberately an ORDERING and not a filter: `mcq` carries
- *    the flag globally, and for a kanji meaning facet it is the only prompt
- *    there is. Filtering would delete the card instead of demoting it.
- *
- * 3. `min_state` / `max_reps` — a template that should not appear until a card
- *    has bedded in, or should stop appearing once it has.
+ * What a learner's prompt choice depends on beyond the card itself: the
+ * grammar they have learned, in any language, and the lesson questions they
+ * still owe. See `pickPrompt`.
  */
-function promptPick(
+async function promptContextFor(userId: string): Promise<Omit<LearnerPromptContext, 'salt'>> {
+  const [grammar, misses] = await Promise.all([
+    db
+      .selectDistinct({ id: studyItems.grammarPointId })
+      .from(srsCards)
+      .innerJoin(studyItemFacets, eq(studyItemFacets.id, srsCards.facetId))
+      .innerJoin(studyItems, eq(studyItems.id, studyItemFacets.studyItemId))
+      .where(and(eq(srsCards.userId, userId), gte(srsCards.state, 2), isNotNull(studyItems.grammarPointId))),
+    db
+      .select({ promptId: lessonMisses.promptId })
+      .from(lessonMisses)
+      .where(and(eq(lessonMisses.userId, userId), isNull(lessonMisses.clearedAt)))
+  ])
+  return {
+    knownGrammar: new Set(grammar.flatMap(g => g.id === null ? [] : [g.id])),
+    missed: new Set(misses.map(m => m.promptId))
+  }
+}
+
+/**
+ * The published prompts of these facets, with the rules `pickPrompt` applies.
+ * The kind's template row may be absent: then the template's own
+ * first-exposure flag holds and nothing bounds state or reps. The published /
+ * active / enabled tests repeat what the catalogue applied, so a catalogue a
+ * moment stale can never serve withdrawn content.
+ */
+async function promptOptions(languageId: string, facetIds: string[]): Promise<PromptOption[]> {
+  return db
+    .select({
+      id: exercisePrompts.id,
+      facetId: exercisePrompts.facetId,
+      requiresGrammarPointId: exercisePrompts.requiresGrammarPointId,
+      firstExposureOnly: sql<boolean>`coalesce(${kindFacetTemplates.firstExposureOnly}, ${exerciseTemplates.firstExposureOnly})`,
+      minState: kindFacetTemplates.minState,
+      maxReps: kindFacetTemplates.maxReps
+    })
+    .from(exercisePrompts)
+    .innerJoin(exerciseTemplates, eq(exerciseTemplates.id, exercisePrompts.templateId))
+    .innerJoin(studyItemFacets, eq(studyItemFacets.id, exercisePrompts.facetId))
+    .innerJoin(studyItems, eq(studyItems.id, studyItemFacets.studyItemId))
+    .leftJoin(kindFacetTemplates, and(
+      eq(kindFacetTemplates.languageId, languageId),
+      eq(kindFacetTemplates.kind, studyItems.kind),
+      eq(kindFacetTemplates.facet, studyItemFacets.facet),
+      eq(kindFacetTemplates.templateId, exercisePrompts.templateId)
+    ))
+    .where(and(
+      inArray(exercisePrompts.facetId, facetIds),
+      eq(exercisePrompts.status, 'published'),
+      eq(studyItems.published, true),
+      eq(studyItems.active, true),
+      eq(studyItemFacets.enabled, true)
+    ))
+}
+
+const promptColumns = {
+  /**
+   * WHICH prompt this card is showing.
+   *
+   * Without it the answer comes back naming only the facet, so nothing can
+   * tell which of a facet's prompts was actually asked — which made the
+   * lesson-miss clearing dead code: a missed question stayed owed forever,
+   * pinning that one prompt on its facet.
+   */
+  promptId: exercisePrompts.id,
+  // Not a prompt column, but needed on every queue row for the same reason
+  // they are: it is what the lesson and the hint are looked up by, and all
+  // three selects join `study_items` already.
+  grammarPointId: studyItems.grammarPointId,
+  /** Which facet introduces an item, when several arrive together. */
+  introOrder: studyItemFacets.introOrder,
+  templateCode: exerciseTemplates.code,
+  inputMode: exerciseTemplates.inputMode,
+  graderCode: exerciseTemplates.graderCode,
+  prompt: exercisePrompts.prompt,
+  answer: exercisePrompts.answer,
+  distractors: exercisePrompts.distractors,
+  assets: exercisePrompts.assets
+}
+
+/** The chosen prompts in full, with the facet and item they belong to. */
+function promptRows(promptIds: string[]) {
+  return db
+    .select({
+      facetId: studyItemFacets.id,
+      studyItemId: studyItems.id,
+      kind: studyItems.kind,
+      facet: studyItemFacets.facet,
+      ...promptColumns
+    })
+    .from(exercisePrompts)
+    .innerJoin(exerciseTemplates, eq(exerciseTemplates.id, exercisePrompts.templateId))
+    .innerJoin(studyItemFacets, eq(studyItemFacets.id, exercisePrompts.facetId))
+    .innerJoin(studyItems, eq(studyItems.id, studyItemFacets.studyItemId))
+    .where(inArray(exercisePrompts.id, promptIds))
+}
+
+/** A card, or a facet about to become one, that needs a prompt. */
+type PickableRow = Pick<SrsCard, 'facetId' | 'state' | 'reps'>
+/** A chosen prompt in full. */
+type PromptRow = Awaited<ReturnType<typeof promptRows>>[number]
+
+/**
+ * Up to `limit` rows, in their order, each with ONE prompt. A facet is one
+ * card; the prompt pool is meant to vary WHICH drill you get, not to hand the
+ * same card back several times.
+ *
+ * Rows come a chunk at a time from `nextChunk`: a facet with no prompt this
+ * learner may see yet drops out, and the next chunk fills its place. Chunks
+ * grow, so a deck whose first thousand rows all drop out costs a few queries,
+ * not hundreds. The choice is made in memory (`pickPrompt`); only the chosen
+ * prompts are then read in full.
+ */
+async function withPrompts<R extends PickableRow>(
   languageId: string,
-  userId: string,
-  salt: string,
-  state: SQLWrapper,
-  reps: SQLWrapper
-): SQL {
-  return sql`(
-    select p.id
-    from exercise_prompts p
-    join exercise_templates t on t.id = p.template_id
-    left join kind_facet_templates kft
-      on kft.language_id = ${languageId}
-     and kft.kind = ${studyItems.kind}
-     and kft.facet = ${studyItemFacets.facet}
-     and kft.template_id = p.template_id
-    where p.facet_id = ${studyItemFacets.id}
-      and p.status = 'published'
-      and (
-        p.requires_grammar_point_id is null
-        or exists (
-          select 1
-          from srs_cards rc
-          join study_item_facets rf on rf.id = rc.facet_id
-          join study_items rsi on rsi.id = rf.study_item_id
-          where rc.user_id = ${userId}
-            and rsi.grammar_point_id = p.requires_grammar_point_id
-            and rc.state >= 2
-        )
-      )
-      and (kft.min_state is null or ${state} >= kft.min_state)
-      and (kft.max_reps is null or ${reps} <= kft.max_reps)
-    order by
-      -- A question missed in its lesson comes back first.
-      --
-      -- "If I do a lesson I can review the questions later" — the specific ones
-      -- got wrong, not the topic in general. An ORDERING, not a filter: it
-      -- changes which prompt a facet shows, never whether the card appears, so
-      -- no count moves and no schedule changes.
-      case when exists (
-        select 1 from lesson_misses lm
-        where lm.user_id = ${userId} and lm.prompt_id = p.id and lm.cleared_at is null
-      ) then 0 else 1 end,
-      case
-        when coalesce(kft.first_exposure_only, t.first_exposure_only)
-        then case when ${state} = 0 then 0 else 2 end
-        else 1
-      end,
-      md5(p.id || ${salt})
-    limit 1
-  )`
+  prompting: LearnerPromptContext,
+  nextChunk: (offset: number, size: number) => Promise<R[]>,
+  limit: number
+): Promise<Array<R & PromptRow>> {
+  if (limit <= 0)
+    return []
+  const picked: Array<{ row: R, promptId: string }> = []
+  let size = Math.max(2 * limit, PROMPT_CHUNK_MIN)
+  for (let offset = 0; picked.length < limit; offset += size, size = Math.min(size * 4, PROMPT_CHUNK_MAX)) {
+    const rows = await nextChunk(offset, size)
+    if (rows.length === 0)
+      break
+    const options = new Map<string, PromptOption[]>()
+    for (const option of await promptOptions(languageId, rows.map(r => r.facetId)))
+      options.set(option.facetId, [...(options.get(option.facetId) ?? []), option])
+    for (const row of rows) {
+      const promptId = pickPrompt(options.get(row.facetId) ?? [], { ...prompting, state: row.state, reps: row.reps })
+      if (promptId !== null)
+        picked.push({ row, promptId })
+      if (picked.length === limit)
+        break
+    }
+    if (rows.length < size)
+      break
+  }
+  if (picked.length === 0)
+    return []
+  const full = new Map((await promptRows(picked.map(p => p.promptId))).map(p => [p.promptId, p]))
+  // A prompt withdrawn between the two reads drops its row.
+  return picked.flatMap(({ row, promptId }) => {
+    const prompt = full.get(promptId)
+    return prompt ? [{ ...row, ...prompt }] : []
+  })
 }
 
 /**
@@ -1258,10 +1347,11 @@ export async function getQueue(userId: string, query: StudyQueueQuery): Promise<
   // "Learn 5 more anyway" raises TODAY's limit. The page sends what it has
   // been granted today on every request — it used to send it once, so the
   // next refill counted the day afresh and the wall came straight back.
-  const [budget, learner, cat] = await Promise.all([
+  const [budget, learner, cat, learnerPrompting] = await Promise.all([
     todayBudget(userId, language.id, now, query.moreNew ?? 0),
     loadLearnerState(userId, language.id),
-    catalogue(language.id)
+    catalogue(language.id),
+    promptContextFor(userId)
   ])
 
   // Deck filters. `kind` narrows the content type, `unit` narrows to a
@@ -1320,30 +1410,51 @@ export async function getQueue(userId: string, query: StudyQueueQuery): Promise<
     ...(unitIds ? { unitItemIds: new Set(unitIds) } : {})
   }
 
-  const promptColumns = {
-    /**
-     * WHICH prompt this card is showing.
-     *
-     * Without it the answer comes back naming only the facet, so nothing can
-     * tell which of a facet's prompts was actually asked — which made the
-     * lesson-miss clearing dead code: a missed question stayed owed forever,
-     * pinning that one prompt on its facet.
-     */
-    promptId: exercisePrompts.id,
-    // Not a prompt column, but needed on every queue row for the same reason
-    // they are: it is what the lesson and the hint are looked up by, and all
-    // three selects join `study_items` already.
-    grammarPointId: studyItems.grammarPointId,
-    /** Which facet introduces an item, when several arrive together. */
-    introOrder: studyItemFacets.introOrder,
-    templateCode: exerciseTemplates.code,
-    inputMode: exerciseTemplates.inputMode,
-    graderCode: exerciseTemplates.graderCode,
-    prompt: exercisePrompts.prompt,
-    answer: exercisePrompts.answer,
-    distractors: exercisePrompts.distractors,
-    assets: exercisePrompts.assets
+  const prompting = { ...learnerPrompting, salt: promptSalt }
+  const fill = <R extends PickableRow>(nextChunk: (offset: number, size: number) => Promise<R[]>, limit: number) =>
+    withPrompts(language.id, prompting, nextChunk, limit)
+
+  // Cards in due order, a chunk at a time, for `withPrompts` to walk.
+  const cardColumns = {
+    cardId: srsCards.id,
+    facetId: srsCards.facetId,
+    due: srsCards.due,
+    ghost: srsCards.ghost,
+    state: srsCards.state,
+    stability: srsCards.stability,
+    difficulty: srsCards.difficulty,
+    elapsedDays: srsCards.elapsedDays,
+    scheduledDays: srsCards.scheduledDays,
+    learningSteps: srsCards.learningSteps,
+    reps: srsCards.reps,
+    lapses: srsCards.lapses,
+    lastReview: srsCards.lastReview
   }
+  const dueCards = (...where: SQL[]) => (offset: number, size: number) => db
+    .select(cardColumns)
+    .from(srsCards)
+    .innerJoin(studyItemFacets, eq(studyItemFacets.id, srsCards.facetId))
+    .innerJoin(studyItems, eq(studyItems.id, studyItemFacets.studyItemId))
+    .where(and(
+      eq(srsCards.userId, userId),
+      eq(srsCards.languageId, language.id),
+      eq(srsCards.suspended, false),
+      lte(srsCards.due, horizon),
+      eq(studyItems.published, true),
+      eq(studyItems.active, true),
+      // Match what the counts count. Without this a card on a facet that
+      // has since been disabled is SERVED in a session while being absent
+      // from the due number, the due list and the reminder — the exact
+      // class of disagreement this phase exists to end.
+      eq(studyItemFacets.enabled, true),
+      ...kindFilter,
+      ...unitFilter,
+      ...levelFilter,
+      ...where
+    ))
+    .orderBy(asc(srsCards.due), asc(srsCards.facetId))
+    .limit(size)
+    .offset(offset)
 
   // --- Due: cards this user has already started -----------------------------
   //
@@ -1358,58 +1469,7 @@ export async function getQueue(userId: string, query: StudyQueueQuery): Promise<
   // introduced but not yet learned offers nothing here, while the cards needed
   // to finish it sit in the review queue mixed with every other stage — so
   // there was no screen that answered "what is left in stage 4".
-  let dueRows = query.mode === 'new'
-    ? []
-    : await db
-        .select({
-          cardId: srsCards.id,
-          facetId: studyItemFacets.id,
-          studyItemId: studyItems.id,
-          kind: studyItems.kind,
-          facet: studyItemFacets.facet,
-          due: srsCards.due,
-          ghost: srsCards.ghost,
-          state: srsCards.state,
-          stability: srsCards.stability,
-          difficulty: srsCards.difficulty,
-          elapsedDays: srsCards.elapsedDays,
-          scheduledDays: srsCards.scheduledDays,
-          learningSteps: srsCards.learningSteps,
-          reps: srsCards.reps,
-          lapses: srsCards.lapses,
-          lastReview: srsCards.lastReview,
-          ...promptColumns
-        })
-        .from(srsCards)
-        .innerJoin(studyItemFacets, eq(studyItemFacets.id, srsCards.facetId))
-        .innerJoin(studyItems, eq(studyItems.id, studyItemFacets.studyItemId))
-      // ONE prompt per facet. A facet is one card; the prompt pool is meant to
-      // vary WHICH drill you get, not to hand the same card back several times.
-      // Without this, a facet with four conjugation forms would appear four
-      // times in a single queue.
-        .innerJoin(exercisePrompts, and(
-          eq(exercisePrompts.facetId, studyItemFacets.id),
-          eq(exercisePrompts.id, promptPick(language.id, userId, promptSalt, srsCards.state, srsCards.reps))
-        ))
-        .innerJoin(exerciseTemplates, eq(exerciseTemplates.id, exercisePrompts.templateId))
-        .where(and(
-          eq(srsCards.userId, userId),
-          eq(srsCards.languageId, language.id),
-          eq(srsCards.suspended, false),
-          lte(srsCards.due, horizon),
-          eq(studyItems.published, true),
-          eq(studyItems.active, true),
-          // Match what the counts count. Without this a card on a facet that
-          // has since been disabled is SERVED in a session while being absent
-          // from the due number, the due list and the reminder — the exact
-          // class of disagreement this phase exists to end.
-          eq(studyItemFacets.enabled, true),
-          ...kindFilter,
-          ...unitFilter,
-          ...levelFilter
-        ))
-        .orderBy(asc(srsCards.due), asc(srsCards.facetId))
-        .limit(query.limit)
+  let dueRows = query.mode === 'new' ? [] : await fill(dueCards(), query.limit)
 
   // --- New: published items this user has never seen ------------------------
   //
@@ -1430,45 +1490,14 @@ export async function getQueue(userId: string, query: StudyQueueQuery): Promise<
   // words are done.
   //
   // Which facets qualify is worked out in memory (`newCandidates`), in the
-  // order they are introduced. Postgres then picks each one's prompt, a chunk
-  // at a time: a facet with no prompt this learner may see yet drops out, and
-  // the next chunk fills its place. Chunks grow, so a deck whose first
-  // thousand candidates all drop out costs a few queries, not hundreds. The
-  // published / active / enabled tests repeat what the catalogue already
-  // applied, so a catalogue a moment stale can never serve withdrawn content.
-  const promptsFor = (facetIds: string[], limit: number) => db
-    .select({
-      facetId: studyItemFacets.id,
-      studyItemId: studyItems.id,
-      kind: studyItems.kind,
-      facet: studyItemFacets.facet,
-      sortIndex: studyItems.sortIndex,
-      ...promptColumns
-    })
-    .from(studyItemFacets)
-    .innerJoin(studyItems, eq(studyItems.id, studyItemFacets.studyItemId))
-    .innerJoin(exercisePrompts, and(
-      eq(exercisePrompts.facetId, studyItemFacets.id),
-      // No srs_cards row exists yet, so state and reps are zero by definition.
-      eq(exercisePrompts.id, promptPick(language.id, userId, promptSalt, sql`0`, sql`0`))
-    ))
-    .innerJoin(exerciseTemplates, eq(exerciseTemplates.id, exercisePrompts.templateId))
-    .where(and(
-      inArray(studyItemFacets.id, facetIds),
-      eq(studyItems.published, true),
-      eq(studyItems.active, true),
-      eq(studyItemFacets.enabled, true)
-    ))
-    .orderBy(asc(studyItems.sortIndex), asc(studyItemFacets.id))
-    .limit(limit)
+  // order they are introduced. No card exists yet, so state and reps are zero.
   const pickNew = async (met: boolean, limit: number) => {
-    const candidates = limit <= 0 ? [] : newCandidates(cat, learner, filter, ceilings, met).map(f => f.id)
-    const rows: Awaited<ReturnType<typeof promptsFor>> = []
-    let chunk = Math.max(2 * limit, PROMPT_CHUNK_MIN)
-    for (let i = 0; i < candidates.length && rows.length < limit; i += chunk, chunk = Math.min(chunk * 4, PROMPT_CHUNK_MAX))
-      rows.push(...await promptsFor(candidates.slice(i, i + chunk), limit - rows.length))
-    return rows
+    if (limit <= 0)
+      return []
+    const candidates = newCandidates(cat, learner, filter, ceilings, met)
+    return fill(async (offset, size) => candidates.slice(offset, offset + size).map(f => ({ facetId: f.id, state: 0, reps: 0 })), limit)
   }
+
   const slots = Math.max(0, query.limit - dueRows.length)
   const introRows = query.mode === 'due' ? [] : await pickNew(false, Math.min(budget.wordsLeft, slots))
   // "Learning new words" means new words: a met word's next card only comes
@@ -1496,55 +1525,14 @@ export async function getQueue(userId: string, query: StudyQueueQuery): Promise<
   // reached: then the day is done, and the page says so, instead of carrying
   // on with the stage's started cards under "Practising words you've met".
   if (query.mode === 'new' && newRows.length === 0 && ceilings.size > 0 && budget.wordsLeft > 0) {
-    dueRows = await db
-      // Same shape as the primary due select — these rows join the same list.
-      .select({
-        cardId: srsCards.id,
-        facetId: studyItemFacets.id,
-        studyItemId: studyItems.id,
-        kind: studyItems.kind,
-        facet: studyItemFacets.facet,
-        due: srsCards.due,
-        ghost: srsCards.ghost,
-        state: srsCards.state,
-        stability: srsCards.stability,
-        difficulty: srsCards.difficulty,
-        elapsedDays: srsCards.elapsedDays,
-        scheduledDays: srsCards.scheduledDays,
-        learningSteps: srsCards.learningSteps,
-        reps: srsCards.reps,
-        lapses: srsCards.lapses,
-        lastReview: srsCards.lastReview,
-        ...promptColumns
-      })
-      .from(srsCards)
-      .innerJoin(studyItemFacets, eq(studyItemFacets.id, srsCards.facetId))
-      .innerJoin(studyItems, eq(studyItems.id, studyItemFacets.studyItemId))
-      .innerJoin(exercisePrompts, and(
-        eq(exercisePrompts.facetId, studyItemFacets.id),
-        eq(exercisePrompts.id, promptPick(language.id, userId, promptSalt, srsCards.state, srsCards.reps))
-      ))
-      .innerJoin(exerciseTemplates, eq(exerciseTemplates.id, exercisePrompts.templateId))
-      .where(and(
-        eq(srsCards.userId, userId),
-        eq(srsCards.languageId, language.id),
-        eq(srsCards.suspended, false),
-        eq(studyItemFacets.enabled, true),
-        // Not yet learned. A graduated card in this stage is finished; its
-        // review belongs in the review queue, not in "finish the stage".
-        lt(srsCards.state, 2),
-        lte(srsCards.due, horizon),
-        eq(studyItems.published, true),
-        eq(studyItems.active, true),
-        sql.raw(currentStagePredicate(ceilings, STAGE_SIZE)),
-        // A missed Speak prompt is the reader's review, not this stage's material.
-        introducedByQueue(),
-        ...kindFilter,
-        ...unitFilter,
-        ...levelFilter
-      ))
-      .orderBy(asc(srsCards.due), asc(srsCards.facetId))
-      .limit(query.limit)
+    dueRows = await fill(dueCards(
+      // Not yet learned. A graduated card in this stage is finished; its
+      // review belongs in the review queue, not in "finish the stage".
+      lt(srsCards.state, 2),
+      sql.raw(currentStagePredicate(ceilings, STAGE_SIZE)),
+      // A missed Speak prompt is the reader's review, not this stage's material.
+      introducedByQueue()
+    ), query.limit)
   }
 
   /**

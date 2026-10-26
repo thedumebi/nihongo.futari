@@ -118,7 +118,7 @@ export const exerciseTemplatesRelations = relations(exerciseTemplates, ({ many }
  * the topic in general, the specific questions he got wrong.
  *
  * A row here does not create a card or change any count. It only reorders
- * which prompt a facet shows next (see `promptPick`), so the reader meets the
+ * which prompt a facet shows next (see `pickPrompt`), so the reader meets the
  * question they missed rather than a random sibling of it. Cleared when they
  * finally get it right in review, at which point it returns to the rotation.
  */
@@ -131,6 +131,6 @@ export const lessonMisses = pgTable('lesson_misses', {
   ...timestamps
 }, t => ({
   pk: primaryKey({ columns: [t.userId, t.promptId] }),
-  /** The lookup `promptPick` makes: what does this reader still owe? */
+  /** The lookup `promptContextFor` makes: what does this reader still owe? */
   outstandingIdx: index('lesson_misses_outstanding_idx').on(t.userId).where(sql`${t.clearedAt} is null`)
 }))
