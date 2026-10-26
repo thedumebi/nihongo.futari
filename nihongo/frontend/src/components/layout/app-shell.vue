@@ -11,6 +11,7 @@ import { markAchievementsSeen } from '@/api/progress'
 import NavMenu from '@/components/layout/nav-menu.vue'
 import SyncStatus from '@/components/layout/sync-status.vue'
 import Dropdown from '@/components/ui/dropdown.vue'
+import ThemeToggle from '@/components/ui/theme-toggle.vue'
 import { useToast } from '@/composables/use-toast'
 import { ROUTES, SUPPORT_URL } from '@/constants'
 import { SITE_MARK, SITE_NAME } from '@/constants/site'
@@ -275,6 +276,8 @@ async function signOut() {
                 <Flame class="h-4 w-4" />{{ todayStore.today.streak.current }}
                 <span class="ml-1 hidden text-xs text-[var(--color-muted)] sm:inline">Lv {{ todayStore.today.xp.level }}</span>
               </router-link>
+              <!-- On a desktop there is no menu drawer, so the switch sits here. -->
+              <ThemeToggle class="hidden lg:flex" />
               <NavMenu
                 class="hidden lg:block"
                 :label="auth.user?.name || 'Account'"
@@ -409,6 +412,11 @@ async function signOut() {
                   Sign out
                 </button>
               </div>
+            </div>
+
+            <!-- Light or dark, at the foot of the menu on the right. -->
+            <div class="mt-auto flex justify-end pt-6">
+              <ThemeToggle />
             </div>
           </aside>
         </Transition>

@@ -1063,6 +1063,10 @@ const artOpen = ref(false)
 function openArt(event: MouseEvent) {
   if (!fullArt.value)
     return
+  // A second tap on a rating, made because the first seemed not to land, is
+  // not a request to see the next card's picture.
+  if (Date.now() - shownAt.value < 400)
+    return
   const target = event.target as HTMLElement | null
   if (target?.closest('button, a, input, textarea, select, label, canvas'))
     return
@@ -1239,8 +1243,21 @@ const canAutoFocus = typeof window !== 'undefined'
 // On a phone, answering with the return key leaves the keyboard up over the
 // answer bar, so the rating buttons sat under it. Put it away once answered.
 watch(revealed, (shown) => {
-  if (shown && !canAutoFocus)
-    answerInput.value?.blur()
+  if (!shown || canAutoFocus)
+    return
+  answerInput.value?.blur()
+  // iOS Safari: once the keyboard has gone, a bar fixed to the screen can be
+  // drawn in its new place but still take taps at its old one until the page
+  // scrolls, so a tap on a rating went nowhere. Scroll by a pixel and back.
+  const viewport = window.visualViewport
+  if (!viewport)
+    return
+  const settle = () => {
+    viewport.removeEventListener('resize', settle)
+    window.scrollTo({ top: window.scrollY + 1, behavior: 'instant' })
+    window.scrollTo({ top: window.scrollY - 1, behavior: 'instant' })
+  }
+  viewport.addEventListener('resize', settle)
 })
 
 async function focusInput() {
@@ -1317,6 +1334,9 @@ function check() {
   expected.value = result.expected
   if (!result.correct && isCloze.value && answer.value.trim())
     void lookUpOtherWord(answer.value.trim(), item.answer.primary)
+  // Start the phone keyboard closing before the answer bar appears under it.
+  if (!canAutoFocus)
+    answerInput.value?.blur()
   revealed.value = true
   sessionSeen.value += 1
   recordAnswer(result.correct, { hold: true })
@@ -2339,24 +2359,21 @@ watch(() => lang.code, async () => {
                   v-for="r in RATINGS"
                   :key="r.value"
                   type="button"
-                  class="flex-1 rounded-lg border px-3 py-2.5 text-sm transition hover:border-[var(--color-text)]"
-                  :class="r.value === suggested
-                    ? 'border-[var(--color-text)] font-medium'
-                    : 'border-[var(--color-border)]'"
+                  class="flex-1 px-3 py-2.5 rounded-lg bg-[var(--color-accent)] text-sm font-medium text-[var(--color-bg)] transition hover:opacity-90 active:opacity-80"
+                  :class="r.value === suggested ? 'ring-2 ring-[var(--color-text)] ring-offset-2 ring-offset-[var(--color-bg)]' : ''"
                   @click="submitRating(r.value); next()"
                 >
-                  {{ r.label }} <span v-if="canAutoFocus" class="text-[var(--color-muted)]">{{ r.key }}</span>
+                  {{ r.label }} <span v-if="canAutoFocus" class="opacity-70">{{ r.key }}</span>
                 </button>
               </div>
-              <Button
+              <button
                 v-else
                 type="submit"
                 form="study-answer"
-                variant="primary"
-                class="w-full"
+                class="w-full px-4 py-2.5 rounded-lg bg-[var(--color-accent)] text-sm font-medium text-[var(--color-bg)] transition hover:opacity-90 active:opacity-80"
               >
                 Next
-              </Button>
+              </button>
               <!-- Keyboard shortcuts: no use on a phone, where they only take room. -->
               <template v-if="canAutoFocus && wasCorrect" #hint>
                 <template v-if="suggested">

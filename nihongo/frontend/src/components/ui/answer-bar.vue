@@ -23,6 +23,11 @@ function reserve(id: symbol, px: number | null) {
 /**
  * The buttons that answer: Check, Next, Hard / Good / Easy.
  *
+ * On an iPhone the bottom of the screen is Safari's: with its toolbar shrunk,
+ * a tap that low brings the toolbar back instead of reaching the page. So the
+ * buttons sit well clear of the edge, and taps are plain taps
+ * (`touch-manipulation`: no double-tap zoom to wait for).
+ *
  * They came after everything a revealed card shows (the verdict, other
  * meanings, the picture), so on a phone they sat below the screen and every
  * card took a scroll to finish.
@@ -70,7 +75,7 @@ onBeforeUnmount(() => reserve(id, null))
   <div ref="place" class="sm:sticky sm:bottom-0 sm:z-20 sm:bg-[var(--color-bg)]" @click.stop>
     <div
       ref="bar"
-      class="answer-bar bg-[var(--color-bg)] pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] max-sm:fixed max-sm:inset-x-0 max-sm:bottom-0 max-sm:z-30 max-sm:border-t max-sm:border-[var(--color-border)] max-sm:px-4"
+      class="answer-bar touch-manipulation select-none bg-[var(--color-bg)] pt-3 pb-[max(1.5rem,env(safe-area-inset-bottom))] max-sm:fixed max-sm:inset-x-0 max-sm:bottom-0 max-sm:z-30 max-sm:border-t max-sm:border-[var(--color-border)] max-sm:px-4"
     >
       <!-- Fixed, the bar spans the screen; its buttons keep the width of the
            space they sit in, so they are the size they were in the page. -->
