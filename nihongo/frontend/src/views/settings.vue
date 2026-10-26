@@ -7,6 +7,7 @@ import { computed, onMounted, ref } from 'vue'
 import { getPrefs, listPushDevices, removePushDevice, savePrefs } from '@/api/notifications'
 import { getStudySettings, updateStudySettings } from '@/api/settings'
 import AppShell from '@/components/layout/app-shell.vue'
+import DeleteAccount from '@/components/settings/delete-account.vue'
 import FriendsSettings from '@/components/settings/friends-settings.vue'
 import Button from '@/components/ui/button.vue'
 import CollapsibleCard from '@/components/ui/collapsible-card.vue'
@@ -16,7 +17,7 @@ import Segmented from '@/components/ui/segmented.vue'
 import { setStreakCelebrations, streakCelebrationsOn } from '@/composables/use-answer-streak'
 import { FURIGANA_MODE_LABELS, useFurigana } from '@/composables/use-furigana'
 import { useToast } from '@/composables/use-toast'
-import { ROUTES } from '@/constants'
+import { ROUTES, SUPPORT_URL } from '@/constants'
 import { authClient } from '@/lib/auth-client'
 import { deviceId } from '@/offline/db'
 import { disablePushHere, enablePush, pushSupport, syncPushSubscription } from '@/offline/push'
@@ -526,12 +527,10 @@ async function turnOnPush() {
             Password
           </p>
           <p v-if="hasPassword === true" class="mt-1 text-sm text-[var(--color-muted)]">
-            You have a password, so you can sign in with it or with an emailed code. To change it,
-            we email you a code first.
+            You have a password, so you can sign in with it. To change it, we email you a code first.
           </p>
           <p v-else-if="hasPassword === false" class="mt-1 text-sm text-[var(--color-muted)]">
-            There is no password on this account yet. You sign in with an emailed code.
-            Set one if you would rather sign in with it.
+            There is no password on this account yet. Set one to sign in with your email and a password.
           </p>
 
           <Button v-if="passwordStep === 'idle' && hasPassword !== null" class="mt-4" variant="ghost" :loading="passwordBusy" @click="startPassword">
@@ -672,6 +671,23 @@ async function turnOnPush() {
           </div>
         </div>
       </CollapsibleCard>
+
+      <CollapsibleCard class="mt-4" title="Support go" summary="Optional tips toward the server costs">
+        <p class="mt-1 text-sm text-[var(--color-muted)]">
+          go is free and built by one person. If you would like to help with the server costs, you can leave a
+          tip. It is entirely optional and unlocks nothing.
+        </p>
+        <a
+          :href="SUPPORT_URL"
+          target="_blank"
+          rel="noopener"
+          class="btn btn-ghost mt-4 inline-flex"
+        >
+          Leave a tip on Ko-fi
+        </a>
+      </CollapsibleCard>
+
+      <DeleteAccount :has-password="hasPassword" />
     </div>
   </AppShell>
 </template>

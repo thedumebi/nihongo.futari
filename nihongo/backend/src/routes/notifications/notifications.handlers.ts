@@ -5,6 +5,7 @@ import env from '@nihongo/shared/env'
 
 import type { AppRouteHandler } from '@/lib/types.js'
 
+import { isCronAuthorized } from '@/lib/cron.js'
 import { publicKey } from '@/lib/push.js'
 import { runCampaignQueue } from '@/services/email-campaigns.service.js'
 import { runBoardNudges } from '@/services/friends.service.js'
@@ -55,11 +56,7 @@ export const updatePreferences: AppRouteHandler<UpdatePreferencesRoute> = async 
 }
 
 export const runReminders: AppRouteHandler<RunRemindersRoute> = async (c) => {
-  const secret = env.CRON_SECRET
-  const provided = c.req.header('x-cron-secret')
-  // Refuse outright when no secret is configured — an unauthenticated endpoint
-  // that sends email is worse than one that does nothing.
-  if (!secret || provided !== secret) {
+  if (!isCronAuthorized(env.CRON_SECRET, c.req.header('x-cron-secret'))) {
     return c.json({ message: 'Unauthorized' }, HttpStatusCodes.UNAUTHORIZED)
   }
   // Both run off the same cron tick. Each decides internally whether it is the

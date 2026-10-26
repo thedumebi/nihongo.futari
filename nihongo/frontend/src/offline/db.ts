@@ -162,3 +162,11 @@ export async function requestPersistence(): Promise<boolean> {
     return false
   }
 }
+
+/**
+ * Empty every store: queued answers, actions and cached bundles. For an
+ * account that no longer exists, whose queue could never be accepted.
+ */
+export async function clearLearnerData(): Promise<void> {
+  await Promise.all(offlineDb.tables.map(table => table.clear()))
+}

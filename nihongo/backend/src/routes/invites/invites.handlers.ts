@@ -15,7 +15,9 @@ export const signupMode: AppRouteHandler<SignupModeRoute> = (c) => {
     mode,
     requiresInvite: mode === 'invite',
     signupEnabled: mode !== 'closed',
-    googleEnabled
+    googleEnabled,
+    emailCodeSignIn: env.EMAIL_CODE_SIGNIN,
+    turnstileSiteKey: env.TURNSTILE_SECRET_KEY ? env.TURNSTILE_SITE_KEY : null
   }, HttpStatusCodes.OK)
 }
 

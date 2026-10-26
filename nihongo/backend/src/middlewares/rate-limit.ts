@@ -27,7 +27,7 @@ const DEFAULT_OPTIONS: RateLimitOptions = {
 // Cache limiter instances per config so we don't re-create one per request.
 const limiterCache = new Map<string, RateLimiterRedis | RateLimiterMemory>()
 
-function getLimiter(opts: RateLimitOptions): RateLimiterRedis | RateLimiterMemory {
+export function getLimiter(opts: RateLimitOptions): RateLimiterRedis | RateLimiterMemory {
   const key = `${opts.points}:${opts.duration}:${opts.blockDuration ?? 60}`
 
   const cached = limiterCache.get(key)

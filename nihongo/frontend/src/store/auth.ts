@@ -62,6 +62,14 @@ export const useAuthStore = defineStore('auth', () => {
 
   async function logout() {
     await authClient.signOut()
+    forgetLocally()
+  }
+
+  /**
+   * Drop everything this browser holds for the learner. On its own after an
+   * account is deleted: there is no session left to sign out of.
+   */
+  function forgetLocally() {
     user.value = null
     ready.value = true
     // This learner's cached API responses must not outlive their session.
@@ -70,5 +78,5 @@ export const useAuthStore = defineStore('auth', () => {
     useOnboardingStore().reset()
   }
 
-  return { user, isAuthenticated, isAdmin, ready, syncSession, logout }
+  return { user, isAuthenticated, isAdmin, ready, syncSession, logout, forgetLocally }
 })

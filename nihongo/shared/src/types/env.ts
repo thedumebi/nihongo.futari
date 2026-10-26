@@ -14,6 +14,9 @@ export type postgresEnvType = z.infer<typeof postgresEnvSchema>
 
 const stringBoolean = z.coerce.string().transform(val => val === 'true').default(false)
 
+/** As above, but only an explicit 'false' turns it off. */
+const stringBooleanDefaultTrue = z.coerce.string().transform(val => val !== 'false').default(true)
+
 const stringArray = z.coerce.string()
   .transform(val => val.split(',').map(item => item.trim()).filter(Boolean))
   .default([])
@@ -77,6 +80,26 @@ export const EnvSchema = z.object({
   SIGNUP_MODE: z.enum(['closed', 'invite', 'open']).default('invite'),
   /** Optional extra gate: only these email domains may register at all. */
   SIGNUP_ALLOWED_DOMAINS: stringArray,
+  /**
+   * Whether an emailed code can SIGN somebody IN (and so create an account).
+   *
+   * Off, the code is still sent for the jobs that prove an address rather than
+   * open a session: confirming the email after a password sign-up, setting or
+   * resetting a password. What goes is the code as a login, which is the path
+   * that lets anybody make the app mail any address. Google and passwords carry
+   * sign-in instead. On by default so nothing changes until it is chosen.
+   */
+  EMAIL_CODE_SIGNIN: stringBooleanDefaultTrue,
+  /**
+   * Cloudflare Turnstile, asked of every anonymous request that sends an email.
+   *
+   * No secret means no check, so local development and tests run without one.
+   * The site key is public and belongs to the widget for nihongo.futari.live;
+   * it defaults to that one so production needs only the secret. Locally, set
+   * both to Cloudflare's test pair to exercise the widget.
+   */
+  TURNSTILE_SECRET_KEY: z.string().optional(),
+  TURNSTILE_SITE_KEY: z.string().default('0x4AAAAAAFlJoD_AnBgrIgz4'),
 
   // Public frontend origin (used to build email links back to the SPA)
   FRONTEND_URL: z.url(),

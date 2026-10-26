@@ -7,6 +7,7 @@ import * as routes from './users.routes.js'
 
 const router = createRouter().basePath(ROUTE_BASE_PATHS.USERS)
 
+router.openapi(routes.cleanupUnconfirmed, handlers.cleanupUnconfirmed)
 router.openapi(routes.settings, handlers.settings)
 router.openapi(routes.updateSettings, handlers.updateSettings)
 

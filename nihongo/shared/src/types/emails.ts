@@ -36,11 +36,6 @@ export const resetPasswordEmailSchema = emailRecipientSchema.extend({
 })
 export type ResetPasswordEmailType = z.infer<typeof resetPasswordEmailSchema>
 
-export const verifyEmailSchema = emailRecipientSchema.extend({
-  url: z.string()
-})
-export type VerifyEmailType = z.infer<typeof verifyEmailSchema>
-
 /**
  * An invitation to create an account.
  *

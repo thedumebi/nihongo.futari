@@ -11,6 +11,7 @@ import { getPrefs } from '@/api/notifications'
 import { getPlacement } from '@/api/onboarding'
 import { getStudySettings } from '@/api/settings'
 import FuriganaText from '@/components/ja/furigana-text.vue'
+import ProjectNotice from '@/components/layout/project-notice.vue'
 import OptionList from '@/components/onboarding/option-list.vue'
 import PlacementCheck from '@/components/onboarding/placement-check.vue'
 import Button from '@/components/ui/button.vue'
@@ -292,6 +293,7 @@ async function skip() {
         <p class="mt-3 text-[var(--color-muted)]">
           A few quick questions so the app starts where you are. About a minute, and you can change any of it later in Settings.
         </p>
+        <ProjectNotice class="mt-6" />
       </section>
 
       <section v-else-if="step === 'start'" class="mt-10">

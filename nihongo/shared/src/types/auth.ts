@@ -1,3 +1,5 @@
+import { z } from '@hono/zod-openapi'
+
 import type {
   users
 } from '@/db/schema/auth.js'
@@ -10,3 +12,10 @@ import type {
  */
 export type User = typeof users.$inferSelect
 export type NewUser = typeof users.$inferInsert
+
+export const unconfirmedCleanupResultSchema = z.object({
+  /** Accounts deleted on this run. */
+  deleted: z.number().int().nonnegative()
+}).openapi('UnconfirmedCleanupResult')
+
+export type UnconfirmedCleanupResult = z.infer<typeof unconfirmedCleanupResultSchema>

@@ -245,6 +245,12 @@ const router = createRouter({
       component: () => import('@/views/attribution.vue')
     },
     {
+      path: ROUTES.PRIVACY,
+      name: 'privacy',
+      // Public: it has to be readable before anyone signs up.
+      component: () => import('@/views/privacy.vue')
+    },
+    {
       path: ROUTES.DICTIONARY,
       name: 'dictionary',
       component: () => import('@/views/dictionary.vue'),

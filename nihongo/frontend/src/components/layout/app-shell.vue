@@ -12,7 +12,7 @@ import NavMenu from '@/components/layout/nav-menu.vue'
 import SyncStatus from '@/components/layout/sync-status.vue'
 import Dropdown from '@/components/ui/dropdown.vue'
 import { useToast } from '@/composables/use-toast'
-import { ROUTES } from '@/constants'
+import { ROUTES, SUPPORT_URL } from '@/constants'
 import { SITE_MARK, SITE_NAME } from '@/constants/site'
 import { useAuthStore } from '@/store/auth'
 import { useLanguageStore } from '@/store/language'
@@ -421,10 +421,18 @@ async function signOut() {
 
     <footer class="border-t border-[var(--color-border)]">
       <div class="mx-auto max-w-4xl px-6 py-6 text-sm text-[var(--color-muted)]">
-        <!-- Attribution is a CC BY-SA obligation for JMdict/KanjiVG/Tatoeba. -->
-        <router-link :to="ROUTES.ATTRIBUTION" class="underline underline-offset-4">
-          Data sources &amp; licences
-        </router-link>
+        <div class="flex flex-wrap gap-x-5 gap-y-2">
+          <!-- Attribution is a CC BY-SA obligation for JMdict/KanjiVG/Tatoeba. -->
+          <router-link :to="ROUTES.ATTRIBUTION" class="underline underline-offset-4">
+            Data sources &amp; licences
+          </router-link>
+          <router-link :to="ROUTES.PRIVACY" class="underline underline-offset-4">
+            About &amp; privacy
+          </router-link>
+          <a :href="SUPPORT_URL" target="_blank" rel="noopener" class="underline underline-offset-4">
+            Support go
+          </a>
+        </div>
       </div>
     </footer>
   </div>

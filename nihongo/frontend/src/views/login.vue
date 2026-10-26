@@ -1,11 +1,13 @@
 <script setup lang="ts">
-import { onMounted, ref } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 
 import { getSignupMode } from '@/api/invites'
 import AppShell from '@/components/layout/app-shell.vue'
 import Button from '@/components/ui/button.vue'
 import Input from '@/components/ui/input.vue'
+import TurnstileWidget from '@/components/ui/turnstile-widget.vue'
+import { useCaptcha } from '@/composables/use-captcha'
 import { ROUTES } from '@/constants'
 import { authClient } from '@/lib/auth-client'
 import { useAuthStore } from '@/store/auth'
@@ -13,11 +15,21 @@ import { useAuthStore } from '@/store/auth'
 const router = useRouter()
 const route = useRoute()
 const auth = useAuthStore()
+const captcha = useCaptcha()
+const { widget: captchaWidget } = captcha
 
-// Passwordless is the default. Nobody should have to invent a password to
-// practise vocabulary; the password form is there for people who prefer a
-// password manager, not because anything requires it.
-const mode = ref<'otp' | 'password'>('otp')
+/**
+ * Which form is showing.
+ *
+ *   otp      the emailed code as a sign-in (only while the server allows it)
+ *   password email + password
+ *   reset    "forgot your password": a code, then a new password. Also how an
+ *            account that only ever used codes gets a password once codes stop
+ *            signing anybody in
+ *   verify   a password account whose email was never confirmed
+ */
+type Mode = 'otp' | 'password' | 'reset' | 'verify'
+const mode = ref<Mode>('otp')
 const step = ref<'email' | 'code'>('email')
 
 const email = ref('')
@@ -27,11 +39,26 @@ const loading = ref(false)
 const errorMsg = ref('')
 const notice = ref('')
 const googleEnabled = ref(false)
+/** Only an open server gets a sign-up link; an invite arrives with its own. */
+const signupOpen = ref(false)
+
+/**
+ * Whether an emailed code can sign somebody in. Comes from the server; until
+ * it answers, assume the long-standing default so the page doesn't flicker
+ * for most readers.
+ */
+const emailCodeSignIn = ref(true)
 
 onMounted(async () => {
   // Whether the button can work at all is a fact about the server's env.
   try {
-    googleEnabled.value = (await getSignupMode()).googleEnabled
+    const policy = await getSignupMode()
+    googleEnabled.value = policy.googleEnabled
+    signupOpen.value = policy.mode === 'open'
+    emailCodeSignIn.value = policy.emailCodeSignIn
+    captcha.siteKey.value = policy.turnstileSiteKey
+    if (!policy.emailCodeSignIn)
+      mode.value = 'password'
   } catch { /* the button simply does not appear */ }
 
   // A rejected Google sign-in comes back here with the reason in the URL, and
@@ -56,7 +83,8 @@ const GOOGLE_ERRORS: Record<string, string> = {
   SIGNUPS_CLOSED: 'Sign-ups are closed at the moment. Ask an administrator to create your account.',
   DOMAIN_NOT_ALLOWED: 'That email domain is not allowed to register here.',
   signup_disabled: 'Sign-ups are closed at the moment. Ask an administrator to create your account.',
-  access_denied: 'Google sign-in was cancelled.'
+  access_denied: 'Google sign-in was cancelled.',
+  account_not_linked: 'That address already has an account that was never confirmed. Sign in with its password, or reset the password to confirm it, then Google will work.'
 }
 
 /**
@@ -68,7 +96,7 @@ const GOOGLE_ERRORS: Record<string, string> = {
  * it.
  */
 function googleMessage(raw: string): string {
-  const code = decodeURIComponent(raw)
+  const code = decodeURIComponent(raw).replaceAll(' ', '_')
   return GOOGLE_ERRORS[code] ?? GOOGLE_ERRORS.INVITE_REQUIRED!
 }
 
@@ -91,23 +119,63 @@ function afterSignIn() {
   router.push(typeof redirect === 'string' ? redirect : ROUTES.TODAY)
 }
 
-async function sendCode() {
+/**
+ * Email a code of the given type, carrying the Turnstile token.
+ *
+ * The token is spent whatever the answer, so the widget is reset every time.
+ */
+async function emailCode(type: 'sign-in' | 'forget-password' | 'email-verification'): Promise<boolean> {
   errorMsg.value = ''
   notice.value = ''
   loading.value = true
   try {
-    const { error } = await authClient.emailOtp.sendVerificationOtp({ email: email.value, type: 'sign-in' })
+    const { error } = await authClient.emailOtp.sendVerificationOtp({
+      email: email.value,
+      type,
+      fetchOptions: captcha.fetchOptions()
+    })
     if (error) {
       errorMsg.value = error.message || 'Could not send the code.'
-      return
+      return false
     }
     step.value = 'code'
     notice.value = `We sent a 6-digit code to ${email.value}. It expires in 10 minutes.`
+    return true
   } catch {
     errorMsg.value = 'Could not send the code.'
+    return false
   } finally {
+    captcha.spent()
     loading.value = false
   }
+}
+
+/**
+ * What each mode asks for and says. `password` shares the code sign-in's copy:
+ * it never reaches the code step, but its heading is the same.
+ */
+const MODES: Record<Mode, {
+  codeType: 'sign-in' | 'forget-password' | 'email-verification'
+  title: string
+  subtitle: string
+  submitLabel: string
+  submit: () => Promise<void>
+}> = {
+  otp: { codeType: 'sign-in', title: 'Sign in', subtitle: 'Welcome back.', submitLabel: 'Sign in', submit: verifyCode },
+  password: { codeType: 'sign-in', title: 'Sign in', subtitle: 'Welcome back.', submitLabel: 'Sign in', submit: verifyCode },
+  reset: {
+    codeType: 'forget-password',
+    title: 'Reset your password',
+    subtitle: 'We will email you a code, then you choose a new password.',
+    submitLabel: 'Set password and sign in',
+    submit: resetPassword
+  },
+  verify: { codeType: 'email-verification', title: 'Confirm your email', subtitle: 'Welcome back.', submitLabel: 'Confirm and sign in', submit: confirmEmail }
+}
+const copy = computed(() => MODES[mode.value])
+
+async function sendCode() {
+  await emailCode(copy.value.codeType)
 }
 
 async function verifyCode() {
@@ -134,6 +202,13 @@ async function signInWithPassword() {
   try {
     const { error } = await authClient.signIn.email({ email: email.value, password: password.value })
     if (error) {
+      // A password sign-up whose email was never confirmed. Offer the code
+      // here rather than leaving them at a refusal with no way forward.
+      if (error.code === 'EMAIL_NOT_VERIFIED') {
+        switchTo('verify')
+        notice.value = 'This email has not been confirmed yet. We will send you a code to confirm it.'
+        return
+      }
       errorMsg.value = error.message || 'Sign in failed.'
       return
     }
@@ -144,6 +219,63 @@ async function signInWithPassword() {
   } finally {
     loading.value = false
   }
+}
+
+/** Confirm the email of a password account; better-auth then signs them in. */
+async function confirmEmail() {
+  errorMsg.value = ''
+  loading.value = true
+  try {
+    const { error } = await authClient.emailOtp.verifyEmail({ email: email.value, otp: otp.value })
+    if (error) {
+      errorMsg.value = error.message || 'That code was not accepted.'
+      return
+    }
+    await auth.syncSession(true)
+    afterSignIn()
+  } catch {
+    errorMsg.value = 'That code was not accepted.'
+  } finally {
+    loading.value = false
+  }
+}
+
+/** Set a new password with the emailed code, then sign in with it. */
+async function resetPassword() {
+  errorMsg.value = ''
+  if (password.value.length < 8) {
+    errorMsg.value = 'Use at least 8 characters.'
+    return
+  }
+  loading.value = true
+  try {
+    const { error } = await authClient.emailOtp.resetPassword({
+      email: email.value,
+      otp: otp.value,
+      password: password.value
+    })
+    if (error) {
+      errorMsg.value = error.message || 'That code was not accepted.'
+      return
+    }
+  } catch {
+    errorMsg.value = 'That code was not accepted.'
+    loading.value = false
+    return
+  }
+  loading.value = false
+  // A reset proves the address too, so the account is confirmed by now.
+  await signInWithPassword()
+}
+
+function switchTo(next: typeof mode.value) {
+  mode.value = next
+  step.value = 'email'
+  otp.value = ''
+  errorMsg.value = ''
+  notice.value = ''
+  if (next !== 'password')
+    password.value = ''
 }
 
 function useAnotherEmail() {
@@ -158,28 +290,41 @@ function useAnotherEmail() {
   <AppShell>
     <div class="mx-auto max-w-sm px-6 py-20">
       <h1 class="text-center text-3xl font-semibold">
-        Sign in
+        {{ copy.title }}
       </h1>
       <p class="mt-2 text-center text-sm text-[var(--color-muted)]">
-        Welcome back.
+        {{ copy.subtitle }}
       </p>
 
       <div class="mt-8 rounded-xl border border-[var(--color-border)] p-6">
-        <!-- Passwordless: ask for the address, then the emailed code. -->
-        <form v-if="mode === 'otp' && step === 'email'" class="flex flex-col gap-4" @submit.prevent="sendCode">
+        <!-- First step of every emailed code: the address, then the check. -->
+        <form v-if="mode !== 'password' && step === 'email'" class="flex flex-col gap-4" @submit.prevent="sendCode">
+          <p v-if="notice" class="text-sm text-[var(--color-muted)]">
+            {{ notice }}
+          </p>
           <Input v-model="email" type="email" label="Email" autocomplete="email" required />
-          <p class="text-sm text-[var(--color-muted)]">
+          <p v-if="mode === 'otp'" class="text-sm text-[var(--color-muted)]">
             We'll email you a one-time code. No password needed.
           </p>
+          <TurnstileWidget
+            v-if="captcha.siteKey.value"
+            ref="captchaWidget"
+            :site-key="captcha.siteKey.value"
+            @token="captcha.token.value = $event"
+          />
           <p v-if="errorMsg" class="text-sm text-[var(--color-danger)]">
             {{ errorMsg }}
           </p>
-          <Button type="submit" variant="primary" :loading="loading">
+          <Button type="submit" variant="primary" :loading="loading" :disabled="!captcha.ready.value">
             Email me a code
           </Button>
         </form>
 
-        <form v-else-if="mode === 'otp' && step === 'code'" class="flex flex-col gap-4" @submit.prevent="verifyCode">
+        <form
+          v-else-if="mode !== 'password' && step === 'code'"
+          class="flex flex-col gap-4"
+          @submit.prevent="copy.submit()"
+        >
           <p v-if="notice" class="text-sm text-[var(--color-muted)]">
             {{ notice }}
           </p>
@@ -191,17 +336,31 @@ function useAnotherEmail() {
             maxlength="6"
             required
           />
+          <Input
+            v-if="mode === 'reset'"
+            v-model="password"
+            type="password"
+            label="New password"
+            autocomplete="new-password"
+            required
+          />
           <p v-if="errorMsg" class="text-sm text-[var(--color-danger)]">
             {{ errorMsg }}
           </p>
           <Button type="submit" variant="primary" :loading="loading">
-            Sign in
+            {{ copy.submitLabel }}
           </Button>
+          <TurnstileWidget
+            v-if="captcha.siteKey.value"
+            ref="captchaWidget"
+            :site-key="captcha.siteKey.value"
+            @token="captcha.token.value = $event"
+          />
           <div class="flex justify-between text-sm">
             <button type="button" class="underline underline-offset-4" @click="useAnotherEmail">
               Use a different email
             </button>
-            <button type="button" class="underline underline-offset-4" :disabled="loading" @click="sendCode">
+            <button type="button" class="underline underline-offset-4" :disabled="loading || !captcha.ready.value" @click="sendCode">
               Resend code
             </button>
           </div>
@@ -216,6 +375,9 @@ function useAnotherEmail() {
           <Button type="submit" variant="primary" :loading="loading">
             Sign in
           </Button>
+          <button type="button" class="self-start text-sm text-[var(--color-muted)] underline underline-offset-4" @click="switchTo('reset')">
+            Forgot your password, or never set one?
+          </button>
         </form>
 
         <!--
@@ -236,18 +398,18 @@ function useAnotherEmail() {
 
         <div class="mt-6 border-t border-[var(--color-border)] pt-4 text-center text-sm">
           <button
-            v-if="mode === 'otp'"
+            v-if="mode !== 'password'"
             type="button"
             class="text-[var(--color-muted)] underline underline-offset-4"
-            @click="mode = 'password'; errorMsg = ''"
+            @click="switchTo('password')"
           >
-            Use a password instead
+            {{ mode === 'otp' ? 'Use a password instead' : 'Back to sign in' }}
           </button>
           <button
-            v-else
+            v-else-if="emailCodeSignIn"
             type="button"
             class="text-[var(--color-muted)] underline underline-offset-4"
-            @click="mode = 'otp'; step = 'email'; errorMsg = ''"
+            @click="switchTo('otp')"
           >
             Email me a code instead
           </button>
@@ -255,11 +417,16 @@ function useAnotherEmail() {
       </div>
 
       <!--
-        No link to /signup. Accounts are created by invitation only, and the
-        only legitimate route to that page is the emailed invite link, which
-        carries the code. Advertising it sent people to a form that would
+        Only when anyone may sign up. Under invites the emailed link carries
+        the code, and advertising the form sent people to a page that would
         refuse them.
       -->
+      <p v-if="signupOpen" class="mt-6 text-center text-sm text-[var(--color-muted)]">
+        New here?
+        <router-link :to="ROUTES.SIGNUP" class="underline underline-offset-4">
+          Create an account
+        </router-link>
+      </p>
     </div>
   </AppShell>
 </template>

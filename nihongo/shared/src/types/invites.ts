@@ -95,7 +95,17 @@ export const signupModeResponseSchema = z.object({
    * button that leads to a provider nobody configured is worse than no button:
    * it fails at Google's end, with Google's wording, about our mistake.
    */
-  googleEnabled: z.boolean()
+  googleEnabled: z.boolean(),
+  /** Whether "email me a code" is offered as a way to sign in or sign up. */
+  emailCodeSignIn: z.boolean(),
+  /**
+   * The Turnstile widget's site key, or null when the server does not check.
+   *
+   * Paired with the secret on the server: a widget shown without one there
+   * would cost the reader a tick for nothing, and a check without a widget
+   * would refuse everybody.
+   */
+  turnstileSiteKey: z.string().nullable()
 }).openapi('SignupMode')
 
 export type SignupModeResponse = z.infer<typeof signupModeResponseSchema>

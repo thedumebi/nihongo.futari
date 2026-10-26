@@ -1,15 +1,17 @@
 import { pino } from '@nihongo/shared'
+import { AUTH_EMAIL_CODE_ROUTES } from '@nihongo/shared/constants'
 import db from '@nihongo/shared/db'
 import { users } from '@nihongo/shared/db/schema'
 import SendMail from '@nihongo/shared/emails'
 import env from '@nihongo/shared/env'
 import { betterAuth } from 'better-auth'
 import { drizzleAdapter } from 'better-auth/adapters/drizzle'
-import { APIError } from 'better-auth/api'
+import { APIError, createAuthMiddleware } from 'better-auth/api'
 import { emailOTP } from 'better-auth/plugins'
 import { eq } from 'drizzle-orm'
 
 import { consumeReservation, findReservation, isDomainAllowed } from '@/services/invites.service.js'
+import { isAdmin, isEmailVerified } from '@/services/users.service.js'
 
 /**
  * Authentication.
@@ -35,6 +37,9 @@ import { consumeReservation, findReservation, isDomainAllowed } from '@/services
  */
 
 const signupMode = env.SIGNUP_MODE
+
+/** Whether an emailed code can open a session. See EMAIL_CODE_SIGNIN in env. */
+const emailCodeSignIn = env.EMAIL_CODE_SIGNIN
 
 /** Both halves or nothing — a client id without its secret cannot sign anybody in. */
 export const googleEnabled = Boolean(env.GOOGLE_CLIENT_ID && env.GOOGLE_CLIENT_SECRET)
@@ -118,6 +123,27 @@ export const auth = betterAuth({
       timezone: { type: 'string', required: false, input: false, defaultValue: 'UTC' },
       locale: { type: 'string', required: false, input: false, defaultValue: 'en' },
       activeLanguageId: { type: 'string', required: false, input: false }
+    },
+    /**
+     * A learner can delete their own account from Settings.
+     *
+     * better-auth asks for the password, or else a session signed in within
+     * the last day, so a long-lived session left open on a shared device is
+     * not enough to wipe somebody's progress. Every table that points at a
+     * user cascades or sets null, so the row going takes their data with it.
+     */
+    deleteUser: {
+      enabled: true,
+      // An admin is the one who can repair things; losing the last one by a
+      // click in Settings would leave nobody who can. Demote first.
+      async beforeDelete(user) {
+        if (await isAdmin(user.id)) {
+          throw new APIError('FORBIDDEN', {
+            code: 'ADMIN_CANNOT_SELF_DELETE',
+            message: 'An admin account cannot delete itself. Remove the admin role first.'
+          })
+        }
+      }
     }
   },
   session: {
@@ -175,6 +201,37 @@ export const auth = betterAuth({
   baseURL: env.BETTER_AUTH_URL,
   trustedOrigins: env.ALLOWED_ORIGINS,
 
+  /**
+   * With EMAIL_CODE_SIGNIN off, a code cannot open a session.
+   *
+   * Both halves are refused, the request for a sign-in code and the sign-in
+   * with one, so the reader is told at the first step rather than after an
+   * email that can never be used. Codes of other types still go out: they
+   * prove an address or reset a password.
+   *
+   * Confirming an address signs the account in too
+   * (autoSignInAfterVerification), so for an address that is ALREADY confirmed
+   * a verification code is a sign-in code by another name. It is refused the
+   * same way. An unconfirmed sign-up still gets its code and its session.
+   */
+  hooks: {
+    before: createAuthMiddleware(async (ctx) => {
+      if (emailCodeSignIn)
+        return
+      const body = ctx.body as { type?: unknown, email?: unknown } | undefined
+      const asksForSignInCode = ctx.path === AUTH_EMAIL_CODE_ROUTES.SEND && body?.type === 'sign-in'
+      const confirmsAddress = (ctx.path === AUTH_EMAIL_CODE_ROUTES.SEND && body?.type === 'email-verification')
+        || ctx.path === AUTH_EMAIL_CODE_ROUTES.VERIFY_EMAIL
+      const signsInByConfirming = confirmsAddress && typeof body?.email === 'string' && await isEmailVerified(body.email)
+      if (asksForSignInCode || signsInByConfirming || ctx.path === AUTH_EMAIL_CODE_ROUTES.SIGN_IN) {
+        throw new APIError('FORBIDDEN', {
+          code: 'EMAIL_CODE_SIGNIN_DISABLED',
+          message: 'Signing in with an emailed code is switched off. Use Google or your password.'
+        })
+      }
+    })
+  },
+
   databaseHooks: {
     user: {
       create: {
@@ -205,9 +262,10 @@ export const auth = betterAuth({
     // and only found out at the next sign-in. Refusing at the door says the
     // true thing at the time it is asked.
     //
-    // Invited people never sign up with a password: they arrive by emailed
-    // code and set one afterwards in Settings.
-    disableSignUp: signupMode !== 'open',
+    // Invited people sign up with a password only when the emailed code
+    // cannot sign them in; otherwise they arrive by code and set one later in
+    // Settings. Either way the invite hook still decides.
+    disableSignUp: signupMode === 'closed' || (signupMode === 'invite' && emailCodeSignIn),
     requireEmailVerification: true,
     minPasswordLength: 8,
     autoSignIn: false,
@@ -217,12 +275,12 @@ export const auth = betterAuth({
     }
   },
 
+  // The email is confirmed with a 6-digit code rather than a link: the emailOTP
+  // plugin below supplies the sender (overrideDefaultEmailVerification), so a
+  // password sign-up asks for the code on the same page it was made on.
   emailVerification: {
     sendOnSignUp: true,
-    autoSignInAfterVerification: true,
-    async sendVerificationEmail({ user, url }) {
-      await SendMail.sendVerifyEmail({ email: user.email, name: user.name || user.email, url })
-    }
+    autoSignInAfterVerification: true
   },
 
   advanced: {
@@ -239,12 +297,17 @@ export const auth = betterAuth({
       // cannot be used to bypass it.
       disableSignUp: signupMode === 'closed',
       sendVerificationOnSignUp: false,
+      overrideDefaultEmailVerification: true,
       async sendVerificationOTP({ email, otp, type }) {
         // Never mail a code to someone who could not use it. The endpoint is
         // unauthenticated, so without this anyone who knows the URL can make
         // the app send mail to any address they like — an abuse vector and a
         // bill. An address is eligible if it already has an account, or has a
         // live invite reservation waiting.
+        if (type === 'sign-in' && !emailCodeSignIn) {
+          pino.warn('[AUTH] sign-in code withheld: EMAIL_CODE_SIGNIN is off')
+          return
+        }
         if (!await mayReceiveCode(email)) {
           pino.warn(`[AUTH] ${type} code withheld: no account or invite for that address`)
           return

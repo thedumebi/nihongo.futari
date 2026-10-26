@@ -57,6 +57,8 @@ export const ROUTES = {
 
   // Attribution — a CC BY-SA obligation, not a nicety. Linked from the footer.
   ATTRIBUTION: '/attribution',
+  /** What go is, what it keeps about you, and who else sees it. Public. */
+  PRIVACY: '/privacy',
 
   // Admin
   ADMIN: '/admin',
@@ -73,3 +75,12 @@ export const ROUTES = {
 
   NOT_FOUND: '/:catchAll(.*)'
 } as const
+
+/**
+ * Tips for the person who builds go. Optional, unlocks nothing: a tip that
+ * bought a feature would be a sale, with everything a sale brings.
+ */
+export const SUPPORT_URL = 'https://ko-fi.com/thedumebi'
+
+/** Where a learner writes about their account or their data. */
+export const CONTACT_EMAIL = 'hello@futari.live'

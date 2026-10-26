@@ -196,7 +196,9 @@ export const USER_ROUTES = {
   ME: '/me',
   UPDATE_ME: '/me',
   SETTINGS: '/me/settings',
-  UPDATE_SETTINGS: '/me/settings'
+  UPDATE_SETTINGS: '/me/settings',
+  /** Host cron: delete password sign-ups never confirmed. Secret-gated. */
+  CLEANUP_UNCONFIRMED: '/cleanup-unconfirmed'
 } as const
 
 export const LANGUAGE_ROUTES = {
@@ -506,6 +508,31 @@ export const AUTH_ROUTES = {
   HANDLER: '/api/auth'
 } as const
 
+/** better-auth's emailed-code endpoints, relative to its base. */
+export const AUTH_EMAIL_CODE_ROUTES = {
+  /** Sends a code of any type: sign-in, email-verification, forget-password. */
+  SEND: '/email-otp/send-verification-otp',
+  /** Signs in with a code; refused while EMAIL_CODE_SIGNIN is off. */
+  SIGN_IN: '/sign-in/email-otp',
+  /** Confirms an address with a code, and signs the account in. */
+  VERIFY_EMAIL: '/email-otp/verify-email'
+} as const
+
+/**
+ * better-auth's own endpoints (relative to its base) that make the app send an
+ * email. Every one is guarded before better-auth sees it: rate-limited per
+ * address and per caller, and Turnstile-checked when nobody is signed in.
+ */
+export const AUTH_EMAIL_SENDING_PATHS = [
+  AUTH_EMAIL_CODE_ROUTES.SEND,
+  '/email-otp/request-password-reset',
+  '/email-otp/request-email-change',
+  '/forget-password/email-otp',
+  '/sign-up/email',
+  '/send-verification-email',
+  '/request-password-reset'
+] as const
+
 // ---------------------------------------------------------------------------
 // Fully-compiled client endpoints. Static → string, parameterised → function.
 // ---------------------------------------------------------------------------
@@ -515,7 +542,8 @@ export const API_ENDPOINTS = {
     ME: `${ROUTE_BASE_PATHS.USERS}${USER_ROUTES.ME}`,
     UPDATE_ME: `${ROUTE_BASE_PATHS.USERS}${USER_ROUTES.UPDATE_ME}`,
     SETTINGS: `${ROUTE_BASE_PATHS.USERS}${USER_ROUTES.SETTINGS}`,
-    UPDATE_SETTINGS: `${ROUTE_BASE_PATHS.USERS}${USER_ROUTES.UPDATE_SETTINGS}`
+    UPDATE_SETTINGS: `${ROUTE_BASE_PATHS.USERS}${USER_ROUTES.UPDATE_SETTINGS}`,
+    CLEANUP_UNCONFIRMED: `${ROUTE_BASE_PATHS.USERS}${USER_ROUTES.CLEANUP_UNCONFIRMED}`
   },
 
   LANGUAGES: {
