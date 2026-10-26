@@ -59,7 +59,7 @@ everything else derives from it.
 
 ## Stack
 
-pnpm 9 + Turbo 2 monorepo. Node 22.17.0.
+pnpm 9 + Turbo 2 monorepo. Node version lives in `.nvmrc`; every PATH guard (husky, Claude hooks, review agents) reads it from there.
 `nihongo/{frontend,backend,shared}` + `packages/{eslint-config,typescript-config}`.
 
 - **Frontend** — Vue 3.5, Vite 7, Pinia, vue-router, Tailwind v4 (CSS-first
@@ -178,7 +178,22 @@ Mirrors `ofuma`'s setup. `.claude/` contains:
     (PostToolUse), plus session start/end, postmortem and security-audit hooks.
   - Session history goes to a SQLite DB at `.claude/data/hooks.db` (gitignored).
 - **`commands/`** — `/new-route`, `/new-schema`, `/new-feature`, `/session-summary`.
-- **`agents/`** — the `code-review-*` reviewer set.
+- **`agents/`** — the `code-review-*` reviewer set, plus `skill-eval-runner`.
+- **`skills/review-code/`** — `/review-code [backend|frontend|shared] [intent]`
+  fans the diff out to the seven `code-review-*` agents, verifies their
+  findings and prints a plain-text block ending in `FINAL SCORE: N / 10`.
+  `/review-code --eval` grades the agents against `evals.md`.
+- **`.husky/pre-commit`** — lint-staged, then `pnpm test` as a hard gate on
+  every commit. The scored review runs only when opted in:
+  `RUN_CODE_REVIEW=1 git commit`, or the `git commit-review` /
+  `git amend-review` aliases. Under 5 rejects, 5–8 asks, above 8 commits; it
+  gives up after `REVIEW_CLAUDE_TIMEOUT` seconds (900). The aliases live in
+  the clone's own git config, so set them once per clone:
+
+  ```
+  git config alias.commit-review '!f() { RUN_CODE_REVIEW=1 git commit "$@"; }; f'
+  git config alias.amend-review '!f() { RUN_CODE_REVIEW=1 git commit --amend "$@"; }; f'
+  ```
 - **`.claudeignore`** and a `permissions.deny` list keep `.env*` and secrets out
   of reach.
 

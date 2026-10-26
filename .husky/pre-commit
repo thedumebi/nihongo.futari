@@ -1,7 +1,204 @@
-#!/bin/sh
+#!/usr/bin/env bash
+
+# husky runs hooks as `sh -e <file>`, ignoring the shebang. The rest of this
+# script needs bash (read -t/-p, local), so re-exec under it where sh is not
+# bash (e.g. dash on Linux). On macOS sh is bash and this is a no-op.
+[ -z "$BASH_VERSION" ] && exec bash -e "$0" "$@"
 
 # Skip in CI environments
 [ -n "$CI" ] && exit 0
 
-# Lint staged files
+# Ensure node/pnpm/npx are available (nvm lazy-load compatibility), on the
+# Node .nvmrc names.
+unset -f pnpm node npm npx 2>/dev/null
+export PATH="$HOME/.nvm/versions/node/v$(sed 's/^v//' .nvmrc)/bin:$PATH"
+
+# --- Lint staged files ---
 npx lint-staged
+
+# --- Code quality review ---
+
+# Score rules:
+# - Below 5: Automatically reject commit
+# - 5 to 8: Ask user for confirmation
+# - Above 8: Automatically proceed
+
+# Function to ask user for confirmation with timeout. With no terminal to ask
+# on (an IDE, a GUI client, an agent), the answer is no.
+ask_user_confirmation() {
+    local message="$1"
+    local timeout="${REVIEW_TIMEOUT:-120}"
+
+    if ! { : < /dev/tty; } 2>/dev/null; then
+        echo "No terminal available to confirm; canceling commit."
+        return 1
+    fi
+    if ! read -r -t "$timeout" -p "$message (y/n) " answer < /dev/tty; then
+        echo ""
+        echo "Timeout: Assuming 'no' and canceling commit"
+        return 1
+    fi
+    echo ""
+    answer=$(echo "$answer" | tr -d '[:space:]' | tr '[:upper:]' '[:lower:]')
+    if [ "$answer" = "y" ] || [ "$answer" = "yes" ]; then
+        return 0
+    else
+        echo "Commit aborted by user."
+        return 1
+    fi
+}
+
+echo ""
+
+# --- Run tests first (hard gate) ---
+echo "Running tests..."
+if ! pnpm test 2>&1; then
+    echo ""
+    echo "COMMIT REJECTED: Tests are failing."
+    echo "Fix all failing tests before committing."
+    exit 1
+fi
+echo "Tests passed."
+echo ""
+
+# --- Run code review via Claude (opt-in) ---
+# Skip the review unless RUN_CODE_REVIEW is set. `git commit-review` is a
+# repo-local alias for `RUN_CODE_REVIEW=1 git commit` (setup in CLAUDE.md);
+# plain `git commit` stops here after lint-staged + tests. Tests stay on every
+# commit because they're a hard gate against regressions; the review is the
+# slow, scored step that you opt into when you want it.
+if [ -z "$RUN_CODE_REVIEW" ]; then
+    echo "Skipping code review (use 'git commit-review', or RUN_CODE_REVIEW=1 git commit, to enable)."
+    exit 0
+fi
+
+# Check if claude command exists
+if ! command -v claude > /dev/null 2>&1; then
+  echo "Warning: claude command not found. Skipping code review."
+  echo "Install Claude CLI to enable automated code review."
+  exit 0
+fi
+
+# Show spinner while running review, only when stderr is a terminal
+SPINNER_PID=""
+if [ -t 2 ]; then
+    {
+        spin='|/-\'
+        i=0
+        trap 'exit 0' TERM
+        while :; do
+            i=$(( (i+1) % 4 ))
+            printf "\r%s Running code quality review..." "${spin:$i:1}" >&2
+            sleep 0.1
+        done
+    } &
+    SPINNER_PID=$!
+fi
+
+stop_spinner() {
+    [ -n "$SPINNER_PID" ] && kill "$SPINNER_PID" 2>/dev/null
+    [ -n "$SPINNER_PID" ] && wait "$SPINNER_PID" 2>/dev/null
+    SPINNER_PID=""
+    return 0
+}
+
+# Clean the spinner up on any exit; Ctrl-C or a kill cancels the commit
+# instead of falling through to the "proceed anyway?" prompt.
+trap 'stop_spinner' EXIT
+trap 'stop_spinner; echo ""; echo "Code review interrupted; canceling commit."; exit 130' INT TERM
+
+# Run the review skill and capture output, bounded so a stalled CLI can't hang
+# the commit (perl's alarm, since macOS ships no `timeout`). husky runs this
+# script with -e, so the exit code is caught here rather than aborting the hook.
+EXIT_CODE=0
+REVIEW_OUTPUT=$(perl -e 'alarm shift; exec @ARGV or die "exec failed: $!\n"' \
+    "${REVIEW_CLAUDE_TIMEOUT:-900}" claude --print "/review-code" 2>&1) || EXIT_CODE=$?
+
+stop_spinner
+[ -t 2 ] && printf "\r✓ Code review complete!                    \n" >&2
+echo ""
+
+# Check if claude command failed (142 = killed by the alarm)
+if [ $EXIT_CODE -ne 0 ]; then
+    if [ $EXIT_CODE -eq 142 ]; then
+        echo "Code review timed out after ${REVIEW_CLAUDE_TIMEOUT:-900}s."
+    else
+        echo "Code review failed to run (exit code: $EXIT_CODE)"
+    fi
+    echo "Output:"
+    echo "$REVIEW_OUTPUT"
+    echo ""
+    if ask_user_confirmation "Do you want to proceed with the commit anyway?"; then
+        exit 0
+    else
+        exit 1
+    fi
+fi
+
+# An opted-in review that says nothing is a broken review, not a pass
+if [ -z "$REVIEW_OUTPUT" ]; then
+    echo "Warning: Review output is empty, so the change was not reviewed."
+    echo ""
+    if ask_user_confirmation "Do you want to proceed with the commit anyway?"; then
+        exit 0
+    else
+        exit 1
+    fi
+fi
+
+# Validate that output contains expected structure
+if ! echo "$REVIEW_OUTPUT" | grep -q "FINAL SCORE"; then
+    echo "Warning: Review output doesn't contain expected format."
+    echo ""
+    echo "Output received (length: ${#REVIEW_OUTPUT} chars):"
+    echo "---START---"
+    echo "$REVIEW_OUTPUT"
+    echo "---END---"
+    echo ""
+    if ask_user_confirmation "Do you want to proceed with the commit anyway?"; then
+        exit 0
+    else
+        exit 1
+    fi
+fi
+
+# Display the review output
+echo "$REVIEW_OUTPUT"
+echo ""
+
+# Extract the score
+SCORE_LINE=$(echo "$REVIEW_OUTPUT" | grep "^FINAL SCORE:" | head -1 || true)
+SCORE=$(echo "$SCORE_LINE" | grep -oE "[0-9]+[[:space:]]*/[[:space:]]*10" | grep -oE "^[0-9]+" | head -1 || true)
+
+# Check if we successfully extracted a score
+if [ -z "$SCORE" ]; then
+    echo "Warning: Could not parse score from review output."
+    echo ""
+    if ask_user_confirmation "Do you want to proceed with the commit?"; then
+        exit 0
+    else
+        exit 1
+    fi
+fi
+
+echo "Code Quality Score: $SCORE / 10"
+echo ""
+
+# Apply scoring rules
+if [ "$SCORE" -lt 5 ]; then
+    echo "COMMIT REJECTED: Score is below 5/10"
+    echo "Please address the critical issues identified in the review before committing."
+    exit 1
+elif [ "$SCORE" -ge 5 ] && [ "$SCORE" -le 8 ]; then
+    echo "Score is between 5-8/10. Review the warnings above."
+    if ask_user_confirmation "Do you want to proceed with the commit?"; then
+        echo "Proceeding with commit..."
+        exit 0
+    else
+        exit 1
+    fi
+else
+    echo "COMMIT APPROVED: Score is above 8/10"
+    echo "Proceeding with commit..."
+    exit 0
+fi

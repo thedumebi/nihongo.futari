@@ -19,7 +19,7 @@ Your orchestrator (the `review-code` skill) gives you, in your prompt:
 Use Bash ONLY for read-only git inspection, to recover intent. Prefix with the nvm/PATH guard:
 
 ```
-unset -f pnpm node npm npx 2>/dev/null; export PATH="$HOME/.nvm/versions/node/v22.17.0/bin:$PATH"; <git cmd>
+unset -f pnpm node npm npx 2>/dev/null; export PATH="$HOME/.nvm/versions/node/v$(sed 's/^v//' .nvmrc)/bin:$PATH"; <git cmd>
 ```
 
 Useful: `git log --oneline <range>`, `git log <range> --format=%B` (commit bodies), `git rev-parse --abbrev-ref HEAD` (branch name). Never run write commands.

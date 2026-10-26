@@ -16,7 +16,7 @@ Your orchestrator gives you, in your prompt:
 
 ## Bash usage (read-only git only)
 
-Prefix with the nvm/PATH guard: `unset -f pnpm node npm npx 2>/dev/null; export PATH="$HOME/.nvm/versions/node/v22.17.0/bin:$PATH"; <git cmd>`. Use git only to confirm whether a cited line is within the changed range (e.g., `git diff <range> -- <file>`). Never run write commands.
+Prefix with the nvm/PATH guard: `unset -f pnpm node npm npx 2>/dev/null; export PATH="$HOME/.nvm/versions/node/v$(sed 's/^v//' .nvmrc)/bin:$PATH"; <git cmd>`. Use git only to confirm whether a cited line is within the changed range (e.g., `git diff <range> -- <file>`). Never run write commands.
 
 ## What to do for each finding
 

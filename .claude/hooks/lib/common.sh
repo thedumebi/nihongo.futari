@@ -59,7 +59,7 @@ trap '_on_error ${LINENO}' ERR
 # safety net in case .zshenv/.zshrc are ever reverted.
 setup_node() {
   unset -f pnpm node npm npx 2>/dev/null || true
-  export PATH="$HOME/.nvm/versions/node/v22.17.0/bin:$PATH"
+  export PATH="$HOME/.nvm/versions/node/v$(sed 's/^v//' "$PROJECT_ROOT/.nvmrc")/bin:$PATH"
 }
 
 # ---- SQLite DB ----
