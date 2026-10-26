@@ -16,7 +16,8 @@ import { ROUTES } from '@/constants'
     <p class="mt-1 text-[var(--color-muted)]">
       go is free and made by one person. Things will change, and now and then something will break.
       Your progress is saved and backed up, but this is not a company.
-      <router-link :to="ROUTES.PRIVACY" class="underline underline-offset-4">
+      <!-- A new tab, so a half-filled sign-up form is still there afterwards. -->
+      <router-link :to="ROUTES.PRIVACY" target="_blank" rel="noopener" class="underline underline-offset-4">
         What that means for your data
       </router-link>
     </p>
