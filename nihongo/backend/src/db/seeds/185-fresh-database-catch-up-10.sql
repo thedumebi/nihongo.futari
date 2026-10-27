@@ -9,8 +9,8 @@ BEGIN
   END IF;
 
   -- study_items: 1484 rows, published, sort_index
-  UPDATE public.study_items AS x SET published = r.published, sort_index = r.sort_index
-  FROM jsonb_populate_recordset(null::public.study_items, $rows$[
+  UPDATE study_items AS x SET published = r.published, sort_index = r.sort_index
+  FROM jsonb_populate_recordset(null::study_items, $rows$[
 {"id": "si-dlg-ja-atm-trouble", "published": true, "sort_index": 2546},
 {"id": "si-dlg-ja-barber-cut", "published": true, "sort_index": 2506},
 {"id": "si-dlg-ja-bath-after", "published": true, "sort_index": 1480},
@@ -1499,8 +1499,8 @@ BEGIN
   WHERE x.id = r.id;
 
   -- grammar_points: 353 rows, status, reviewed_at, reviewed_by
-  UPDATE public.grammar_points AS x SET status = r.status, reviewed_at = r.reviewed_at, reviewed_by = r.reviewed_by
-  FROM jsonb_populate_recordset(null::public.grammar_points, $rows$[
+  UPDATE grammar_points AS x SET status = r.status, reviewed_at = r.reviewed_at, reviewed_by = r.reviewed_by
+  FROM jsonb_populate_recordset(null::grammar_points, $rows$[
 {"id": "gp-adverb-ku", "status": "published", "reviewed_at": "2026-08-26T22:09:17.911", "reviewed_by": "e765d564-330e-445c-a492-bca1a0813762"},
 {"id": "gp-agete", "status": "published", "reviewed_at": "2026-08-26T13:00:54.694", "reviewed_by": "e765d564-330e-445c-a492-bca1a0813762"},
 {"id": "gp-aida-ni", "status": "published", "reviewed_at": "2026-08-26T12:46:05.832", "reviewed_by": "e765d564-330e-445c-a492-bca1a0813762"},
@@ -1858,8 +1858,8 @@ BEGIN
   WHERE x.id = r.id;
 
   -- etymology_entries: 351 rows, status, reviewed_at, reviewed_by, published_at
-  UPDATE public.etymology_entries AS x SET status = r.status, reviewed_at = r.reviewed_at, reviewed_by = r.reviewed_by, published_at = r.published_at
-  FROM jsonb_populate_recordset(null::public.etymology_entries, $rows$[
+  UPDATE etymology_entries AS x SET status = r.status, reviewed_at = r.reviewed_at, reviewed_by = r.reviewed_by, published_at = r.published_at
+  FROM jsonb_populate_recordset(null::etymology_entries, $rows$[
 {"id": "ety-deshou", "status": "published", "reviewed_at": "2026-08-26T10:31:59.453", "reviewed_by": "e765d564-330e-445c-a492-bca1a0813762", "published_at": "2026-08-26T10:31:59.453"},
 {"id": "ety-desu", "status": "published", "reviewed_at": "2026-08-26T10:31:59.413", "reviewed_by": "e765d564-330e-445c-a492-bca1a0813762", "published_at": "2026-08-26T10:31:59.413"},
 {"id": "ety-ga-particle", "status": "published", "reviewed_at": "2026-08-26T10:31:59.426", "reviewed_by": "e765d564-330e-445c-a492-bca1a0813762", "published_at": "2026-08-26T10:31:59.426"},

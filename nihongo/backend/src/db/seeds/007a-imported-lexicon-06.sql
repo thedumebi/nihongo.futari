@@ -7,7 +7,7 @@ BEGIN
   IF (SELECT min(run_at) FROM seed_history) < timestamptz '2026-10-26 00:00:00+00' THEN
     RETURN;
   END IF;
-INSERT INTO public.word_senses (id, word_id, sort_index, glosses, pos, fields, misc, dialect, info, restricted_to_forms, cross_refs, antonyms, created_at, updated_at) VALUES
+INSERT INTO word_senses (id, word_id, sort_index, glosses, pos, fields, misc, dialect, info, restricted_to_forms, cross_refs, antonyms, created_at, updated_at) VALUES
 	('a5e0ea2d-8b20-44b2-a867-f611b02b71cf', '3a639919-42a5-4927-8fd3-5f9037d33516', 1, '[{"lang": "en", "text": "to be fed up"}, {"lang": "en", "text": "to be tired (of)"}, {"lang": "en", "text": "to be unable to bear"}, {"lang": "en", "text": "to be annoyed"}]', '{vs,vi,n,adj-na}', '{}', '{}', '{}', NULL, '{}', '{}', '{}', '2026-08-26 21:59:11.336513', '2026-08-26 21:59:11.336513'),
 	('a5e56f42-fd12-453f-b97c-ba16bfd19058', '3a063271-bc8e-41e6-9871-1c4c4b83150b', 0, '[{"lang": "en", "text": "to celebrate"}, {"lang": "en", "text": "to congratulate"}, {"lang": "en", "text": "to observe (a festival)"}]', '{v5u,vt}', '{}', '{}', '{}', NULL, '{}', '{}', '{}', '2026-08-26 21:58:47.212759', '2026-08-26 21:58:47.212759'),
 	('a5e64961-2a74-4ff0-b581-301a704c0620', 'af5b2549-8735-4c4f-9d6c-2119c77bd4f1', 1, '[{"lang": "en", "text": "condition (e.g. market)"}, {"lang": "en", "text": "tone"}, {"lang": "en", "text": "character"}, {"lang": "en", "text": "nature"}]', '{n}', '{}', '{}', '{}', NULL, '{}', '{}', '{}', '2026-08-26 21:59:09.868965', '2026-08-26 21:59:09.868965'),
@@ -508,7 +508,7 @@ INSERT INTO public.word_senses (id, word_id, sort_index, glosses, pos, fields, m
 	('adf2b806-640f-4eb3-867f-671f5eb5b7a0', '1e30e9da-a0e0-42a3-b0d2-da1cf8e6d71c', 0, '[{"lang": "en", "text": "talk"}, {"lang": "en", "text": "speech"}, {"lang": "en", "text": "chat"}, {"lang": "en", "text": "conversation"}]', '{n}', '{}', '{}', '{}', NULL, '{話,話し}', '{}', '{}', '2026-08-26 21:56:48.487312', '2026-08-26 21:56:48.487312'),
 	('adf31c86-7f11-4c96-b4e2-eed38b33c772', 'adc328cb-f2d0-4748-9913-7a092610cb92', 4, '[{"lang": "en", "text": "to draw something near to oneself"}, {"lang": "en", "text": "to approach nearby"}]', '{v1,vt}', '{}', '{arch}', '{}', NULL, '{}', '{}', '{}', '2026-08-26 21:59:12.151812', '2026-08-26 21:59:12.151812'),
 	('adf42ffa-380a-4b75-af6d-db024ae411f9', '78515c83-804e-4059-8665-dc608e1b5ee9', 0, '[{"lang": "en", "text": "wise"}, {"lang": "en", "text": "clever"}, {"lang": "en", "text": "smart"}]', '{adj-i}', '{}', '{}', '{}', NULL, '{}', '{}', '{}', '2026-08-26 21:58:45.97993', '2026-08-26 21:58:45.97993') ON CONFLICT DO NOTHING;
-INSERT INTO public.word_senses (id, word_id, sort_index, glosses, pos, fields, misc, dialect, info, restricted_to_forms, cross_refs, antonyms, created_at, updated_at) VALUES
+INSERT INTO word_senses (id, word_id, sort_index, glosses, pos, fields, misc, dialect, info, restricted_to_forms, cross_refs, antonyms, created_at, updated_at) VALUES
 	('adf6921a-0381-4d66-a9dd-fa50ec3ed13f', 'a75415de-b0c0-457c-9612-904a9a99bf8f', 0, '[{"lang": "en", "text": "(afternoon) nap"}, {"lang": "en", "text": "sleeping during the day"}, {"lang": "en", "text": "siesta"}]', '{n,vs,vi}', '{}', '{}', '{}', NULL, '{}', '{}', '{}', '2026-08-26 21:58:59.417973', '2026-08-26 21:58:59.417973'),
 	('adff132b-1093-4988-9cb8-78a576670fdd', 'e0fcdcd5-e5d4-402b-a28f-37cce7716ec6', 0, '[{"lang": "en", "text": "wife"}]', '{n}', '{}', '{}', '{}', NULL, '{妻}', '{}', '{}', '2026-08-26 21:58:36.167741', '2026-08-26 21:58:36.167741'),
 	('adff8a8a-ca1e-46b8-b20a-d31fe19f33b0', '8f9d2c99-040f-4ee6-aa46-235332aadb24', 0, '[{"lang": "en", "text": "to advance on"}, {"lang": "en", "text": "to close in"}, {"lang": "en", "text": "to march on"}, {"lang": "en", "text": "to descend on (the enemy)"}, {"lang": "en", "text": "to move towards"}, {"lang": "en", "text": "to surge forward (crowd, wave of nostalgia, wave, etc.)"}, {"lang": "en", "text": "to rush for (the door)"}, {"lang": "en", "text": "to inundate"}, {"lang": "en", "text": "to overwhelm"}, {"lang": "en", "text": "to push aside"}]', '{v1,vi}', '{}', '{}', '{}', NULL, '{}', '{}', '{}', '2026-08-26 21:59:06.445639', '2026-08-26 21:59:06.445639'),
@@ -1009,7 +1009,7 @@ INSERT INTO public.word_senses (id, word_id, sort_index, glosses, pos, fields, m
 	('b53b4fb5-831e-4b75-b7cb-f45145cc26fb', '18b65cfd-ea7e-438f-93e1-0016f5b0e3d7', 0, '[{"lang": "en", "text": "different opinion"}, {"lang": "en", "text": "different view"}, {"lang": "en", "text": "dissenting view"}, {"lang": "en", "text": "objection"}]', '{n}', '{}', '{}', '{}', NULL, '{}', '{}', '{}', '2026-08-26 21:59:06.101091', '2026-08-26 21:59:06.101091'),
 	('b53c8c84-e281-46dd-90c5-eb30db9c0c53', 'dd44b10a-7d7f-4b85-9013-dbd89feea757', 0, '[{"lang": "en", "text": "woman"}, {"lang": "en", "text": "female"}]', '{n,adj-no}', '{}', '{}', '{}', NULL, '{}', '{}', '{}', '2026-08-26 21:58:36.474967', '2026-08-26 21:58:36.474967'),
 	('b54a0bdf-a72b-4bae-b775-60de3e55ff09', 'bf6b94ff-c3fd-4d1a-8609-6c0d81cbd349', 5, '[{"lang": "en", "text": "hand truck"}, {"lang": "en", "text": "platform truck"}, {"lang": "en", "text": "trolley"}, {"lang": "en", "text": "dolly"}]', '{n}', '{}', '{}', '{}', NULL, '{}', '{}', '{}', '2026-08-26 21:59:12.829166', '2026-08-26 21:59:12.829166') ON CONFLICT DO NOTHING;
-INSERT INTO public.word_senses (id, word_id, sort_index, glosses, pos, fields, misc, dialect, info, restricted_to_forms, cross_refs, antonyms, created_at, updated_at) VALUES
+INSERT INTO word_senses (id, word_id, sort_index, glosses, pos, fields, misc, dialect, info, restricted_to_forms, cross_refs, antonyms, created_at, updated_at) VALUES
 	('b54d101c-a802-4c39-a0a7-d54302c46ce3', '71223731-ee6c-430b-885b-f7d12f3d9097', 2, '[{"lang": "en", "text": "organic compound"}]', '{n}', '{}', '{abbr}', '{}', NULL, '{}', '{有機化合物}', '{}', '2026-08-26 21:58:48.902925', '2026-08-26 21:58:48.902925'),
 	('b55a431d-9e7e-44d3-92c0-e1afd429a068', '7da966a8-ced5-43d2-bd9c-e37364f257d3', 0, '[{"lang": "en", "text": "bell (often a large hanging bell)"}, {"lang": "en", "text": "chime"}]', '{n}', '{}', '{}', '{}', NULL, '{}', '{鉦}', '{}', '2026-08-26 21:58:58.995992', '2026-08-26 21:58:58.995992'),
 	('b55ff573-3c7b-472c-98b0-749bd3920387', 'a250fb84-f451-4c2f-aea6-5ff84f576ba7', 1, '[{"lang": "en", "text": "by no means"}, {"lang": "en", "text": "not readily"}]', '{adv}', '{}', '{uk}', '{}', 'with a verb in the negative', '{}', '{}', '{}', '2026-08-26 21:58:37.990073', '2026-08-26 21:58:37.990073'),
@@ -1510,7 +1510,7 @@ INSERT INTO public.word_senses (id, word_id, sort_index, glosses, pos, fields, m
 	('bc8960a0-4019-4f4c-ab61-04aa8346cde1', 'c80c47b9-6f07-4cb1-b9b1-13c3695626d1', 0, '[{"lang": "en", "text": "ignorance"}, {"lang": "en", "text": "innocence"}, {"lang": "en", "text": "stupidity"}]', '{n,adj-na}', '{}', '{}', '{}', NULL, '{}', '{}', '{}', '2026-08-26 21:59:11.559853', '2026-08-26 21:59:11.559853'),
 	('bc953cd9-d7de-4bae-ada6-e9df55bb5671', 'e101da21-2310-4662-ab14-5f4b9c61aaac', 0, '[{"lang": "en", "text": "training"}, {"lang": "en", "text": "drill"}, {"lang": "en", "text": "practice"}, {"lang": "en", "text": "discipline"}]', '{n,vs,vt}', '{}', '{}', '{}', NULL, '{}', '{}', '{}', '2026-08-26 21:58:45.696423', '2026-08-26 21:58:45.696423'),
 	('bc95a550-a6ee-48bb-bd30-cf8e380d6f95', '47303c17-c0bf-47d9-865e-d5f5a1457a0d', 1, '[{"lang": "en", "text": "to burn with (emotion, feeling)"}, {"lang": "en", "text": "to be fired up"}]', '{v5s,vt}', '{}', '{}', '{}', NULL, '{}', '{}', '{}', '2026-08-26 21:58:49.16679', '2026-08-26 21:58:49.16679') ON CONFLICT DO NOTHING;
-INSERT INTO public.word_senses (id, word_id, sort_index, glosses, pos, fields, misc, dialect, info, restricted_to_forms, cross_refs, antonyms, created_at, updated_at) VALUES
+INSERT INTO word_senses (id, word_id, sort_index, glosses, pos, fields, misc, dialect, info, restricted_to_forms, cross_refs, antonyms, created_at, updated_at) VALUES
 	('bc96c2f7-25b7-4af9-a9ea-84df3193d018', '82a7826a-6845-4ebe-a4e3-19ff12a0e5b7', 0, '[{"lang": "en", "text": "real intention"}, {"lang": "en", "text": "motive"}, {"lang": "en", "text": "true opinion"}, {"lang": "en", "text": "what one really thinks"}]', '{n}', '{}', '{}', '{}', NULL, '{}', '{建前・1}', '{}', '2026-08-26 21:59:11.475806', '2026-08-26 21:59:11.475806'),
 	('bc972b21-5681-4f5a-942b-00c6beb4ecd6', '24ede451-1596-4e37-b4be-4f59e824d7d1', 0, '[{"lang": "en", "text": "foreign"}, {"lang": "en", "text": "abroad"}, {"lang": "en", "text": "overseas"}]', '{n,adj-no}', '{}', '{}', '{}', NULL, '{}', '{}', '{}', '2026-08-26 21:58:44.591487', '2026-08-26 21:58:44.591487'),
 	('bc97ec3c-a5b5-4f58-ab72-39ff28a97037', 'ae2ac9ce-0d6f-4349-87b8-1cd1fcdfd358', 3, '[{"lang": "en", "text": "dealer"}]', '{n}', '{hanaf}', '{rare}', '{}', 'also written as 筒', '{}', '{親・おや・2}', '{}', '2026-08-26 21:59:10.884293', '2026-08-26 21:59:10.884293'),
@@ -2011,7 +2011,7 @@ INSERT INTO public.word_senses (id, word_id, sort_index, glosses, pos, fields, m
 	('c3c6fd95-1c6a-4bd8-a787-977f80533203', '8a94668d-77ec-438b-95fb-210f8762ba77', 0, '[{"lang": "en", "text": "to be mixed"}, {"lang": "en", "text": "to be blended with"}, {"lang": "en", "text": "to associate with"}, {"lang": "en", "text": "to mingle with"}, {"lang": "en", "text": "to join"}]', '{v5r,vi}', '{}', '{}', '{}', NULL, '{}', '{}', '{}', '2026-08-26 21:58:49.450379', '2026-08-26 21:58:49.450379'),
 	('c3c87ba0-c413-4b5c-9433-4a69f6689161', 'd21bed7b-5136-4233-8057-8985a76f193f', 3, '[{"lang": "en", "text": "great man"}, {"lang": "en", "text": "fine figure of a man"}]', '{n}', '{}', '{arch}', '{}', NULL, '{だいじょうぶ}', '{大丈夫・だいじょうふ}', '{}', '2026-08-26 21:56:47.148354', '2026-08-26 21:56:47.148354'),
 	('c3ce97f5-979b-4522-9610-85526cd55788', '0d8b8ec8-af80-40ca-aeb1-5ba5e380e6dc', 2, '[{"lang": "en", "text": "beyond (one''s expectations, imagination, etc.)"}, {"lang": "en", "text": "outside"}]', '{n,adj-no}', '{}', '{uk}', '{}', 'esp. 外', '{}', '{思いのほか}', '{}', '2026-08-26 21:58:44.623146', '2026-08-26 21:58:44.623146') ON CONFLICT DO NOTHING;
-INSERT INTO public.word_senses (id, word_id, sort_index, glosses, pos, fields, misc, dialect, info, restricted_to_forms, cross_refs, antonyms, created_at, updated_at) VALUES
+INSERT INTO word_senses (id, word_id, sort_index, glosses, pos, fields, misc, dialect, info, restricted_to_forms, cross_refs, antonyms, created_at, updated_at) VALUES
 	('c3d1562e-dff4-43c6-ad30-5d0b0dad6151', '4c04da0c-7c09-419f-bf0d-99715fac2eda', 0, '[{"lang": "en", "text": "to remove"}, {"lang": "en", "text": "to get rid of"}, {"lang": "en", "text": "to take away"}, {"lang": "en", "text": "to eliminate"}]', '{v5k,vt}', '{}', '{}', '{}', NULL, '{}', '{}', '{}', '2026-08-26 21:58:47.278213', '2026-08-26 21:58:47.278213'),
 	('c3db24d8-e96c-4fec-8030-0660a28deec8', '73fd2b16-6a10-4eeb-82c0-29bfac701491', 0, '[{"lang": "en", "text": "oh"}, {"lang": "en", "text": "ho"}, {"lang": "en", "text": "exclamation of surprise, admiration, etc."}]', '{int}', '{}', '{}', '{}', NULL, '{}', '{}', '{}', '2026-08-26 21:58:50.070344', '2026-08-26 21:58:50.070344'),
 	('c3dd02ca-3503-4bf1-b27a-fa3d1fd82d69', 'e2cb7f91-65aa-4944-b07d-d741a2cdc586', 0, '[{"lang": "en", "text": "voice"}]', '{n}', '{}', '{}', '{}', NULL, '{}', '{}', '{}', '2026-08-26 21:56:46.915643', '2026-08-26 21:56:46.915643'),
@@ -2512,7 +2512,7 @@ INSERT INTO public.word_senses (id, word_id, sort_index, glosses, pos, fields, m
 	('cb56f4ce-c94f-47d4-88c6-2a6248575410', 'aa16f0c8-447e-49e5-a91e-8b65939a2ed8', 0, '[{"lang": "en", "text": "hunting"}, {"lang": "en", "text": "hunt"}, {"lang": "en", "text": "shooting"}]', '{n,n-suf}', '{}', '{}', '{}', 'pronounced がり as a suffix', '{}', '{}', '{}', '2026-08-26 21:58:47.078994', '2026-08-26 21:58:47.078994'),
 	('cb58058c-b1ef-4f67-9f96-97016c9e3c2a', '0df71311-8cf6-47a5-b4ca-e6f095745b91', 0, '[{"lang": "en", "text": "tray"}]', '{n}', '{}', '{}', '{}', NULL, '{}', '{}', '{}', '2026-08-26 21:58:59.918701', '2026-08-26 21:58:59.918701'),
 	('cb5dce8f-7e0e-4bac-a62b-b726f4ac13a6', 'c35fac33-cc46-402e-8c88-58055f1ede2a', 3, '[{"lang": "en", "text": "(raw) material"}, {"lang": "en", "text": "ingredient"}, {"lang": "en", "text": "base"}, {"lang": "en", "text": "mix (e.g. for a cake)"}, {"lang": "en", "text": "(soup) stock"}]', '{n}', '{}', '{}', '{}', 'esp. 素', '{}', '{}', '{}', '2026-08-26 21:58:45.988879', '2026-08-26 21:58:45.988879') ON CONFLICT DO NOTHING;
-INSERT INTO public.word_senses (id, word_id, sort_index, glosses, pos, fields, misc, dialect, info, restricted_to_forms, cross_refs, antonyms, created_at, updated_at) VALUES
+INSERT INTO word_senses (id, word_id, sort_index, glosses, pos, fields, misc, dialect, info, restricted_to_forms, cross_refs, antonyms, created_at, updated_at) VALUES
 	('cb6bc0f3-ee99-46d5-a686-bc6c7838fd39', '895067db-96e4-42f7-82fc-d8d739c68722', 0, '[{"lang": "en", "text": "to spread"}, {"lang": "en", "text": "to extend"}, {"lang": "en", "text": "to expand"}, {"lang": "en", "text": "to enlarge"}, {"lang": "en", "text": "to widen"}, {"lang": "en", "text": "to broaden"}]', '{v1,vt}', '{}', '{}', '{}', NULL, '{}', '{}', '{}', '2026-08-26 21:59:00.563221', '2026-08-26 21:59:00.563221'),
 	('cb6e0cfe-ac9c-4e6f-9689-390acd388035', '7b2e07b9-1474-4e3b-86a2-71e1b4c965c5', 0, '[{"lang": "en", "text": "faint"}, {"lang": "en", "text": "dim"}, {"lang": "en", "text": "weak"}, {"lang": "en", "text": "slight"}, {"lang": "en", "text": "vague"}, {"lang": "en", "text": "indistinct"}, {"lang": "en", "text": "hazy"}]', '{adj-na}', '{}', '{uk}', '{}', NULL, '{}', '{}', '{}', '2026-08-26 21:59:12.083668', '2026-08-26 21:59:12.083668'),
 	('cb6ee25e-9f35-4c3f-a18f-d62e461f05cc', '14104521-7680-4216-bd3a-8b43402427bd', 0, '[{"lang": "en", "text": "method"}, {"lang": "en", "text": "way"}, {"lang": "en", "text": "manner"}, {"lang": "en", "text": "process"}, {"lang": "en", "text": "procedure"}, {"lang": "en", "text": "means"}, {"lang": "en", "text": "measure"}]', '{n}', '{}', '{}', '{}', NULL, '{}', '{}', '{}', '2026-08-26 21:58:48.719385', '2026-08-26 21:58:48.719385'),
@@ -3013,7 +3013,7 @@ INSERT INTO public.word_senses (id, word_id, sort_index, glosses, pos, fields, m
 	('d2ffe0c4-9cb8-4b62-bcbf-c04ad3d6bb85', 'c8f3d35f-71dc-4b65-8899-06cac87bce15', 0, '[{"lang": "en", "text": "accommodation"}, {"lang": "en", "text": "lodging"}]', '{n,vs,vi}', '{}', '{}', '{}', NULL, '{}', '{}', '{}', '2026-08-26 21:58:47.207436', '2026-08-26 21:58:47.207436'),
 	('d3058835-d384-4e2c-9afa-e4647d3f8a4b', '98d98111-26d8-46ba-807c-8a2431f7dd85', 1, '[{"lang": "en", "text": "to fix (hair, clothes, appearance, etc.)"}, {"lang": "en", "text": "to adjust"}, {"lang": "en", "text": "to tidy up"}, {"lang": "en", "text": "to groom"}]', '{v5u,vt}', '{}', '{}', '{}', NULL, '{}', '{}', '{}', '2026-08-26 21:59:10.110272', '2026-08-26 21:59:10.110272'),
 	('d3058b43-a283-4ae2-ad4f-143b72157ac5', '2412ae07-5404-46f2-b27d-a7b845e72a76', 1, '[{"lang": "en", "text": "expectations"}, {"lang": "en", "text": "prospects"}, {"lang": "en", "text": "hopes"}]', '{n}', '{}', '{}', '{}', NULL, '{}', '{}', '{}', '2026-08-26 21:59:10.730795', '2026-08-26 21:59:10.730795') ON CONFLICT DO NOTHING;
-INSERT INTO public.word_senses (id, word_id, sort_index, glosses, pos, fields, misc, dialect, info, restricted_to_forms, cross_refs, antonyms, created_at, updated_at) VALUES
+INSERT INTO word_senses (id, word_id, sort_index, glosses, pos, fields, misc, dialect, info, restricted_to_forms, cross_refs, antonyms, created_at, updated_at) VALUES
 	('d30b7649-0892-4cb8-9860-52f046b49f6f', 'c2034829-3866-4253-9f8d-34ad39fa9bae', 0, '[{"lang": "en", "text": "head"}]', '{n}', '{}', '{}', '{}', NULL, '{}', '{}', '{}', '2026-08-26 21:59:12.000864', '2026-08-26 21:59:12.000864'),
 	('d30c0b30-28cf-47f6-931d-bd1090409b8a', 'd1aab911-e094-4d8a-9591-a88dc43eb415', 0, '[{"lang": "en", "text": "population"}]', '{n}', '{}', '{}', '{}', NULL, '{}', '{}', '{}', '2026-08-26 21:58:36.666467', '2026-08-26 21:58:36.666467'),
 	('d316145d-9869-41eb-a8ad-c22d309d48a0', '54c4f637-b5ef-46ef-8145-60dda200c98e', 7, '[{"lang": "en", "text": "to follow"}, {"lang": "en", "text": "to succeed"}, {"lang": "en", "text": "to be descended from"}]', '{v1,vt}', '{}', '{}', '{}', 'esp. 受ける, 享ける', '{}', '{}', '{}', '2026-08-26 21:58:36.434819', '2026-08-26 21:58:36.434819'),
@@ -3514,7 +3514,7 @@ INSERT INTO public.word_senses (id, word_id, sort_index, glosses, pos, fields, m
 	('d9ff0478-6fd9-438d-a9c3-b422dad5aa8c', 'ae45093d-39e3-4576-9a4b-5cabdf377055', 2, '[{"lang": "en", "text": "short (time)"}, {"lang": "en", "text": "early"}, {"lang": "en", "text": "young"}]', '{adj-i}', '{}', '{}', '{}', NULL, '{}', '{}', '{}', '2026-08-26 21:58:36.809723', '2026-08-26 21:58:36.809723'),
 	('d9ff95df-a9e7-40b4-baeb-40e3143eb7c1', 'fa6b0701-7dbe-4fa1-ad88-a2f298bf2eeb', 0, '[{"lang": "en", "text": "accent (on a syllable, word)"}, {"lang": "en", "text": "stress"}, {"lang": "en", "text": "pitch accent"}]', '{n}', '{ling}', '{}', '{}', NULL, '{}', '{}', '{}', '2026-08-26 21:58:56.617248', '2026-08-26 21:58:56.617248'),
 	('da005f16-663a-4aa9-9f16-208ca39ef621', 'fea86401-cabf-46d9-9bf5-7cd27a10ae07', 1, '[{"lang": "en", "text": "program (booklet)"}, {"lang": "en", "text": "brochure"}, {"lang": "en", "text": "pamphlet"}]', '{n}', '{}', '{}', '{}', NULL, '{}', '{}', '{}', '2026-08-26 21:58:56.988369', '2026-08-26 21:58:56.988369') ON CONFLICT DO NOTHING;
-INSERT INTO public.word_senses (id, word_id, sort_index, glosses, pos, fields, misc, dialect, info, restricted_to_forms, cross_refs, antonyms, created_at, updated_at) VALUES
+INSERT INTO word_senses (id, word_id, sort_index, glosses, pos, fields, misc, dialect, info, restricted_to_forms, cross_refs, antonyms, created_at, updated_at) VALUES
 	('da005f7d-55b3-4681-82ba-4ed51943d6a3', 'e1b9ae23-e372-4c84-9bf6-811494f78431', 0, '[{"lang": "en", "text": "rebel"}]', '{n}', '{}', '{}', '{}', NULL, '{}', '{}', '{}', '2026-08-26 21:58:50.24516', '2026-08-26 21:58:50.24516'),
 	('da095beb-5ac7-4f99-a053-a7bfeb75a5c7', 'a3264ac3-c687-416f-933b-0baea0a9b888', 0, '[{"lang": "en", "text": "weak point"}, {"lang": "en", "text": "weakness"}, {"lang": "en", "text": "shortcoming"}, {"lang": "en", "text": "defect"}, {"lang": "en", "text": "flaw"}, {"lang": "en", "text": "sore spot"}, {"lang": "en", "text": "tender spot"}]', '{n}', '{}', '{}', '{}', NULL, '{}', '{短所}', '{}', '2026-08-26 21:58:58.843389', '2026-08-26 21:58:58.843389'),
 	('da09e8cf-383a-497e-b716-eb20b07c3f30', 'bfd78d3a-4351-4dd8-b399-353f9ac9ba4a', 0, '[{"lang": "en", "text": "frightening"}, {"lang": "en", "text": "scary"}]', '{adj-i}', '{}', '{col}', '{}', NULL, '{}', '{}', '{}', '2026-08-26 21:59:05.002652', '2026-08-26 21:59:05.002652'),
@@ -4015,7 +4015,7 @@ INSERT INTO public.word_senses (id, word_id, sort_index, glosses, pos, fields, m
 	('e17ef544-e85f-4a30-9afa-69260c78aa8f', 'b510288f-2a02-43a6-8781-4242c9646de1', 0, '[{"lang": "en", "text": "waitress"}]', '{n}', '{}', '{}', '{}', NULL, '{}', '{}', '{}', '2026-08-26 21:58:56.646388', '2026-08-26 21:58:56.646388'),
 	('e186b6fa-ac7c-4db1-a0f7-ba3261bcafa8', 'f37603dd-00ed-4d28-a57b-aba2d6863079', 5, '[{"lang": "en", "text": "all of ..."}, {"lang": "en", "text": "the entire ..."}]', '{n-suf,adv}', '{}', '{uk}', '{}', NULL, '{}', '{}', '{}', '2026-08-26 21:58:35.385081', '2026-08-26 21:58:35.385081'),
 	('e18b5222-b384-40d0-94d1-ea053b2d1f99', 'f316ddec-1ef5-4c5e-bb55-928bf9ef361f', 2, '[{"lang": "en", "text": "to recall"}, {"lang": "en", "text": "to call to mind"}, {"lang": "en", "text": "to imagine"}, {"lang": "en", "text": "to think of"}]', '{v1,vt}', '{}', '{}', '{}', NULL, '{}', '{}', '{}', '2026-08-26 21:58:59.791759', '2026-08-26 21:58:59.791759') ON CONFLICT DO NOTHING;
-INSERT INTO public.word_senses (id, word_id, sort_index, glosses, pos, fields, misc, dialect, info, restricted_to_forms, cross_refs, antonyms, created_at, updated_at) VALUES
+INSERT INTO word_senses (id, word_id, sort_index, glosses, pos, fields, misc, dialect, info, restricted_to_forms, cross_refs, antonyms, created_at, updated_at) VALUES
 	('e1995367-8704-4d8c-814e-7118685a9a12', '0e6ac646-0651-4479-a23e-3a43ac4c7081', 2, '[{"lang": "en", "text": "to settle (upon something)"}, {"lang": "en", "text": "to fix (e.g. one''s gaze)"}]', '{v1,vt}', '{}', '{}', '{}', NULL, '{}', '{}', '{}', '2026-08-26 21:59:09.924274', '2026-08-26 21:59:09.924274'),
 	('e19c3cd9-3ca2-4b66-ac72-6f15487a2a0a', '8d4bc4de-174b-4269-8c9d-962fcbdd1380', 0, '[{"lang": "en", "text": "Wednesday"}]', '{n}', '{}', '{abbr}', '{}', NULL, '{}', '{水曜日}', '{}', '2026-08-26 21:56:48.754234', '2026-08-26 21:56:48.754234'),
 	('e1a60677-136d-4fca-a32a-28614a7c916e', '0a064b2b-ae19-46fb-9b95-a266d0a8c5e6', 0, '[{"lang": "en", "text": "radioactivity"}]', '{n}', '{}', '{}', '{}', NULL, '{}', '{}', '{}', '2026-08-26 21:59:11.4283', '2026-08-26 21:59:11.4283'),
@@ -4516,7 +4516,7 @@ INSERT INTO public.word_senses (id, word_id, sort_index, glosses, pos, fields, m
 	('e96a27bc-53c1-4be4-ac55-050f15311947', '5bb10bf2-d0bc-4811-b66a-53a85f347c29', 0, '[{"lang": "en", "text": "ominous"}, {"lang": "en", "text": "sinister"}, {"lang": "en", "text": "unlucky"}, {"lang": "en", "text": "inauspicious"}]', '{adj-na,n}', '{}', '{}', '{}', NULL, '{}', '{}', '{}', '2026-08-26 21:59:11.210441', '2026-08-26 21:59:11.210441'),
 	('e96b4d1c-3688-4d9e-8582-92d0e75066d0', 'e393a790-132c-498f-a5f8-498c3cd311e2', 1, '[{"lang": "en", "text": "quality"}]', '{n}', '{}', '{}', '{}', NULL, '{}', '{}', '{}', '2026-08-26 21:58:49.947964', '2026-08-26 21:58:49.947964'),
 	('e96ddbed-655b-4965-9f21-375d87ee34b8', 'ca9357c9-16d3-485a-9113-455d930b91da', 2, '[{"lang": "en", "text": "exiting (a venue, train station, etc.)"}, {"lang": "en", "text": "exit"}]', '{n,vs,vi}', '{}', '{}', '{}', NULL, '{}', '{}', '{入場}', '2026-08-26 21:58:47.220521', '2026-08-26 21:58:47.220521') ON CONFLICT DO NOTHING;
-INSERT INTO public.word_senses (id, word_id, sort_index, glosses, pos, fields, misc, dialect, info, restricted_to_forms, cross_refs, antonyms, created_at, updated_at) VALUES
+INSERT INTO word_senses (id, word_id, sort_index, glosses, pos, fields, misc, dialect, info, restricted_to_forms, cross_refs, antonyms, created_at, updated_at) VALUES
 	('e96f9250-c5cf-4423-b7dd-32ccc1e9d247', '5dc6d52f-1dda-473f-af02-39947e98018b', 3, '[{"lang": "en", "text": "content"}, {"lang": "en", "text": "substance"}]', '{n}', '{}', '{}', '{}', NULL, '{}', '{}', '{}', '2026-08-26 21:59:09.127204', '2026-08-26 21:59:09.127204'),
 	('e9735e99-49dd-4523-a447-784b87bc3052', '800fcaec-6509-4dd2-a0b4-fe45dcc0a5b0', 1, '[{"lang": "en", "text": "top (e.g. of a mountain)"}, {"lang": "en", "text": "summit"}, {"lang": "en", "text": "peak"}]', '{n}', '{}', '{}', '{}', NULL, '{}', '{}', '{}', '2026-08-26 21:58:59.446585', '2026-08-26 21:58:59.446585'),
 	('e9805bf5-6d5d-4b85-9f58-9307443e923e', '3ef3272c-104d-4931-a7b8-26f830cb939b', 0, '[{"lang": "en", "text": "trust"}, {"lang": "en", "text": "confidence"}, {"lang": "en", "text": "credence"}]', '{n,vs,vt}', '{}', '{}', '{}', NULL, '{}', '{}', '{}', '2026-08-26 21:59:09.784094', '2026-08-26 21:59:09.784094'),
@@ -5017,7 +5017,7 @@ INSERT INTO public.word_senses (id, word_id, sort_index, glosses, pos, fields, m
 	('f0c4fd90-5adf-420f-b9fe-724e3f0887d1', '596064e0-a4ab-4abb-8eaf-646b5559116e', 1, '[{"lang": "en", "text": "dissatisfaction"}, {"lang": "en", "text": "discontent"}, {"lang": "en", "text": "complaint"}]', '{n,adj-na}', '{}', '{}', '{}', NULL, '{}', '{}', '{}', '2026-08-26 21:58:48.545174', '2026-08-26 21:58:48.545174'),
 	('f0c71a98-7347-4bd6-887d-163b22387009', 'f728de63-7c26-40fa-943e-25b980508a97', 0, '[{"lang": "en", "text": "funds"}, {"lang": "en", "text": "capital"}]', '{n}', '{}', '{}', '{}', NULL, '{}', '{}', '{}', '2026-08-26 21:59:08.982758', '2026-08-26 21:59:08.982758'),
 	('f0cf6b0f-6f8c-4b4e-afee-36e441726fa0', 'a97be726-08f6-4fad-9957-56b9ade665a4', 1, '[{"lang": "en", "text": "scum"}, {"lang": "en", "text": "piece of trash"}, {"lang": "en", "text": "loser"}]', '{n}', '{}', '{uk}', '{}', NULL, '{}', '{}', '{}', '2026-08-26 21:58:58.190288', '2026-08-26 21:58:58.190288') ON CONFLICT DO NOTHING;
-INSERT INTO public.word_senses (id, word_id, sort_index, glosses, pos, fields, misc, dialect, info, restricted_to_forms, cross_refs, antonyms, created_at, updated_at) VALUES
+INSERT INTO word_senses (id, word_id, sort_index, glosses, pos, fields, misc, dialect, info, restricted_to_forms, cross_refs, antonyms, created_at, updated_at) VALUES
 	('f0d5e149-e6a0-4de7-8525-17fa867aeff0', 'f4c48018-6652-4f08-8980-44a5339d40b1', 0, '[{"lang": "en", "text": "new"}, {"lang": "en", "text": "novel"}, {"lang": "en", "text": "fresh"}, {"lang": "en", "text": "recent"}, {"lang": "en", "text": "latest"}, {"lang": "en", "text": "up-to-date"}, {"lang": "en", "text": "modern"}]', '{adj-i}', '{}', '{}', '{}', NULL, '{}', '{}', '{}', '2026-08-26 21:56:46.843858', '2026-08-26 21:56:46.843858'),
 	('f0dc1f4b-9bdc-4924-81ce-93be8ed664e2', '8f0d7a41-0e10-49fd-81b2-e7f0c31d3b16', 0, '[{"lang": "en", "text": "misunderstanding"}, {"lang": "en", "text": "mistaken idea"}, {"lang": "en", "text": "wrong guess"}]', '{n,vs,vi}', '{}', '{}', '{}', NULL, '{}', '{}', '{}', '2026-08-26 21:58:57.812376', '2026-08-26 21:58:57.812376'),
 	('f0ddf5ad-0889-4eec-83c1-ade920486d21', '255e7a9a-0f72-4a86-9035-ea33beee3850', 0, '[{"lang": "en", "text": "dhyana (profound meditation)"}]', '{n}', '{Buddh}', '{abbr}', '{}', NULL, '{}', '{禅那・ぜんな}', '{}', '2026-08-26 21:58:47.752318', '2026-08-26 21:58:47.752318'),
@@ -5518,7 +5518,7 @@ INSERT INTO public.word_senses (id, word_id, sort_index, glosses, pos, fields, m
 	('f876a7dc-d0ec-45ef-8fd4-be2359360466', '893c04bb-aaaf-4908-b8c0-71401328d651', 0, '[{"lang": "en", "text": "Poland"}]', '{n}', '{}', '{abbr}', '{}', NULL, '{}', '{波蘭・ポーランド}', '{}', '2026-08-26 21:58:50.093269', '2026-08-26 21:58:50.093269'),
 	('f880fc89-4cf6-42aa-b871-e50af3d0c4e1', '628b1d63-300c-4d44-80d2-c652c80ae13b', 0, '[{"lang": "en", "text": "a lot"}, {"lang": "en", "text": "lots"}, {"lang": "en", "text": "plenty"}, {"lang": "en", "text": "many"}, {"lang": "en", "text": "a large number"}, {"lang": "en", "text": "much"}, {"lang": "en", "text": "a great deal"}, {"lang": "en", "text": "a good deal"}]', '{adj-no,adj-na,n,adv}', '{}', '{uk}', '{}', NULL, '{}', '{}', '{}', '2026-08-26 21:56:47.178493', '2026-08-26 21:56:47.178493'),
 	('f8843672-3cb4-47e3-8c5e-b5c1971e340a', '961e3d04-7b58-4e6b-b604-6acc641477f8', 1, '[{"lang": "en", "text": "in that case"}, {"lang": "en", "text": "then"}, {"lang": "en", "text": "so"}]', '{conj}', '{}', '{}', '{}', NULL, '{}', '{}', '{}', '2026-08-26 21:58:35.030433', '2026-08-26 21:58:35.030433') ON CONFLICT DO NOTHING;
-INSERT INTO public.word_senses (id, word_id, sort_index, glosses, pos, fields, misc, dialect, info, restricted_to_forms, cross_refs, antonyms, created_at, updated_at) VALUES
+INSERT INTO word_senses (id, word_id, sort_index, glosses, pos, fields, misc, dialect, info, restricted_to_forms, cross_refs, antonyms, created_at, updated_at) VALUES
 	('f88f3190-b6a0-4dce-80d3-5a89524b257b', '0c956ee1-0534-4155-b5a7-ff0eb845ab75', 0, '[{"lang": "en", "text": "horizon (related to bodies of water)"}]', '{n}', '{}', '{}', '{}', NULL, '{}', '{地平線}', '{}', '2026-08-26 21:58:59.107565', '2026-08-26 21:58:59.107565'),
 	('f892d72e-7a4c-4129-99c3-72850d2baf71', 'e72a3cdb-0b85-4485-9a06-00142b5c2b7b', 5, '[{"lang": "en", "text": "generally"}, {"lang": "en", "text": "in general"}, {"lang": "en", "text": "on the whole"}, {"lang": "en", "text": "by and large"}, {"lang": "en", "text": "for the most part"}]', '{adv}', '{}', '{}', '{}', 'also as ～に', '{}', '{一体に}', '{}', '2026-08-26 21:58:43.94023', '2026-08-26 21:58:43.94023'),
 	('f8945f56-3840-4036-9916-a0f55efcd3cf', '23b5ed21-774b-41e7-a7ee-c967fb81a8e9', 11, '[{"lang": "en", "text": "to establish (relations or understanding)"}]', '{v1,vt}', '{}', '{uk}', '{}', NULL, '{}', '{}', '{}', '2026-08-26 21:58:48.56225', '2026-08-26 21:58:48.56225'),
@@ -6019,7 +6019,7 @@ INSERT INTO public.word_senses (id, word_id, sort_index, glosses, pos, fields, m
 	('fff5debc-b224-4ed1-8eee-a6f2b492060f', 'd80e992d-4020-4ff4-941a-ea7fe8950d45', 0, '[{"lang": "en", "text": "series"}]', '{n}', '{}', '{}', '{}', NULL, '{}', '{}', '{}', '2026-08-26 21:58:56.769085', '2026-08-26 21:58:56.769085'),
 	('fff865aa-20eb-4767-8f97-27f23c8cdb8d', 'a10c22cb-1b0d-4c07-aa82-bfab963c30c0', 2, '[{"lang": "en", "text": "too much"}, {"lang": "en", "text": "excessively"}, {"lang": "en", "text": "overly"}]', '{adv}', '{}', '{uk}', '{}', 'esp. as あまりに(も)', '{}', '{あまりに,の余り・のあまり}', '{}', '2026-08-26 21:56:48.280868', '2026-08-26 21:56:48.280868'),
 	('fffac079-c931-49e1-87b3-8bb86c7df32c', '1e40888f-c7b0-4e11-b1ee-10199b5e136e', 0, '[{"lang": "en", "text": "period"}, {"lang": "en", "text": "term"}, {"lang": "en", "text": "interval"}]', '{n}', '{}', '{}', '{}', NULL, '{}', '{}', '{}', '2026-08-26 21:58:45.095176', '2026-08-26 21:58:45.095176') ON CONFLICT DO NOTHING;
-INSERT INTO public.word_senses (id, word_id, sort_index, glosses, pos, fields, misc, dialect, info, restricted_to_forms, cross_refs, antonyms, created_at, updated_at) VALUES
+INSERT INTO word_senses (id, word_id, sort_index, glosses, pos, fields, misc, dialect, info, restricted_to_forms, cross_refs, antonyms, created_at, updated_at) VALUES
 	('fffcc20f-10ec-41de-8760-5ada661028ce', 'f06ca3de-bcee-4266-b6a8-a550833609f5', 1, '[{"lang": "en", "text": "to fail"}, {"lang": "en", "text": "to suffer a setback"}]', '{v5k,vi}', '{}', '{uk}', '{}', NULL, '{}', '{}', '{}', '2026-08-26 21:59:00.256832', '2026-08-26 21:59:00.256832'),
 	('fffd18f0-13a0-485b-987c-c6e9a8086451', '57591ad6-0eed-403f-b829-7fd6143bc6d0', 0, '[{"lang": "en", "text": "to manage"}, {"lang": "en", "text": "to control"}, {"lang": "en", "text": "to supervise"}, {"lang": "en", "text": "to oversee"}, {"lang": "en", "text": "to command"}]', '{v5r,vt}', '{}', '{}', '{}', NULL, '{}', '{}', '{}', '2026-08-26 21:59:09.284748', '2026-08-26 21:59:09.284748'),
 	('fffde0c4-c159-4b61-8a4e-99685a75824d', 'ba1a615b-d1a1-4451-8393-d204379c6b80', 1, '[{"lang": "en", "text": "base (e.g. military)"}, {"lang": "en", "text": "depot"}]', '{n}', '{}', '{}', '{}', NULL, '{}', '{}', '{}', '2026-08-26 21:59:05.820212', '2026-08-26 21:59:05.820212'),
@@ -6203,7 +6203,7 @@ INSERT INTO public.word_senses (id, word_id, sort_index, glosses, pos, fields, m
 	('w-jmdict-2845573-s0', 'w-jmdict-2845573', 0, '[{"lang": "en", "text": "reply"}, {"lang": "en", "text": "answer"}, {"lang": "en", "text": "response"}]', '{n,vs}', '{}', '{hon}', '{}', NULL, '{}', '{}', '{}', '2026-10-14 13:23:23.941536', '2026-10-14 13:23:23.941536'),
 	('w-jmdict-2850399-s0', 'w-jmdict-2850399', 0, '[{"lang": "en", "text": "body"}]', '{n}', '{}', '{hon}', '{}', NULL, '{}', '{}', '{}', '2026-10-12 10:54:12.25146', '2026-10-12 10:54:12.25146') ON CONFLICT DO NOTHING;
 -- word_sense_sources: 93 rows
-INSERT INTO public.word_sense_sources (id, sense_id, source_lang, source_text, is_wasei, partial, created_at, updated_at) VALUES
+INSERT INTO word_sense_sources (id, sense_id, source_lang, source_text, is_wasei, partial, created_at, updated_at) VALUES
 	('0bae2972-b0e0-436d-9987-e3a86e125c3a', 'b0a02e16-8bdc-4812-9139-d1f032f3e86a', 'chi', 'duìmiàn', false, false, '2026-08-26 21:59:12.737824', '2026-08-26 21:59:12.737824'),
 	('0c176742-6008-4781-a5c4-4ccab29a8c2f', '2cf0bdcd-1173-4cad-931c-decdd90b9728', 'ger', 'Pro(zent)', false, false, '2026-08-26 21:58:50.239859', '2026-08-26 21:58:50.239859'),
 	('0e5239fa-ca0f-42fc-a42f-80f5f3b4d889', '106e211b-e52b-4ac4-b7f8-7b7f82325f89', 'ger', NULL, false, false, '2026-08-26 21:58:56.931371', '2026-08-26 21:58:56.931371'),
@@ -6298,7 +6298,7 @@ INSERT INTO public.word_sense_sources (id, sense_id, source_lang, source_text, i
 	('fcbec078-50e6-424a-b927-797d79fd4640', '1611aa03-ee7f-4645-ab45-6dc7da3839bd', 'dut', 'kompas', false, false, '2026-08-26 21:59:05.453512', '2026-08-26 21:59:05.453512'),
 	('fce155ce-88c3-4e56-ad26-3f4b0180eb6d', 'd008cbb0-04ec-482a-a620-613bd9f677f3', 'dut', 'kok', false, false, '2026-08-26 21:58:56.737466', '2026-08-26 21:58:56.737466') ON CONFLICT DO NOTHING;
 -- word_kanji: 11996 rows
-INSERT INTO public.word_kanji (id, word_id, kanji_id, "position", created_at, updated_at) VALUES
+INSERT INTO word_kanji (id, word_id, kanji_id, "position", created_at, updated_at) VALUES
 	('00030d8a-d08d-4e25-968e-84d62c9fc006', '0265285a-74fd-43f4-a77d-59425dd51094', '90d349b2-2d3a-4ae0-858c-e1835322e152', 1, '2026-08-26 21:59:02.320441', '2026-08-26 21:59:02.320441'),
 	('00043a6a-cbca-47e5-a0c3-ec070d72136e', '7a8f5485-6830-4237-b146-0f75d88fca7a', 'd70ad142-4cea-4112-85b8-f3e25f09ef55', 0, '2026-08-26 21:58:53.002966', '2026-08-26 21:58:53.002966'),
 	('000a7bb0-8914-4130-bfb3-e83ef4523996', 'da468aaf-96b1-4b8f-a01e-f9c4dfacf4b0', 'c220ce87-024d-4e6f-84b6-60c49f4ea56d', 1, '2026-08-26 21:58:40.19508', '2026-08-26 21:58:40.19508'),
@@ -6799,7 +6799,7 @@ INSERT INTO public.word_kanji (id, word_id, kanji_id, "position", created_at, up
 	('0b4919e5-a8f5-409b-a080-66c74a670861', 'f95bd363-51d0-4d21-9233-52c281651aac', '4b4441fa-bccd-4b93-9939-3107b263b3fe', 1, '2026-08-26 21:58:40.402244', '2026-08-26 21:58:40.402244'),
 	('0b572ab2-9fbc-4c52-90cb-b1ed67179bb6', '774564cb-e0bb-4f2a-ab18-d984b473d73d', 'c59aa8c1-3667-424f-a933-331070acbb9c', 0, '2026-08-26 21:59:02.278854', '2026-08-26 21:59:02.278854'),
 	('0b6af1ef-be87-430f-bda5-0e94afb8b318', '9bbe5958-5fcd-475f-b192-dfacac8ae5ad', '897ee9bb-0ba2-4265-969f-b712b80dfad2', 1, '2026-08-26 21:59:16.06213', '2026-08-26 21:59:16.06213') ON CONFLICT DO NOTHING;
-INSERT INTO public.word_kanji (id, word_id, kanji_id, "position", created_at, updated_at) VALUES
+INSERT INTO word_kanji (id, word_id, kanji_id, "position", created_at, updated_at) VALUES
 	('0b6c87a3-bec9-4cc4-80a9-483d7b3e73fc', '275aae09-d478-479d-adab-dd022d31f77f', '890311c6-7f8c-469e-b9e3-9510aa49c91f', 0, '2026-08-26 21:59:16.665826', '2026-08-26 21:59:16.665826'),
 	('0b71884f-9590-4057-b6d6-fc954fb5d7cc', '4d4ddfe8-b517-463d-8e9d-15c94f777cf2', '8117281a-1505-4bcb-9ff2-dad27733977f', 2, '2026-08-26 21:56:50.641385', '2026-08-26 21:56:50.641385'),
 	('0b722de5-f28c-428d-881e-00095aabcf21', 'e9bc02eb-74cb-416a-b521-fab387f6be8b', '8808a16c-2b1f-4fa1-8491-1352d2af2784', 3, '2026-08-26 21:58:53.796326', '2026-08-26 21:58:53.796326'),
@@ -7300,7 +7300,7 @@ INSERT INTO public.word_kanji (id, word_id, kanji_id, "position", created_at, up
 	('15898d58-424c-410f-a313-79f0f8c215dc', '3d0448ea-62e5-47f3-8d0c-70cca928faf5', 'd9ba9481-2cdf-410a-b499-55e3ce14587e', 1, '2026-08-26 21:59:16.033583', '2026-08-26 21:59:16.033583'),
 	('15914fef-16a1-4964-8140-f05240b74623', 'a091f567-b0ce-49be-b0aa-57c6b407e885', '5fce1eb4-7ed5-4d2e-986d-55efcf15a33e', 0, '2026-08-26 21:59:02.299736', '2026-08-26 21:59:02.299736'),
 	('1592d56c-7982-4e07-aa53-390240b86ec9', '050f72b7-f513-495a-a90f-97d91f47b2b4', '7f9a7900-80af-4600-a142-bdb573943201', 0, '2026-08-26 21:59:15.703014', '2026-08-26 21:59:15.703014') ON CONFLICT DO NOTHING;
-INSERT INTO public.word_kanji (id, word_id, kanji_id, "position", created_at, updated_at) VALUES
+INSERT INTO word_kanji (id, word_id, kanji_id, "position", created_at, updated_at) VALUES
 	('15939489-f921-45c8-9fdd-7f1b1e0223a7', '8bc894fe-3933-4359-ad15-e16413f6081d', '581b1421-ce84-40cc-8d0c-999a751010f7', 0, '2026-08-26 21:56:50.491967', '2026-08-26 21:56:50.491967'),
 	('15955808-6445-4623-acea-bee66a7a48bc', '15a953a7-f4df-4bfa-9d34-1f5aed698117', '5a0ce19e-b6ef-4989-b9fe-1f8a1e9521fd', 1, '2026-08-26 21:59:16.284625', '2026-08-26 21:59:16.284625'),
 	('159c3c92-07b6-4127-a448-5c81cc77f969', '601e72fa-b023-4311-9ec0-b83518548411', 'cc67ce5f-1ba0-4d84-aa5f-77ee936662db', 1, '2026-08-26 21:59:16.614327', '2026-08-26 21:59:16.614327'),
@@ -7801,7 +7801,7 @@ INSERT INTO public.word_kanji (id, word_id, kanji_id, "position", created_at, up
 	('1fd9d97a-4e75-4c18-9750-9bb3dc5dc168', '98318be4-8e5c-46ff-b557-09a8a6a33dec', 'a398477c-adfa-4b27-92df-e1e6e98cd43f', 1, '2026-08-26 21:59:16.144615', '2026-08-26 21:59:16.144615'),
 	('1fdaf8f0-3d30-47a3-9827-0d2ebe77ee7c', 'e3bf049a-ba87-4e5e-9f09-4f203c21b254', '88294157-152f-4797-a831-273fcfc0ba1f', 0, '2026-08-26 21:58:53.817378', '2026-08-26 21:58:53.817378'),
 	('1fdb18e2-fd25-4cfe-8bc2-d6be1f4eb5d0', 'beee1a74-9481-4ae1-9d6e-ab9349372caf', 'fd9f14b4-a0e1-4b92-8d56-740113d23dc4', 0, '2026-08-26 21:58:40.002583', '2026-08-26 21:58:40.002583') ON CONFLICT DO NOTHING;
-INSERT INTO public.word_kanji (id, word_id, kanji_id, "position", created_at, updated_at) VALUES
+INSERT INTO word_kanji (id, word_id, kanji_id, "position", created_at, updated_at) VALUES
 	('1fde7668-9e80-44ea-a385-bdf8ac99e2dd', '5f0ddb4c-b271-4476-8d41-d9688148b155', '2375e3e9-243d-4db6-8218-5334af27c59e', 0, '2026-08-26 21:58:53.341798', '2026-08-26 21:58:53.341798'),
 	('1fe1e1d3-6afa-4f15-888f-58bdd421e024', 'e590e04e-aa6c-48cf-81fa-c6bef29e1a2b', 'e34f22fd-de35-4d87-bc1d-6139c2d99401', 0, '2026-08-26 21:59:02.371909', '2026-08-26 21:59:02.371909'),
 	('1fe7962e-584a-4bb5-9030-97de4064cc01', '8a19ffa0-e0ba-475e-ae3f-e77f9813a952', '058eeaa0-b153-4fc8-8e6b-a81df6aa4c00', 0, '2026-08-26 21:58:53.768397', '2026-08-26 21:58:53.768397'),
@@ -8302,7 +8302,7 @@ INSERT INTO public.word_kanji (id, word_id, kanji_id, "position", created_at, up
 	('2a047f06-6bef-441b-805c-df50b127c6ca', '9ab04aca-67a7-4cad-b962-58502ef732d3', '7264618a-8c87-49a8-adee-096ba7af35ad', 0, '2026-08-26 21:58:53.713273', '2026-08-26 21:58:53.713273'),
 	('2a0a4a91-b71a-4a98-89c5-aa60ba200d4a', 'be326597-9b01-424f-b6f1-8fb5420c2d08', 'a4467fd3-f9a7-424f-8b08-9a8c7c1568da', 0, '2026-08-26 21:58:52.992861', '2026-08-26 21:58:52.992861'),
 	('2a0fc83c-62f2-4ebc-a45f-48575604d7a7', '6c0c520f-210a-46aa-8425-1b5c6676cebd', '04cb3dc0-8068-47be-ad56-836167ffde3f', 0, '2026-08-26 21:59:16.453235', '2026-08-26 21:59:16.453235') ON CONFLICT DO NOTHING;
-INSERT INTO public.word_kanji (id, word_id, kanji_id, "position", created_at, updated_at) VALUES
+INSERT INTO word_kanji (id, word_id, kanji_id, "position", created_at, updated_at) VALUES
 	('2a11997b-97e4-499f-aa32-c938c9d55b3a', 'dd23b23e-45e7-4243-8945-53c92cc8f078', '708d9db4-0439-459c-9219-16cb2e275cbc', 1, '2026-08-26 21:59:16.615471', '2026-08-26 21:59:16.615471'),
 	('2a13bac8-9452-4617-9ee8-274f71ddcd97', '0cea14c0-8076-4c87-996c-0ed725ce3094', 'c2acdc95-11de-434c-a707-b3001911efaf', 0, '2026-08-26 21:56:50.52945', '2026-08-26 21:56:50.52945'),
 	('2a163ef3-16fa-4870-b8b6-1a4765be6b3b', 'f1456286-b8b0-4bcd-9de4-4bec2e3fedb3', '1ed38513-a2db-40bc-b788-138480c83600', 1, '2026-08-26 21:59:02.148502', '2026-08-26 21:59:02.148502'),
@@ -8803,7 +8803,7 @@ INSERT INTO public.word_kanji (id, word_id, kanji_id, "position", created_at, up
 	('3471aa1c-c5dd-4afb-b53f-d62f4f1ddd13', 'e0eff0b8-0440-4433-af45-74ba88ac94b6', 'edadf24c-62b9-44f2-9b4b-ead95a3d721e', 1, '2026-08-26 21:58:52.98568', '2026-08-26 21:58:52.98568'),
 	('34758c97-6cd0-4789-8052-155fe0ae127d', '7a5f9b81-d9b2-43b9-8778-8fa0ed41d0b8', 'e144eb60-d3fa-431b-b6bd-be526bdd47a3', 0, '2026-08-26 21:59:02.329095', '2026-08-26 21:59:02.329095'),
 	('3475a8a7-32be-4dcc-b768-a5d5a2bab3ec', '2efabb6a-28e3-4092-a53c-bb8d18fee16b', '960b8004-b579-41fa-bab8-27b2d16ade99', 1, '2026-08-26 21:59:15.626123', '2026-08-26 21:59:15.626123') ON CONFLICT DO NOTHING;
-INSERT INTO public.word_kanji (id, word_id, kanji_id, "position", created_at, updated_at) VALUES
+INSERT INTO word_kanji (id, word_id, kanji_id, "position", created_at, updated_at) VALUES
 	('347d7637-abdc-42b0-9c50-de6381412f53', '6c75c504-425a-4fb9-9f85-b72ee034e28c', '620f6fe0-f803-4b2b-936d-80813e5522fb', 0, '2026-08-26 21:58:53.26035', '2026-08-26 21:58:53.26035'),
 	('34801f19-e45f-41a0-9dab-d181bacda796', 'd22705fc-272f-4903-ac95-3f2198307c84', 'ffac6a37-e0cb-4ce1-9390-2a6f93693aa3', 0, '2026-08-26 21:58:53.820136', '2026-08-26 21:58:53.820136'),
 	('34832977-9353-4693-a92b-8458ab4e1699', 'dbfe4391-54d7-441e-98b9-2b1dfbfc1d8e', 'ebcec473-337b-4d0c-8fd6-f6928075ec49', 1, '2026-08-26 21:59:16.304919', '2026-08-26 21:59:16.304919'),
@@ -9304,7 +9304,7 @@ INSERT INTO public.word_kanji (id, word_id, kanji_id, "position", created_at, up
 	('3f272594-6df1-4629-86bc-3c3e22c84c2c', '6624c988-2867-4e1f-9387-6f1b1362c253', 'bc0f8d71-15d6-4105-86ba-24cfbdeb3117', 1, '2026-08-26 21:59:16.274669', '2026-08-26 21:59:16.274669'),
 	('3f34651c-08f8-4b1b-a932-41a2a8a17a0e', '587b8955-595a-4d5c-abde-fcef81deb815', '94faa982-2ccb-4e2d-860e-6574fc3aafa4', 1, '2026-08-26 21:58:40.357187', '2026-08-26 21:58:40.357187'),
 	('3f36929f-56ef-4c1f-85e4-a249337f0fdf', '66c5e3fc-f5be-4afb-a7b7-316e311c4396', 'c59aa8c1-3667-424f-a933-331070acbb9c', 1, '2026-08-26 21:59:15.728123', '2026-08-26 21:59:15.728123') ON CONFLICT DO NOTHING;
-INSERT INTO public.word_kanji (id, word_id, kanji_id, "position", created_at, updated_at) VALUES
+INSERT INTO word_kanji (id, word_id, kanji_id, "position", created_at, updated_at) VALUES
 	('3f393b3e-f5f9-4cc5-80df-5c0f4d0b8eeb', 'd4031821-9091-431d-85fd-c39f5461014f', '0563febc-7712-4e84-84ba-de6dd1b9c5ef', 1, '2026-08-26 21:59:16.021527', '2026-08-26 21:59:16.021527'),
 	('3f3c2ff6-fb18-4552-ae15-ee0fc006ef28', '65f792b2-19c7-43ee-ac2b-1b024e7ace7b', '8808a16c-2b1f-4fa1-8491-1352d2af2784', 1, '2026-08-26 21:58:53.367564', '2026-08-26 21:58:53.367564'),
 	('3f3cf332-5402-4b2e-8aaa-1b0d32114a97', 'c59def6a-8bcd-4220-8b01-a194bdfe7772', '1ed38513-a2db-40bc-b788-138480c83600', 0, '2026-08-26 21:59:16.55939', '2026-08-26 21:59:16.55939'),
@@ -9805,7 +9805,7 @@ INSERT INTO public.word_kanji (id, word_id, kanji_id, "position", created_at, up
 	('4a1f00d6-21fe-4e7d-92b8-b5fb69d8802f', '89f7ea1e-7999-4ae6-8d71-927d11ce03f7', '60e22155-077a-4288-9cfa-6b1c3e81490a', 1, '2026-08-26 21:59:02.330204', '2026-08-26 21:59:02.330204'),
 	('4a226d64-2d65-418b-826e-c35d8b4f1b01', '93c1d48e-56c0-4c68-89b6-36b49571212e', '83625d5e-36b7-4d9e-b026-91b434b283be', 1, '2026-08-26 21:58:53.411885', '2026-08-26 21:58:53.411885'),
 	('4a243585-c3aa-4d5e-9551-7a71d4a1f1ae', '7a30f1d7-0b99-49df-a146-04e879bfd2cf', '21817c37-e7b7-4c5f-9037-ac4309bd1fab', 0, '2026-08-26 21:58:53.28872', '2026-08-26 21:58:53.28872') ON CONFLICT DO NOTHING;
-INSERT INTO public.word_kanji (id, word_id, kanji_id, "position", created_at, updated_at) VALUES
+INSERT INTO word_kanji (id, word_id, kanji_id, "position", created_at, updated_at) VALUES
 	('4a2c775e-078e-49bf-b47a-1bbc2e08bede', 'b669e90f-aca3-49bf-aa6b-db6da7c8a7cb', '64797810-6fe6-4b8c-9190-92a8cc85840e', 2, '2026-08-26 21:59:02.354377', '2026-08-26 21:59:02.354377'),
 	('4a32ae80-8ebf-48c8-9928-96bf1d3099e8', '87270977-6fd1-40a3-8772-87087b094403', '65b781a0-276d-4df4-b469-5439701ceb12', 0, '2026-08-26 21:58:53.702172', '2026-08-26 21:58:53.702172'),
 	('4a37eef4-5cfd-4953-90ff-9aa9332f481c', '70d68684-95ed-4cc6-83b0-dde8ac7f1d31', 'fb9a6c41-d9bc-4977-9090-abe121e2ca9e', 1, '2026-08-26 21:59:16.576455', '2026-08-26 21:59:16.576455'),
@@ -10306,7 +10306,7 @@ INSERT INTO public.word_kanji (id, word_id, kanji_id, "position", created_at, up
 	('546d4587-5b96-4ef9-9a0e-8e8b33d19e26', '3a01ca3f-1554-4023-9a80-aa49cb85867b', 'bbaf9bc2-c468-415e-a611-adab4705a417', 0, '2026-08-26 21:58:53.573019', '2026-08-26 21:58:53.573019'),
 	('54713b10-e481-48b3-ae35-ff7a9c6c9ffd', '987eca19-c609-4f14-b30f-28f26cb3310c', '9bb03093-8a9f-46ce-a4ac-fc5f469f5efa', 0, '2026-08-26 21:59:16.052944', '2026-08-26 21:59:16.052944'),
 	('547abea9-82e0-448a-9ea7-6c60d83bc0d2', '8f89ec41-a314-4e5d-bddd-b31a10bf80e8', '89eca357-d27c-4f87-af43-313c419e523f', 1, '2026-08-26 21:59:16.28639', '2026-08-26 21:59:16.28639') ON CONFLICT DO NOTHING;
-INSERT INTO public.word_kanji (id, word_id, kanji_id, "position", created_at, updated_at) VALUES
+INSERT INTO word_kanji (id, word_id, kanji_id, "position", created_at, updated_at) VALUES
 	('547b5385-f574-4b44-8dec-7d4d43b8e1c5', '907eb86c-1866-4ad2-9215-177852cd4b30', 'dd464bb2-cddd-49f6-bbf0-650604a1470f', 0, '2026-08-26 21:58:53.202893', '2026-08-26 21:58:53.202893'),
 	('5483e31c-16e3-402a-ba31-48129df053f5', '5d4f5319-d022-44e8-8eb8-37a3aed538c3', '4dd9ff35-2ff2-47ad-985e-27d893e69dfc', 1, '2026-08-26 21:59:16.34643', '2026-08-26 21:59:16.34643'),
 	('548c1592-6079-4c70-b7fe-a8996f6d0f47', '6e70e137-6038-4239-ad61-8ac981be79d4', '09cab2e3-3bc3-4e01-8450-2268d29a1327', 0, '2026-08-26 21:59:02.452809', '2026-08-26 21:59:02.452809'),
@@ -10807,7 +10807,7 @@ INSERT INTO public.word_kanji (id, word_id, kanji_id, "position", created_at, up
 	('5f0733fc-b089-4ed5-93f7-39a06ad0253b', '064fece9-1399-4028-beac-240181cdd7b8', '65622a4c-7fbe-4511-ab19-6c8314469a6c', 0, '2026-08-26 21:58:53.696736', '2026-08-26 21:58:53.696736'),
 	('5f0c784a-2c1c-4a7a-8e97-13fbf93c14a3', '28ab02a5-19ae-4de2-b1a5-74c97baada02', '897ee9bb-0ba2-4265-969f-b712b80dfad2', 0, '2026-08-26 21:58:53.729528', '2026-08-26 21:58:53.729528'),
 	('5f0dfde1-3e85-4009-96d2-61bcb0897cb2', 'c5c06b4b-61cb-49d6-83b1-04b6068dbef1', '57c24846-6409-4057-90fd-5060bbb78c54', 0, '2026-08-26 21:58:53.822964', '2026-08-26 21:58:53.822964') ON CONFLICT DO NOTHING;
-INSERT INTO public.word_kanji (id, word_id, kanji_id, "position", created_at, updated_at) VALUES
+INSERT INTO word_kanji (id, word_id, kanji_id, "position", created_at, updated_at) VALUES
 	('5f117dd0-57fe-4263-8e21-e1fe1969c92a', '2f277482-e02d-4ec6-8713-a39c220369b4', '8b99d54a-0809-43ce-b916-ff141c7f1a0c', 1, '2026-08-26 21:59:16.478288', '2026-08-26 21:59:16.478288'),
 	('5f1b75e3-e406-4292-b2b6-7c72dca154cd', 'ca61228c-e992-4d51-aeef-1fb7bc0a1346', 'bd2431b8-e253-4d4b-b09e-83130054d76d', 1, '2026-08-26 21:59:02.240354', '2026-08-26 21:59:02.240354'),
 	('5f2945aa-308f-46af-9a1f-e87b781d669d', '55270cbf-7387-497e-9a46-f5ddbcc928b1', '64797810-6fe6-4b8c-9190-92a8cc85840e', 1, '2026-08-26 21:59:16.389047', '2026-08-26 21:59:16.389047'),
@@ -11308,7 +11308,7 @@ INSERT INTO public.word_kanji (id, word_id, kanji_id, "position", created_at, up
 	('6a505a7c-3075-4404-8d7f-8a821493d93b', '4688d7dd-8dad-4fc6-85d6-ce8941b6ecac', 'e3a3c817-276b-4fa6-991d-2a4cb9866f99', 0, '2026-08-26 21:59:16.450926', '2026-08-26 21:59:16.450926'),
 	('6a546434-dd8e-464a-a726-64772df1def1', 'f9d11538-1bdb-48f9-a7ac-6776c6e7ff61', '8d894297-f9b9-4a18-bcd0-2d609cd8423b', 0, '2026-08-26 21:59:16.584766', '2026-08-26 21:59:16.584766'),
 	('6a5ff00c-f201-40a6-8e3e-d46763fa39c5', '39078745-d696-44de-9619-493b328b20d1', '389f3b1f-dedc-4c71-959c-97f9fe20186f', 2, '2026-08-26 21:59:02.415957', '2026-08-26 21:59:02.415957') ON CONFLICT DO NOTHING;
-INSERT INTO public.word_kanji (id, word_id, kanji_id, "position", created_at, updated_at) VALUES
+INSERT INTO word_kanji (id, word_id, kanji_id, "position", created_at, updated_at) VALUES
 	('6a6653b9-cdc4-4def-9e35-1607ae147da2', '7a5c480e-cd6f-4707-bc87-1eef8c8f54b4', '1b431a66-02c9-4234-86c4-bb854cfb7130', 1, '2026-08-26 21:59:02.498578', '2026-08-26 21:59:02.498578'),
 	('6a6f2072-3bd3-4681-960a-9e11e61b2fc9', 'a82db414-e122-4105-a80a-56149eb1c2f6', '6dfb89ff-d8b6-4ef9-b407-cf3f8a4026df', 1, '2026-08-26 21:59:16.35364', '2026-08-26 21:59:16.35364'),
 	('6a703dd3-8285-4601-bd6f-05ec22358023', '93480eab-f239-46a0-9865-0440c82c74e8', '098bd14a-cc66-4c5b-973d-ce54669c76a3', 1, '2026-08-26 21:59:16.17624', '2026-08-26 21:59:16.17624'),
@@ -11809,7 +11809,7 @@ INSERT INTO public.word_kanji (id, word_id, kanji_id, "position", created_at, up
 	('754424f2-42e8-4382-b412-4d7530e52a91', 'a7d23a90-a526-4ae0-be3a-391fb26f4347', 'f3b3b078-7fa3-4199-9580-120805ffe9a4', 0, '2026-08-26 21:59:15.567028', '2026-08-26 21:59:15.567028'),
 	('754ead8d-ca01-4146-bd11-014959dff10d', '0fdfff2e-cff5-463c-b395-07610abb0044', '26b19ae3-f607-4acf-874c-caee31df94ee', 0, '2026-08-26 21:58:40.438899', '2026-08-26 21:58:40.438899'),
 	('7553ca42-370a-4e62-a95a-523ec55f3e97', '8f0af895-5671-45ce-b456-e4dfdb8f5eba', '042a109f-f775-4b5e-86d2-277de1d932a3', 0, '2026-08-26 21:59:02.213109', '2026-08-26 21:59:02.213109') ON CONFLICT DO NOTHING;
-INSERT INTO public.word_kanji (id, word_id, kanji_id, "position", created_at, updated_at) VALUES
+INSERT INTO word_kanji (id, word_id, kanji_id, "position", created_at, updated_at) VALUES
 	('755713ea-4887-4006-a180-cd227b7049f6', 'b2212f71-73df-409b-b62e-7cb4c05e0b58', '4d53870d-24d5-4aef-be51-0c15dbff3f6a', 0, '2026-08-26 21:59:16.095307', '2026-08-26 21:59:16.095307'),
 	('755fb921-6692-4b5a-b6bb-3c3268e092c1', 'cc4c1529-109a-4c35-a0ba-c5b6dfbb7f88', 'ad450023-5d6f-428b-bf27-51a7ad211ea8', 1, '2026-08-26 21:59:16.663963', '2026-08-26 21:59:16.663963'),
 	('75604c0a-add1-44f4-8a6f-27217ef900ff', '4c1c46dd-a9b9-41f3-98ab-69337a7e9467', 'e15121f7-d873-4473-952a-478df209b554', 0, '2026-08-26 21:58:53.090872', '2026-08-26 21:58:53.090872'),
@@ -12310,7 +12310,7 @@ INSERT INTO public.word_kanji (id, word_id, kanji_id, "position", created_at, up
 	('803c8bd0-5b04-4dbd-96bf-7a778386bbbb', '5dbca683-c296-4594-95c4-5d468100bf25', '49b57c96-081c-40e6-b91e-45f0a5e84e8b', 0, '2026-08-26 21:56:50.403135', '2026-08-26 21:56:50.403135'),
 	('803d25ec-5a7d-4fca-8215-0f444a9fc66a', '5e2b72d8-f83c-4542-88a0-6700aa71e6ac', 'bebc957d-2202-403e-8736-821a926309d4', 0, '2026-08-26 21:59:16.661078', '2026-08-26 21:59:16.661078'),
 	('803f2fd2-91a9-4931-92aa-79a272a016e3', 'd58f57d7-2fec-4531-8710-1f12f683eda0', 'b6a99108-428a-41b9-a86d-b275eaf22bab', 0, '2026-08-26 21:59:16.61781', '2026-08-26 21:59:16.61781') ON CONFLICT DO NOTHING;
-INSERT INTO public.word_kanji (id, word_id, kanji_id, "position", created_at, updated_at) VALUES
+INSERT INTO word_kanji (id, word_id, kanji_id, "position", created_at, updated_at) VALUES
 	('8042c814-5543-4253-93b8-cf46abd3cd4a', '93cad580-ca57-4011-85fb-ec2e43cf5265', 'e02b76f2-b81a-4afd-9aa0-bfddd8c3a302', 1, '2026-08-26 21:58:53.434395', '2026-08-26 21:58:53.434395'),
 	('80468b87-fd9b-48c1-bca5-5ff68c5fcb47', '65a6c69f-1a2e-4d51-8627-80bdd6e52b77', '8fea19c3-112c-4dd7-9f44-e286fa2bab7a', 0, '2026-08-26 21:58:40.383466', '2026-08-26 21:58:40.383466'),
 	('804c0371-b9ec-45a0-99f9-9a11b568620a', 'bfbc1ba3-8b90-48cb-9315-4f1a4833624a', '5493c884-2be6-4666-86c2-352ed5d44014', 1, '2026-08-26 21:59:16.48145', '2026-08-26 21:59:16.48145'),
@@ -12811,7 +12811,7 @@ INSERT INTO public.word_kanji (id, word_id, kanji_id, "position", created_at, up
 	('8aacd9ee-126b-4496-8b92-c7c6ecf4311e', '7ce72169-17a1-4f1e-b4d8-be2a70a5c099', 'ad450023-5d6f-428b-bf27-51a7ad211ea8', 1, '2026-08-26 21:56:50.473309', '2026-08-26 21:56:50.473309'),
 	('8aae0e02-1baa-48ab-98ce-a3a7fb896a9b', '45dfbb29-0dd9-487b-a261-130e055594d2', '68ed9536-0a72-4341-9494-485dfc5c0011', 0, '2026-08-26 21:59:02.302621', '2026-08-26 21:59:02.302621'),
 	('8ab42eb1-b4d3-4a13-ad48-a99c627ba249', '5ab6d6b6-d3f5-4d9b-a404-b7cb27885c85', '065e2f11-a1c2-4118-ab64-c4cb9ab3118d', 0, '2026-08-26 21:56:50.474145', '2026-08-26 21:56:50.474145') ON CONFLICT DO NOTHING;
-INSERT INTO public.word_kanji (id, word_id, kanji_id, "position", created_at, updated_at) VALUES
+INSERT INTO word_kanji (id, word_id, kanji_id, "position", created_at, updated_at) VALUES
 	('8ac03699-7cf8-4940-b74b-41c033e6ca2d', '7dbbf159-8204-4b65-a1fe-76bef809a592', '31996459-9d72-4d92-9046-d5fc03f7a1df', 1, '2026-08-26 21:59:02.486072', '2026-08-26 21:59:02.486072'),
 	('8ad0d0a9-fdb3-43df-905b-c808e7a14644', 'aee8ff26-bb28-412c-8562-031f8dd24ba3', 'ef733b51-33e0-41ca-b489-86e957fa2899', 0, '2026-08-26 21:59:16.503123', '2026-08-26 21:59:16.503123'),
 	('8ad39a11-2955-4fef-bd70-c34dbf422f53', '0efc06b9-4641-49df-ab54-5de2474e2fcd', 'b41b24ba-84cd-4d47-ac99-053109bc2b34', 0, '2026-08-26 21:58:53.448037', '2026-08-26 21:58:53.448037'),
@@ -13312,7 +13312,7 @@ INSERT INTO public.word_kanji (id, word_id, kanji_id, "position", created_at, up
 	('953c090d-54c4-454c-bd49-1498c3248022', '35ee9158-548d-4a55-aa53-0126d8f7a4c3', 'd933acb3-4d07-41b8-b5fd-04d3a9b49468', 0, '2026-08-26 21:56:50.480607', '2026-08-26 21:56:50.480607'),
 	('953df655-8726-406f-969a-fc5a6c1af911', '978ac84a-54f3-4368-817a-623eafdd101a', 'e6adbe81-0259-456e-b949-689ef2520dc6', 0, '2026-08-26 21:59:02.208452', '2026-08-26 21:59:02.208452'),
 	('9541fed5-fea2-498d-9fe7-4d9cc642a7d5', 'eb1c4eb4-c4cc-4434-8e1c-937f91f59abf', '065e2f11-a1c2-4118-ab64-c4cb9ab3118d', 0, '2026-08-26 21:56:50.693424', '2026-08-26 21:56:50.693424') ON CONFLICT DO NOTHING;
-INSERT INTO public.word_kanji (id, word_id, kanji_id, "position", created_at, updated_at) VALUES
+INSERT INTO word_kanji (id, word_id, kanji_id, "position", created_at, updated_at) VALUES
 	('9544b234-0b5e-4da5-a9ed-8944cf72d970', '041067f8-53be-441e-8eae-58abd36c5966', '78d49410-5701-43c1-a375-e75da69bed63', 0, '2026-08-26 21:59:02.327328', '2026-08-26 21:59:02.327328'),
 	('954be302-dd1a-4cdb-be4c-4f893a286cb7', 'e5ed0de7-26d0-4406-b7a3-59c75f03e314', '2aa63b96-a056-40f8-9dfa-820b138be5ab', 0, '2026-08-26 21:59:02.245397', '2026-08-26 21:59:02.245397'),
 	('954cf305-e94c-4911-9d69-1da47b33165b', 'e054dfd0-40fe-4844-9e71-4392253a990c', 'a5349cd7-7859-4f49-8104-23d5da913437', 1, '2026-08-26 21:59:15.99389', '2026-08-26 21:59:15.99389'),
@@ -13813,7 +13813,7 @@ INSERT INTO public.word_kanji (id, word_id, kanji_id, "position", created_at, up
 	('a05109c7-129e-4b76-b2ad-c5a3d2c17d6b', '79a2c78e-083f-4799-8877-973861446a22', '1f7ac506-ad3e-4e7c-8e4a-2b2adce35c98', 1, '2026-08-26 21:59:16.562339', '2026-08-26 21:59:16.562339'),
 	('a052818b-7671-4fd3-99b7-bccc36687f42', '97143fc4-0bc2-448e-bcc9-880d87f11abc', '5c6c241f-5308-43a2-9795-122b97ad7910', 0, '2026-08-26 21:58:53.784064', '2026-08-26 21:58:53.784064'),
 	('a057bc49-bfba-4680-8217-bedb0caae8f4', 'b531499e-11d6-4863-b063-e5552bd094db', '1762bb97-4f51-4db7-8251-a8599244e420', 1, '2026-08-26 21:59:16.067952', '2026-08-26 21:59:16.067952') ON CONFLICT DO NOTHING;
-INSERT INTO public.word_kanji (id, word_id, kanji_id, "position", created_at, updated_at) VALUES
+INSERT INTO word_kanji (id, word_id, kanji_id, "position", created_at, updated_at) VALUES
 	('a05cdeab-d6a3-4bf1-ab7e-2d6ea06e196e', '0c282a62-0ea9-4b4a-9857-6a98012c2809', 'ef99d7ff-bc21-4f0e-ae7b-6d936711b237', 0, '2026-08-26 21:59:02.436417', '2026-08-26 21:59:02.436417'),
 	('a0609597-f0bf-4e83-b36f-41b408344b1f', '393cf674-6d46-4da3-ab97-af9b9c2e5b8b', 'a5349cd7-7859-4f49-8104-23d5da913437', 0, '2026-08-26 21:59:02.342366', '2026-08-26 21:59:02.342366'),
 	('a0637c4d-34df-432e-9301-c161f4fb4430', '04d1097f-51ae-498d-bcf2-9ac1d26caaee', 'c59aa8c1-3667-424f-a933-331070acbb9c', 1, '2026-08-26 21:59:16.187965', '2026-08-26 21:59:16.187965'),
@@ -14314,7 +14314,7 @@ INSERT INTO public.word_kanji (id, word_id, kanji_id, "position", created_at, up
 	('ab1912f7-ac4f-4499-b807-500d07302e7f', 'b1db7c8d-f0f5-475d-b7de-99515bdc42a8', '5bd2642c-2940-4139-b4e0-b7cac3d89cd2', 0, '2026-08-26 21:58:40.112612', '2026-08-26 21:58:40.112612'),
 	('ab197e88-c5bd-44b6-9db8-4c63bb73f18e', '74a8af3e-cdfd-45bc-b557-8dc19343480c', '03ce866e-c97d-4af6-a27f-20519bd7d4b2', 0, '2026-08-26 21:59:02.358726', '2026-08-26 21:59:02.358726'),
 	('ab20c9ae-d7e6-4f89-b9d2-8d8e0fdbffe1', '464eed59-11fb-4ef8-b6a9-8a5b1a8f3e82', 'a1d6e052-1c14-4ec2-85ad-dcbc73d7f8ab', 1, '2026-08-26 21:59:15.886989', '2026-08-26 21:59:15.886989') ON CONFLICT DO NOTHING;
-INSERT INTO public.word_kanji (id, word_id, kanji_id, "position", created_at, updated_at) VALUES
+INSERT INTO word_kanji (id, word_id, kanji_id, "position", created_at, updated_at) VALUES
 	('ab21c527-ffed-4ce0-8359-9698c112f0c1', '2303bc35-e9a2-4e11-803f-b5deab1ad3e1', 'a0095277-31b5-42b7-9dc9-9c77963f8a69', 1, '2026-08-26 21:58:53.723595', '2026-08-26 21:58:53.723595'),
 	('ab224716-f511-472c-9f7a-cd63dfd328c6', 'bb7782cc-39b3-4bbe-b89a-b8cc2fad4866', '8808a16c-2b1f-4fa1-8491-1352d2af2784', 0, '2026-08-26 21:59:15.540299', '2026-08-26 21:59:15.540299'),
 	('ab23ea88-2e40-4a10-8f62-5e2291639175', 'b0a079b8-904a-4e6c-b3d3-5025e9445cde', '897ee9bb-0ba2-4265-969f-b712b80dfad2', 1, '2026-08-26 21:59:16.055868', '2026-08-26 21:59:16.055868'),
@@ -14815,7 +14815,7 @@ INSERT INTO public.word_kanji (id, word_id, kanji_id, "position", created_at, up
 	('b747bda8-588f-4865-8cce-9e95805f4a4f', '6897cf00-2694-4be3-bbf5-0486e60dcdcb', 'ad450023-5d6f-428b-bf27-51a7ad211ea8', 0, '2026-08-26 21:56:50.650622', '2026-08-26 21:56:50.650622'),
 	('b74b3a06-cbd4-46f1-9438-462a2f9bd36b', 'cecce021-e5ec-4114-8e36-b020ba41f71d', 'af153d92-1406-4412-8d4d-1c7386c2c7c5', 0, '2026-08-26 21:59:16.563706', '2026-08-26 21:59:16.563706'),
 	('b74ce800-7ff5-4725-a987-11a1ac017602', '8ac0c2ce-777d-4af8-80e0-a143882e5c39', 'cd3e6ab9-50ce-4e31-866b-806313125f3e', 1, '2026-08-26 21:59:15.589948', '2026-08-26 21:59:15.589948') ON CONFLICT DO NOTHING;
-INSERT INTO public.word_kanji (id, word_id, kanji_id, "position", created_at, updated_at) VALUES
+INSERT INTO word_kanji (id, word_id, kanji_id, "position", created_at, updated_at) VALUES
 	('b74df994-eb02-475c-9c8a-195758d3bea3', 'dbfcf05d-a6b4-49b0-8227-f2ee6f32c1b6', 'a0659117-e099-483e-80c7-020fc93885d6', 0, '2026-08-26 21:59:02.362729', '2026-08-26 21:59:02.362729'),
 	('b74df9c3-6bc1-4b25-b666-71463de1dfb3', '6973477d-ccc7-49c3-af31-ba966a837cbe', 'e9be2a96-e960-413a-8b8c-52a33821c051', 1, '2026-08-26 21:58:53.691523', '2026-08-26 21:58:53.691523'),
 	('b74f31c9-7363-431f-8758-81463852d456', '2a1909ca-0e42-4061-8ee0-0936c4d8c1a8', 'c9c16704-1ccd-466e-a50c-1a32e86f34dd', 1, '2026-08-26 21:58:53.535668', '2026-08-26 21:58:53.535668'),
@@ -15316,7 +15316,7 @@ INSERT INTO public.word_kanji (id, word_id, kanji_id, "position", created_at, up
 	('c2752583-dd03-4821-8481-00f21e8252da', 'a685712a-ad21-435a-b860-c094d4309651', '1f6254f4-7c84-42d2-a1d2-c6675663562d', 1, '2026-08-26 21:58:53.480364', '2026-08-26 21:58:53.480364'),
 	('c2769152-59bc-4e9f-af1d-cf029fcd8636', 'ab93ab55-65fc-4ea4-9bc6-b4d3b59d97c1', '1234926a-e3cc-432c-835e-c6e5b4beca38', 0, '2026-08-26 21:58:53.517859', '2026-08-26 21:58:53.517859'),
 	('c27981f4-cd38-49ba-95cc-672701121c77', '8d4ef563-d988-4276-99d4-62614e0d1c4d', '23ac1755-bceb-48df-b21e-a1cd625074f7', 1, '2026-08-26 21:58:40.338935', '2026-08-26 21:58:40.338935') ON CONFLICT DO NOTHING;
-INSERT INTO public.word_kanji (id, word_id, kanji_id, "position", created_at, updated_at) VALUES
+INSERT INTO word_kanji (id, word_id, kanji_id, "position", created_at, updated_at) VALUES
 	('c27a947f-7e56-44c7-84be-42a2e80747fa', 'd5b2518b-bb80-4e34-94d5-8b8726cc4ef1', 'f570ef99-1251-4079-a3db-6bd5fe73aa05', 0, '2026-08-26 21:59:15.99119', '2026-08-26 21:59:15.99119'),
 	('c27afcda-3679-4b42-bb37-8242d7cc2d81', '459b58fe-6d4a-49c5-93c6-6629e2d74b98', 'ccdc4926-789d-4877-a8e3-8874c25a9475', 1, '2026-08-26 21:58:53.161694', '2026-08-26 21:58:53.161694'),
 	('c27d2b1e-ce95-431d-b6b8-aec1a2877c63', '18430550-0a51-4eb4-a5ee-35dd0deacc16', '7f4c95e1-d2fc-44d1-a8a9-cc5074ff5c89', 1, '2026-08-26 21:58:53.547918', '2026-08-26 21:58:53.547918'),
@@ -15817,7 +15817,7 @@ INSERT INTO public.word_kanji (id, word_id, kanji_id, "position", created_at, up
 	('ccbd089b-9343-40d5-be1d-ed8e3717e8f6', '54eb0255-89bd-45c8-8cfb-95a907454328', 'fbc0c916-8ef0-4922-86d8-a8d3c1321a2a', 0, '2026-08-26 21:56:50.329668', '2026-08-26 21:56:50.329668'),
 	('ccbdccbc-5772-42ec-af83-2ac80fc8ebf7', '6084162a-407e-4d90-b177-0cf71e9a2ce2', '480c023c-8c4b-4bc7-baae-7a7798c39b64', 0, '2026-08-26 21:58:53.230481', '2026-08-26 21:58:53.230481'),
 	('ccd3f122-6ee6-4b28-9973-517c91616319', '3bfdafbd-0ffa-4b23-8275-837d14c26aeb', '57c24846-6409-4057-90fd-5060bbb78c54', 1, '2026-08-26 21:58:53.023574', '2026-08-26 21:58:53.023574') ON CONFLICT DO NOTHING;
-INSERT INTO public.word_kanji (id, word_id, kanji_id, "position", created_at, updated_at) VALUES
+INSERT INTO word_kanji (id, word_id, kanji_id, "position", created_at, updated_at) VALUES
 	('ccd91f19-8f59-4f85-991c-edab6844bfb9', 'defa63f2-352a-490d-ad2d-c4623e3a4cb4', '06f9ebfe-d963-474c-91ca-df09579fd4b9', 1, '2026-08-26 21:58:53.584417', '2026-08-26 21:58:53.584417'),
 	('ccde3d12-03cf-4974-9639-a2416b1e586d', '12440a81-d8fd-49b2-b6fb-c388b2b9d122', 'f4784eb0-f3cd-443c-af98-e4424380fe0e', 1, '2026-08-26 21:58:53.121274', '2026-08-26 21:58:53.121274'),
 	('ccded35e-763a-49c9-82e4-cdc2aec63f78', '3c2c0cda-434c-4fe9-9381-6d849eeffad1', '9a21248f-ce7f-4621-8ce0-d542f951502a', 0, '2026-08-26 21:59:15.89782', '2026-08-26 21:59:15.89782'),
@@ -16318,7 +16318,7 @@ INSERT INTO public.word_kanji (id, word_id, kanji_id, "position", created_at, up
 	('d70f4860-0e7a-423a-8431-747eac4b1b78', '8ac489f0-8ba8-41e3-b1f2-180d2027d034', '98e98c42-f551-413d-a354-1b5dce64b554', 0, '2026-08-26 21:58:53.819723', '2026-08-26 21:58:53.819723'),
 	('d7166de8-5137-46ff-9e50-748247b1b6c4', '22b1edd8-25d4-4dab-a013-abe8b9b2db98', 'c59aa8c1-3667-424f-a933-331070acbb9c', 0, '2026-08-26 21:58:40.10444', '2026-08-26 21:58:40.10444'),
 	('d7176f34-3c9b-4344-b40b-eac30e0c2359', '1db471d6-d790-4880-99c7-879997f1f6f7', '49ba851a-c150-4e1d-b5c2-4881a3b050be', 0, '2026-08-26 21:59:02.516055', '2026-08-26 21:59:02.516055') ON CONFLICT DO NOTHING;
-INSERT INTO public.word_kanji (id, word_id, kanji_id, "position", created_at, updated_at) VALUES
+INSERT INTO word_kanji (id, word_id, kanji_id, "position", created_at, updated_at) VALUES
 	('d71eb5e0-c4df-4e4a-85ef-7aa932611e78', 'bb7b0b9c-b907-4990-ac2c-2c09d9488157', '6aca1da7-c780-47a3-9a08-2b6f8fe767c2', 0, '2026-08-26 21:56:50.618768', '2026-08-26 21:56:50.618768'),
 	('d720da9c-5f1c-4e2b-96c6-d83acf70fdfe', '7c6087e1-0f90-4c75-aebe-5584d354cc0b', '30e5eaf4-7076-4e52-bf68-34cf23604114', 0, '2026-08-26 21:59:16.437923', '2026-08-26 21:59:16.437923'),
 	('d7212120-7567-4d11-8926-7de6d6d48c61', '19b4e83c-1104-4b8f-94d6-9368231704e0', 'af153d92-1406-4412-8d4d-1c7386c2c7c5', 0, '2026-08-26 21:59:16.563892', '2026-08-26 21:59:16.563892'),
@@ -16819,7 +16819,7 @@ INSERT INTO public.word_kanji (id, word_id, kanji_id, "position", created_at, up
 	('e0c7ce40-b58f-402b-859b-00793acdca57', '35d62eeb-57b3-4138-90b6-956c5932bdc6', '04cb3dc0-8068-47be-ad56-836167ffde3f', 0, '2026-08-26 21:59:16.452773', '2026-08-26 21:59:16.452773'),
 	('e0cb80a1-14f8-40f8-88f6-89e3085e6eb3', '9dd839df-d17d-4953-bf28-92d4fd7e3543', 'ae05fbab-ada4-4f33-8ab9-d21662f9ff4b', 0, '2026-08-26 21:59:16.431575', '2026-08-26 21:59:16.431575'),
 	('e0d1d142-d8b8-4e18-b9b2-e258e5fc88ad', '23bf08b5-e370-4887-af09-d296be1681c5', '7454bd84-b26f-4193-b8d6-61b5e650dcd5', 0, '2026-08-26 21:59:16.299932', '2026-08-26 21:59:16.299932') ON CONFLICT DO NOTHING;
-INSERT INTO public.word_kanji (id, word_id, kanji_id, "position", created_at, updated_at) VALUES
+INSERT INTO word_kanji (id, word_id, kanji_id, "position", created_at, updated_at) VALUES
 	('e0d6dc79-749a-44ca-b064-6cea7988f19b', 'c16255f6-9e57-4a75-b31c-7d73d4b41f0a', 'e0d26186-e1cf-4dc2-9445-bd135e3a5f58', 0, '2026-08-26 21:59:15.546171', '2026-08-26 21:59:15.546171'),
 	('e0d71556-e224-40f7-8b7c-0850af936a3e', '1c8fbad5-26ed-4df8-afce-37db7a9e6198', 'af5e0089-9ca5-470c-b1ca-5b8a2546b9a3', 0, '2026-08-26 21:59:16.475725', '2026-08-26 21:59:16.475725'),
 	('e0e0cb83-d80f-49a6-9fc2-905a4b5c0d1c', '56946ad1-2a4d-46b0-809f-3e9d6c34eb09', '010d15ce-d23f-4983-b67a-0130f527a6ff', 1, '2026-08-26 21:59:16.487086', '2026-08-26 21:59:16.487086'),
@@ -17320,7 +17320,7 @@ INSERT INTO public.word_kanji (id, word_id, kanji_id, "position", created_at, up
 	('eb80e6dd-5e74-43c0-91d4-6024171d8a69', 'b455a932-7dba-479c-8b05-a2af4934aa93', '4587f40e-5931-4f61-a7a1-4887d12cd0dd', 0, '2026-08-26 21:58:53.578562', '2026-08-26 21:58:53.578562'),
 	('eb83b9bb-6242-4393-9f4b-2b057c4a41d3', '19ec1b6e-77d7-4fd5-9af5-cc5740661449', '5dd950a6-f9dc-40c1-bf97-ed7ebc3abc1d', 1, '2026-08-26 21:58:53.778358', '2026-08-26 21:58:53.778358'),
 	('eb849eae-c7b8-4e2b-996a-64a9a946fda9', 'a78149fa-a977-4fe9-b072-09e25e2e1fee', 'e98708c4-b04d-4fe9-88b6-d30aafe48d85', 1, '2026-08-26 21:59:16.457617', '2026-08-26 21:59:16.457617') ON CONFLICT DO NOTHING;
-INSERT INTO public.word_kanji (id, word_id, kanji_id, "position", created_at, updated_at) VALUES
+INSERT INTO word_kanji (id, word_id, kanji_id, "position", created_at, updated_at) VALUES
 	('eb89d12e-ae6f-41cf-a47d-b0f5de56ddfe', 'fe290a4e-6c50-4d73-9c17-9cafc6203127', '606e72eb-f095-4681-90a6-cfd7105d7d8c', 0, '2026-08-26 21:58:53.587483', '2026-08-26 21:58:53.587483'),
 	('eb8af729-9b10-487d-8e75-e46126e7dd21', 'd9b8cc5d-e95b-46cc-80e3-1b1457937901', 'bbdb0976-e8c8-4436-a90a-1baa9b8cb544', 1, '2026-08-26 21:59:15.976541', '2026-08-26 21:59:15.976541'),
 	('eba275b0-ed71-4640-b68a-b3196131b2b1', 'e8454453-a5db-4588-a141-490e84ec5d1d', '22feaaac-56dd-4b7c-83c1-5b303fe4693a', 1, '2026-08-26 21:58:40.270206', '2026-08-26 21:58:40.270206'),
@@ -17821,7 +17821,7 @@ INSERT INTO public.word_kanji (id, word_id, kanji_id, "position", created_at, up
 	('f5368ef4-0de3-42b6-8986-a514b09d4dfe', 'f4bf60df-ee96-4346-a60d-382c915149ed', '6a8e2477-20be-433d-9306-fe6fa11c81d6', 0, '2026-08-26 21:58:39.984936', '2026-08-26 21:58:39.984936'),
 	('f53e7238-c80d-4554-bb92-4c290dd7fd42', 'afe15c06-5ad7-4652-a7d9-8b0e9783da0f', 'ae5fcc9e-6bfe-47d0-9417-a1489f81350d', 0, '2026-08-26 21:56:50.406923', '2026-08-26 21:56:50.406923'),
 	('f541798e-a97e-471c-bec5-350ac5a01991', 'af585b37-897c-4a84-a5ca-426cdce97b94', 'a5925d5c-46d1-46c1-b8c8-a209a577f20e', 0, '2026-08-26 21:58:40.161129', '2026-08-26 21:58:40.161129') ON CONFLICT DO NOTHING;
-INSERT INTO public.word_kanji (id, word_id, kanji_id, "position", created_at, updated_at) VALUES
+INSERT INTO word_kanji (id, word_id, kanji_id, "position", created_at, updated_at) VALUES
 	('f557b996-ce52-4e36-b1a9-84d7b2f59147', '8ae62951-b365-4dc6-b8a1-94e6218e86fc', '1b49620c-3d17-4751-aa6d-e8c849e2b991', 1, '2026-08-26 21:59:15.948948', '2026-08-26 21:59:15.948948'),
 	('f559e06a-0be7-43cc-a8b9-10cb05487268', 'ac0abf9d-6124-4eb1-805b-de36d0128d16', 'e02b76f2-b81a-4afd-9aa0-bfddd8c3a302', 1, '2026-08-26 21:58:53.27244', '2026-08-26 21:58:53.27244'),
 	('f559f56f-f06d-46af-8a07-6b44f3d67bde', 'a2379cda-de55-4821-913b-2a8b89311842', 'e7ca8a49-bdcb-4b19-b7e0-21537256f022', 0, '2026-08-26 21:58:40.184072', '2026-08-26 21:58:40.184072'),

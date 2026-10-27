@@ -7,7 +7,7 @@ BEGIN
   IF (SELECT min(run_at) FROM seed_history) < timestamptz '2026-10-26 00:00:00+00' THEN
     RETURN;
   END IF;
-INSERT INTO public.words (id, language_id, ent_seq, primary_form, primary_reading, level_id, frequency_rank, is_common, pitch_accent, word_origin, published, source_id, source_ref, source_hash, human_edited, locked_fields, upstream_removed_at, created_at, updated_at, audio_text, audio_voice) VALUES
+INSERT INTO words (id, language_id, ent_seq, primary_form, primary_reading, level_id, frequency_rank, is_common, pitch_accent, word_origin, published, source_id, source_ref, source_hash, human_edited, locked_fields, upstream_removed_at, created_at, updated_at, audio_text, audio_voice) VALUES
 	('c953e37c-27bf-4e83-abfa-dcfbba6761ba', 'lang-ja', 1212850, '敢えて', 'あえて', 'lvl-ja-n1', 25000, true, '[{"pattern": "atamadaka", "reading": "あえて", "positions": [1]}]', NULL, true, NULL, '1212850', '1212850:3', false, '{}', NULL, '2026-08-26 05:48:11.543413', '2026-08-26 20:59:07.006', 'あえて', 'Kyoko (Enhanced)'),
 	('c9681955-a5df-4dae-a689-ebe4c2eeb374', 'lang-ja', 2673180, '救済', 'くさい', 'lvl-ja-n1', NULL, false, '[{"pattern": "nakadaka", "reading": "くさい", "positions": [2]}]', NULL, true, NULL, '2673180', '2673180:1', false, '{}', NULL, '2026-08-26 05:48:14.460538', '2026-08-26 20:59:12.71', 'くさい', 'Kyoko (Enhanced)'),
 	('c96d7ad5-75b4-49ff-8d4e-ea2cf3477b7f', 'lang-ja', 1253190, '迎える', 'むかえる', 'lvl-ja-n4', 11750, true, '[{"pattern": "heiban", "reading": "むかえる", "positions": [0]}]', NULL, true, NULL, '1253190', '1253190:4', false, '{}', NULL, '2026-08-26 05:47:31.413707', '2026-08-26 20:58:35.958', 'むかえる', 'Kyoko (Enhanced)'),
@@ -508,7 +508,7 @@ INSERT INTO public.words (id, language_id, ent_seq, primary_form, primary_readin
 	('d8f17ca5-363f-408e-b20e-07ae28881cb5', 'lang-ja', 1262530, '厳しい', 'きびしい', 'lvl-ja-n4', 8750, true, '[{"pattern": "nakadaka", "reading": "きびしい", "positions": [3]}]', NULL, true, NULL, '1262530', '1262530:3', false, '{}', NULL, '2026-08-26 05:47:31.452468', '2026-08-26 20:58:36.024', 'きびしい', 'Otoya (Enhanced)'),
 	('d8f1ad7c-1850-4b2e-bcb2-95626643663f', 'lang-ja', 1436540, '程度', 'ていど', 'lvl-ja-n3', 250, true, '[{"pattern": "heiban", "reading": "ていど", "positions": [0, 1]}]', NULL, true, NULL, '1436540', '1436540:1', false, '{}', NULL, '2026-08-26 05:47:50.935051', '2026-08-26 20:58:48.111', 'ていど', 'Otoya (Enhanced)'),
 	('d8fb54dd-b76d-463f-91bf-57a74c00ef4b', 'lang-ja', 1546010, '洋風', 'ようふう', 'lvl-ja-n1', 12250, true, '[{"pattern": "heiban", "reading": "ようふう", "positions": [0]}]', NULL, true, NULL, '1546010', '1546010:1', false, '{}', NULL, '2026-08-26 05:48:13.876847', '2026-08-26 20:59:11.701', 'ようふう', 'Otoya (Enhanced)') ON CONFLICT DO NOTHING;
-INSERT INTO public.words (id, language_id, ent_seq, primary_form, primary_reading, level_id, frequency_rank, is_common, pitch_accent, word_origin, published, source_id, source_ref, source_hash, human_edited, locked_fields, upstream_removed_at, created_at, updated_at, audio_text, audio_voice) VALUES
+INSERT INTO words (id, language_id, ent_seq, primary_form, primary_reading, level_id, frequency_rank, is_common, pitch_accent, word_origin, published, source_id, source_ref, source_hash, human_edited, locked_fields, upstream_removed_at, created_at, updated_at, audio_text, audio_voice) VALUES
 	('d9040604-ead0-4697-8382-f1ee09a9e5fd', 'lang-ja', 1522950, '本体', 'ほんたい', 'lvl-ja-n1', 2250, true, '[{"pattern": "atamadaka", "reading": "ほんたい", "positions": [1, 0]}]', NULL, true, NULL, '1522950', '1522950:5', false, '{}', NULL, '2026-08-26 05:48:13.728998', '2026-08-26 20:59:11.487', 'ほんたい', 'Kyoko (Enhanced)'),
 	('d91c34c6-063e-4ee3-ae41-1b0839eda94c', 'lang-ja', 1541900, '誘う', 'さそう', 'lvl-ja-n3', 4750, true, '[{"pattern": "heiban", "reading": "さそう", "positions": [0]}]', NULL, true, NULL, '1541900', '1541900:3', false, '{}', NULL, '2026-08-26 05:47:51.534888', '2026-08-26 20:58:48.91', 'さそう', 'Otoya (Enhanced)'),
 	('d91df599-f711-44b2-8b06-f37d9d105459', 'lang-ja', 1155100, '以後', 'いご', 'lvl-ja-n2', 2750, true, '[{"pattern": "atamadaka", "reading": "いご", "positions": [1]}]', NULL, true, NULL, '1155100', '1155100:2', false, '{}', NULL, '2026-08-26 05:47:57.823993', '2026-08-26 20:58:57.133', 'いご', 'Otoya (Enhanced)'),
@@ -1009,7 +1009,7 @@ INSERT INTO public.words (id, language_id, ent_seq, primary_form, primary_readin
 	('e83e67e6-0a2a-46bc-a42e-1eb9bf085598', 'lang-ja', 1259740, '見上げる', 'みあげる', 'lvl-ja-n2', 17750, true, '[{"pattern": "heiban", "reading": "みあげる", "positions": [0, 3]}]', NULL, true, NULL, '1259740', '1259740:2', false, '{}', NULL, '2026-08-26 05:47:59.631261', '2026-08-26 20:58:58.356', 'みあげる', 'Otoya (Enhanced)'),
 	('e8454453-a5db-4588-a141-490e84ec5d1d', 'lang-ja', 1396840, '祖父', 'そふ', 'lvl-ja-n4', 4250, true, '[{"pattern": "atamadaka", "reading": "そふ", "positions": [1]}]', NULL, true, NULL, '1396840', '1396840:3', false, '{}', NULL, '2026-08-26 05:47:31.981835', '2026-08-26 20:58:36.822', 'そふ', 'Otoya (Enhanced)'),
 	('e846cc49-8c00-4479-bdcb-20cd99ecc041', 'lang-ja', 1450430, '逃す', 'のがす', 'lvl-ja-n1', 16250, false, '[{"pattern": "nakadaka", "reading": "のがす", "positions": [2]}]', NULL, true, NULL, '1450430', '1450430:3', false, '{}', NULL, '2026-08-26 05:48:13.28652', '2026-08-26 20:59:10.8', 'のがす', 'Kyoko (Enhanced)') ON CONFLICT DO NOTHING;
-INSERT INTO public.words (id, language_id, ent_seq, primary_form, primary_reading, level_id, frequency_rank, is_common, pitch_accent, word_origin, published, source_id, source_ref, source_hash, human_edited, locked_fields, upstream_removed_at, created_at, updated_at, audio_text, audio_voice) VALUES
+INSERT INTO words (id, language_id, ent_seq, primary_form, primary_reading, level_id, frequency_rank, is_common, pitch_accent, word_origin, published, source_id, source_ref, source_hash, human_edited, locked_fields, upstream_removed_at, created_at, updated_at, audio_text, audio_voice) VALUES
 	('e849c781-1889-4c9f-bbc3-68698ad8a9c4', 'lang-ja', 1087100, 'トレーニング', 'トレーニング', 'lvl-ja-n3', 25000, true, '[{"pattern": "nakadaka", "reading": "トレーニング", "positions": [2]}]', NULL, true, NULL, '1087100', '1087100:2', false, '{}', NULL, '2026-08-26 05:47:47.408528', '2026-08-26 20:58:43.457', 'トレーニング', 'Kyoko (Enhanced)'),
 	('e851e633-7206-4160-bfe1-30734b198800', 'lang-ja', 1452110, '同級', 'どうきゅう', 'lvl-ja-n1', 7250, true, '[{"pattern": "heiban", "reading": "どうきゅう", "positions": [0]}]', NULL, true, NULL, '1452110', '1452110:1', false, '{}', NULL, '2026-08-26 05:48:13.304259', '2026-08-26 20:59:10.85', 'どうきゅう', 'Kyoko (Enhanced)'),
 	('e86f277c-f5ad-4a57-8afa-0da1a1935bc1', 'lang-ja', 1598700, '研ぐ', 'とぐ', 'lvl-ja-n1', 20750, true, '[{"pattern": "atamadaka", "reading": "とぐ", "positions": [1]}]', NULL, true, NULL, '1598700', '1598700:3', false, '{}', NULL, '2026-08-26 05:48:14.205559', '2026-08-26 20:59:12.183', 'とぐ', 'Kyoko (Enhanced)'),
@@ -1510,7 +1510,7 @@ INSERT INTO public.words (id, language_id, ent_seq, primary_form, primary_readin
 	('f833d9df-2c97-431a-8b4d-4a94880fef5e', 'lang-ja', 1288940, '今に', 'いまに', 'lvl-ja-n3', 10750, true, '[{"pattern": "atamadaka", "reading": "いまに", "positions": [1]}]', NULL, true, NULL, '1288940', '1288940:1', false, '{}', NULL, '2026-08-26 05:47:49.717011', '2026-08-26 20:58:46.446', 'いまに', 'Otoya (Enhanced)'),
 	('f84b3eb2-2f3a-4d68-a03b-57443d44bdc1', 'lang-ja', 1427360, '丁寧', 'ていねい', 'lvl-ja-n4', 4250, true, '[{"pattern": "atamadaka", "reading": "ていねい", "positions": [1]}]', NULL, true, NULL, '1427360', '1427360:2', false, '{}', NULL, '2026-08-26 05:47:32.193115', '2026-08-26 20:58:36.997', 'ていねい', 'Kyoko (Enhanced)'),
 	('f851c41d-80b6-481d-b68b-68bdeb707c55', 'lang-ja', 1212960, '歓迎', 'かんげい', 'lvl-ja-n3', 1750, true, '[{"pattern": "heiban", "reading": "かんげい", "positions": [0]}]', NULL, true, NULL, '1212960', '1212960:1', false, '{}', NULL, '2026-08-26 05:47:48.427203', '2026-08-26 20:58:44.918', 'かんげい', 'Otoya (Enhanced)') ON CONFLICT DO NOTHING;
-INSERT INTO public.words (id, language_id, ent_seq, primary_form, primary_reading, level_id, frequency_rank, is_common, pitch_accent, word_origin, published, source_id, source_ref, source_hash, human_edited, locked_fields, upstream_removed_at, created_at, updated_at, audio_text, audio_voice) VALUES
+INSERT INTO words (id, language_id, ent_seq, primary_form, primary_reading, level_id, frequency_rank, is_common, pitch_accent, word_origin, published, source_id, source_ref, source_hash, human_edited, locked_fields, upstream_removed_at, created_at, updated_at, audio_text, audio_voice) VALUES
 	('f85354f9-d37c-417f-ab40-b1113a3b65eb', 'lang-ja', 1382250, '席', 'せき', 'lvl-ja-n4', 1750, true, '[{"pattern": "atamadaka", "reading": "せき", "positions": [1]}]', NULL, true, NULL, '1382250', '1382250:3', false, '{}', NULL, '2026-08-26 05:47:31.926155', '2026-08-26 20:58:36.761', 'せき', 'Otoya (Enhanced)'),
 	('f8597b21-c8cf-49e3-a4cb-a976bb7d773b', 'lang-ja', 1190120, '加工', 'かこう', 'lvl-ja-n1', 2250, true, '[{"pattern": "heiban", "reading": "かこう", "positions": [0]}]', NULL, true, NULL, '1190120', '1190120:1', false, '{}', NULL, '2026-08-26 05:48:10.985287', '2026-08-26 20:59:06.512', 'かこう', 'Kyoko (Enhanced)'),
 	('f85b3c89-5d47-41cc-86fe-f81a466d37c7', 'lang-ja', 1222120, '気兼ね', 'きがね', 'lvl-ja-n1', 17250, true, '[{"pattern": "heiban", "reading": "きがね", "positions": [0]}]', NULL, true, NULL, '1222120', '1222120:1', false, '{}', NULL, '2026-08-26 05:48:11.678415', '2026-08-26 20:59:07.228', 'きがね', 'Otoya (Enhanced)'),
@@ -1852,7 +1852,7 @@ INSERT INTO public.words (id, language_id, ent_seq, primary_form, primary_readin
 	('w-jmdict-2845573', 'lang-ja', 2845573, 'お返事', 'おへんじ', NULL, NULL, false, '[]', NULL, true, 'imp-jmdict', '2845573', '2845573:1', false, '{}', NULL, '2026-10-14 13:23:23.941536', '2026-10-14 13:23:23.941536', 'おへんじ', 'Kyoko (Enhanced)'),
 	('w-jmdict-2850399', 'lang-ja', 2850399, 'お体', 'おからだ', NULL, NULL, false, '[]', NULL, true, 'imp-jmdict', '2850399', '2850399:1', false, '{}', NULL, '2026-10-12 10:54:12.25146', '2026-10-12 10:54:12.25146', 'おからだ', 'Otoya (Enhanced)') ON CONFLICT DO NOTHING;
 -- word_forms: 21749 rows
-INSERT INTO public.word_forms (id, word_id, form, kind, is_common, is_irregular, tags, sort_index, created_at, updated_at) VALUES
+INSERT INTO word_forms (id, word_id, form, kind, is_common, is_irregular, tags, sort_index, created_at, updated_at) VALUES
 	('00004ed3-3525-4e62-8906-ebdb925eb804', '64b41dbb-4b91-4674-93b0-87495ecfa567', '烟たい', 'kanji', false, false, '{rK}', 1, '2026-08-26 21:59:06.375043', '2026-08-26 21:59:06.375043'),
 	('000162a1-d50a-41b7-a10b-0e78027c1e37', '1c003674-a61e-42af-8e5d-bc620dc49496', 'だったい', 'kana', true, false, '{ichi1,news1,nf07}', 100, '2026-08-26 21:59:10.31775', '2026-08-26 21:59:10.31775'),
 	('0002cf50-6330-48d4-8326-78d15f1585fb', 'aca73708-2765-47bf-8ae3-122f48c60d38', 'ひきだす', 'kana', true, false, '{ichi1,news1,nf23}', 100, '2026-08-26 21:59:00.545745', '2026-08-26 21:59:00.545745'),
@@ -2353,7 +2353,7 @@ INSERT INTO public.word_forms (id, word_id, form, kind, is_common, is_irregular,
 	('057b187f-667f-4836-a83f-2469a4d2289a', 'ec21e5b5-332f-4129-a8d8-5246c103edae', '泊まる', 'kanji', true, false, '{ichi1,news2,nf29}', 0, '2026-08-26 21:58:37.257923', '2026-08-26 21:58:37.257923'),
 	('057f0db2-0ebf-46c2-98fe-9361758d07ef', '4360f442-dce0-4a15-aa2e-a4f61fb9b9e6', '好嫌い', 'kanji', false, false, '{sK}', 4, '2026-08-26 21:58:58.531468', '2026-08-26 21:58:58.531468'),
 	('0581f6f5-c68d-4fbe-9b69-666230cdd5c3', '76072707-f25d-4b00-b671-c6f24707be3c', 'ききとり', 'kana', true, false, '{ichi1,news1,nf22}', 100, '2026-08-26 21:59:11.323458', '2026-08-26 21:59:11.323458') ON CONFLICT DO NOTHING;
-INSERT INTO public.word_forms (id, word_id, form, kind, is_common, is_irregular, tags, sort_index, created_at, updated_at) VALUES
+INSERT INTO word_forms (id, word_id, form, kind, is_common, is_irregular, tags, sort_index, created_at, updated_at) VALUES
 	('058254f8-e10b-49dc-ab83-b5085dbc3056', '56b4cc46-6a90-4153-9048-6d4bcf971156', 'ﾀﾋぬ', 'kana', false, false, '{sk}', 101, '2026-08-26 21:56:46.367078', '2026-08-26 21:56:46.367078'),
 	('0585d5aa-8eb5-4987-b10f-e7f7ce5416d7', '98d7bf05-9e0c-4b14-9966-3ff084200547', '釣鐘', 'kanji', false, false, '{}', 0, '2026-08-26 21:59:10.579526', '2026-08-26 21:59:10.579526'),
 	('059130da-526f-4f60-bd99-2d598978234a', '1e8fb997-5405-437c-828c-7c70c50d5bcd', 'そう', 'kana', true, false, '{ichi1,news2,nf37}', 100, '2026-08-26 21:58:44.118223', '2026-08-26 21:58:44.118223'),
@@ -2854,7 +2854,7 @@ INSERT INTO public.word_forms (id, word_id, form, kind, is_common, is_irregular,
 	('0b943856-82eb-4273-8847-ae3e83e800f8', '4e57a12a-3807-453b-adf5-77ec66e73fe4', 'うけみ', 'kana', true, false, '{ichi1,news1,nf14}', 100, '2026-08-26 21:59:09.457167', '2026-08-26 21:59:09.457167'),
 	('0b945d7c-78ba-410e-9a3a-9a12486eeea1', 'c114841d-c03c-4606-a19f-fc8fa8748140', '公表', 'kanji', true, false, '{ichi1,news1,nf05}', 0, '2026-08-26 21:58:58.517564', '2026-08-26 21:58:58.517564'),
 	('0b983001-c496-4532-9590-bf3d289a33e7', 'fe1ef72c-bb8c-475a-9bc3-16b2c0099c50', '僕', 'kanji', false, false, '{}', 0, '2026-08-26 21:58:38.165333', '2026-08-26 21:58:38.165333') ON CONFLICT DO NOTHING;
-INSERT INTO public.word_forms (id, word_id, form, kind, is_common, is_irregular, tags, sort_index, created_at, updated_at) VALUES
+INSERT INTO word_forms (id, word_id, form, kind, is_common, is_irregular, tags, sort_index, created_at, updated_at) VALUES
 	('0b99749d-db93-422d-9aac-11be4292f771', '2dd775dd-17e1-4a70-81cd-a59c2a817203', 'じんかん', 'kana', false, false, '{}', 100, '2026-08-26 21:58:49.689224', '2026-08-26 21:58:49.689224'),
 	('0b9ba800-3f5a-48e1-8466-176aa04c7abc', '33e57948-ecb0-4d2d-a9ab-08e8ab74a0a8', 'すなお', 'kana', true, false, '{ichi1,news1,nf07}', 100, '2026-08-26 21:58:59.240319', '2026-08-26 21:58:59.240319'),
 	('0b9c4da1-2c94-429b-a88d-99ce33c4b690', 'c68c0385-b251-4c5a-ba69-519cb72ed43e', 'ゆきかた', 'kana', false, false, '{}', 101, '2026-08-26 21:59:00.292364', '2026-08-26 21:59:00.292364'),
@@ -3355,7 +3355,7 @@ INSERT INTO public.word_forms (id, word_id, form, kind, is_common, is_irregular,
 	('112051a7-bb67-40c3-9cff-4f8d96442674', 'e0a53fa2-d7e2-491d-982a-338b328d8f83', '君', 'kanji', false, false, '{}', 0, '2026-08-26 21:58:38.50772', '2026-08-26 21:58:38.50772'),
 	('1121c083-7fd3-44f2-9489-5b0347f4d824', '10567b44-ca84-485b-97bd-7c05413b2b91', '撰ぶ', 'kanji', false, false, '{rK}', 1, '2026-08-26 21:58:37.813838', '2026-08-26 21:58:37.813838'),
 	('1123ae78-e52e-4cde-825c-4a1664a854a2', 'c7ea1df8-8b10-4c91-82d5-1f1c8e8c23c0', 'げんりょう', 'kana', true, false, '{ichi1,news1,nf07}', 100, '2026-08-26 21:58:58.42232', '2026-08-26 21:58:58.42232') ON CONFLICT DO NOTHING;
-INSERT INTO public.word_forms (id, word_id, form, kind, is_common, is_irregular, tags, sort_index, created_at, updated_at) VALUES
+INSERT INTO word_forms (id, word_id, form, kind, is_common, is_irregular, tags, sort_index, created_at, updated_at) VALUES
 	('11243fca-f2cb-4326-9d72-ba39ff8a92bc', '5c5cea87-1185-420d-8127-11b38b53e5bc', 'くれ', 'kana', true, false, '{ichi1,news1,nf06}', 100, '2026-08-26 21:58:48.69462', '2026-08-26 21:58:48.69462'),
 	('112449a0-0b27-4981-aeba-8294d02b3e8a', 'a9e1c6b2-8101-481b-9b9b-da8b7549aae1', '暖める', 'kanji', true, false, '{ichi1}', 1, '2026-08-26 21:58:49.223632', '2026-08-26 21:58:49.223632'),
 	('11252a47-6103-4ed6-9b27-bd73a3f8d468', '52155315-13b7-4330-a07a-2a1a67a44c34', 'か', 'kana', true, false, '{ichi1,news1,nf21}', 100, '2026-08-26 21:58:57.545333', '2026-08-26 21:58:57.545333'),
@@ -3856,7 +3856,7 @@ INSERT INTO public.word_forms (id, word_id, form, kind, is_common, is_irregular,
 	('16fa5b5b-5b22-4bb9-8d1b-bb008e0da6d3', '25e1be62-b483-4df7-9480-644517389b94', '蒸餾', 'kanji', false, false, '{rK}', 2, '2026-08-26 21:59:09.768449', '2026-08-26 21:59:09.768449'),
 	('170101d3-829e-48c5-995b-87d55a59a4bb', 'a90a8744-2c59-47ac-b805-031a61d4e2ba', '滅びる', 'kanji', true, false, '{ichi1,news2,nf32}', 0, '2026-08-26 21:59:12.290538', '2026-08-26 21:59:12.290538'),
 	('1702e1a1-0336-4290-bdb4-5846e1c33e37', 'ed6c9837-9778-41f9-9b07-a59c2450327d', 'げしゅく', 'kana', true, false, '{ichi1,news1,nf17}', 100, '2026-08-26 21:58:35.475932', '2026-08-26 21:58:35.475932') ON CONFLICT DO NOTHING;
-INSERT INTO public.word_forms (id, word_id, form, kind, is_common, is_irregular, tags, sort_index, created_at, updated_at) VALUES
+INSERT INTO word_forms (id, word_id, form, kind, is_common, is_irregular, tags, sort_index, created_at, updated_at) VALUES
 	('1703605c-d8bd-478c-9dcc-72043dfff93b', 'db4cd686-0003-4a50-acf8-698ef55eb261', '疑問', 'kanji', true, false, '{ichi1,news1,nf02}', 0, '2026-08-26 21:58:45.220129', '2026-08-26 21:58:45.220129'),
 	('17041771-5c70-43f8-b259-d1f6c11941f9', '0d24def1-66d6-40d9-8b78-12b68b9bdb1c', 'ちゃっこう', 'kana', true, false, '{news1,nf08}', 100, '2026-08-26 21:59:10.466331', '2026-08-26 21:59:10.466331'),
 	('1705c084-4a4e-49bd-8691-08d28d6b69d0', '6dd82384-37da-4f4a-a969-68de36394c65', 'うんてんしゅ', 'kana', true, false, '{ichi1,news1,nf04}', 100, '2026-08-26 21:58:35.410602', '2026-08-26 21:58:35.410602'),
@@ -4357,7 +4357,7 @@ INSERT INTO public.word_forms (id, word_id, form, kind, is_common, is_irregular,
 	('1cd05e63-0985-4679-85e9-34266f6458e5', 'dcff1f29-1fe1-4cf8-a892-a0deddf53956', 'ぶ', 'kana', false, false, '{}', 100, '2026-08-26 21:58:49.933252', '2026-08-26 21:58:49.933252'),
 	('1cd4d0bb-a144-4b41-84b0-a403b7365d10', '45270bb8-dc6e-41ee-9e55-4b1c476375f7', 'たっとぶ', 'kana', true, false, '{ichi1}', 101, '2026-08-26 21:59:12.179883', '2026-08-26 21:59:12.179883'),
 	('1cd5c296-3cc1-4ba7-ba8d-89bd4fdc2fdc', 'ff9802e4-7f04-44b1-8090-e42facf3773c', 'かわいがる', 'kana', true, false, '{ichi1}', 100, '2026-08-26 21:58:57.470432', '2026-08-26 21:58:57.470432') ON CONFLICT DO NOTHING;
-INSERT INTO public.word_forms (id, word_id, form, kind, is_common, is_irregular, tags, sort_index, created_at, updated_at) VALUES
+INSERT INTO word_forms (id, word_id, form, kind, is_common, is_irregular, tags, sort_index, created_at, updated_at) VALUES
 	('1cd7526f-4103-414f-85f3-5f473cfac3a7', '8ae204a2-d09f-4400-881c-4c58ad397373', '各各', 'kanji', true, false, '{ichi1}', 1, '2026-08-26 21:59:00.854702', '2026-08-26 21:59:00.854702'),
 	('1cd8d041-0a45-41ee-82ab-007a7dc990d5', 'd23467c5-f9e8-4aae-a01e-e7b71a7d637c', '行ない', 'kanji', false, false, '{}', 1, '2026-08-26 21:59:12.074594', '2026-08-26 21:59:12.074594'),
 	('1cd9364c-d692-4c14-8995-e3e2bce15e62', '4d1501ab-318a-4e18-babe-c15f8eb685a1', '月謝', 'kanji', true, false, '{ichi1,news2,nf32}', 0, '2026-08-26 21:59:08.006992', '2026-08-26 21:59:08.006992'),
@@ -4858,7 +4858,7 @@ INSERT INTO public.word_forms (id, word_id, form, kind, is_common, is_irregular,
 	('22a6ee38-23f1-471e-9c8d-67fc31781335', '41efcdfc-7c30-436e-b485-39ed1beb2051', 'わ', 'kana', true, false, '{ichi1,news1,nf05}', 100, '2026-08-26 21:58:49.019142', '2026-08-26 21:58:49.019142'),
 	('22a8664e-2090-4186-86f6-fe15e6d2c097', '62f3f018-5a8f-4cf2-bb85-a3659138899b', '十日', 'kanji', true, false, '{ichi1}', 1, '2026-08-26 21:56:46.584382', '2026-08-26 21:56:46.584382'),
 	('22ad1ef1-fb6f-4976-944b-f3e1c6730d56', '41d52375-8e55-440e-8e1c-37ba6594ac3b', '拝む', 'kanji', true, false, '{ichi1,news2,nf42}', 0, '2026-08-26 21:58:59.700834', '2026-08-26 21:58:59.700834') ON CONFLICT DO NOTHING;
-INSERT INTO public.word_forms (id, word_id, form, kind, is_common, is_irregular, tags, sort_index, created_at, updated_at) VALUES
+INSERT INTO word_forms (id, word_id, form, kind, is_common, is_irregular, tags, sort_index, created_at, updated_at) VALUES
 	('22b00ef2-a5ac-4ce3-8658-46c3bc4a1e25', '61565bb5-1d05-45d7-b907-e2859b4e655b', '手法', 'kanji', true, false, '{news1,nf04}', 0, '2026-08-26 21:59:09.376633', '2026-08-26 21:59:09.376633'),
 	('22b91464-fc51-4382-8214-75f8f4cfc435', '2b476a31-f4a4-4c68-a400-eea377ef9ac6', '黄金', 'kanji', true, false, '{ichi1}', 0, '2026-08-26 21:59:12.776203', '2026-08-26 21:59:12.776203'),
 	('22bcb085-a28a-463b-aad6-05a4a6b6ed31', 'b12aaab3-8f91-4440-9606-275b453dfdef', '旧', 'kanji', false, false, '{}', 1, '2026-08-26 21:59:12.602482', '2026-08-26 21:59:12.602482'),
@@ -5359,7 +5359,7 @@ INSERT INTO public.word_forms (id, word_id, form, kind, is_common, is_irregular,
 	('28724729-54a0-4dbc-86af-39f8c536e63e', '5240e7fd-146b-490e-9116-6562181f17be', 'かそくど', 'kana', false, false, '{news2,nf26}', 100, '2026-08-26 21:58:57.462812', '2026-08-26 21:58:57.462812'),
 	('2872552a-cdaf-4d5e-a8d3-4c14ae33fc2f', '53151dd6-99e3-472d-8119-95be27223b89', 'ふろしき', 'kana', true, false, '{ichi1}', 100, '2026-08-26 21:58:59.807701', '2026-08-26 21:58:59.807701'),
 	('2874183a-9b89-4e87-8c60-fb28a50a3085', '828947a0-e3ac-42d3-b991-a5b6717b65b1', 'きゃくほん', 'kana', true, false, '{ichi1,news1,nf05}', 100, '2026-08-26 21:59:07.394258', '2026-08-26 21:59:07.394258') ON CONFLICT DO NOTHING;
-INSERT INTO public.word_forms (id, word_id, form, kind, is_common, is_irregular, tags, sort_index, created_at, updated_at) VALUES
+INSERT INTO word_forms (id, word_id, form, kind, is_common, is_irregular, tags, sort_index, created_at, updated_at) VALUES
 	('287425ea-e562-4358-970b-561c5029108e', 'c5c55693-14ec-4939-b0cf-8e4a4436a53f', '菓子', 'kanji', true, false, '{news1,nf08}', 0, '2026-08-26 21:58:44.467882', '2026-08-26 21:58:44.467882'),
 	('287651f0-be6a-4b82-a711-a243f5791ac8', '14fc9e21-e960-47e3-919a-9fb681bbcf6f', '指環', 'kanji', false, false, '{}', 1, '2026-08-26 21:58:36.264892', '2026-08-26 21:58:36.264892'),
 	('28769700-1ff5-4136-84c2-0ef075b4e2e8', 'f633ac8e-cdf7-4eaa-8332-78f8a744edd9', 'がわ', 'kana', false, false, '{}', 101, '2026-08-26 21:58:47.72584', '2026-08-26 21:58:47.72584'),
@@ -5860,7 +5860,7 @@ INSERT INTO public.word_forms (id, word_id, form, kind, is_common, is_irregular,
 	('2e6a96c9-2f5d-4c52-8edb-28b2047037f0', '78d37b83-d17c-41cc-93ce-cbfe6f879a74', '咲く', 'kanji', true, false, '{ichi1}', 0, '2026-08-26 21:56:46.259956', '2026-08-26 21:56:46.259956'),
 	('2e6b4c76-8c9e-44f8-b639-d289bec4f854', 'f833d9df-2c97-431a-8b4d-4a94880fef5e', '今に', 'kanji', true, false, '{ichi1,news1,nf22}', 0, '2026-08-26 21:58:46.448708', '2026-08-26 21:58:46.448708'),
 	('2e6c3c8a-0dc0-479d-a6c7-c7adb9422361', 'cd326c72-209e-41a7-aa02-5676b8e60b46', '田舍', 'kanji', false, false, '{sK}', 1, '2026-08-26 21:58:37.094631', '2026-08-26 21:58:37.094631') ON CONFLICT DO NOTHING;
-INSERT INTO public.word_forms (id, word_id, form, kind, is_common, is_irregular, tags, sort_index, created_at, updated_at) VALUES
+INSERT INTO word_forms (id, word_id, form, kind, is_common, is_irregular, tags, sort_index, created_at, updated_at) VALUES
 	('2e6d5837-edc3-4e51-97b5-06d564871651', 'e72a3cdb-0b85-4485-9a06-00142b5c2b7b', '一体', 'kanji', true, false, '{ichi1,news1,nf04}', 0, '2026-08-26 21:58:43.935529', '2026-08-26 21:58:43.935529'),
 	('2e6d5ba1-f607-4156-8fcb-040a5468a420', '57d8ff59-1afd-40bf-96a9-aef8dc73a54e', 'しゅうだん', 'kana', true, false, '{ichi1,news1,nf02}', 100, '2026-08-26 21:58:47.15766', '2026-08-26 21:58:47.15766'),
 	('2e6dff57-759a-49ce-a470-6cb4bc8a5e5d', '6ca776f1-9b65-4fc8-bb79-9ce1780f6712', '晴', 'kanji', false, false, '{}', 1, '2026-08-26 21:56:46.896279', '2026-08-26 21:56:46.896279'),
@@ -6361,7 +6361,7 @@ INSERT INTO public.word_forms (id, word_id, form, kind, is_common, is_irregular,
 	('342cfdb8-9aad-48f7-9fdf-0217aa0ff4ab', '7aae0a0b-5bce-4873-9e00-8120f703aa84', 'くらす', 'kana', true, false, '{ichi1,news2,nf39}', 100, '2026-08-26 21:58:48.692261', '2026-08-26 21:58:48.692261'),
 	('342e567f-eebf-4592-8dad-e560b08c2d88', 'ba3dab3c-99a6-4f9a-8156-92535332fa9a', '抱く', 'kanji', false, false, '{}', 0, '2026-08-26 21:59:12.796949', '2026-08-26 21:59:12.796949'),
 	('343072a2-d99d-4454-a910-f3f39a92a56a', 'f746947a-2175-47e6-b8e4-98cef9ce4e14', '作り皮', 'kanji', false, false, '{}', 0, '2026-08-26 21:58:49.823134', '2026-08-26 21:58:49.823134') ON CONFLICT DO NOTHING;
-INSERT INTO public.word_forms (id, word_id, form, kind, is_common, is_irregular, tags, sort_index, created_at, updated_at) VALUES
+INSERT INTO word_forms (id, word_id, form, kind, is_common, is_irregular, tags, sort_index, created_at, updated_at) VALUES
 	('34308231-9c2c-4f84-9741-b50bab7c58b2', '74f145a7-d33e-4f8f-b332-3ac58587d3b4', '運営', 'kanji', true, false, '{ichi1,news1,nf02}', 0, '2026-08-26 21:59:06.280776', '2026-08-26 21:59:06.280776'),
 	('34311ad9-2961-496e-9fa0-e27db818467a', '93afae21-0f84-4bfa-9aa0-07f877db2da5', 'そだてる', 'kana', true, false, '{ichi1}', 100, '2026-08-26 21:58:35.366268', '2026-08-26 21:58:35.366268'),
 	('34334f12-bc40-4832-87b0-f1ddacace7d4', 'e0de6608-45d4-4b35-975c-45558903a9a9', '螢光燈', 'kanji', false, false, '{sK}', 3, '2026-08-26 21:59:00.400069', '2026-08-26 21:59:00.400069'),
@@ -6862,7 +6862,7 @@ INSERT INTO public.word_forms (id, word_id, form, kind, is_common, is_irregular,
 	('39ce4da6-968f-492d-997f-830a46340df8', 'eafc295a-6d95-4976-bb7c-a9bb508a1085', 'そうこう', 'kana', true, false, '{news1,nf06}', 100, '2026-08-26 21:59:10.157908', '2026-08-26 21:59:10.157908'),
 	('39cfa3f9-16bf-4699-8ddf-5d4826be3c0b', '264c0a34-60ac-4e6d-a097-207f9455360c', 'きんし', 'kana', true, false, '{ichi1,news2,nf38}', 100, '2026-08-26 21:58:45.578809', '2026-08-26 21:58:45.578809'),
 	('39d1138c-e339-4698-92fa-378e1e43339e', '7c9dcb80-0e12-403b-85a1-6e5ccaa328e8', 'かんさつ', 'kana', true, false, '{ichi1,news1,nf08}', 100, '2026-08-26 21:58:44.957189', '2026-08-26 21:58:44.957189') ON CONFLICT DO NOTHING;
-INSERT INTO public.word_forms (id, word_id, form, kind, is_common, is_irregular, tags, sort_index, created_at, updated_at) VALUES
+INSERT INTO word_forms (id, word_id, form, kind, is_common, is_irregular, tags, sort_index, created_at, updated_at) VALUES
 	('39d12f67-f895-4651-ab6e-d14dc70a68a1', '7b8b78a6-29ea-4c4f-ae02-f1caea0b9c7e', '養なう', 'kanji', false, false, '{sK}', 1, '2026-08-26 21:59:11.722186', '2026-08-26 21:59:11.722186'),
 	('39d5415e-71a4-43fd-9457-bc9a4b62729d', 'a90eea5d-ab5e-4694-88fc-f9859591c28d', '発想', 'kanji', true, false, '{ichi1,news1,nf04}', 0, '2026-08-26 21:58:59.732227', '2026-08-26 21:58:59.732227'),
 	('39e0baf8-5590-4b19-88bd-9530a4348bf8', 'c268038d-462f-4635-901b-3ca27e4ec822', '磁石', 'kanji', true, false, '{ichi1,news1,nf19}', 0, '2026-08-26 21:58:58.792945', '2026-08-26 21:58:58.792945'),
@@ -7363,7 +7363,7 @@ INSERT INTO public.word_forms (id, word_id, form, kind, is_common, is_irregular,
 	('40343855-a0cf-4e6b-8628-b297957fd3ed', '3144bee5-fe3c-4958-88f9-a818f0e2a8ad', 'おおぜい', 'kana', true, false, '{ichi1,news1,nf04}', 100, '2026-08-26 21:56:47.15445', '2026-08-26 21:56:47.15445'),
 	('4034eae3-0679-4852-bd66-c7334831cd1a', '8c85393c-2664-43ff-a89f-3775e6952e40', 'たいこ', 'kana', true, false, '{ichi1,news1,nf11}', 100, '2026-08-26 21:58:59.301685', '2026-08-26 21:58:59.301685'),
 	('40369d8a-939b-4508-a0fd-edde1471b5c4', 'd412ca81-0a74-4c9d-a71b-20ec190cc8f3', 'しじゅう', 'kana', true, false, '{ichi1,news2,nf43}', 100, '2026-08-26 21:58:58.754594', '2026-08-26 21:58:58.754594') ON CONFLICT DO NOTHING;
-INSERT INTO public.word_forms (id, word_id, form, kind, is_common, is_irregular, tags, sort_index, created_at, updated_at) VALUES
+INSERT INTO word_forms (id, word_id, form, kind, is_common, is_irregular, tags, sort_index, created_at, updated_at) VALUES
 	('4038ff9c-7d2f-481e-8bee-8c373346ee79', 'f516b89c-9eb3-4060-ad42-eac5f8e48afe', 'かんど', 'kana', true, false, '{news1,nf23}', 100, '2026-08-26 21:59:06.98578', '2026-08-26 21:59:06.98578'),
 	('403ac995-635b-40f7-b4bf-df5a45f4f6f2', 'da90064e-9d16-4167-b1d1-bb45e51342eb', '永遠', 'kanji', false, false, '{}', 1, '2026-08-26 21:58:50.236621', '2026-08-26 21:58:50.236621'),
 	('40436ccb-00ad-42e9-8c2b-c35922713e6b', 'f7878bc8-8993-42c7-9797-e3270485661f', '舗装', 'kanji', true, false, '{ichi1,news1,nf21}', 0, '2026-08-26 21:59:11.370958', '2026-08-26 21:59:11.370958'),
@@ -7864,7 +7864,7 @@ INSERT INTO public.word_forms (id, word_id, form, kind, is_common, is_irregular,
 	('46528a46-13a1-40af-a1ea-0f8bde7928c8', '98904839-fcbc-439e-82a6-93c898c16972', 'むゆか', 'kana', false, false, '{ok}', 101, '2026-08-26 21:56:48.028589', '2026-08-26 21:56:48.028589'),
 	('465beb74-3223-46d4-92d1-40b1a6304409', 'b5c25184-5c66-40df-9652-528182a50d7b', '支える', 'kanji', true, false, '{ichi1}', 0, '2026-08-26 21:58:46.753555', '2026-08-26 21:58:46.753555'),
 	('465f15d8-2efa-405e-ad3e-df6d76c4e4ee', '4389bbf4-6c2d-43ef-a38f-8a523364b256', '悩ます', 'kanji', true, false, '{news1,nf12}', 0, '2026-08-26 21:59:11.018387', '2026-08-26 21:59:11.018387') ON CONFLICT DO NOTHING;
-INSERT INTO public.word_forms (id, word_id, form, kind, is_common, is_irregular, tags, sort_index, created_at, updated_at) VALUES
+INSERT INTO word_forms (id, word_id, form, kind, is_common, is_irregular, tags, sort_index, created_at, updated_at) VALUES
 	('465f819b-d791-47bd-9432-d11bf69c92d2', '77cc68c5-8519-4dfd-a902-744e80515204', 'ゆそう', 'kana', true, false, '{ichi1,news1,nf02}', 100, '2026-08-26 21:59:00.061109', '2026-08-26 21:59:00.061109'),
 	('46628300-0c23-44b9-85c6-ed3faab83675', '49b50573-79cb-49c3-ad12-665a473c4c1c', 'せっかく', 'kana', true, false, '{ichi1}', 100, '2026-08-26 21:59:00.447305', '2026-08-26 21:59:00.447305'),
 	('466689c6-0584-439c-9b66-9accf5884a6a', '239eee3e-7b7d-4a27-a2cd-33bd0eb0a162', '逆さ', 'kanji', true, false, '{ichi1,news2,nf29}', 0, '2026-08-26 21:58:58.029666', '2026-08-26 21:58:58.029666'),
@@ -8365,7 +8365,7 @@ INSERT INTO public.word_forms (id, word_id, form, kind, is_common, is_irregular,
 	('4ca563ec-ed47-47e8-b972-8a394cb3a580', 'd3f81886-0078-4cb8-9139-8b058aa6c173', '大家', 'kanji', true, false, '{spec1}', 0, '2026-08-26 21:59:10.28454', '2026-08-26 21:59:10.28454'),
 	('4ca66582-b92c-4ac3-8ddf-6c7833bcb258', '1e262847-35d8-46bb-ab76-9e4d6d267171', '握る', 'kanji', true, false, '{ichi1,news1,nf20}', 0, '2026-08-26 21:58:43.72375', '2026-08-26 21:58:43.72375'),
 	('4ca8c309-6cd7-4794-8103-4c3f2869d17d', 'c61e96ce-63a9-41fa-a937-43b84d8155cf', 'はい', 'kana', true, false, '{spec1}', 100, '2026-08-26 21:58:43.131731', '2026-08-26 21:58:43.131731') ON CONFLICT DO NOTHING;
-INSERT INTO public.word_forms (id, word_id, form, kind, is_common, is_irregular, tags, sort_index, created_at, updated_at) VALUES
+INSERT INTO word_forms (id, word_id, form, kind, is_common, is_irregular, tags, sort_index, created_at, updated_at) VALUES
 	('4ca9fd79-08cd-4d45-92d8-06b573e1ddfd', '380653e5-fa89-49ce-b26f-246eac937fb8', '誘惑', 'kanji', true, false, '{ichi1,news1,nf20}', 0, '2026-08-26 21:59:11.673078', '2026-08-26 21:59:11.673078'),
 	('4caa07b1-9263-4718-8a0c-fad9b6cfe978', 'a73f5407-c9c6-4f70-9317-9082265b14c9', 'ことわる', 'kana', true, false, '{ichi1,news1,nf10}', 100, '2026-08-26 21:58:47.977812', '2026-08-26 21:58:47.977812'),
 	('4caadcde-0554-4f80-af4f-77a9163e7da1', 'd32c0cf4-5495-4f19-a8f1-624fa75dcfa1', 'ぴったり', 'kana', true, false, '{ichi1}', 100, '2026-08-26 21:58:56.58735', '2026-08-26 21:58:56.58735'),
@@ -8866,7 +8866,7 @@ INSERT INTO public.word_forms (id, word_id, form, kind, is_common, is_irregular,
 	('5287653b-481a-4e03-902a-e7daa5ee62b8', '7df4ff49-7217-4c3e-abe5-1461162298aa', 'しょくりょうひん', 'kana', true, false, '{news1,nf09}', 100, '2026-08-26 21:58:36.592661', '2026-08-26 21:58:36.592661'),
 	('52889604-36d6-444e-bf38-ae23b81bef5e', '4cd81480-ec09-4b9b-b7d3-be3b9f6c2b10', '活躍', 'kanji', true, false, '{ichi1,news1,nf04}', 0, '2026-08-26 21:58:57.784158', '2026-08-26 21:58:57.784158'),
 	('528a555f-8586-4236-8fe1-900735af9eea', '3e4c4b38-a395-493d-a126-7b5a62004270', '家', 'kanji', true, false, '{ichi1}', 0, '2026-08-26 21:56:45.525346', '2026-08-26 21:56:45.525346') ON CONFLICT DO NOTHING;
-INSERT INTO public.word_forms (id, word_id, form, kind, is_common, is_irregular, tags, sort_index, created_at, updated_at) VALUES
+INSERT INTO word_forms (id, word_id, form, kind, is_common, is_irregular, tags, sort_index, created_at, updated_at) VALUES
 	('528e4587-f730-46ce-b313-667c939b636b', '0dbd5a36-bbf4-4fb3-b36e-615cb99f3b53', '二', 'kanji', false, false, '{}', 0, '2026-08-26 21:56:48.939187', '2026-08-26 21:56:48.939187'),
 	('52944a39-036e-4769-aaa4-faaf11bd6f7d', 'f7997fb2-cbf2-4c43-8671-d0fcf9df8c37', 'しょう', 'kana', true, false, '{news1,nf14}', 100, '2026-08-26 21:58:47.335507', '2026-08-26 21:58:47.335507'),
 	('5295f1fe-a244-4e44-bb97-10b4010c2d16', '8117d95d-dacc-49bc-a090-b74f1932f7e3', '受け入れる', 'kanji', true, false, '{ichi1,news1,nf08}', 0, '2026-08-26 21:59:09.44842', '2026-08-26 21:59:09.44842'),
@@ -9367,7 +9367,7 @@ INSERT INTO public.word_forms (id, word_id, form, kind, is_common, is_irregular,
 	('586ab3c2-6998-49e2-b04f-11631575c431', '8ac489f0-8ba8-41e3-b1f2-180d2027d034', '大臣', 'kanji', false, false, '{}', 1, '2026-08-26 21:58:49.971254', '2026-08-26 21:58:49.971254'),
 	('586db691-4570-43a7-9211-769de57ab217', '739cd47e-995a-43c2-ae16-0eaea5f9e3cf', '機関', 'kanji', true, false, '{ichi1,news1,nf01}', 0, '2026-08-26 21:58:45.111693', '2026-08-26 21:58:45.111693'),
 	('58717ae0-c703-4926-bdef-ad4aac879fd6', 'c15060ee-8e3f-48e3-860c-8e355591a1f4', 'せいのう', 'kana', true, false, '{ichi1,news1,nf08}', 100, '2026-08-26 21:58:59.128229', '2026-08-26 21:58:59.128229') ON CONFLICT DO NOTHING;
-INSERT INTO public.word_forms (id, word_id, form, kind, is_common, is_irregular, tags, sort_index, created_at, updated_at) VALUES
+INSERT INTO word_forms (id, word_id, form, kind, is_common, is_irregular, tags, sort_index, created_at, updated_at) VALUES
 	('587f79c3-e770-4a9a-a8bc-37308f8eb23c', '1abbe705-f588-4011-b8ed-4c6b1e2b288f', 'しな', 'kana', false, false, '{}', 100, '2026-08-26 21:58:50.037056', '2026-08-26 21:58:50.037056'),
 	('58830b78-b635-4faa-9632-0352cdf28134', '8c9a863c-c676-488b-bcd3-4f2ececba9db', 'はれ', 'kana', false, false, '{}', 100, '2026-08-26 21:56:49.042351', '2026-08-26 21:56:49.042351'),
 	('58866540-30c9-426d-bed8-2522ecd971ce', '8d2b25e3-889e-4732-94c8-1d77e703d479', '表面', 'kanji', false, false, '{}', 2, '2026-08-26 21:58:50.231195', '2026-08-26 21:58:50.231195'),
@@ -9868,7 +9868,7 @@ INSERT INTO public.word_forms (id, word_id, form, kind, is_common, is_irregular,
 	('5e89305e-6a17-4f2b-9b31-f4327ba632a4', '924fe151-2f59-46fd-8d8f-93c318d08a80', '證據', 'kanji', false, false, '{sK}', 1, '2026-08-26 21:59:09.728712', '2026-08-26 21:59:09.728712'),
 	('5e8b74b3-e55d-41e2-9d77-f63b181d5dbd', 'cb320600-13ec-4b34-9eab-b9734d8cfb91', '変わる', 'kanji', true, false, '{ichi1,news1,nf03}', 0, '2026-08-26 21:58:37.432527', '2026-08-26 21:58:37.432527'),
 	('5e8cc105-449a-4658-8a00-ff8dc02445f2', '9074e64e-2b59-4cbe-8eb4-4537e53a6ab5', '本館', 'kanji', true, false, '{news1,nf14}', 0, '2026-08-26 21:59:11.478788', '2026-08-26 21:59:11.478788') ON CONFLICT DO NOTHING;
-INSERT INTO public.word_forms (id, word_id, form, kind, is_common, is_irregular, tags, sort_index, created_at, updated_at) VALUES
+INSERT INTO word_forms (id, word_id, form, kind, is_common, is_irregular, tags, sort_index, created_at, updated_at) VALUES
 	('5e8e9c31-76f2-4ba2-bb50-1c14f6f282c2', '8a161dfb-cd97-4b4b-8335-05b38a275bdf', 'つら', 'kana', true, false, '{ichi1,news1,nf02}', 100, '2026-08-26 21:58:49.196774', '2026-08-26 21:58:49.196774'),
 	('5e8fb311-8cdb-4c48-8263-86f5bb6954c1', '1dd74b8c-855f-41c2-a42f-6dc619886eb4', 'レインコート', 'kana', true, false, '{ichi1}', 100, '2026-08-26 21:58:57.080243', '2026-08-26 21:58:57.080243'),
 	('5e9078bd-092b-4081-9d8c-ac3ddcd46475', 'bb03d9e0-e13f-4af0-8ac6-6479958fb5ac', 'よふかし', 'kana', true, false, '{ichi1,news2,nf43}', 100, '2026-08-26 21:59:12.429682', '2026-08-26 21:59:12.429682'),
@@ -10369,7 +10369,7 @@ INSERT INTO public.word_forms (id, word_id, form, kind, is_common, is_irregular,
 	('6453538f-84b9-4adc-ba26-9794562bf827', '8df291a4-b4f2-402c-8e5f-7a142f445f7c', 'ち', 'kana', false, false, '{}', 101, '2026-08-26 21:59:10.964911', '2026-08-26 21:59:10.964911'),
 	('645464c5-811d-4af9-aeae-38c869f1072c', '34f5c425-467b-418d-981b-7fea163e710c', '障害', 'kanji', true, false, '{ichi1,news1,nf02}', 0, '2026-08-26 21:58:47.34251', '2026-08-26 21:58:47.34251'),
 	('6454bb48-e3f7-4c0f-95c3-f43c299178e6', '6ce365f5-50c5-4eaa-92c6-58374167c3ae', 'しっける', 'kana', false, false, '{}', 101, '2026-08-26 21:59:09.106882', '2026-08-26 21:59:09.106882') ON CONFLICT DO NOTHING;
-INSERT INTO public.word_forms (id, word_id, form, kind, is_common, is_irregular, tags, sort_index, created_at, updated_at) VALUES
+INSERT INTO word_forms (id, word_id, form, kind, is_common, is_irregular, tags, sort_index, created_at, updated_at) VALUES
 	('6460b579-2e06-41b1-b872-e404faefd3d2', 'a0a2ad5c-175d-4538-9df9-76559ece9587', '仕上り', 'kanji', false, false, '{}', 1, '2026-08-26 21:59:08.849289', '2026-08-26 21:59:08.849289'),
 	('64629f50-5a22-429d-a1c7-9dcc54d1e61f', 'f636a899-6507-4833-adcd-b6efe9ffb6c2', 'したまち', 'kana', true, false, '{ichi1,news1,nf10}', 100, '2026-08-26 21:58:57.431217', '2026-08-26 21:58:57.431217'),
 	('6468372f-7d85-43da-96a7-7c5f76d19a76', '70d0563d-8714-4987-a8f9-11ab8e727a5e', '以上', 'kanji', true, false, '{ichi1,news1,nf12}', 0, '2026-08-26 21:58:35.323012', '2026-08-26 21:58:35.323012'),
@@ -10870,7 +10870,7 @@ INSERT INTO public.word_forms (id, word_id, form, kind, is_common, is_irregular,
 	('6a697ca0-fbb0-4469-b79a-507486ffa40e', '729fe1a4-d237-49c8-b4c5-c43c263ba4ed', 'ぬぐ', 'kana', true, false, '{ichi1,news2,nf44}', 100, '2026-08-26 21:56:47.183553', '2026-08-26 21:56:47.183553'),
 	('6a6e5950-852d-4fa1-9919-a2886db623a5', '50b78fe8-9098-4c4d-8a19-8b6cf539d0fd', '灯', 'kanji', false, false, '{}', 0, '2026-08-26 21:58:49.954266', '2026-08-26 21:58:49.954266'),
 	('6a7a0350-49b3-4ca2-9a30-f22ea18c3653', 'a6bf854a-f503-4871-af32-a03f9d4def22', '端', 'kanji', false, false, '{}', 1, '2026-08-26 21:58:50.28226', '2026-08-26 21:58:50.28226') ON CONFLICT DO NOTHING;
-INSERT INTO public.word_forms (id, word_id, form, kind, is_common, is_irregular, tags, sort_index, created_at, updated_at) VALUES
+INSERT INTO word_forms (id, word_id, form, kind, is_common, is_irregular, tags, sort_index, created_at, updated_at) VALUES
 	('6a7a730d-5931-49b4-9da2-a2018e693446', '95800bbd-0d49-45fc-8da2-e6a2ec814a53', 'うるおう', 'kana', true, false, '{ichi1,news2,nf39}', 100, '2026-08-26 21:59:09.620482', '2026-08-26 21:59:09.620482'),
 	('6a7afa48-15bd-4017-9fbe-841d6d3da99b', 'f92b68a9-9274-420e-9a93-e39ee7323e53', 'ぬるい', 'kana', true, false, '{ichi1}', 100, '2026-08-26 21:58:57.371353', '2026-08-26 21:58:57.371353'),
 	('6a7e29b3-27fe-4e4b-9d4f-66460f6af9e6', 'e4150009-1c17-4c87-b067-59c57be1edfa', '生涯', 'kanji', true, false, '{ichi1,news1,nf05}', 0, '2026-08-26 21:58:47.630808', '2026-08-26 21:58:47.630808'),
@@ -11371,7 +11371,7 @@ INSERT INTO public.word_forms (id, word_id, form, kind, is_common, is_irregular,
 	('70252910-7fb9-40bd-84bd-8b3461617799', 'b5a2e4dd-eddb-445a-8a21-b055bc8caf52', 'がんねん', 'kana', true, false, '{news1,nf09}', 100, '2026-08-26 21:59:08.106487', '2026-08-26 21:59:08.106487'),
 	('7027c501-4e6f-4ee8-8c63-07ddde475a6d', '01beddfe-20b2-412c-b90d-ae3cb7f7ba0c', '学門', 'kanji', false, false, '{rK}', 2, '2026-08-26 21:58:44.730516', '2026-08-26 21:58:44.730516'),
 	('7028256f-3126-485a-b55c-96ef3e9821f0', 'aead7f08-147a-4c10-bf70-7f66edcebe0b', '別別', 'kanji', false, false, '{}', 1, '2026-08-26 21:59:00.581151', '2026-08-26 21:59:00.581151') ON CONFLICT DO NOTHING;
-INSERT INTO public.word_forms (id, word_id, form, kind, is_common, is_irregular, tags, sort_index, created_at, updated_at) VALUES
+INSERT INTO word_forms (id, word_id, form, kind, is_common, is_irregular, tags, sort_index, created_at, updated_at) VALUES
 	('7029dc3d-0c44-41fa-be58-66e9bfd81074', 'ff31c4fa-2c42-4eef-baf4-c2a42b25b5d6', '順々', 'kanji', false, false, '{}', 0, '2026-08-26 21:58:58.936907', '2026-08-26 21:58:58.936907'),
 	('703120b4-c2d5-4c77-9e2b-9853f5c79b8e', 'd006758c-25ba-4ce0-9414-dce04cd7b224', 'バック', 'kana', true, false, '{gai1,ichi1}', 100, '2026-08-26 21:58:56.903922', '2026-08-26 21:58:56.903922'),
 	('70366c2b-a9d5-4085-8848-759f3f512f51', '66e4b379-6cf2-41b7-8db2-ba5389d4210f', '亙る', 'kanji', false, false, '{sK}', 3, '2026-08-26 21:56:47.397875', '2026-08-26 21:56:47.397875'),
@@ -11872,7 +11872,7 @@ INSERT INTO public.word_forms (id, word_id, form, kind, is_common, is_irregular,
 	('7637a8d8-034c-420c-b4a4-c699b2052a8c', 'b042a4c2-2067-4a64-80bc-d008af28fe06', '助', 'kanji', false, false, '{}', 0, '2026-08-26 21:56:46.663442', '2026-08-26 21:56:46.663442'),
 	('763ac02f-6649-41e9-9b78-d4d629112457', 'c0fc00af-0a3f-4fa3-8d58-aeb0d838b9b5', 'あっし', 'kana', false, false, '{}', 100, '2026-08-26 21:56:48.641286', '2026-08-26 21:56:48.641286'),
 	('763ce6fd-934b-4196-a724-946e0460d7e6', 'aab8459a-d7ff-40ef-91f5-fd6fef2e20ec', '翔る', 'kanji', true, false, '{news1,nf14}', 0, '2026-08-26 21:58:49.0785', '2026-08-26 21:58:49.0785') ON CONFLICT DO NOTHING;
-INSERT INTO public.word_forms (id, word_id, form, kind, is_common, is_irregular, tags, sort_index, created_at, updated_at) VALUES
+INSERT INTO word_forms (id, word_id, form, kind, is_common, is_irregular, tags, sort_index, created_at, updated_at) VALUES
 	('76401048-754a-426d-955d-dad95be75b3e', 'bc92bdca-d881-4325-a5b0-52004138d7a5', 'まんが', 'kana', true, false, '{ichi1,news1,nf05}', 100, '2026-08-26 21:58:37.484048', '2026-08-26 21:58:37.484048'),
 	('7642f237-89bc-4c78-aafe-62657301618c', '77f6c225-92ec-4733-9f51-00966d9e79c6', '合成', 'kanji', true, false, '{ichi1,news1,nf12}', 0, '2026-08-26 21:59:08.552137', '2026-08-26 21:59:08.552137'),
 	('76452c73-6b04-4d87-89b7-b17b8e1af3d9', '3f9cb8b0-3d37-4e81-9ae4-7fc7fe434632', '助動詞', 'kanji', false, false, '{}', 0, '2026-08-26 21:59:09.666313', '2026-08-26 21:59:09.666313'),
@@ -12373,7 +12373,7 @@ INSERT INTO public.word_forms (id, word_id, form, kind, is_common, is_irregular,
 	('7c93269d-7627-44f4-a055-eed82f500237', '71e87c09-83cc-4a54-bb09-59cd79156598', 'ダム', 'kana', true, false, '{gai1,ichi1}', 100, '2026-08-26 21:58:56.857688', '2026-08-26 21:58:56.857688'),
 	('7c97e9a8-4ef9-4259-8ca1-5d826b6ecd71', 'e3c05f3c-773b-45c1-9307-9bbba590dda3', '明き間', 'kanji', false, false, '{rK}', 1, '2026-08-26 21:59:12.485114', '2026-08-26 21:59:12.485114'),
 	('7c998ac3-5af0-4a17-b7c3-15c890fbcb98', '86258b4b-b838-4c18-9f20-4da4e5573e41', '無難', 'kanji', true, false, '{ichi1,news1,nf15}', 0, '2026-08-26 21:59:11.565679', '2026-08-26 21:59:11.565679') ON CONFLICT DO NOTHING;
-INSERT INTO public.word_forms (id, word_id, form, kind, is_common, is_irregular, tags, sort_index, created_at, updated_at) VALUES
+INSERT INTO word_forms (id, word_id, form, kind, is_common, is_irregular, tags, sort_index, created_at, updated_at) VALUES
 	('7c9b8db9-9a58-4376-838b-db7f9daf4221', 'c1d1a18c-3782-4497-987c-81a1f9927faa', 'アワー', 'kana', true, false, '{gai1}', 100, '2026-08-26 21:59:05.313767', '2026-08-26 21:59:05.313767'),
 	('7c9daa6a-dc1a-47a1-abf8-e24c1a038694', 'd5cf1352-dda4-4d41-840e-4c026102fec2', 'でいり', 'kana', true, false, '{ichi1,news1,nf13}', 100, '2026-08-26 21:58:58.920093', '2026-08-26 21:58:58.920093'),
 	('7ca0da4a-54ca-442a-bab9-bac55c08fba8', '04d1097f-51ae-498d-bcf2-9ac1d26caaee', '水気', 'kanji', true, false, '{news1,nf23}', 0, '2026-08-26 21:59:09.906738', '2026-08-26 21:59:09.906738'),
@@ -12874,7 +12874,7 @@ INSERT INTO public.word_forms (id, word_id, form, kind, is_common, is_irregular,
 	('82bcd3d2-7988-46f1-aad7-deb4e2b5915b', 'ce55e5fc-4a47-4a41-908d-8e64d41cdde4', 'めっきり', 'kana', true, false, '{ichi1}', 100, '2026-08-26 21:58:56.611963', '2026-08-26 21:58:56.611963'),
 	('82c75ff5-8960-46a5-b327-8c668dd7958c', 'ecacfca1-fae7-4055-91ea-7a0647c34941', '候補', 'kanji', true, false, '{ichi1,news1,nf01}', 0, '2026-08-26 21:58:46.183077', '2026-08-26 21:58:46.183077'),
 	('82cefeec-ec7a-4459-ba28-86d42d3e2c22', '448a54dc-1c89-49a9-b990-8d2e838903a5', '面倒くさい', 'kanji', true, false, '{spec1}', 0, '2026-08-26 21:58:59.973942', '2026-08-26 21:58:59.973942') ON CONFLICT DO NOTHING;
-INSERT INTO public.word_forms (id, word_id, form, kind, is_common, is_irregular, tags, sort_index, created_at, updated_at) VALUES
+INSERT INTO word_forms (id, word_id, form, kind, is_common, is_irregular, tags, sort_index, created_at, updated_at) VALUES
 	('82d0ca9e-615a-4eae-9ace-2b2c7ad71812', 'a69b134c-f481-40cb-87a4-d1250739d663', '図々しい', 'kanji', true, false, '{ichi1}', 0, '2026-08-26 21:59:00.445735', '2026-08-26 21:59:00.445735'),
 	('82d7a6cf-1be3-4e1e-8b88-2aa70f92275e', '7992f296-053e-4182-aecb-5e848aa50546', 'どく', 'kana', true, false, '{ichi1,news1,nf10}', 100, '2026-08-26 21:58:48.262408', '2026-08-26 21:58:48.262408'),
 	('82d7d9fd-7e3a-4c38-aeac-1cf3565d8da4', '0232788f-f121-4cfd-bacf-4851487634e9', 'ごく', 'kana', true, false, '{ichi1,news1,nf14}', 100, '2026-08-26 21:58:45.496843', '2026-08-26 21:58:45.496843'),
@@ -13375,7 +13375,7 @@ INSERT INTO public.word_forms (id, word_id, form, kind, is_common, is_irregular,
 	('88eb1d54-d999-4b04-8ee6-fc3b225169ce', 'ffb7e94b-4d9e-47b3-ae72-41d7d203c184', '怨み', 'kanji', false, false, '{}', 1, '2026-08-26 21:58:58.645102', '2026-08-26 21:58:58.645102'),
 	('88ebf689-047b-409e-925f-cb71b80f7c85', 'd7006951-57dd-47f8-b3fe-bcfb8ad1fe0b', '作文', 'kanji', false, false, '{}', 0, '2026-08-26 21:56:48.883615', '2026-08-26 21:56:48.883615'),
 	('88f2fb0d-a2fd-412a-9bf4-93b472f784fe', 'e59cb19c-1cae-45a2-9a80-134e3542fb99', '中腹', 'kanji', true, false, '{news1,nf22}', 0, '2026-08-26 21:59:10.48802', '2026-08-26 21:59:10.48802') ON CONFLICT DO NOTHING;
-INSERT INTO public.word_forms (id, word_id, form, kind, is_common, is_irregular, tags, sort_index, created_at, updated_at) VALUES
+INSERT INTO word_forms (id, word_id, form, kind, is_common, is_irregular, tags, sort_index, created_at, updated_at) VALUES
 	('88f3be5b-f33c-4430-99bc-3f1be76d0ad0', 'b4dc969d-ab06-42f8-b577-241013b81e02', 'とける', 'kana', true, false, '{ichi1}', 100, '2026-08-26 21:59:06.648993', '2026-08-26 21:59:06.648993'),
 	('88f53e59-9bc1-40a3-9ca2-85ace366297c', 'ab609f1d-8763-42c5-ace1-f14be228fef4', '生物', 'kanji', true, false, '{ichi1,news1,nf04}', 0, '2026-08-26 21:58:47.639993', '2026-08-26 21:58:47.639993'),
 	('89011881-51af-4a83-a890-c7b97bf139e6', '0ab6be94-3ecc-4a2b-9f96-f9bd9e2bdb48', 'さいちゅう', 'kana', true, false, '{ichi1,news2,nf42}', 100, '2026-08-26 21:59:11.960044', '2026-08-26 21:59:11.960044'),
@@ -13876,7 +13876,7 @@ INSERT INTO public.word_forms (id, word_id, form, kind, is_common, is_irregular,
 	('8e5fb945-8f2c-4da1-a137-1590abdb6471', '21291af7-b621-44a3-9416-df981a9a1073', 'がいしゅつ', 'kana', true, false, '{ichi1,news1,nf10}', 100, '2026-08-26 21:58:44.648298', '2026-08-26 21:58:44.648298'),
 	('8e6017b4-ea7f-4963-9385-d42eaf3967d4', '26095a5c-6f3a-482e-8d59-d5b9fcd5194a', '牢', 'kanji', false, false, '{}', 0, '2026-08-26 21:58:49.872703', '2026-08-26 21:58:49.872703'),
 	('8e61c7ca-83ad-42ad-ad16-2687a322cb11', '36d2d3c1-24f6-4823-b9f0-707048a77806', '同一', 'kanji', true, false, '{ichi1,news1,nf04}', 0, '2026-08-26 21:58:48.241287', '2026-08-26 21:58:48.241287') ON CONFLICT DO NOTHING;
-INSERT INTO public.word_forms (id, word_id, form, kind, is_common, is_irregular, tags, sort_index, created_at, updated_at) VALUES
+INSERT INTO word_forms (id, word_id, form, kind, is_common, is_irregular, tags, sort_index, created_at, updated_at) VALUES
 	('8e662e2f-100b-41fc-bc0b-e902d2cf3d86', '5dc5735d-214f-4348-b3ee-a0fb3c4bdb9f', 'しゃ', 'kana', false, false, '{}', 100, '2026-08-26 21:56:48.993314', '2026-08-26 21:56:48.993314'),
 	('8e6707d8-76d5-4ea2-bbf8-6d32558551e8', '25cd5dc7-f5e2-44bd-a420-51fc529ba7e4', 'くらい', 'kana', true, false, '{spec1}', 100, '2026-08-26 21:58:43.754001', '2026-08-26 21:58:43.754001'),
 	('8e6e5662-3059-4fd6-9115-cf184ff9ce09', '83b552fd-17bd-4399-9e2a-93bb8ef0d72a', '外', 'kanji', true, false, '{spec1}', 0, '2026-08-26 21:56:48.805837', '2026-08-26 21:56:48.805837'),
@@ -14377,7 +14377,7 @@ INSERT INTO public.word_forms (id, word_id, form, kind, is_common, is_irregular,
 	('9450720b-977f-4b2d-8470-9c3ea5ad0c03', '9ddec3d2-2be0-41c4-aba0-0768f9203147', 'はんこう', 'kana', true, false, '{ichi1,news2,nf26}', 100, '2026-08-26 21:58:48.426561', '2026-08-26 21:58:48.426561'),
 	('9451e7e6-dec8-4827-bc07-5c8d1b5fa498', 'e5ac2404-51ff-4714-afb7-f35513266414', 'よし悪し', 'kanji', false, false, '{sK}', 4, '2026-08-26 21:59:11.983679', '2026-08-26 21:59:11.983679'),
 	('9451eb2f-4894-4578-8f84-891684156b47', '27f6a39e-7a66-415f-a9ce-7c4553cf1b8c', '肌着', 'kanji', true, false, '{ichi1,news2,nf33}', 0, '2026-08-26 21:58:59.724466', '2026-08-26 21:58:59.724466') ON CONFLICT DO NOTHING;
-INSERT INTO public.word_forms (id, word_id, form, kind, is_common, is_irregular, tags, sort_index, created_at, updated_at) VALUES
+INSERT INTO word_forms (id, word_id, form, kind, is_common, is_irregular, tags, sort_index, created_at, updated_at) VALUES
 	('94524671-a7a5-4104-9bc8-5cf12b03d660', '8d5e21fb-7ed2-4a5c-b857-f99717a49c60', '謎謎', 'kanji', false, false, '{}', 1, '2026-08-26 21:59:00.500105', '2026-08-26 21:59:00.500105'),
 	('9453478c-b14f-4c31-b028-671a6647f401', 'a2b40baf-9b95-42f6-8aa7-9976c85b72ee', 'ばい', 'kana', false, false, '{}', 100, '2026-08-26 21:58:38.510419', '2026-08-26 21:58:38.510419'),
 	('9453c355-5a4f-417f-9585-10c716d8cad0', 'e161d944-d974-4141-8057-a0f8eefdded8', '熬る', 'kanji', false, false, '{rK}', 2, '2026-08-26 21:58:59.210512', '2026-08-26 21:58:59.210512'),
@@ -14878,7 +14878,7 @@ INSERT INTO public.word_forms (id, word_id, form, kind, is_common, is_irregular,
 	('9a2f5f68-9ca1-4d2f-8fb1-c5d5d159694b', 'c4c8c9e9-86fe-4e2a-8231-065ef0127419', 'すごーい', 'kana', false, false, '{sk}', 102, '2026-08-26 21:58:36.714492', '2026-08-26 21:58:36.714492'),
 	('9a30b990-4aee-48cc-9252-864f05357bd5', '0a08d7a5-540a-41d0-909d-b31ba29bf81c', 'けつ', 'kana', false, false, '{}', 100, '2026-08-26 21:58:45.860305', '2026-08-26 21:58:45.860305'),
 	('9a36b647-e3b3-47a1-938d-c0e375dc5a74', '0f96e2a2-83a4-459f-b040-ee19f0189aed', '垂れる', 'kanji', true, false, '{ichi1,news2,nf38}', 0, '2026-08-26 21:59:09.899204', '2026-08-26 21:59:09.899204') ON CONFLICT DO NOTHING;
-INSERT INTO public.word_forms (id, word_id, form, kind, is_common, is_irregular, tags, sort_index, created_at, updated_at) VALUES
+INSERT INTO word_forms (id, word_id, form, kind, is_common, is_irregular, tags, sort_index, created_at, updated_at) VALUES
 	('9a37e34b-ee45-487a-b9cc-3ed3a1bcfc52', '99b555ca-dcc4-46c6-9442-5764ef6acb87', '返事', 'kanji', true, false, '{ichi1,news1,nf08}', 0, '2026-08-26 21:58:37.443023', '2026-08-26 21:58:37.443023'),
 	('9a42cd0a-af11-40e2-9bcc-0f2bbb33fe47', 'eab4e62e-8a82-4576-90d8-4dd0b28c1976', '探検', 'kanji', true, false, '{ichi1,news1,nf12}', 0, '2026-08-26 21:59:12.164586', '2026-08-26 21:59:12.164586'),
 	('9a444843-8889-4ac0-a8f0-72a23bb42a85', '3369fb70-d135-4bb3-b8fe-94cca6fb9328', 'ぬくめる', 'kana', false, false, '{}', 100, '2026-08-26 21:58:50.196182', '2026-08-26 21:58:50.196182'),
@@ -15379,7 +15379,7 @@ INSERT INTO public.word_forms (id, word_id, form, kind, is_common, is_irregular,
 	('9fed5a6b-5db9-409c-ab2f-26675307dbaf', 'a9358ff1-879b-4387-9c65-3fb7b5b49cb7', 'ばやい', 'kana', false, false, '{}', 100, '2026-08-26 21:58:38.153123', '2026-08-26 21:58:38.153123'),
 	('9fedafad-4d28-479d-9f87-54d869c1ffc4', '75fa7faa-69fb-4adf-9d62-e37fb1abec42', '觀光', 'kanji', false, false, '{sK}', 1, '2026-08-26 21:58:44.952839', '2026-08-26 21:58:44.952839'),
 	('9feeda51-bb02-4062-87fe-3f07039a56a9', 'bbca0d4f-7416-438e-80fc-c93b47859633', 'メス', 'kana', false, false, '{}', 101, '2026-08-26 21:59:08.992391', '2026-08-26 21:59:08.992391') ON CONFLICT DO NOTHING;
-INSERT INTO public.word_forms (id, word_id, form, kind, is_common, is_irregular, tags, sort_index, created_at, updated_at) VALUES
+INSERT INTO word_forms (id, word_id, form, kind, is_common, is_irregular, tags, sort_index, created_at, updated_at) VALUES
 	('9ff4d15d-dfad-4537-a470-a83d5f9eb8fe', '6ee788be-dd1f-4fd9-b404-7e98bdfe5703', 'じあん', 'kana', false, false, '{}', 100, '2026-08-26 21:59:12.580149', '2026-08-26 21:59:12.580149'),
 	('9ff52788-f990-48e2-be71-a03b0e7a7980', '26c7ad18-1d4f-4cee-bc42-9a6d84d961fd', '亡くなる', 'kanji', true, false, '{ichi1}', 0, '2026-08-26 21:58:37.463965', '2026-08-26 21:58:37.463965'),
 	('9ff75fd7-3673-4dfe-9179-d38e4ce570f1', '2412ae07-5404-46f2-b27d-a7b845e72a76', '宛', 'kanji', true, false, '{ichi1}', 1, '2026-08-26 21:59:10.728429', '2026-08-26 21:59:10.728429'),
@@ -15880,7 +15880,7 @@ INSERT INTO public.word_forms (id, word_id, form, kind, is_common, is_irregular,
 	('a5e7c52b-f1ae-4e84-b7d1-2a34a81cbf76', '1e1ff806-45b2-4c94-8332-75e34c52fa7e', '盛り', 'kanji', true, false, '{ichi1,news1,nf09}', 0, '2026-08-26 21:58:47.647468', '2026-08-26 21:58:47.647468'),
 	('a5e9fd89-d2b4-4277-9fb8-d04d98401212', '9ef9bb1b-0510-4890-8d3c-0d7fc5be5dd9', 'むのう', 'kana', true, false, '{ichi1,news2,nf30}', 100, '2026-08-26 21:59:11.56886', '2026-08-26 21:59:11.56886'),
 	('a5ea6ea2-2ce6-4777-8088-597cc8a456f5', '812e3e8f-ef24-4911-89de-c28720c46f71', 'へる', 'kana', true, false, '{ichi1,news1,nf20}', 100, '2026-08-26 21:58:46.006367', '2026-08-26 21:58:46.006367') ON CONFLICT DO NOTHING;
-INSERT INTO public.word_forms (id, word_id, form, kind, is_common, is_irregular, tags, sort_index, created_at, updated_at) VALUES
+INSERT INTO word_forms (id, word_id, form, kind, is_common, is_irregular, tags, sort_index, created_at, updated_at) VALUES
 	('a5eb6686-790a-4685-b76d-68ace1b71360', '2f04009d-b0c0-4127-bd80-d35b3b424d63', 'しこう', 'kana', true, false, '{news1,nf04}', 100, '2026-08-26 21:59:08.916034', '2026-08-26 21:59:08.916034'),
 	('a5ec7859-274e-4df7-94ce-658f6f9998b2', '39a3208d-c720-4a71-b5ee-3d0d94e81c2a', '停まる', 'kanji', false, false, '{rK}', 2, '2026-08-26 21:58:58.765287', '2026-08-26 21:58:58.765287'),
 	('a5edb12b-52cc-4efc-847e-ed3b3c921653', '15d70182-2c32-412a-ab20-3257ef74ff0d', '形', 'kanji', false, false, '{}', 0, '2026-08-26 21:58:38.355215', '2026-08-26 21:58:38.355215'),
@@ -16381,7 +16381,7 @@ INSERT INTO public.word_forms (id, word_id, form, kind, is_common, is_irregular,
 	('ab9c277c-4809-4655-b6bc-da48c07850c7', 'fe73d510-f22f-4f77-a920-d1aeda55c7d0', 'あまい', 'kana', true, false, '{ichi1,news1,nf19}', 100, '2026-08-26 21:56:45.732385', '2026-08-26 21:56:45.732385'),
 	('ab9ca453-27e0-4356-836d-039dac2a4d1e', 'e18c0c74-1bae-460f-86c8-e3c54924f245', '代わり', 'kanji', true, false, '{ichi1,news1,nf03}', 0, '2026-08-26 21:58:37.881009', '2026-08-26 21:58:37.881009'),
 	('ab9d099f-3e04-4359-b1a0-666f6b8553ba', 'a59d7518-2cd8-45e2-85a4-9992ea9ef895', 'よびとめる', 'kana', false, false, '{news2,nf42}', 100, '2026-08-26 21:59:08.21662', '2026-08-26 21:59:08.21662') ON CONFLICT DO NOTHING;
-INSERT INTO public.word_forms (id, word_id, form, kind, is_common, is_irregular, tags, sort_index, created_at, updated_at) VALUES
+INSERT INTO word_forms (id, word_id, form, kind, is_common, is_irregular, tags, sort_index, created_at, updated_at) VALUES
 	('aba0a81f-8baf-4c49-8a80-a90b861fecfc', 'ea8378e3-4931-4be5-8f91-4daa46fdd57b', 'がけ', 'kana', true, false, '{ichi1,news2,nf32}', 100, '2026-08-26 21:59:06.776422', '2026-08-26 21:59:06.776422'),
 	('aba1352c-c833-4b58-9644-a49a91f20da1', '23f36126-1b15-499d-9cef-94af6b5bb153', '欲張り', 'kanji', true, false, '{ichi1,news2,nf41}', 0, '2026-08-26 21:59:00.13034', '2026-08-26 21:59:00.13034'),
 	('aba500de-bf75-4cde-bbd6-21909d30c012', '613aeae0-c0a0-4332-9792-f838bbde5697', '畏ろしい', 'kanji', false, false, '{sK}', 2, '2026-08-26 21:58:45.445108', '2026-08-26 21:58:45.445108'),
@@ -16882,7 +16882,7 @@ INSERT INTO public.word_forms (id, word_id, form, kind, is_common, is_irregular,
 	('b17cb861-01e0-4417-9025-aa31dcc454aa', '9a7d6e01-14bb-420f-80ba-d79c146707bb', 'きのえ', 'kana', false, false, '{}', 100, '2026-08-26 21:59:12.65215', '2026-08-26 21:59:12.65215'),
 	('b17f7017-2c99-4ab1-9f49-553159380475', '8b33b28a-5411-474e-9cd7-7d9e96d66de9', '上陸', 'kanji', true, false, '{ichi1,news1,nf08}', 0, '2026-08-26 21:59:09.750272', '2026-08-26 21:59:09.750272'),
 	('b17f846b-8e9f-4d0c-b9e0-680e8a004a37', '0f5e1fec-7747-46cd-b04e-90354f8ff94d', '文書', 'kanji', true, false, '{ichi1,news1,nf02}', 0, '2026-08-26 21:59:12.016756', '2026-08-26 21:59:12.016756') ON CONFLICT DO NOTHING;
-INSERT INTO public.word_forms (id, word_id, form, kind, is_common, is_irregular, tags, sort_index, created_at, updated_at) VALUES
+INSERT INTO word_forms (id, word_id, form, kind, is_common, is_irregular, tags, sort_index, created_at, updated_at) VALUES
 	('b1818ad1-b2ba-46e1-81ee-306947d7cd59', '93f4e127-43c2-4201-8646-d8575eaa781e', '偶数', 'kanji', true, false, '{ichi1,news2,nf33}', 0, '2026-08-26 21:58:58.179837', '2026-08-26 21:58:58.179837'),
 	('b1825670-a15f-41c2-b227-cd31db591f02', 'e21b803c-cfe3-466f-8304-02fc2e38cc78', '思い付く', 'kanji', true, false, '{ichi1}', 1, '2026-08-26 21:58:49.256545', '2026-08-26 21:58:49.256545'),
 	('b186e1f2-426d-4969-a51b-83958f80fb7a', '02dd53f7-6e00-4064-8fac-d9c8e59a8073', 'じしゅ', 'kana', true, false, '{ichi1,news1,nf03}', 100, '2026-08-26 21:59:09.058101', '2026-08-26 21:59:09.058101'),
@@ -17383,7 +17383,7 @@ INSERT INTO public.word_forms (id, word_id, form, kind, is_common, is_irregular,
 	('b789a53d-3c1a-4223-bfaf-f2d48d0c8ac9', '6d1a2331-fecd-497e-952a-0805a27a0723', '本質', 'kanji', true, false, '{ichi1,news1,nf06}', 0, '2026-08-26 21:59:11.484725', '2026-08-26 21:59:11.484725'),
 	('b78faf18-df66-4f05-ac07-438aefb2c3a9', 'fea5e71e-dd6d-4e4c-a5f6-864c0711f361', '主権', 'kanji', true, false, '{ichi1,news1,nf04}', 0, '2026-08-26 21:59:09.213162', '2026-08-26 21:59:09.213162'),
 	('b7954bdd-33ab-4d3c-84e0-60846d6a1123', 'ea40b40f-78e4-4e23-b1a4-e35698055b7a', '熱心', 'kanji', true, false, '{ichi1,news1,nf05}', 0, '2026-08-26 21:58:37.240859', '2026-08-26 21:58:37.240859') ON CONFLICT DO NOTHING;
-INSERT INTO public.word_forms (id, word_id, form, kind, is_common, is_irregular, tags, sort_index, created_at, updated_at) VALUES
+INSERT INTO word_forms (id, word_id, form, kind, is_common, is_irregular, tags, sort_index, created_at, updated_at) VALUES
 	('b7957a0d-d5cb-4755-a6f2-9971c4871e66', 'a5d672bc-9383-46f1-a33c-143ec35b3c2a', '捻る', 'kanji', true, false, '{ichi1}', 0, '2026-08-26 21:58:59.686097', '2026-08-26 21:58:59.686097'),
 	('b7983eac-67b7-4c05-a08f-13a158ddeedd', '507228b7-cd39-43c9-9ba1-5f6577629ba0', 'ていさい', 'kana', true, false, '{ichi1,news1,nf21}', 100, '2026-08-26 21:59:10.233017', '2026-08-26 21:59:10.233017'),
 	('b798a5b8-4c5d-4326-a9ae-96479cb5289f', '10c927cf-575d-495e-928e-8206b0a7ddde', '搔き回す', 'kanji', false, false, '{sK}', 3, '2026-08-26 21:59:10.13635', '2026-08-26 21:59:10.13635'),
@@ -17884,7 +17884,7 @@ INSERT INTO public.word_forms (id, word_id, form, kind, is_common, is_irregular,
 	('bd8a3568-f79f-4dc1-aac0-7047cb0e7029', '55622769-4804-4f89-9b0f-64bc132d9807', 'カメラ', 'kana', true, false, '{gai1,ichi1}', 100, '2026-08-26 21:56:44.953647', '2026-08-26 21:56:44.953647'),
 	('bd9024f3-a9e9-4929-b156-3ecef40644d5', 'a4482ebe-f25d-444a-9629-7f692d08cd58', 'ほうぶる', 'kana', false, false, '{}', 101, '2026-08-26 21:59:10.15309', '2026-08-26 21:59:10.15309'),
 	('bd95a4df-d61c-4823-88f3-d223840c8814', '76bee1ed-7706-47bd-b5d5-d6af32082d28', 'よほど', 'kana', true, false, '{ichi1}', 100, '2026-08-26 21:59:12.42776', '2026-08-26 21:59:12.42776') ON CONFLICT DO NOTHING;
-INSERT INTO public.word_forms (id, word_id, form, kind, is_common, is_irregular, tags, sort_index, created_at, updated_at) VALUES
+INSERT INTO word_forms (id, word_id, form, kind, is_common, is_irregular, tags, sort_index, created_at, updated_at) VALUES
 	('bd99712a-e544-4b17-8ff3-de0462319a89', '591268d8-def7-4899-ab8d-45286d178ac7', '御喋り', 'kanji', false, false, '{sK}', 1, '2026-08-26 21:58:42.968253', '2026-08-26 21:58:42.968253'),
 	('bd9986b0-3ff2-4edb-b362-f9f28493102c', 'f92a8a0b-ef47-4d3e-b463-95470aacc538', 'くすり', 'kana', true, false, '{ichi1,news1,nf04}', 100, '2026-08-26 21:56:47.896292', '2026-08-26 21:56:47.896292'),
 	('bd9b1f0e-cee2-4b33-a613-43c7efd609df', '2152139c-cc55-4e92-96c3-bf8d90d70d68', '利く', 'kanji', true, false, '{ichi1}', 1, '2026-08-26 21:58:49.286823', '2026-08-26 21:58:49.286823'),
@@ -18385,7 +18385,7 @@ INSERT INTO public.word_forms (id, word_id, form, kind, is_common, is_irregular,
 	('c3d023b2-21d5-4f4d-8e3f-bd32acfd5567', 'b6170d44-0618-4fe8-ac03-d3e9bf38c87a', 'さしひき', 'kana', true, false, '{ichi1,news1,nf17}', 100, '2026-08-26 21:58:58.661623', '2026-08-26 21:58:58.661623'),
 	('c3d0e2fa-bf54-47ea-8a8a-aa4dd0830753', '028d6c5b-9ca9-4599-a245-70c6395580d1', '暖い', 'kanji', false, false, '{sK}', 2, '2026-08-26 21:58:49.216874', '2026-08-26 21:58:49.216874'),
 	('c3d24729-3b4d-48ab-8d92-896d8ff43145', '8b880538-095c-4f96-a1cc-d6807daeaf94', '桁', 'kanji', true, false, '{ichi1,news2,nf44}', 0, '2026-08-26 21:58:58.291176', '2026-08-26 21:58:58.291176') ON CONFLICT DO NOTHING;
-INSERT INTO public.word_forms (id, word_id, form, kind, is_common, is_irregular, tags, sort_index, created_at, updated_at) VALUES
+INSERT INTO word_forms (id, word_id, form, kind, is_common, is_irregular, tags, sort_index, created_at, updated_at) VALUES
 	('c3d7456d-cfd8-4899-bdb9-1479175c44f2', 'dd6af5bc-425d-4a1e-82a0-597a6d3fe9a5', 'こういん', 'kana', true, false, '{news1,nf18}', 100, '2026-08-26 21:58:58.535746', '2026-08-26 21:58:58.535746'),
 	('c3d78a44-b5ff-4678-b065-71d171a9cea4', '4737441d-8308-4110-af4a-a48f53adfb8f', '細菌', 'kanji', true, false, '{ichi1,news1,nf11}', 0, '2026-08-26 21:59:08.705347', '2026-08-26 21:59:08.705347'),
 	('c3dc8db4-d14b-4968-b5e0-f10bbe095c9f', '47897c4a-b74c-4426-b4fd-93637e9da41a', '仕上げ', 'kanji', true, false, '{ichi1,news1,nf12}', 0, '2026-08-26 21:59:12.126763', '2026-08-26 21:59:12.126763'),
@@ -18886,7 +18886,7 @@ INSERT INTO public.word_forms (id, word_id, form, kind, is_common, is_irregular,
 	('c9cd9619-052f-4910-9c5d-58e210a1a082', '7cfa56c9-1026-425d-94be-53eafede4d09', 'なんぷん', 'kana', true, false, '{spec1}', 100, '2026-08-26 21:58:57.45618', '2026-08-26 21:58:57.45618'),
 	('c9d0620f-93e0-4733-b668-ee8a8cf46fc2', '536b9a2e-58d9-4664-8d4d-47d4c65d0a35', '透る', 'kanji', false, false, '{rK}', 1, '2026-08-26 21:58:37.036423', '2026-08-26 21:58:37.036423'),
 	('c9d26569-b65d-43a3-9957-28d82a8c5ede', '7922cfdf-4679-4114-8d6a-192b3ecb54b3', '住む', 'kanji', true, false, '{ichi1,news2,nf47}', 0, '2026-08-26 21:56:46.580301', '2026-08-26 21:56:46.580301') ON CONFLICT DO NOTHING;
-INSERT INTO public.word_forms (id, word_id, form, kind, is_common, is_irregular, tags, sort_index, created_at, updated_at) VALUES
+INSERT INTO word_forms (id, word_id, form, kind, is_common, is_irregular, tags, sort_index, created_at, updated_at) VALUES
 	('c9d5e586-f9cf-4118-b296-1b6807cb7bbd', '05734555-d81d-456e-896b-adc5c3f14efb', '贈りもの', 'kanji', false, false, '{sK}', 2, '2026-08-26 21:58:37.817963', '2026-08-26 21:58:37.817963'),
 	('c9d6d721-290c-4838-9606-b320879ac459', 'ec95291b-62e3-451a-8020-6650cb3fb960', 'あの', 'kana', true, false, '{spec1}', 100, '2026-08-26 21:56:44.588862', '2026-08-26 21:56:44.588862'),
 	('c9d753e4-109b-4cf4-9c16-da55c447136a', '1091ef49-b517-441b-9fb3-5ec70204f2ea', '退学', 'kanji', true, false, '{ichi1,news1,nf16}', 0, '2026-08-26 21:58:47.884768', '2026-08-26 21:58:47.884768'),
@@ -19387,7 +19387,7 @@ INSERT INTO public.word_forms (id, word_id, form, kind, is_common, is_irregular,
 	('cfed33d9-bed6-4e8d-9836-7ee6dcf4083a', '3401dbd0-3cda-418a-93af-ea296cf1f829', '守公', 'kanji', false, false, '{}', 2, '2026-08-26 21:58:47.201238', '2026-08-26 21:58:47.201238'),
 	('cfef06f6-0414-4d80-aebc-2a484895bd02', '42fb668e-05e4-4d0a-bb05-17154b903289', 'まことに', 'kana', true, false, '{ichi1,news1,nf09}', 100, '2026-08-26 21:59:10.004572', '2026-08-26 21:59:10.004572'),
 	('cfef0e00-f80c-433c-8d45-12b2afd7712e', 'f5f95f42-40d1-4a14-81c7-b0c34ed9c3c2', 'つくり', 'kana', true, false, '{news1,nf06,nf20}', 100, '2026-08-26 21:59:08.737574', '2026-08-26 21:59:08.737574') ON CONFLICT DO NOTHING;
-INSERT INTO public.word_forms (id, word_id, form, kind, is_common, is_irregular, tags, sort_index, created_at, updated_at) VALUES
+INSERT INTO word_forms (id, word_id, form, kind, is_common, is_irregular, tags, sort_index, created_at, updated_at) VALUES
 	('cff4472d-424e-455d-bd8b-795f17b83c27', '275aae09-d478-479d-adab-dd022d31f77f', '無言', 'kanji', false, false, '{rK}', 2, '2026-08-26 21:59:12.822528', '2026-08-26 21:59:12.822528'),
 	('cff849d0-79b9-4748-a81c-2391e8b9df23', '99a669c6-051a-4aa0-afe6-7c6a1a551474', '退ける', 'kanji', true, false, '{ichi1}', 0, '2026-08-26 21:58:59.32618', '2026-08-26 21:58:59.32618'),
 	('d0085e9a-ee51-4408-94cd-0d862b344319', 'afcc4b44-ee7a-4313-b2a4-6f54b7c988ac', '定休日', 'kanji', true, false, '{ichi1,news2,nf39}', 0, '2026-08-26 21:58:59.502603', '2026-08-26 21:58:59.502603'),

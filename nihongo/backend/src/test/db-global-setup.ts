@@ -44,7 +44,9 @@ function contentHash(): string {
     ...listFiles(migrationsDir),
     ...listFiles(seedsDir),
     path.join(backendDir, 'src/db/seed.ts'),
-    path.join(backendDir, 'src/db/migrate.ts')
+    path.join(backendDir, 'src/db/migrate.ts'),
+    // The search_path the seeds' bare table names resolve through.
+    path.join(backendDir, '../shared/src/db/index.ts')
   ]
   for (const file of files) {
     hash.update(path.relative(backendDir, file))
@@ -114,11 +116,12 @@ async function ensureTemplate(admin: pg.Client): Promise<void> {
  * `now()`. A fixture placed on a fixed day would then disagree with itself, and
  * a golden written today would fail tomorrow.
  *
- * So the clone gets a `public.now()` that reads `test_clock`, and the database's
- * search_path puts `public` before `pg_catalog`, which makes an unqualified
- * `now()` resolve to it. Column defaults were bound to `pg_catalog.now()` when
- * created, so each is pointed at the new one. An empty clock falls back to the
- * real time. Test-only: nothing here touches the migrations.
+ * So the clone gets a `public.now()` that reads `test_clock`, and every
+ * connection's search_path (`SEARCH_PATH` in the shared db) puts `public`
+ * before `pg_catalog`, which makes an unqualified `now()` resolve to it. Column
+ * defaults were bound to `pg_catalog.now()` when created, so each is pointed at
+ * the new one, in every schema. An empty clock falls back to the real time.
+ * Test-only: nothing here touches the migrations.
  */
 async function installClock(): Promise<void> {
   const client = await connectTo(TEST_DATABASE)
@@ -132,13 +135,12 @@ async function installClock(): Promise<void> {
     const { rows } = await client.query<{ schema: string, table: string, column: string, def: string }>(`
       select table_schema as schema, table_name as table, column_name as column, column_default as def
       from information_schema.columns
-      where table_schema = 'public' and column_default ~ '\\mnow\\(\\)'
+      where table_schema not in ('pg_catalog', 'information_schema') and column_default ~ '\\mnow\\(\\)'
     `)
     for (const row of rows) {
       const def = row.def.replace(/\bnow\(\)/g, 'public.now()')
       await client.query(`alter table "${row.schema}"."${row.table}" alter column "${row.column}" set default ${def}`)
     }
-    await client.query(`alter database ${TEST_DATABASE} set search_path = public, pg_catalog`)
   } finally {
     await client.end()
   }

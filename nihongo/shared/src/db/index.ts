@@ -28,6 +28,16 @@ function buildSslConfig() {
 
 const ssl = buildSslConfig()
 
+/**
+ * Every schema the tables live in (one not created yet is skipped), then
+ * `public` (pg_trgm, `seed_history`) and `pg_catalog` last, so raw SQL and the
+ * seeds name tables bare. `pg_catalog` is named so that it comes after
+ * `public`: the DB tests put a clock in as `public.now()` and need it found
+ * first. In production nothing in `public` shares a name with the catalog, and
+ * only the owner can create there.
+ */
+export const SEARCH_PATH = ['auth', 'content', 'editorial', 'learner', 'social', 'ops', 'public', 'pg_catalog'].join(',')
+
 export const connection = new Pool({
   connectionString: env.DATABASE_URL,
   // No JIT. Postgres compiles a query to machine code once its estimated cost
@@ -36,7 +46,7 @@ export const connection = new Pool({
   // request, to save a few milliseconds of running. Compiling only pays for
   // long analytical queries, which this app does not run. Set per connection,
   // so the other databases on the shared server keep their own setting.
-  options: '-c jit=off',
+  options: `-c jit=off -c search_path=${SEARCH_PATH}`,
   max: (env.DB_MIGRATING || env.DB_SEEDING) ? 1 : env.DB_POOL_MAX,
   min: (env.DB_MIGRATING || env.DB_SEEDING) ? 0 : Math.min(env.DB_POOL_MIN, env.DB_POOL_MAX),
   idleTimeoutMillis: env.DB_POOL_IDLE_TIMEOUT_MS,

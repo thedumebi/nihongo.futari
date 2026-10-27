@@ -7,7 +7,7 @@ BEGIN
   IF (SELECT min(run_at) FROM seed_history) < timestamptz '2026-10-26 00:00:00+00' THEN
     RETURN;
   END IF;
-INSERT INTO public.study_item_facets (id, study_item_id, facet, enabled, weight, intro_order, created_at, updated_at) VALUES
+INSERT INTO study_item_facets (id, study_item_id, facet, enabled, weight, intro_order, created_at, updated_at) VALUES
 	('5a26108a-d04d-4bb5-8458-6fce79df4bca', 'f2a57566-6ca4-4ec0-9758-021fdba6662a', 'meaning', true, 1, 0, '2026-08-26 05:54:48.947518', '2026-08-26 05:54:48.947518'),
 	('5a275835-c351-470a-81f5-5e1dfc5f434d', '9f17c009-beb1-4517-8c6d-2885580ae8b7', 'production', true, 1, 4, '2026-08-26 04:23:27.672365', '2026-08-26 04:23:27.672365'),
 	('5a29beec-4294-40f3-9693-53eca856d836', '2a2d4882-12cd-47c3-a3d6-ac89b05950c0', 'listening', true, 1, 6, '2026-08-30 02:18:24.985234', '2026-08-30 02:18:24.985234'),
@@ -508,7 +508,7 @@ INSERT INTO public.study_item_facets (id, study_item_id, facet, enabled, weight,
 	('5dec6a10-8bc9-4235-b8cf-d986c9f99aac', '8a43efdd-80a7-4499-81ac-c49eefd6a388', 'reading', true, 1, 1, '2026-08-26 05:54:41.8189', '2026-08-26 05:54:41.8189'),
 	('5dee41fe-e76b-4242-a62c-d9c8ea802290', '20f29385-6ca3-44ec-ac39-39f1a194a114', 'meaning', true, 1, 0, '2026-08-26 05:54:42.312017', '2026-08-26 05:54:42.312017'),
 	('5def22f3-4af7-4aa6-b868-29873856380f', '4d454ec9-23ef-4016-976b-9485b5b6749b', 'listening', true, 1, 6, '2026-08-30 02:18:24.985234', '2026-08-30 02:18:24.985234') ON CONFLICT DO NOTHING;
-INSERT INTO public.study_item_facets (id, study_item_id, facet, enabled, weight, intro_order, created_at, updated_at) VALUES
+INSERT INTO study_item_facets (id, study_item_id, facet, enabled, weight, intro_order, created_at, updated_at) VALUES
 	('5df0b226-c323-449c-86c6-231ab3caddc1', 'e16e7d92-0cb7-455f-a727-41df8ca81260', 'listening', true, 1, 6, '2026-08-30 02:18:24.985234', '2026-08-30 02:18:24.985234'),
 	('5df1df4c-6cd0-4ce1-89ee-99f642464bfe', '3f42d182-b5a7-4942-95e9-1eafa5fb10d0', 'reading', true, 1, 1, '2026-08-26 05:53:07.781031', '2026-08-26 05:53:07.781031'),
 	('5df9c880-fc4e-4a5a-990b-63c243996688', '6adafb67-1e04-42df-aa54-184a4e70710b', 'listening', true, 1, 6, '2026-08-30 02:18:24.985234', '2026-08-30 02:18:24.985234'),
@@ -1009,7 +1009,7 @@ INSERT INTO public.study_item_facets (id, study_item_id, facet, enabled, weight,
 	('6239739c-125a-4a4a-a09f-b0811e59fd8c', 'b016df28-4ffd-4e87-b7b8-9ba10616c386', 'meaning', true, 1, 0, '2026-08-26 05:54:36.352492', '2026-08-26 05:54:36.352492'),
 	('623b0558-55cf-4340-8e81-e688fb2ebc26', 'ad066c93-f1dd-488f-97f5-5ffe9ba854c6', 'reading', true, 1, 1, '2026-08-26 05:53:46.617541', '2026-08-26 05:53:46.617541'),
 	('623c511e-ee53-4727-b199-297bf246663c', '7be5b60b-9bd7-4341-8ba1-579f4ead45c1', 'listening', true, 1, 6, '2026-08-26 04:34:12.534005', '2026-08-26 04:34:12.534005') ON CONFLICT DO NOTHING;
-INSERT INTO public.study_item_facets (id, study_item_id, facet, enabled, weight, intro_order, created_at, updated_at) VALUES
+INSERT INTO study_item_facets (id, study_item_id, facet, enabled, weight, intro_order, created_at, updated_at) VALUES
 	('623ea12a-a36c-42ad-a2f8-c703183f4cb9', 'cc4717d8-5378-4917-bb3f-595056f3c03f', 'reading', true, 1, 1, '2026-08-26 05:53:10.937664', '2026-08-26 05:53:10.937664'),
 	('6240b70d-bc3c-4712-aaed-651c808922e6', '718686d7-0e8f-49d3-8885-08450dc921c7', 'reading', true, 1, 1, '2026-08-26 05:55:12.199948', '2026-08-26 05:55:12.199948'),
 	('6244e892-97f6-4cc1-8993-d51917d68e53', '5608bf55-a062-4c08-aa56-ffee5bd7c195', 'reading', true, 1, 1, '2026-08-26 05:55:07.832701', '2026-08-26 05:55:07.832701'),
@@ -1510,7 +1510,7 @@ INSERT INTO public.study_item_facets (id, study_item_id, facet, enabled, weight,
 	('663e3d47-3581-4341-bcaf-19516a468f0c', '6a0d8069-64e6-4e41-9cfd-54beeca81438', 'reading', true, 1, 1, '2026-08-26 05:54:47.285924', '2026-08-26 05:54:47.285924'),
 	('6643331e-60fd-48d1-b3f5-df6f2d99c47f', '97e9a5c8-32a2-4e9c-ad61-0c83651b4db9', 'reading', true, 1, 1, '2026-08-26 05:54:39.335399', '2026-08-26 05:54:39.335399'),
 	('664350e7-6d75-46c1-9aef-d47235d8cae7', '5c9451bb-fee0-4c5f-a495-39b93dc8ec01', 'production', true, 1, 4, '2026-08-26 04:23:27.575196', '2026-08-26 04:23:27.575196') ON CONFLICT DO NOTHING;
-INSERT INTO public.study_item_facets (id, study_item_id, facet, enabled, weight, intro_order, created_at, updated_at) VALUES
+INSERT INTO study_item_facets (id, study_item_id, facet, enabled, weight, intro_order, created_at, updated_at) VALUES
 	('6644383d-bc68-479a-a648-831d3abc605c', '740bcd0e-2f88-4341-933b-b15357c7dfe2', 'writing', true, 1, 5, '2026-08-26 05:53:04.827099', '2026-08-26 05:53:04.827099'),
 	('664909b9-4111-467f-b823-11b797ae49ed', 'e70d4df8-2503-4048-ba8a-f9fed0794365', 'listening', true, 1, 6, '2026-08-30 02:18:24.985234', '2026-08-30 02:18:24.985234'),
 	('664e6cff-df0d-4982-b578-e33866825df1', '7ee15471-0e9c-4fd2-8c33-9f616f00d895', 'reading', true, 1, 1, '2026-08-26 05:52:47.260118', '2026-08-26 05:52:47.260118'),
@@ -2011,7 +2011,7 @@ INSERT INTO public.study_item_facets (id, study_item_id, facet, enabled, weight,
 	('6a215a8a-7f83-487b-ad32-6eede1dbe5ed', 'feb7b65e-8312-4939-9451-470743abe089', 'meaning', true, 1, 0, '2026-08-26 05:55:05.394549', '2026-08-26 05:55:05.394549'),
 	('6a21a6cd-5c0a-4d3a-ae3c-caea649938a5', '6bed5170-4b14-4029-8b66-8583aad51032', 'reading', true, 1, 1, '2026-08-26 05:55:07.920697', '2026-08-26 05:55:07.920697'),
 	('6a235798-874a-4d5e-9717-e5c6a1a02f86', 'cfc18046-262b-4a96-a8ca-bfecd913fd80', 'usage', true, 1, 3, '2026-08-26 04:35:31.400775', '2026-08-26 04:35:31.400775') ON CONFLICT DO NOTHING;
-INSERT INTO public.study_item_facets (id, study_item_id, facet, enabled, weight, intro_order, created_at, updated_at) VALUES
+INSERT INTO study_item_facets (id, study_item_id, facet, enabled, weight, intro_order, created_at, updated_at) VALUES
 	('6a253ea0-0724-4dcd-bc07-19c2292667d5', '93c73eae-d71d-48c5-9ae7-024dfe8dc96f', 'reading', true, 1, 1, '2026-08-26 05:54:36.216719', '2026-08-26 05:54:36.216719'),
 	('6a254f20-ea88-4b75-b4c2-df09d8160351', '286cd0a1-93c3-45af-a822-c85c6954e03c', 'listening', true, 1, 6, '2026-08-30 02:18:24.985234', '2026-08-30 02:18:24.985234'),
 	('6a25e336-edef-4b55-9db0-589dbdde991c', '7a091ef1-599b-4c0c-9761-2ba3d28202d5', 'production', true, 1, 2, '2026-08-26 01:46:37.294086', '2026-08-26 01:46:37.294086'),
@@ -2512,7 +2512,7 @@ INSERT INTO public.study_item_facets (id, study_item_id, facet, enabled, weight,
 	('6e29d074-e5f8-4e0c-aac5-4f7787e3ad0a', '3c1fa967-f2f4-4b48-a3e9-b51a5040921b', 'writing', true, 1, 5, '2026-08-26 03:49:47.134931', '2026-08-26 03:49:47.134931'),
 	('6e2a2232-ab04-4b83-8f87-f3463f6138bc', 'cc53c523-b9ac-47a2-aba6-acd1a7c0824e', 'writing', true, 1, 5, '2026-08-26 05:53:04.362401', '2026-08-26 05:53:04.362401'),
 	('6e2c6da7-91a3-4964-923b-3f62d1fd5af7', '438c96da-4c27-46ea-b099-06e860c5a578', 'production', true, 1, 2, '2026-08-26 01:46:37.461311', '2026-08-26 01:46:37.461311') ON CONFLICT DO NOTHING;
-INSERT INTO public.study_item_facets (id, study_item_id, facet, enabled, weight, intro_order, created_at, updated_at) VALUES
+INSERT INTO study_item_facets (id, study_item_id, facet, enabled, weight, intro_order, created_at, updated_at) VALUES
 	('6e2e90ce-69d2-4459-8959-5c042f34add3', '698f49b2-13d4-4ce2-8898-bbd6c27520b0', 'meaning', true, 1, 0, '2026-08-26 05:53:07.997488', '2026-08-26 05:53:07.997488'),
 	('6e328490-7aea-4e03-8219-68f20b2e664c', '3871b05b-2b15-493e-9fcd-c388d52a218f', 'reading', true, 1, 1, '2026-08-26 05:55:08.697593', '2026-08-26 05:55:08.697593'),
 	('6e376fea-4efb-4cd3-b04e-d702f30cf3e8', '300070b9-d8fa-4984-80bf-71280374073e', 'reading', true, 1, 1, '2026-08-26 05:54:47.175236', '2026-08-26 05:54:47.175236'),
@@ -3013,7 +3013,7 @@ INSERT INTO public.study_item_facets (id, study_item_id, facet, enabled, weight,
 	('722d41fe-9342-42d3-8844-6b8349046fef', '489f6a58-a300-47f1-b761-5a22716f3811', 'listening', true, 1, 6, '2026-08-26 04:34:12.889588', '2026-08-26 04:34:12.889588'),
 	('722fa6df-dcaa-4057-a5eb-2091d4adf77d', '322f7bc0-f3f4-4e61-88b2-d1edeeb79e47', 'usage', true, 1, 3, '2026-08-26 04:35:32.895968', '2026-08-26 04:35:32.895968'),
 	('72305236-66d8-4561-b67c-c3ba55c65da0', 'e260d677-b2fd-49e2-bb41-66191cee0ec9', 'reading', true, 1, 1, '2026-08-26 05:54:44.207822', '2026-08-26 05:54:44.207822') ON CONFLICT DO NOTHING;
-INSERT INTO public.study_item_facets (id, study_item_id, facet, enabled, weight, intro_order, created_at, updated_at) VALUES
+INSERT INTO study_item_facets (id, study_item_id, facet, enabled, weight, intro_order, created_at, updated_at) VALUES
 	('7230750c-bd08-4283-beea-8165f0e74013', '2358a632-baa0-4705-a04c-17b869ac66cf', 'reading', true, 1, 1, '2026-08-26 05:53:11.131709', '2026-08-26 05:53:11.131709'),
 	('7235d5bb-c2ca-40e7-818b-e4315f3ba9c9', 'dc04f54d-380f-4b7a-9028-068021e53693', 'meaning', true, 1, 0, '2026-08-26 05:54:48.47506', '2026-08-26 05:54:48.47506'),
 	('7237ef23-f7a7-4d60-bdac-2af2cd3255b0', 'cdb3b57c-e808-4c19-958f-e3959e2473cc', 'reading', true, 1, 1, '2026-08-26 05:54:53.060933', '2026-08-26 05:54:53.060933'),
@@ -3514,7 +3514,7 @@ INSERT INTO public.study_item_facets (id, study_item_id, facet, enabled, weight,
 	('75fc61ea-c621-4cf2-8f5a-7e3546a11564', '4a747411-40a4-43b0-a579-698df16746e5', 'meaning', true, 1, 0, '2026-08-26 05:54:59.711065', '2026-08-26 05:54:59.711065'),
 	('75fd6267-fa37-4fd3-978d-b2ea401adea6', '3efb5c3f-0296-4e80-ba19-bda4bc3c6d41', 'meaning', true, 1, 0, '2026-08-26 05:54:37.732004', '2026-08-26 05:54:37.732004'),
 	('75ff0ffa-9e46-4543-9b0f-eda40cf85be3', '20149b1d-be41-4f44-8611-f78356726b11', 'meaning', true, 1, 0, '2026-08-26 05:53:06.147181', '2026-08-26 05:53:06.147181') ON CONFLICT DO NOTHING;
-INSERT INTO public.study_item_facets (id, study_item_id, facet, enabled, weight, intro_order, created_at, updated_at) VALUES
+INSERT INTO study_item_facets (id, study_item_id, facet, enabled, weight, intro_order, created_at, updated_at) VALUES
 	('7600618d-8582-4ee0-97d2-98edc4ce593e', '2a41bebd-ffaa-4d28-abc3-28ab5a1d702a', 'meaning', true, 1, 0, '2026-08-26 05:54:42.60162', '2026-08-26 05:54:42.60162'),
 	('7602aa4d-564d-46ca-a308-1ccfd93e4a90', '9791f8a2-2566-4307-944b-d54a095f36c8', 'reading', true, 1, 1, '2026-08-26 05:54:48.553188', '2026-08-26 05:54:48.553188'),
 	('7602cd82-98bd-4e53-8cfa-905d108e092c', '891aac6a-8e71-4955-b541-6489a4723f77', 'meaning', true, 1, 0, '2026-08-26 05:54:39.259003', '2026-08-26 05:54:39.259003'),
@@ -4015,7 +4015,7 @@ INSERT INTO public.study_item_facets (id, study_item_id, facet, enabled, weight,
 	('79d045d3-838a-4c7b-8512-28eec7158ebb', '3a4db1d1-278a-4ae2-b626-ba7d5922e384', 'meaning', true, 1, 0, '2026-08-26 05:53:11.010407', '2026-08-26 05:53:11.010407'),
 	('79d23ec3-36cb-416a-a55b-5147352fbca5', '5d245369-e2c8-42db-b34d-18d1545b4ae5', 'reading', true, 1, 1, '2026-08-26 00:30:31.286222', '2026-08-26 00:30:31.286222'),
 	('79d7bf6e-ed0e-4269-b094-7731c7b39a33', 'de5ca83e-6a5c-491d-8d6a-d44933ba616c', 'reading', true, 1, 1, '2026-08-26 05:55:05.343688', '2026-08-26 05:55:05.343688') ON CONFLICT DO NOTHING;
-INSERT INTO public.study_item_facets (id, study_item_id, facet, enabled, weight, intro_order, created_at, updated_at) VALUES
+INSERT INTO study_item_facets (id, study_item_id, facet, enabled, weight, intro_order, created_at, updated_at) VALUES
 	('79d7ca43-3d59-4026-b858-4535a10559cd', '31ebc25a-e6ba-4a7f-8fcc-e604aaaf16e9', 'reading', true, 1, 1, '2026-08-26 05:52:48.350849', '2026-08-26 05:52:48.350849'),
 	('79db6b6a-ada0-4386-b3c3-cd51a3217a10', 'f941644d-2f8e-4f1c-bdc7-7a8b1e1f8c45', 'meaning', true, 1, 0, '2026-08-26 05:53:10.970748', '2026-08-26 05:53:10.970748'),
 	('79db7307-1736-4247-9727-2949bf52cbf2', '95af86d5-05fb-4e30-a567-28e515cf92cb', 'meaning', true, 1, 0, '2026-08-26 05:55:08.927274', '2026-08-26 05:55:08.927274'),
@@ -4516,7 +4516,7 @@ INSERT INTO public.study_item_facets (id, study_item_id, facet, enabled, weight,
 	('7dbed251-3246-47e5-8432-4c6e4f07873a', 'dac6ec8b-1a48-4672-a611-ad595d625749', 'meaning', true, 1, 0, '2026-08-26 05:54:43.269041', '2026-08-26 05:54:43.269041'),
 	('7dbf7bda-cd5b-484b-b5bd-5e19ed7d15be', '4e4b9005-36a3-444a-96d5-c3fed90e9c33', 'listening', true, 1, 6, '2026-08-30 02:18:24.985234', '2026-08-30 02:18:24.985234'),
 	('7dbf9da1-30d0-4bc7-a82a-328af610ce49', '92cce015-fca0-45d0-9099-4a409adbcd17', 'usage', true, 1, 3, '2026-08-26 04:35:32.689166', '2026-08-26 04:35:32.689166') ON CONFLICT DO NOTHING;
-INSERT INTO public.study_item_facets (id, study_item_id, facet, enabled, weight, intro_order, created_at, updated_at) VALUES
+INSERT INTO study_item_facets (id, study_item_id, facet, enabled, weight, intro_order, created_at, updated_at) VALUES
 	('7dbfa5ec-0e7e-472c-a302-32b7e59fd73c', 'e1cc89ba-e37b-430c-ae9e-519c41e8e7f4', 'reading', true, 1, 1, '2026-08-26 05:53:10.479153', '2026-08-26 05:53:10.479153'),
 	('7dc12c86-eecf-400b-a466-09ab1d91d6ee', 'c67ba0be-4c19-45ca-a212-12bf2291704a', 'meaning', true, 1, 0, '2026-08-26 00:30:30.074863', '2026-08-26 00:30:30.074863'),
 	('7dc3e0c9-25bb-4e27-9f8b-08b0b1b42718', '0bd116f3-693e-4386-9201-3f83766e228e', 'listening', true, 1, 6, '2026-08-30 02:18:24.985234', '2026-08-30 02:18:24.985234'),
@@ -5017,7 +5017,7 @@ INSERT INTO public.study_item_facets (id, study_item_id, facet, enabled, weight,
 	('81c2650d-d01f-4399-8210-ba13afc68be5', 'fecec7ab-79f7-4f68-8dd4-57b5fd64693c', 'usage', true, 1, 3, '2026-08-26 04:35:32.152315', '2026-08-26 04:35:32.152315'),
 	('81c5a450-76cf-4b41-b5a5-85726484192f', 'd06e1eb2-4066-4cdb-a510-5ce751a4da76', 'listening', true, 1, 6, '2026-08-30 02:18:24.985234', '2026-08-30 02:18:24.985234'),
 	('81c77746-b676-482c-b951-b35eea193b80', 'be384871-98b9-4a57-ba6d-27df9ac1ba33', 'listening', true, 1, 6, '2026-08-30 02:18:24.985234', '2026-08-30 02:18:24.985234') ON CONFLICT DO NOTHING;
-INSERT INTO public.study_item_facets (id, study_item_id, facet, enabled, weight, intro_order, created_at, updated_at) VALUES
+INSERT INTO study_item_facets (id, study_item_id, facet, enabled, weight, intro_order, created_at, updated_at) VALUES
 	('81c83e53-b843-4df7-8d2e-d7032d30020f', '71bee5ac-b9cb-4b08-a870-e3b4807d1afb', 'meaning', true, 1, 0, '2026-08-26 05:54:42.145537', '2026-08-26 05:54:42.145537'),
 	('81ce314f-93aa-495c-9eb4-e02fe9b959c7', '7394c69d-e3e0-4b35-bb2b-d6322d49f989', 'production', true, 1, 4, '2026-08-26 04:23:27.11355', '2026-08-26 04:23:27.11355'),
 	('81ceca51-c893-4bc3-9eb7-36e5cb478556', '849c22c6-12ce-4389-a0ce-a6803a8fbff1', 'meaning', true, 1, 0, '2026-08-26 05:54:51.98864', '2026-08-26 05:54:51.98864'),
@@ -5518,7 +5518,7 @@ INSERT INTO public.study_item_facets (id, study_item_id, facet, enabled, weight,
 	('858ea6f6-6423-4ce6-8531-a0b4a7e3acb2', '1887296d-c975-42e3-a866-4e58dc45e2ae', 'reading', true, 1, 1, '2026-08-26 05:53:08.365935', '2026-08-26 05:53:08.365935'),
 	('858ec5a2-6976-45b5-b002-484e300df0e9', '52c00868-7885-4276-be9d-7826d544b4ea', 'listening', true, 1, 6, '2026-08-30 02:18:24.985234', '2026-08-30 02:18:24.985234'),
 	('859541ad-b85e-4b78-84c2-a786ed72c250', '64892d31-56ae-4ca7-97a4-b955c370928c', 'listening', true, 1, 6, '2026-08-30 02:18:24.985234', '2026-08-30 02:18:24.985234') ON CONFLICT DO NOTHING;
-INSERT INTO public.study_item_facets (id, study_item_id, facet, enabled, weight, intro_order, created_at, updated_at) VALUES
+INSERT INTO study_item_facets (id, study_item_id, facet, enabled, weight, intro_order, created_at, updated_at) VALUES
 	('85986ea5-d1d3-4663-8b06-40e8912c9065', '794c3ec9-c0a9-4ef8-98b2-104b03b4d322', 'meaning', true, 1, 0, '2026-08-26 05:54:39.952684', '2026-08-26 05:54:39.952684'),
 	('8599ca35-a66d-45f1-a8a5-808112eee241', '39a4163f-9eaa-45f7-aa39-5d6cf1dc4dc2', 'reading', true, 1, 1, '2026-08-26 05:55:12.438825', '2026-08-26 05:55:12.438825'),
 	('859d8b46-3ab0-44fa-bc16-beddf7e7f070', '3f117988-2628-4569-98e3-c4483e783255', 'reading', true, 1, 1, '2026-08-26 05:54:40.692237', '2026-08-26 05:54:40.692237'),
@@ -6019,7 +6019,7 @@ INSERT INTO public.study_item_facets (id, study_item_id, facet, enabled, weight,
 	('898e14dc-99c4-45c8-8ea5-fd054b8a7737', 'dfa97f27-b421-4e70-a3c2-09bf6b1b83eb', 'listening', true, 1, 6, '2026-08-26 04:34:12.517403', '2026-08-26 04:34:12.517403'),
 	('899565b4-33a9-44a2-bbf4-4c80684c4e5d', '4b55d114-0163-47eb-8124-2892a58a7931', 'reading', true, 1, 1, '2026-08-26 05:54:39.609069', '2026-08-26 05:54:39.609069'),
 	('8999cef9-3710-41b5-b6ba-ef99095ae58f', '39cc5e06-6b98-4aab-9bb4-ae5e6484ff2c', 'meaning', true, 1, 0, '2026-08-26 00:30:30.083232', '2026-08-26 00:30:30.083232') ON CONFLICT DO NOTHING;
-INSERT INTO public.study_item_facets (id, study_item_id, facet, enabled, weight, intro_order, created_at, updated_at) VALUES
+INSERT INTO study_item_facets (id, study_item_id, facet, enabled, weight, intro_order, created_at, updated_at) VALUES
 	('899a7266-1bef-4553-a382-795c98ba57bb', 'f380607b-1157-44ba-89c2-9ba37e40c062', 'reading', true, 1, 1, '2026-08-26 05:54:37.608694', '2026-08-26 05:54:37.608694'),
 	('899b2908-67bd-45c5-8b85-7ea2ed799fa7', 'c1a3db6c-71ae-42ef-8585-a2e80d738743', 'production', true, 1, 4, '2026-08-26 04:23:27.314976', '2026-08-26 04:23:27.314976'),
 	('899e38dc-4a9c-47f9-8031-093023bb3fe5', '577ef27b-6901-4a27-ade2-71cdd7865c3e', 'listening', true, 1, 6, '2026-08-30 02:18:24.985234', '2026-08-30 02:18:24.985234'),
@@ -6520,7 +6520,7 @@ INSERT INTO public.study_item_facets (id, study_item_id, facet, enabled, weight,
 	('8db73073-62bc-4188-bd20-8785d5b2e3c7', '4a3740f2-a9ea-4c92-802c-819c8fdc3ced', 'reading', true, 1, 1, '2026-08-26 05:54:47.470571', '2026-08-26 05:54:47.470571'),
 	('8db9c3bb-46c9-4ff3-876c-2f3e9a25f1bd', '13bd2fb2-5016-46bf-a832-c2e033484f04', 'listening', true, 1, 6, '2026-08-30 02:18:24.985234', '2026-08-30 02:18:24.985234'),
 	('8dbbfe0c-c28b-4f7e-9bcf-72d4d73032dc', '566dcc51-abbe-4e0a-9b48-a13911faf584', 'meaning', true, 1, 0, '2026-08-26 00:30:30.767782', '2026-08-26 00:30:30.767782') ON CONFLICT DO NOTHING;
-INSERT INTO public.study_item_facets (id, study_item_id, facet, enabled, weight, intro_order, created_at, updated_at) VALUES
+INSERT INTO study_item_facets (id, study_item_id, facet, enabled, weight, intro_order, created_at, updated_at) VALUES
 	('8dbce61b-3c80-42d6-88ee-ecbae49bfb7d', 'ea18e367-0c8d-4ac9-9928-9739525117f9', 'reading', true, 1, 1, '2026-08-26 05:53:09.182095', '2026-08-26 05:53:09.182095'),
 	('8dbd2eb5-0984-416a-b4f6-2b21693f4c9a', '42f47f6f-04de-468a-9342-7b312f59fd9c', 'meaning', true, 1, 0, '2026-08-26 05:54:57.909055', '2026-08-26 05:54:57.909055'),
 	('8dbd8655-a598-42f8-92e6-ec8f3d06e46f', 'ec79a2ea-356c-48eb-a165-a8c289dcabe0', 'meaning', true, 1, 0, '2026-08-26 05:53:09.817799', '2026-08-26 05:53:09.817799'),
@@ -7021,7 +7021,7 @@ INSERT INTO public.study_item_facets (id, study_item_id, facet, enabled, weight,
 	('91992f82-92fa-44e1-b816-944b52347312', '80c5123b-01a4-42b7-bc22-d17723d936f0', 'reading', true, 1, 1, '2026-08-26 05:54:55.636315', '2026-08-26 05:54:55.636315'),
 	('919939c7-a2b5-44d1-92cd-d906357038b5', '7d5d46e4-8a06-4a42-b8cd-d86f6ceb8901', 'meaning', true, 1, 0, '2026-08-26 05:53:07.528096', '2026-08-26 05:53:07.528096'),
 	('9199fb20-8b6c-48ed-9fb0-5aa39e1d8690', 'b1223560-84de-47cb-b0d2-20e6eb382657', 'listening', true, 1, 6, '2026-08-30 02:18:24.985234', '2026-08-30 02:18:24.985234') ON CONFLICT DO NOTHING;
-INSERT INTO public.study_item_facets (id, study_item_id, facet, enabled, weight, intro_order, created_at, updated_at) VALUES
+INSERT INTO study_item_facets (id, study_item_id, facet, enabled, weight, intro_order, created_at, updated_at) VALUES
 	('919a78cf-0cd8-47ea-814b-b383b9229cbe', 'a8368d33-9e32-4df3-9d54-11cfbb668aef', 'meaning', true, 1, 0, '2026-08-26 05:54:54.64066', '2026-08-26 05:54:54.64066'),
 	('919e6d08-7375-49b4-952c-d664c75b5f81', '1a51d04a-4e81-45c5-9059-6b8225393da4', 'reading', true, 1, 1, '2026-08-26 05:54:45.613354', '2026-08-26 05:54:45.613354'),
 	('91a27b26-9e35-410d-896e-be1f9b61b570', 'aeb75dec-0c04-4aea-8027-275f57b68250', 'reading', true, 1, 1, '2026-08-26 05:54:52.269668', '2026-08-26 05:54:52.269668'),
@@ -7522,7 +7522,7 @@ INSERT INTO public.study_item_facets (id, study_item_id, facet, enabled, weight,
 	('95a393c2-58ba-4520-8d96-51aa6394bce9', '5c27cd22-cf5e-42f3-a2dd-4a38a09bd0b7', 'reading', true, 1, 1, '2026-08-26 05:53:08.363443', '2026-08-26 05:53:08.363443'),
 	('95a58cc9-43c2-4cac-983a-085e42205b5b', '8b61ce63-9d04-4ac3-9983-4b75132119ab', 'meaning', true, 1, 0, '2026-08-26 05:54:57.781207', '2026-08-26 05:54:57.781207'),
 	('95a60ad0-bec9-423f-af76-d1ee730739b8', '4d114ad7-fe7b-4518-8586-2c6e2c0e75ae', 'writing', true, 1, 5, '2026-08-26 05:53:04.023823', '2026-08-26 05:53:04.023823') ON CONFLICT DO NOTHING;
-INSERT INTO public.study_item_facets (id, study_item_id, facet, enabled, weight, intro_order, created_at, updated_at) VALUES
+INSERT INTO study_item_facets (id, study_item_id, facet, enabled, weight, intro_order, created_at, updated_at) VALUES
 	('95a727fb-e6cf-4c79-8e1e-85c952f0f713', 'eb12cb74-a56c-4fe0-b0c7-a9affe43dc5b', 'reading', true, 1, 1, '2026-08-26 05:53:10.335446', '2026-08-26 05:53:10.335446'),
 	('95a8bed1-dbae-4cd2-afbf-ea862d19c4b5', '0b44c5fe-45d6-4798-a5f0-08a00976a491', 'writing', true, 1, 5, '2026-08-26 05:53:04.540839', '2026-08-26 05:53:04.540839'),
 	('95aa19f2-4aba-4978-8b8d-dfd22e6014d6', '63e161f5-ec1d-476f-bbf7-8c14fa963989', 'reading', true, 1, 1, '2026-08-26 05:55:04.289498', '2026-08-26 05:55:04.289498'),
@@ -8023,7 +8023,7 @@ INSERT INTO public.study_item_facets (id, study_item_id, facet, enabled, weight,
 	('995b5a12-0be8-437c-91aa-66b85d8a021b', '4f52d9ee-8927-4a43-a706-70817c8195d1', 'usage', true, 1, 3, '2026-08-26 04:35:32.026742', '2026-08-26 04:35:32.026742'),
 	('995d9be7-276c-48db-acb0-bd4feba80324', '784ae620-38c3-4ead-9a81-f84fd16e6e29', 'reading', true, 1, 1, '2026-08-26 05:55:07.783957', '2026-08-26 05:55:07.783957'),
 	('99611c03-5cc4-45c0-b9b8-b2a8a8a3dd5d', 'b3642bb9-dc1c-4468-b7ae-86399fd78a8e', 'meaning', true, 1, 0, '2026-08-26 05:55:12.962711', '2026-08-26 05:55:12.962711') ON CONFLICT DO NOTHING;
-INSERT INTO public.study_item_facets (id, study_item_id, facet, enabled, weight, intro_order, created_at, updated_at) VALUES
+INSERT INTO study_item_facets (id, study_item_id, facet, enabled, weight, intro_order, created_at, updated_at) VALUES
 	('99620b3e-07ee-4a44-ac2d-a08ef81456b2', 'b22108ac-59d3-4ca4-9b8b-3160f146be78', 'reading', true, 1, 1, '2026-08-26 05:54:35.000998', '2026-08-26 05:54:35.000998'),
 	('996251fe-32ac-45bc-942e-21515812a5c4', 'f1c1951c-5e1d-4c7f-b707-55bd2374d7b9', 'reading', true, 1, 1, '2026-08-26 05:54:55.021391', '2026-08-26 05:54:55.021391'),
 	('99649bdc-832c-461e-a54a-f58a56a815b9', '4b3152fc-7052-46e1-bf54-c7099a1b4a3c', 'reading', true, 1, 1, '2026-08-26 05:54:44.407976', '2026-08-26 05:54:44.407976'),
@@ -8524,7 +8524,7 @@ INSERT INTO public.study_item_facets (id, study_item_id, facet, enabled, weight,
 	('9d4b6915-aa07-4361-b701-3c11f83946eb', '6c10dc8b-3cd8-4dda-973f-7825979def1d', 'listening', true, 1, 6, '2026-08-30 02:18:24.985234', '2026-08-30 02:18:24.985234'),
 	('9d4bd2f4-3915-466e-83c4-d58a7c1135b8', '5809099f-ecd9-461e-94eb-90478dd8e603', 'reading', true, 1, 1, '2026-08-26 05:55:05.892665', '2026-08-26 05:55:05.892665'),
 	('9d4f2532-f9e6-4f27-be64-16291a985625', '4ae1f742-8c5a-46e9-a4fe-97bf15f8f4ae', 'meaning', true, 1, 0, '2026-08-26 05:53:45.426994', '2026-08-26 05:53:45.426994') ON CONFLICT DO NOTHING;
-INSERT INTO public.study_item_facets (id, study_item_id, facet, enabled, weight, intro_order, created_at, updated_at) VALUES
+INSERT INTO study_item_facets (id, study_item_id, facet, enabled, weight, intro_order, created_at, updated_at) VALUES
 	('9d50674e-ba79-45d3-935b-98c0ca290a43', '16b87222-380a-490c-8c26-41ade5a76f59', 'meaning', true, 1, 0, '2026-08-26 05:52:47.075002', '2026-08-26 05:52:47.075002'),
 	('9d50f0e0-3bf3-48c3-bda5-388864f38434', 'a09173e5-d956-422e-8f42-7ef2de76231d', 'usage', true, 1, 3, '2026-08-26 04:35:32.42603', '2026-08-26 04:35:32.42603'),
 	('9d553663-3e44-4a91-98e3-07e47df5e715', '15d04be1-f33f-4f7f-8f73-0935abd1f10b', 'writing', true, 1, 5, '2026-08-26 03:49:47.319696', '2026-08-26 03:49:47.319696'),
@@ -9025,7 +9025,7 @@ INSERT INTO public.study_item_facets (id, study_item_id, facet, enabled, weight,
 	('a11d8eb0-b2e9-439b-9c51-8f0eeffb1466', '58b9a631-c2cc-4b30-9032-827d978c0a6d', 'listening', true, 1, 6, '2026-08-30 02:18:24.985234', '2026-08-30 02:18:24.985234'),
 	('a11dd097-9238-4410-b94b-f8bc82ac3dda', '7ba4089f-44e6-470d-b9d0-eb6438fecb09', 'production', true, 1, 4, '2026-08-26 04:23:27.439106', '2026-08-26 04:23:27.439106'),
 	('a11f0813-2e8c-4fa7-9fa4-81f0f41b263b', '64cc3902-a853-486b-8dd5-c37b54a9c142', 'reading', true, 1, 1, '2026-08-26 05:52:48.002341', '2026-08-26 05:52:48.002341') ON CONFLICT DO NOTHING;
-INSERT INTO public.study_item_facets (id, study_item_id, facet, enabled, weight, intro_order, created_at, updated_at) VALUES
+INSERT INTO study_item_facets (id, study_item_id, facet, enabled, weight, intro_order, created_at, updated_at) VALUES
 	('a11f3e8e-4788-44b9-8909-138da0182d5e', 'b6b30c2a-1b2d-4d2e-8678-d0bd64c81a6a', 'meaning', true, 1, 0, '2026-08-26 05:54:35.380991', '2026-08-26 05:54:35.380991'),
 	('a11faab7-3894-4825-bd10-21809410fbc2', '209cec55-e6e9-485a-97e1-6a8076adaa3f', 'production', true, 1, 4, '2026-08-26 04:23:27.937027', '2026-08-26 04:23:27.937027'),
 	('a1234570-70a4-40f3-b26c-eb9cbd02d402', '60a5ecbe-0591-4cfc-b3b7-adac046f2228', 'reading', true, 1, 1, '2026-08-26 05:54:45.46362', '2026-08-26 05:54:45.46362'),
@@ -9526,7 +9526,7 @@ INSERT INTO public.study_item_facets (id, study_item_id, facet, enabled, weight,
 	('a4fe8e76-c653-432c-8c28-f0c5d5c0972d', '080c7349-630e-4c99-8e72-768e38fd8f77', 'listening', true, 1, 6, '2026-08-30 02:18:24.985234', '2026-08-30 02:18:24.985234'),
 	('a5021fb2-fc2e-427b-bd3d-934f566ef978', 'cb93855a-c9c0-4444-8191-3c1205ffa3b9', 'meaning', true, 1, 0, '2026-08-26 05:54:54.817415', '2026-08-26 05:54:54.817415'),
 	('a5081196-0f96-4e26-b3b2-759d05e9d2af', 'b1d2e605-b626-45a3-b2ba-bb62f7d2da26', 'listening', true, 1, 6, '2026-08-30 02:18:24.985234', '2026-08-30 02:18:24.985234') ON CONFLICT DO NOTHING;
-INSERT INTO public.study_item_facets (id, study_item_id, facet, enabled, weight, intro_order, created_at, updated_at) VALUES
+INSERT INTO study_item_facets (id, study_item_id, facet, enabled, weight, intro_order, created_at, updated_at) VALUES
 	('a50bb7c7-a03e-422b-859b-43f0bee7bfc7', '3a10681a-7e75-4074-914e-5b3f4d49b271', 'reading', true, 1, 1, '2026-08-26 05:54:39.060898', '2026-08-26 05:54:39.060898'),
 	('a50bfb25-6ffd-453c-bec0-e7fc41c7dade', '2bfd7a91-138c-4ca0-873f-93da77582f2f', 'listening', true, 1, 6, '2026-08-30 02:18:24.985234', '2026-08-30 02:18:24.985234'),
 	('a50d409c-2c72-4dd2-bbc2-624b85b94ec4', 'd1dd57a4-5bca-41e0-a274-69a2e0578bd0', 'reading', true, 1, 1, '2026-08-26 05:54:45.197759', '2026-08-26 05:54:45.197759'),
@@ -10027,7 +10027,7 @@ INSERT INTO public.study_item_facets (id, study_item_id, facet, enabled, weight,
 	('a8d4d96e-bf42-4d7f-aa96-434f21e3d692', '7a4b6372-9add-4ab4-b00f-544bfdf96569', 'listening', true, 1, 6, '2026-08-30 02:18:24.985234', '2026-08-30 02:18:24.985234'),
 	('a8d61d67-7e7a-4a65-be39-da203059b175', '228521cb-4a17-47f7-ae8a-e381617687b4', 'meaning', true, 1, 0, '2026-08-26 05:54:48.349307', '2026-08-26 05:54:48.349307'),
 	('a8dd3268-b63a-4dcc-a646-27e80ced32dd', '164a2fa1-bee4-43f6-94c0-87c7be34cecf', 'listening', true, 1, 6, '2026-08-30 02:18:24.985234', '2026-08-30 02:18:24.985234') ON CONFLICT DO NOTHING;
-INSERT INTO public.study_item_facets (id, study_item_id, facet, enabled, weight, intro_order, created_at, updated_at) VALUES
+INSERT INTO study_item_facets (id, study_item_id, facet, enabled, weight, intro_order, created_at, updated_at) VALUES
 	('a8ddde24-3ed7-43fc-891a-723a2cb631fe', '12996dc9-6bee-4180-841a-bdfa20fc2bc6', 'listening', true, 1, 6, '2026-08-30 02:18:24.985234', '2026-08-30 02:18:24.985234'),
 	('a8e0b0f8-2e03-4a0f-b3d1-43cebbeffbc4', '64f898e6-f7b7-474d-b954-a4daee98ce60', 'meaning', true, 1, 0, '2026-08-26 00:30:30.909375', '2026-08-26 00:30:30.909375'),
 	('a8e146a2-3578-432d-be91-a1746197faae', '45ca41af-f9de-4d35-a98f-c65b03fbd937', 'reading', true, 1, 1, '2026-08-26 05:54:52.405898', '2026-08-26 05:54:52.405898'),
@@ -10528,7 +10528,7 @@ INSERT INTO public.study_item_facets (id, study_item_id, facet, enabled, weight,
 	('acee42dc-a977-4ef9-bf61-f257bbda5f02', '0b088d4f-ace6-494e-a3ed-0c65d6d07acd', 'reading', true, 1, 1, '2026-08-26 05:54:46.390467', '2026-08-26 05:54:46.390467'),
 	('acf0ce89-3f68-488a-865c-ffccefc0dff7', '0ae9596f-92be-4b41-becf-77ac3d1eaecb', 'usage', true, 1, 3, '2026-08-26 04:35:31.782703', '2026-08-26 04:35:31.782703'),
 	('acf2269d-537a-4f55-95a0-78b924a81eda', '2fc53c4a-3832-4b98-bc91-ba2c38b8d40f', 'reading', true, 1, 1, '2026-08-26 05:52:47.732913', '2026-08-26 05:52:47.732913') ON CONFLICT DO NOTHING;
-INSERT INTO public.study_item_facets (id, study_item_id, facet, enabled, weight, intro_order, created_at, updated_at) VALUES
+INSERT INTO study_item_facets (id, study_item_id, facet, enabled, weight, intro_order, created_at, updated_at) VALUES
 	('acf315df-8c98-4e21-a2e8-4c0b47ac962a', '5116992e-7ae4-46b1-a172-a9e899c19d97', 'listening', true, 1, 6, '2026-08-30 02:18:24.985234', '2026-08-30 02:18:24.985234'),
 	('acf7a0c3-842d-4986-8487-419b4c7d0183', 'eeea6471-77d0-468e-9118-d5926e4a0ae2', 'listening', true, 1, 6, '2026-08-30 02:18:24.985234', '2026-08-30 02:18:24.985234'),
 	('acfaf91a-72b9-4fb3-a3e2-4ee9f7ffc5a2', '9102445b-fe53-4273-a4c1-6f6f07bf7d52', 'reading', true, 1, 1, '2026-08-26 05:52:47.755281', '2026-08-26 05:52:47.755281'),
@@ -11029,7 +11029,7 @@ INSERT INTO public.study_item_facets (id, study_item_id, facet, enabled, weight,
 	('b0e3b34c-c2ef-4bc9-89cb-7b96a80c31ec', '2693534b-a87d-48f4-b2c6-9bc0b9a38f4a', 'meaning', true, 1, 0, '2026-08-26 00:30:30.305504', '2026-08-26 00:30:30.305504'),
 	('b0e5d023-0e3b-4a16-9a69-df25ac0ab731', 'a8679a7e-497a-4b6d-b4e1-933f786c0509', 'meaning', true, 1, 0, '2026-08-26 05:54:46.025533', '2026-08-26 05:54:46.025533'),
 	('b0ea1f6f-080b-4346-8472-ba60664e4005', '0279e95c-a42a-4f97-b70d-167bb6510595', 'meaning', true, 1, 0, '2026-08-26 05:55:01.589851', '2026-08-26 05:55:01.589851') ON CONFLICT DO NOTHING;
-INSERT INTO public.study_item_facets (id, study_item_id, facet, enabled, weight, intro_order, created_at, updated_at) VALUES
+INSERT INTO study_item_facets (id, study_item_id, facet, enabled, weight, intro_order, created_at, updated_at) VALUES
 	('b0ef4d84-dbb9-477f-99bd-f0f6badd9312', '0e5bbfeb-4ccd-49bd-a183-9a5a8aed74d8', 'listening', true, 1, 6, '2026-08-30 02:18:24.985234', '2026-08-30 02:18:24.985234'),
 	('b0f1af8b-3888-4c28-9093-a215cd0a4109', '72f38b07-30ab-41ad-aa16-58a54ee8d497', 'listening', true, 1, 6, '2026-08-30 02:18:24.985234', '2026-08-30 02:18:24.985234'),
 	('b0f7d1ad-a438-4411-bee6-258e9c4786c6', 'fdb281bd-5c2e-44ea-8cf0-f07c51b9a8b7', 'usage', true, 1, 3, '2026-08-26 04:35:32.223868', '2026-08-26 04:35:32.223868'),
@@ -11530,7 +11530,7 @@ INSERT INTO public.study_item_facets (id, study_item_id, facet, enabled, weight,
 	('b4dac2d2-6cd9-4b36-8d85-7875ab8ecb8e', '0a11018c-610d-43a2-9777-68b2ea69a616', 'meaning', true, 1, 0, '2026-08-26 05:55:02.334881', '2026-08-26 05:55:02.334881'),
 	('b4dd68c5-15d5-446f-be4c-efe25f2cdcf4', 'e766b72a-8b4a-4a2d-a5ba-a0790b5dda76', 'listening', true, 1, 6, '2026-08-26 04:34:13.494465', '2026-08-26 04:34:13.494465'),
 	('b4df01c0-0af6-4401-8c9b-a5c77b972cef', '8a4f64fc-ec26-473d-9cfd-f2d1e4b01e59', 'reading', true, 1, 1, '2026-08-26 00:30:30.167884', '2026-08-26 00:30:30.167884') ON CONFLICT DO NOTHING;
-INSERT INTO public.study_item_facets (id, study_item_id, facet, enabled, weight, intro_order, created_at, updated_at) VALUES
+INSERT INTO study_item_facets (id, study_item_id, facet, enabled, weight, intro_order, created_at, updated_at) VALUES
 	('b4df6f80-60b2-44bc-9077-16a7e50cb29c', '1a4f3f7f-9f2f-44d6-a174-fd0ffb06e2cf', 'listening', true, 1, 6, '2026-08-26 04:34:12.40118', '2026-08-26 04:34:12.40118'),
 	('b4e4a3f4-c0c9-4a95-b272-544efb828c23', '3d5f35d6-1dbd-4fc2-8327-54d02b129f50', 'meaning', true, 1, 0, '2026-08-26 00:30:29.931522', '2026-08-26 00:30:29.931522'),
 	('b4e81e47-b07a-4f72-a3bf-a45618f3a527', '4c43340b-791c-40cf-8ea1-334e4351929f', 'meaning', true, 1, 0, '2026-08-26 05:55:01.33123', '2026-08-26 05:55:01.33123'),
@@ -12031,7 +12031,7 @@ INSERT INTO public.study_item_facets (id, study_item_id, facet, enabled, weight,
 	('b8e7d89f-2f6a-4f83-8528-152688950859', '19e590c0-6f41-42b1-a5a0-419242bd4a80', 'reading', true, 1, 1, '2026-08-26 05:54:52.379633', '2026-08-26 05:54:52.379633'),
 	('b8e8663b-1c6d-4474-9999-dc0a05970bd7', '2e833c5b-1c07-4014-9d04-7d4c90f010e3', 'listening', true, 1, 6, '2026-08-30 02:18:24.985234', '2026-08-30 02:18:24.985234'),
 	('b8e97306-710b-49aa-8d2c-5cc9443a69ed', '2a44d4ec-0025-47cd-a908-e12a0e379ae7', 'meaning', true, 1, 0, '2026-08-26 05:54:44.829918', '2026-08-26 05:54:44.829918') ON CONFLICT DO NOTHING;
-INSERT INTO public.study_item_facets (id, study_item_id, facet, enabled, weight, intro_order, created_at, updated_at) VALUES
+INSERT INTO study_item_facets (id, study_item_id, facet, enabled, weight, intro_order, created_at, updated_at) VALUES
 	('b8ec45bb-984f-4add-8e7c-e60350a03360', '9cb36068-bf57-4104-8424-eeeb65ff5df4', 'reading', true, 1, 1, '2026-08-26 05:54:50.377191', '2026-08-26 05:54:50.377191'),
 	('b8edf2e3-3baf-4812-8fe1-80b6f7629da8', 'aca87e4a-9006-4561-8f28-08fa41320194', 'reading', true, 1, 1, '2026-08-26 05:54:35.984843', '2026-08-26 05:54:35.984843'),
 	('b8ee6ffc-5050-42a5-8f26-1e12a2f46065', '774207bc-ab44-48fc-9d26-305ae18bf1d8', 'usage', true, 1, 3, '2026-08-26 04:35:31.378103', '2026-08-26 04:35:31.378103'),
@@ -12532,7 +12532,7 @@ INSERT INTO public.study_item_facets (id, study_item_id, facet, enabled, weight,
 	('bcda217e-25b2-426f-b752-1cc2c969c867', 'c643e1a1-ba93-4329-8e4f-647b4b054de2', 'usage', true, 1, 3, '2026-08-26 04:35:31.568728', '2026-08-26 04:35:31.568728'),
 	('bcde1813-ac9a-4883-9da0-0a785f97c105', '6cda6780-b2ed-4e97-8bf6-ac3aebae9cd9', 'reading', true, 1, 1, '2026-08-26 05:53:10.530668', '2026-08-26 05:53:10.530668'),
 	('bcde2e96-5c84-422a-a056-78ce7e2e0851', '32fe2979-e7d6-495e-a09f-825525f4f298', 'listening', true, 1, 6, '2026-08-30 02:18:24.985234', '2026-08-30 02:18:24.985234') ON CONFLICT DO NOTHING;
-INSERT INTO public.study_item_facets (id, study_item_id, facet, enabled, weight, intro_order, created_at, updated_at) VALUES
+INSERT INTO study_item_facets (id, study_item_id, facet, enabled, weight, intro_order, created_at, updated_at) VALUES
 	('bcde8ae8-6143-4c5a-b2ee-482a0ece3551', 'd11dcb52-4d76-41c6-8da3-b78f0b194af4', 'meaning', true, 1, 0, '2026-08-26 05:55:02.206257', '2026-08-26 05:55:02.206257'),
 	('bce179e8-87f5-455d-8f72-9ec9d9e02ddb', 'a8f024bd-910d-4e10-affd-d4ef257f0163', 'listening', true, 1, 6, '2026-08-30 02:18:24.985234', '2026-08-30 02:18:24.985234'),
 	('bce3437e-8dd1-4b0e-8e1e-36b296b6c309', 'bcf4fd02-97fe-49ea-9198-278d4e8d187b', 'meaning', true, 1, 0, '2026-08-26 05:55:07.242092', '2026-08-26 05:55:07.242092'),
@@ -13033,7 +13033,7 @@ INSERT INTO public.study_item_facets (id, study_item_id, facet, enabled, weight,
 	('c0ae57a0-fec4-4562-a118-e13310160046', '9039ea56-749c-4b95-a749-ad8c30f9be6b', 'listening', true, 1, 6, '2026-08-30 02:18:24.985234', '2026-08-30 02:18:24.985234'),
 	('c0b03550-ead4-4d34-bf36-2f8467146a8c', '4079c13e-473d-419c-b028-ded47e25fe70', 'listening', true, 1, 6, '2026-08-30 02:18:24.985234', '2026-08-30 02:18:24.985234'),
 	('c0b1bc1f-9f74-4993-bd63-4f6419f016de', 'cae7fb62-20b9-4433-a282-adbe2bde4b5d', 'listening', true, 1, 6, '2026-08-26 04:34:12.356439', '2026-08-26 04:34:12.356439') ON CONFLICT DO NOTHING;
-INSERT INTO public.study_item_facets (id, study_item_id, facet, enabled, weight, intro_order, created_at, updated_at) VALUES
+INSERT INTO study_item_facets (id, study_item_id, facet, enabled, weight, intro_order, created_at, updated_at) VALUES
 	('c0b459dd-647d-4faa-9710-21b91028835b', 'a707ce53-6f2b-49e8-9710-b7696254bed6', 'listening', true, 1, 6, '2026-08-30 02:18:24.985234', '2026-08-30 02:18:24.985234'),
 	('c0b7ce89-80ef-4bd9-b4ed-5b6cc592c97a', '1b38e1ba-2cd0-49c0-aac0-c13afecdd15c', 'meaning', true, 1, 0, '2026-08-26 05:55:07.868565', '2026-08-26 05:55:07.868565'),
 	('c0b8e96b-03dc-4d07-9044-cc3c95a8793c', '48c6ed2d-d9e1-452e-87cd-4f5e7ee09d7c', 'listening', true, 1, 6, '2026-08-30 02:18:24.985234', '2026-08-30 02:18:24.985234'),
@@ -13534,7 +13534,7 @@ INSERT INTO public.study_item_facets (id, study_item_id, facet, enabled, weight,
 	('c4b16b68-c6e2-4d94-95af-4fc73a629630', '8f22a3f7-1139-4b1e-bce4-694a9ea25c0e', 'meaning', true, 1, 0, '2026-08-26 05:55:11.681919', '2026-08-26 05:55:11.681919'),
 	('c4b238d3-f9ca-4f91-a7fa-22662a638e25', '8ac6e7ff-44f1-4dea-bf3a-94b0419a5c80', 'writing', true, 1, 5, '2026-08-26 03:49:47.056848', '2026-08-26 03:49:47.056848'),
 	('c4b2522b-d885-481b-867e-65e5119d7919', '1f86ca15-11b8-4860-8685-b4e754f2b175', 'listening', true, 1, 6, '2026-08-30 02:18:24.985234', '2026-08-30 02:18:24.985234') ON CONFLICT DO NOTHING;
-INSERT INTO public.study_item_facets (id, study_item_id, facet, enabled, weight, intro_order, created_at, updated_at) VALUES
+INSERT INTO study_item_facets (id, study_item_id, facet, enabled, weight, intro_order, created_at, updated_at) VALUES
 	('c4b4e9cf-7077-4f47-aa62-525f613fac57', 'c349f852-d6b4-47ac-ab97-9e021a443257', 'reading', true, 1, 1, '2026-08-26 05:55:03.921981', '2026-08-26 05:55:03.921981'),
 	('c4b54a9b-3987-40da-a24a-f5aed08f08e1', 'ac008380-31dc-4bd5-a9a6-2444a8106703', 'reading', true, 1, 1, '2026-08-26 05:54:35.395252', '2026-08-26 05:54:35.395252'),
 	('c4b5e73d-a65a-4cee-b86f-b696d117e41a', '09ea432d-4632-422d-815e-77df2e1bdb6a', 'listening', true, 1, 6, '2026-08-30 02:18:24.985234', '2026-08-30 02:18:24.985234'),
@@ -14035,7 +14035,7 @@ INSERT INTO public.study_item_facets (id, study_item_id, facet, enabled, weight,
 	('c891ac08-b690-4e92-b92a-d208d27b1012', '2d5dfa3a-99d0-4b78-8839-82c2c8110425', 'listening', true, 1, 6, '2026-08-26 04:34:13.07636', '2026-08-26 04:34:13.07636'),
 	('c8931a53-dae3-45aa-ab69-049909f7e41c', '2dc91c8d-5b15-457e-b298-0ac151e1eb6b', 'listening', true, 1, 6, '2026-08-30 02:18:24.985234', '2026-08-30 02:18:24.985234'),
 	('c8940bb0-70f1-410c-ae50-32217c4cdc40', 'e490632c-9ae6-4571-9917-e95196e866a3', 'listening', true, 1, 6, '2026-08-30 02:18:24.985234', '2026-08-30 02:18:24.985234') ON CONFLICT DO NOTHING;
-INSERT INTO public.study_item_facets (id, study_item_id, facet, enabled, weight, intro_order, created_at, updated_at) VALUES
+INSERT INTO study_item_facets (id, study_item_id, facet, enabled, weight, intro_order, created_at, updated_at) VALUES
 	('c894c118-a133-4a5e-80f3-026e6ab49c65', '569334df-d336-4215-b3db-3c1b08e008db', 'meaning', true, 1, 0, '2026-08-26 05:55:12.010302', '2026-08-26 05:55:12.010302'),
 	('c8955948-e8cf-4ccc-afe8-e10000c6e38a', '0ab47519-8923-4e6b-8e80-9cdf5efe2b8d', 'listening', true, 1, 6, '2026-08-30 02:18:24.985234', '2026-08-30 02:18:24.985234'),
 	('c896ea59-9b3e-4724-a77b-383cd54728cd', '395453f2-4b72-4d1c-92b0-88b471125d44', 'listening', true, 1, 6, '2026-08-30 02:18:24.985234', '2026-08-30 02:18:24.985234'),
@@ -14536,7 +14536,7 @@ INSERT INTO public.study_item_facets (id, study_item_id, facet, enabled, weight,
 	('cc66d357-7a7b-488b-b2a0-fe6c1da2c3c7', '559c96c7-b5c2-421b-be59-7d74b995aafb', 'listening', true, 1, 6, '2026-08-30 02:18:24.985234', '2026-08-30 02:18:24.985234'),
 	('cc67fe7b-6748-408b-824b-ca0c1543914d', 'ee0cf44f-d6b2-4d69-be16-df160cb79fe1', 'reading', true, 1, 1, '2026-08-26 05:54:45.036923', '2026-08-26 05:54:45.036923'),
 	('cc69499b-a644-4ed2-bd15-9a58e7e0e709', '72a11ae3-bfb6-4a97-9aa2-27c4f039eeb5', 'meaning', true, 1, 0, '2026-08-26 05:54:59.797789', '2026-08-26 05:54:59.797789') ON CONFLICT DO NOTHING;
-INSERT INTO public.study_item_facets (id, study_item_id, facet, enabled, weight, intro_order, created_at, updated_at) VALUES
+INSERT INTO study_item_facets (id, study_item_id, facet, enabled, weight, intro_order, created_at, updated_at) VALUES
 	('cc69630d-b416-4d6e-a009-0fd63ff984ce', '2de0dd1d-e981-4a4a-85f2-54e0980b6581', 'listening', true, 1, 6, '2026-08-30 02:18:24.985234', '2026-08-30 02:18:24.985234'),
 	('cc6c3295-f2f0-4717-a64c-855f0cb7a3f0', 'e3eef558-96f5-460d-8ead-97ac4be0e013', 'meaning', true, 1, 0, '2026-08-26 05:54:42.461146', '2026-08-26 05:54:42.461146'),
 	('cc6d8a96-b7de-48e7-938d-6d64c07f4215', 'a4401cd0-c6b5-427f-86a2-f6499ed5e903', 'reading', true, 1, 1, '2026-08-26 05:54:56.84271', '2026-08-26 05:54:56.84271'),
@@ -15037,7 +15037,7 @@ INSERT INTO public.study_item_facets (id, study_item_id, facet, enabled, weight,
 	('d04205e6-e8b9-42a2-ad93-14bc7db37894', '8ced9d54-a0f9-42fa-aaba-06c2f19f9f6d', 'reading', true, 1, 1, '2026-08-26 05:55:06.001913', '2026-08-26 05:55:06.001913'),
 	('d042e0e8-9801-49d4-9751-5cf0b359f493', '77c3d759-b682-46ec-bef2-3e7d9c89265a', 'listening', true, 1, 6, '2026-08-30 02:18:24.985234', '2026-08-30 02:18:24.985234'),
 	('d043d64a-3450-473b-9363-996d014d6f9d', '3917109c-8d2c-4e41-b023-813dd302394b', 'meaning', true, 1, 0, '2026-08-26 05:55:05.987316', '2026-08-26 05:55:05.987316') ON CONFLICT DO NOTHING;
-INSERT INTO public.study_item_facets (id, study_item_id, facet, enabled, weight, intro_order, created_at, updated_at) VALUES
+INSERT INTO study_item_facets (id, study_item_id, facet, enabled, weight, intro_order, created_at, updated_at) VALUES
 	('d043ee26-ead3-4641-ace6-895b5f3c6eb3', '9c9a158b-8200-48c5-bd9d-6b0c18f34001', 'usage', true, 1, 3, '2026-08-26 04:35:31.653213', '2026-08-26 04:35:31.653213'),
 	('d044f6c8-17fe-486c-8da5-bea52bef293c', '7f90bd61-97a5-4349-a428-d7ba589d1e36', 'reading', true, 1, 1, '2026-08-26 05:54:45.27427', '2026-08-26 05:54:45.27427'),
 	('d04acc17-fdc1-4c78-8220-459eb944a622', '0beb8911-417d-4023-94ce-d7443fe65ec4', 'writing', true, 1, 5, '2026-08-26 05:53:04.665116', '2026-08-26 05:53:04.665116'),
@@ -15538,7 +15538,7 @@ INSERT INTO public.study_item_facets (id, study_item_id, facet, enabled, weight,
 	('d4270454-1e5a-4120-9414-316f5cb284bf', '82ee5b41-000c-4e1c-b7a5-72e116efe3c8', 'listening', true, 1, 6, '2026-08-26 04:34:12.972071', '2026-08-26 04:34:12.972071'),
 	('d42d48a8-8508-4a53-ae76-cada95d57c1b', 'f80ced00-bfb9-437a-8ebe-97b2fdc653bd', 'reading', true, 1, 1, '2026-08-26 05:54:51.970463', '2026-08-26 05:54:51.970463'),
 	('d42e93bd-596a-4171-bb51-619ea9b9888e', '2f149d08-e375-4906-8f8d-a71a7476dec1', 'meaning', true, 1, 0, '2026-08-26 05:53:08.754998', '2026-08-26 05:53:08.754998') ON CONFLICT DO NOTHING;
-INSERT INTO public.study_item_facets (id, study_item_id, facet, enabled, weight, intro_order, created_at, updated_at) VALUES
+INSERT INTO study_item_facets (id, study_item_id, facet, enabled, weight, intro_order, created_at, updated_at) VALUES
 	('d42e9b07-7c0d-4849-99bd-134957c433bd', '4b1c35ee-bf56-480e-b98b-27024cfac043', 'listening', true, 1, 6, '2026-08-30 02:18:24.985234', '2026-08-30 02:18:24.985234'),
 	('d42fec8a-8486-4573-b6bb-0605aef506f8', 'f0a3b7eb-ccfd-4e9c-b1f0-b1f17423c6b7', 'listening', true, 1, 6, '2026-08-30 02:18:24.985234', '2026-08-30 02:18:24.985234'),
 	('d4309d55-7fb7-45c5-9f01-b1d3b37138ca', '12488d2d-6fc2-4ecc-a38c-240b865a840f', 'meaning', true, 1, 0, '2026-08-26 05:55:08.851271', '2026-08-26 05:55:08.851271'),
@@ -16039,7 +16039,7 @@ INSERT INTO public.study_item_facets (id, study_item_id, facet, enabled, weight,
 	('d804b4d3-f0cc-4205-bfb2-1cc5aedf1261', '629ee8a2-fb7e-4411-9056-e7bc47491fa4', 'meaning', true, 1, 0, '2026-08-26 05:53:11.164347', '2026-08-26 05:53:11.164347'),
 	('d80774ad-a982-4b33-84c6-9482e9a13534', '3623fc96-f83f-4b3b-a6f3-be021ee5c6cc', 'reading', true, 1, 1, '2026-08-26 05:54:55.106091', '2026-08-26 05:54:55.106091'),
 	('d8094569-9c86-452b-bbc2-dd2e0e0c7665', 'c26fe2ac-1e84-4449-b191-a4ecf2b0dba8', 'listening', true, 1, 6, '2026-08-30 02:18:24.985234', '2026-08-30 02:18:24.985234') ON CONFLICT DO NOTHING;
-INSERT INTO public.study_item_facets (id, study_item_id, facet, enabled, weight, intro_order, created_at, updated_at) VALUES
+INSERT INTO study_item_facets (id, study_item_id, facet, enabled, weight, intro_order, created_at, updated_at) VALUES
 	('d80c52fc-aa78-4647-a748-165a482325ae', '9c605ce9-ae35-4a9e-b116-52d80d3542ef', 'meaning', true, 1, 0, '2026-08-26 00:30:31.034038', '2026-08-26 00:30:31.034038'),
 	('d81092ff-b456-4e85-a9ee-386595790ee4', 'a4b38325-d948-4df6-bb5b-dca7b5f08473', 'meaning', true, 1, 0, '2026-08-26 05:53:07.691164', '2026-08-26 05:53:07.691164'),
 	('d815e039-3abe-4f6d-8d25-e8f71845b87b', 'bf68217a-1ec4-44e8-a9e7-665d512b0e87', 'meaning', true, 1, 0, '2026-08-26 00:30:30.806744', '2026-08-26 00:30:30.806744'),
@@ -16540,7 +16540,7 @@ INSERT INTO public.study_item_facets (id, study_item_id, facet, enabled, weight,
 	('dbe736b3-4be2-40a6-850b-2486ca9068db', '32a4fe86-563e-464d-8f3f-5be4b0fead32', 'meaning', true, 1, 0, '2026-08-26 05:54:59.684776', '2026-08-26 05:54:59.684776'),
 	('dbe7e4ff-d9a6-43a6-8180-3730a0b1bd10', '117021a6-1e47-405e-87b1-fc104478127a', 'listening', true, 1, 6, '2026-08-30 02:18:24.985234', '2026-08-30 02:18:24.985234'),
 	('dbe8d205-fc85-4cfa-a96a-0e0910088a1d', 'e29a8d71-685a-4574-8e73-0c6a0fed08c9', 'meaning', true, 1, 0, '2026-08-26 05:54:44.895967', '2026-08-26 05:54:44.895967') ON CONFLICT DO NOTHING;
-INSERT INTO public.study_item_facets (id, study_item_id, facet, enabled, weight, intro_order, created_at, updated_at) VALUES
+INSERT INTO study_item_facets (id, study_item_id, facet, enabled, weight, intro_order, created_at, updated_at) VALUES
 	('dbeb2c54-f6bf-4c0f-b331-e8f78db15bf3', '587aaef4-9420-47fb-8e60-49bd6fed5bb0', 'reading', true, 1, 1, '2026-08-26 05:55:01.827986', '2026-08-26 05:55:01.827986'),
 	('dbf0ef04-9375-4df8-84cf-89cf4893141c', '5bf0520a-722a-4819-a970-979d1ed1b807', 'meaning', true, 1, 0, '2026-08-26 05:54:37.061801', '2026-08-26 05:54:37.061801'),
 	('dbf2af98-a22c-4fce-9326-eb113a242c0d', 'a8c6a450-a578-4ae5-aef8-d82bc634163b', 'production', true, 1, 4, '2026-08-26 04:23:27.898808', '2026-08-26 04:23:27.898808'),
@@ -17041,7 +17041,7 @@ INSERT INTO public.study_item_facets (id, study_item_id, facet, enabled, weight,
 	('dfda4041-12b8-42ee-8846-8503a06f273b', 'c457634f-1000-4472-8592-396fa1b19627', 'meaning', true, 1, 0, '2026-08-26 05:55:07.130106', '2026-08-26 05:55:07.130106'),
 	('dfe094fe-a872-4971-94cc-19fda7b68168', '9cebba0d-ee94-4daf-b146-86a331cb24a2', 'listening', true, 1, 6, '2026-08-30 02:18:24.985234', '2026-08-30 02:18:24.985234'),
 	('dfe294ca-2ccf-4719-a637-0ecdcdf7ef44', '55c4c68d-42ec-4b95-aab3-2b09eb7b709e', 'reading', true, 1, 1, '2026-08-26 00:30:31.27201', '2026-08-26 00:30:31.27201') ON CONFLICT DO NOTHING;
-INSERT INTO public.study_item_facets (id, study_item_id, facet, enabled, weight, intro_order, created_at, updated_at) VALUES
+INSERT INTO study_item_facets (id, study_item_id, facet, enabled, weight, intro_order, created_at, updated_at) VALUES
 	('dfe2fced-e0e5-4692-a808-1185496d5986', 'cea9527c-d64a-44f7-9fe2-3ef346bd04af', 'listening', true, 1, 6, '2026-08-30 02:18:24.985234', '2026-08-30 02:18:24.985234'),
 	('dfe32b9e-4ea8-48ed-816f-1b77b8591942', '2a31f373-22e0-40b5-a5fe-acef60c9cd0e', 'meaning', true, 1, 0, '2026-08-26 05:54:42.833293', '2026-08-26 05:54:42.833293'),
 	('dfe77417-56fc-4908-bd11-a3d0ca966a78', '3d1842c8-609c-4680-a85b-4fac56e85256', 'meaning', true, 1, 0, '2026-08-26 05:55:08.039482', '2026-08-26 05:55:08.039482'),
@@ -17542,7 +17542,7 @@ INSERT INTO public.study_item_facets (id, study_item_id, facet, enabled, weight,
 	('e3f4d485-670f-44d6-a921-0c0b33806c6a', '4031ba89-4c3e-4926-9975-d0d7d3e15cec', 'listening', true, 1, 6, '2026-08-30 02:18:24.985234', '2026-08-30 02:18:24.985234'),
 	('e3fae6ec-8fa5-42f3-8b81-31820d7a3108', '7693000b-d633-48d4-9a13-4822cbc67fbc', 'listening', true, 1, 6, '2026-08-30 02:18:24.985234', '2026-08-30 02:18:24.985234'),
 	('e3fb5136-588f-431d-a550-f461dd526066', 'd4d67631-690f-4bdb-bfc7-9d6d53ac48a8', 'meaning', true, 1, 0, '2026-08-26 05:54:55.737515', '2026-08-26 05:54:55.737515') ON CONFLICT DO NOTHING;
-INSERT INTO public.study_item_facets (id, study_item_id, facet, enabled, weight, intro_order, created_at, updated_at) VALUES
+INSERT INTO study_item_facets (id, study_item_id, facet, enabled, weight, intro_order, created_at, updated_at) VALUES
 	('e3fbc101-0b0b-4ebc-9480-85c2534c5415', '58411e0d-1819-42b6-bdd7-e233ac286844', 'meaning', true, 1, 0, '2026-08-26 05:54:51.984367', '2026-08-26 05:54:51.984367'),
 	('e3fd1223-f6a7-4a0f-9ec1-6d98b337c337', 'df5fa27a-7a09-4a3d-a10f-0d514ef85379', 'listening', true, 1, 6, '2026-08-30 02:18:24.985234', '2026-08-30 02:18:24.985234'),
 	('e3ff4e45-d3d0-42a6-9f31-a8652c41c434', 'c47abe67-2735-4425-b2bc-d308a42be159', 'reading', true, 1, 1, '2026-08-26 05:54:42.883257', '2026-08-26 05:54:42.883257'),
@@ -18043,7 +18043,7 @@ INSERT INTO public.study_item_facets (id, study_item_id, facet, enabled, weight,
 	('e7b909e9-dcf7-4d95-8be1-6102af0ef7e6', '97d4163a-17df-4557-a58b-59b72709d0bd', 'listening', true, 1, 6, '2026-08-26 04:34:12.277189', '2026-08-26 04:34:12.277189'),
 	('e7bc15f5-bb29-4433-95dd-bc77815c326f', '872fe861-b709-4180-b115-f9c02830b2d4', 'reading', true, 1, 1, '2026-08-26 05:54:51.787922', '2026-08-26 05:54:51.787922'),
 	('e7bcbade-cbc2-4a01-878f-0757343a2080', '1b370d63-5474-4e47-9ca4-46a3ddf9ff6f', 'meaning', true, 1, 0, '2026-08-26 05:53:09.388314', '2026-08-26 05:53:09.388314') ON CONFLICT DO NOTHING;
-INSERT INTO public.study_item_facets (id, study_item_id, facet, enabled, weight, intro_order, created_at, updated_at) VALUES
+INSERT INTO study_item_facets (id, study_item_id, facet, enabled, weight, intro_order, created_at, updated_at) VALUES
 	('e7be7d1c-339a-4b6b-8fac-26a7d8b1bd5c', '5dae67ac-d8d0-4e85-a4bd-250b8bc853b0', 'reading', true, 1, 1, '2026-08-26 05:54:44.070222', '2026-08-26 05:54:44.070222'),
 	('e7c35341-8340-4994-a0f4-c49fd73e5a0f', '2a0e58bf-26d4-4c76-9000-c5c27c73043c', 'reading', true, 1, 1, '2026-08-26 05:55:04.886331', '2026-08-26 05:55:04.886331'),
 	('e7c4acef-f2b5-4cd7-ba1e-9af9bf110dd4', '17cd64f3-8d2d-407f-ad6e-b7865df5a06c', 'reading', true, 1, 1, '2026-08-26 05:55:10.322882', '2026-08-26 05:55:10.322882'),
@@ -18544,7 +18544,7 @@ INSERT INTO public.study_item_facets (id, study_item_id, facet, enabled, weight,
 	('eb88cae8-c439-4930-8e4f-0cab4ca90c07', '40699946-a196-44b8-b644-29b612c407ec', 'reading', true, 1, 1, '2026-08-26 05:55:11.250361', '2026-08-26 05:55:11.250361'),
 	('eb89ec85-f9f6-40d1-85f8-3360ee3c374f', '11e6a51c-72aa-46e2-a7fa-7f7ea83c45d4', 'reading', true, 1, 1, '2026-08-26 05:55:01.211723', '2026-08-26 05:55:01.211723'),
 	('eb8b444d-fd66-4445-9197-9d589c833506', '982406d9-170b-4b95-b04e-5f3c2aeb381b', 'reading', true, 1, 1, '2026-08-26 05:55:05.173658', '2026-08-26 05:55:05.173658') ON CONFLICT DO NOTHING;
-INSERT INTO public.study_item_facets (id, study_item_id, facet, enabled, weight, intro_order, created_at, updated_at) VALUES
+INSERT INTO study_item_facets (id, study_item_id, facet, enabled, weight, intro_order, created_at, updated_at) VALUES
 	('eb8ecd89-fe08-4706-82f7-9ef9dddd524c', 'a03fb4bd-4714-4710-ae39-e4a5756f7d43', 'reading', true, 1, 1, '2026-08-26 05:53:08.929467', '2026-08-26 05:53:08.929467'),
 	('eb8f671e-c684-445f-9147-fc45bde1f21d', 'ca01983b-0f9a-4ded-887f-ea27bc3aa1d4', 'reading', true, 1, 1, '2026-08-26 05:54:46.256725', '2026-08-26 05:54:46.256725'),
 	('eb915d30-84ea-42e3-95c5-83be97483b64', '2c1f8582-cf44-4d95-b5dc-4d6b3790ce15', 'usage', true, 1, 3, '2026-08-26 04:35:31.935044', '2026-08-26 04:35:31.935044'),
@@ -19045,7 +19045,7 @@ INSERT INTO public.study_item_facets (id, study_item_id, facet, enabled, weight,
 	('efb87777-f738-41ba-924d-9d6719f12199', '4fbb9e56-620e-4af1-8938-b2289c21b7d0', 'listening', true, 1, 6, '2026-08-30 02:18:24.985234', '2026-08-30 02:18:24.985234'),
 	('efb9ebea-4848-41ca-8e36-1d763825b306', '3c8a2934-0d29-433e-9cb7-f4a5d7ea7e40', 'meaning', true, 1, 0, '2026-08-26 05:54:45.882622', '2026-08-26 05:54:45.882622'),
 	('efbaeffc-58ad-4708-b802-1a5b3ed45fdf', '16a6330c-7154-4a27-84ed-a7f4f2239b3c', 'meaning', true, 1, 0, '2026-08-26 05:52:48.128249', '2026-08-26 05:52:48.128249') ON CONFLICT DO NOTHING;
-INSERT INTO public.study_item_facets (id, study_item_id, facet, enabled, weight, intro_order, created_at, updated_at) VALUES
+INSERT INTO study_item_facets (id, study_item_id, facet, enabled, weight, intro_order, created_at, updated_at) VALUES
 	('efbce78a-3809-4fb4-a629-8618e5a99a8c', '005fc4fa-fb01-43cb-94ca-d3a8dfa9bf26', 'listening', true, 1, 6, '2026-08-30 02:18:24.985234', '2026-08-30 02:18:24.985234'),
 	('efbe3ffe-c3f5-4482-a2cb-700e1390a0a4', '18dbc824-1fa2-4be4-991e-9ece21ecea30', 'reading', true, 1, 1, '2026-08-26 05:54:52.376243', '2026-08-26 05:54:52.376243'),
 	('efbefabf-68f1-4ef2-9c40-a88c2f142e79', '8d599c12-e703-47a6-a2ba-9bc79a040d7f', 'listening', true, 1, 6, '2026-08-30 02:18:24.985234', '2026-08-30 02:18:24.985234'),
@@ -19546,7 +19546,7 @@ INSERT INTO public.study_item_facets (id, study_item_id, facet, enabled, weight,
 	('f3c1af6f-5648-44f9-aca4-4221c30c1831', '30347594-c96d-4f5e-97bf-0cac346d6f7e', 'meaning', true, 1, 0, '2026-08-26 05:54:40.928991', '2026-08-26 05:54:40.928991'),
 	('f3c3f26c-06ef-4410-8e40-5fa809a4fc6e', '5658cd34-f5f9-4a4c-a2df-3fca401ac351', 'reading', true, 1, 1, '2026-08-26 05:54:46.502753', '2026-08-26 05:54:46.502753'),
 	('f3c5edc8-9ab2-4dfe-af8c-439f972d75ab', '31ba6f8c-1f69-4dd8-8ec1-4087285a8aca', 'reading', true, 1, 1, '2026-08-26 05:54:44.515005', '2026-08-26 05:54:44.515005') ON CONFLICT DO NOTHING;
-INSERT INTO public.study_item_facets (id, study_item_id, facet, enabled, weight, intro_order, created_at, updated_at) VALUES
+INSERT INTO study_item_facets (id, study_item_id, facet, enabled, weight, intro_order, created_at, updated_at) VALUES
 	('f3c7ba6a-756b-450b-b644-60084608a5e8', '0307cf0d-a6cf-454d-8b86-65de25584d3d', 'meaning', true, 1, 0, '2026-08-26 05:53:08.502784', '2026-08-26 05:53:08.502784'),
 	('f3c9ed78-b1e1-4b8e-bbff-3fa77ac46346', '36cb938e-96ef-478e-8ca8-60b87d8d4b0d', 'meaning', true, 1, 0, '2026-08-26 05:54:53.201804', '2026-08-26 05:54:53.201804'),
 	('f3ccf6dc-73be-40b1-8027-3bdb98a940f1', 'e9168181-5e1e-42c6-8bbb-de6edfbdb932', 'listening', true, 1, 6, '2026-08-30 02:18:24.985234', '2026-08-30 02:18:24.985234'),
@@ -20047,7 +20047,7 @@ INSERT INTO public.study_item_facets (id, study_item_id, facet, enabled, weight,
 	('f7954e7b-a12e-4f1d-8df4-c6b5c020dbf8', '7f6cebf6-37c7-4bf1-9926-1272367b4d87', 'meaning', true, 1, 0, '2026-08-26 05:55:05.015247', '2026-08-26 05:55:05.015247'),
 	('f7976da2-6133-445d-9792-00639439ae28', 'd529c899-3247-4832-83f8-bd0bf231680a', 'meaning', true, 1, 0, '2026-08-26 05:54:37.354622', '2026-08-26 05:54:37.354622'),
 	('f7999df2-b02f-47ad-a7cc-fe496e6a1abd', '13a96530-2c52-4c18-bca6-78cc2986d269', 'meaning', true, 1, 0, '2026-08-26 05:54:51.655533', '2026-08-26 05:54:51.655533') ON CONFLICT DO NOTHING;
-INSERT INTO public.study_item_facets (id, study_item_id, facet, enabled, weight, intro_order, created_at, updated_at) VALUES
+INSERT INTO study_item_facets (id, study_item_id, facet, enabled, weight, intro_order, created_at, updated_at) VALUES
 	('f799b85e-9d84-442e-aab6-739ce534e28e', '6968c5fc-1b6d-4620-af2f-13d5c39b9508', 'reading', true, 1, 1, '2026-08-26 05:53:09.331828', '2026-08-26 05:53:09.331828'),
 	('f79b6c46-f0b0-40d7-b8aa-c0b958d1342d', '1da6c966-2b7a-4440-a0cb-38d63750b7c0', 'meaning', true, 1, 0, '2026-08-26 05:54:41.248541', '2026-08-26 05:54:41.248541'),
 	('f79e6769-c84e-4642-b3d9-0ebdde07b667', '8b49cd4e-a410-4078-96d2-98d54338fef1', 'listening', true, 1, 6, '2026-08-30 02:18:24.985234', '2026-08-30 02:18:24.985234'),
@@ -20548,7 +20548,7 @@ INSERT INTO public.study_item_facets (id, study_item_id, facet, enabled, weight,
 	('fb7af6a8-8307-4ccd-af5d-9e69d56cc884', 'f49cdaf4-39e3-4051-91bc-3e21d35190a9', 'listening', true, 1, 6, '2026-08-26 04:34:12.386147', '2026-08-26 04:34:12.386147'),
 	('fb7b66bb-b851-4036-8bb7-80ac7fb65faf', 'a2f4c692-289d-468b-8948-33b798a000e4', 'reading', true, 1, 1, '2026-08-26 05:55:02.484763', '2026-08-26 05:55:02.484763'),
 	('fb7eec24-cb88-49d8-93fc-4c4fca95919b', '506918da-171f-45d5-b407-c64b4347a237', 'reading', true, 1, 1, '2026-08-26 05:54:40.010341', '2026-08-26 05:54:40.010341') ON CONFLICT DO NOTHING;
-INSERT INTO public.study_item_facets (id, study_item_id, facet, enabled, weight, intro_order, created_at, updated_at) VALUES
+INSERT INTO study_item_facets (id, study_item_id, facet, enabled, weight, intro_order, created_at, updated_at) VALUES
 	('fb7f1078-79ee-49c4-b173-71e1fb6fd435', '71bb06f3-58fd-48c4-8762-8ef65c5d4580', 'reading', true, 1, 1, '2026-08-26 05:55:01.503254', '2026-08-26 05:55:01.503254'),
 	('fb8102e8-2fed-4121-bb2b-ee690b99a4b5', '5c1bfa8a-929a-4eb6-b7d5-136e81fdd042', 'listening', true, 1, 6, '2026-08-30 02:18:24.985234', '2026-08-30 02:18:24.985234'),
 	('fb81e80d-2da7-4c16-9ac0-a2bad0b2abb9', 'c6ebdd12-0c33-493d-b0df-543272b9abec', 'meaning', true, 1, 0, '2026-08-26 05:52:47.95162', '2026-08-26 05:52:47.95162'),
@@ -21049,7 +21049,7 @@ INSERT INTO public.study_item_facets (id, study_item_id, facet, enabled, weight,
 	('ff2cc8be-fe01-421d-862c-6490e60b276d', 'ee5d9795-f35a-4bf5-8b31-d79c827c7e4e', 'reading', true, 1, 1, '2026-08-26 05:53:45.816015', '2026-08-26 05:53:45.816015'),
 	('ff30aee3-1a18-43cd-ac98-ad8909b640b7', '58c4132d-ac6f-4ba6-90c3-8436ade2d7cc', 'reading', true, 1, 1, '2026-08-26 05:54:55.496224', '2026-08-26 05:54:55.496224'),
 	('ff317601-5e97-4db4-a7b7-09c923f1e8bd', 'a16068f4-2fdf-4c45-a39f-f9b4ac0914cb', 'meaning', true, 1, 0, '2026-08-26 00:30:29.883467', '2026-08-26 00:30:29.883467') ON CONFLICT DO NOTHING;
-INSERT INTO public.study_item_facets (id, study_item_id, facet, enabled, weight, intro_order, created_at, updated_at) VALUES
+INSERT INTO study_item_facets (id, study_item_id, facet, enabled, weight, intro_order, created_at, updated_at) VALUES
 	('ff34102a-dd6a-4656-8b82-fca83882cb44', '92d986ac-da15-4e72-9ee4-1a0d66a37c73', 'meaning', true, 1, 0, '2026-08-26 00:30:30.146561', '2026-08-26 00:30:30.146561'),
 	('ff35aa46-746a-4dda-9025-90057609b60d', 'cfcd9957-eb9e-4ee0-81b6-dce55ea1ae14', 'meaning', true, 1, 0, '2026-08-26 05:55:00.862936', '2026-08-26 05:55:00.862936'),
 	('ff3bbbb3-93ef-4eb4-a74b-ce2f422eba6c', 'cc7f7700-f94e-4814-afa2-455fc987e316', 'meaning', true, 1, 0, '2026-08-26 00:30:31.33938', '2026-08-26 00:30:31.33938'),
@@ -21154,7 +21154,7 @@ INSERT INTO public.study_item_facets (id, study_item_id, facet, enabled, weight,
 	('fff84d41-1b7b-4a98-8136-efac32224f42', '8fffb58c-deda-4ace-b127-1200a00fa7b2', 'reading', true, 1, 1, '2026-08-26 05:54:41.956907', '2026-08-26 05:54:41.956907'),
 	('fff9b0ff-e09c-4b64-8147-527a8ef81cfb', 'b9ea1a99-6d26-4340-852e-e75a283bc712', 'reading', true, 1, 1, '2026-08-26 05:55:11.219532', '2026-08-26 05:55:11.219532') ON CONFLICT DO NOTHING;
 -- exercise_prompts: 42448 rows
-INSERT INTO public.exercise_prompts (id, facet_id, template_id, language_id, prompt, answer, distractors, assets, content_hash, version, generated_by, status, created_at, updated_at, requires_grammar_point_id) VALUES
+INSERT INTO exercise_prompts (id, facet_id, template_id, language_id, prompt, answer, distractors, assets, content_hash, version, generated_by, status, created_at, updated_at, requires_grammar_point_id) VALUES
 	('000045e6-acac-4e4c-8e52-5e9a4e622d90', '8ee2790a-a382-46bf-9130-85f85de6772c', 'tpl-mcq', 'lang-ja', '{"kind": "word", "word": "集会", "reading": "しゅうかい", "instruction": "What does this mean?"}', '{"primary": "meeting", "accepted": ["meeting"]}', '["child", "to attach", "order"]', '{"audio": "/audio/words/1333600.m4a", "wordAudio": "/audio/words/1333600.m4a"}', NULL, 1, 'system', 'published', '2026-08-26 05:54:57.574534', '2026-09-02 04:34:13.3775', NULL),
 	('0001e982-4ba6-47c6-a1e8-98d33e094bbe', '6dc0caec-4a13-43c6-95e9-154f249b53bf', 'tpl-handwriting', 'lang-ja', '{"kind": "handwriting", "gloss": "state of suspension; hang; depend", "label": "state of suspension", "readings": ["か.ける", "か.かる", "ケン", "ケ"], "character": "懸", "instruction": "Write this character", "strokeCount": 20}', '{"primary": "懸", "accepted": ["懸"]}', '[]', '{"strokes": [{"path": "M29.33,15.59c0.6,0.6,0.74,1.53,0.74,2.47c0,0.5,0.01,12.33,0.02,20.06c0,1.59,0,3.01,0,4.12", "index": 0, "kvgType": "㇑"}, {"path": "M30.57,17.23c1.46-0.08,10.92-1.58,14.69-2.08c2.36-0.31,3.43-0.02,3.43,2.48c0,3.37-0.02,13.04-0.03,18.75c0,1.45,0,2.64,0,3.41", "index": 1, "kvgType": "㇕a"}, {"path": "M31.21,24.63c4.16-0.63,13.41-1.76,16.14-1.76", "index": 2, "kvgType": "㇐a"}, {"path": "M31.35,32.87c5.53-0.74,11.15-1.62,16.05-1.94", "index": 3, "kvgType": "㇐a"}, {"path": "M31.28,40.23c4.47-0.48,11.72-1.73,16.34-1.89", "index": 4, "kvgType": "㇐a"}, {"path": "M19.94,25.67c0.75,0.75,1.07,1.86,1.07,2.97c0,1.11-0.77,17.25-0.77,18.68c0,2.12,0.65,2.6,2.31,2.34c9.2-1.42,20.07-2.92,25.65-2.97c1.38-0.01,3.05,0.09,4.12,0.25", "index": 5, "kvgType": "㇗"}, {"path": "M36.93,49.94c0.81,0.81,1.11,1.93,1.11,3.51c0,3.31-0.01,8.42-0.02,12.3c0,2.04-0.01,3.95-0.01,5.5", "index": 6, "kvgType": "㇑"}, {"path": "M27.81,55.38c0.09,0.94-0.09,1.84-0.52,2.68c-1.54,2.94-4.54,6.81-9.85,11.81", "index": 7, "kvgType": "㇒"}, {"path": "M44.65,54.66c2.67,1.67,6.9,6.88,7.56,9.48", "index": 8, "kvgType": "㇔"}, {"path": "M82,10.14c0,0.98-0.48,1.65-1.24,2.03c-2.9,2.26-11.28,6.03-22.27,8.46", "index": 9, "kvgType": "㇒"}, {"path": "M71.42,19.4c0.29,0.8,0.19,1.9-0.39,2.77c-2.15,3.21-4.02,5.21-7.14,8.48c-0.86,0.9-1.1,1.54,0.24,2.14c3,1.35,5.25,2.85,7.22,4.48", "index": 10, "kvgType": "㇜"}, {"path": "M82.37,25.38c0.25,0.87-0.06,1.79-0.75,2.6C76,34.62,69.88,40.5,62.1,47.53c-1.16,1.05-1.01,2.64,0.51,2.34c6.36-1.23,17.86-4.53,26.04-5.71", "index": 11, "kvgType": "㇜"}, {"path": "M84.25,38.48c2.92,1.99,7.55,8.2,8.28,11.3", "index": 12, "kvgType": "㇔"}, {"path": "M74.66,49.47c0.87,0.87,1.07,1.9,1.07,3.55c0,6.99-0.01,9.04-0.02,13.23c0,1.64,0,3.23,0,4.89", "index": 13, "kvgType": "㇑"}, {"path": "M66.27,56.45c0.23,0.92-0.31,1.83-0.6,2.25c-1.91,2.75-7.5,8-10.21,10.36", "index": 14, "kvgType": "㇒"}, {"path": "M84.68,56.2c3.82,2.2,8.02,7.97,9.07,10.23", "index": 15, "kvgType": "㇔"}, {"path": "M24.5,79c0.31,2.19-3.15,11.84-5.67,15.49", "index": 16, "kvgType": "㇔"}, {"path": "M36.58,76.75c6.79,11.12,15.54,20.43,39.7,20.43c11.47,0,12.22-2.93,2.65-7.94", "index": 17, "kvgType": "㇃"}, {"path": "M57.41,75.75c2.17,5.25,5.22,8.5,6.63,3.21", "index": 18, "kvgType": "㇔a"}, {"path": "M82.38,75.73c4.99,2.77,8.62,6.02,11.85,10.36", "index": 19, "kvgType": "㇔"}], "viewBox": 109}', NULL, 1, 'system', 'published', '2026-08-26 05:53:04.878733', '2026-09-02 04:08:39.813188', NULL),
 	('00032110-3d57-4f00-a2ad-8793f885295d', 'abc1cb33-3e03-4d4e-8749-7c01a1d2bd05', 'tpl-mcq', 'lang-ja', '{"kind": "word", "word": "足りる", "reading": "たりる", "instruction": "What does this mean?"}', '{"primary": "to be sufficient", "accepted": ["to be sufficient"]}', '["zone", "performance (at a party or banquet, etc.)", "marriage proposal"]', '{"audio": "/audio/words/1404740.m4a", "wordAudio": "/audio/words/1404740.m4a"}', NULL, 1, 'system', 'published', '2026-08-26 05:54:37.473338', '2026-09-02 04:34:13.3775', NULL),
@@ -21655,7 +21655,7 @@ INSERT INTO public.exercise_prompts (id, facet_id, template_id, language_id, pro
 	('0314a853-101c-4f11-a905-61887522291b', 'a9f2e8b6-7d79-4883-9b34-a1dec53e601d', 'tpl-reading-input', 'lang-ja', '{"hint": "immersed", "kind": "kanji", "gloss": "immersed; soak; dip", "character": "浸", "instruction": "Type a reading for this kanji, in kana"}', '{"primary": "ひたす", "accepted": ["ひたす", "ひたる", "つかる", "シン"]}', '[]', '{}', NULL, 1, 'system', 'published', '2026-08-26 05:53:08.972564', '2026-09-02 04:08:39.813188', NULL),
 	('0314ff0c-f77b-42e7-953d-d764c31945b5', 'db99e7d9-6368-406a-a398-e974662aa804', 'tpl-dictation', 'lang-ja', '{"hint": "hometown", "kind": "dictation", "introWord": "故郷", "instruction": "Listen and type what you hear, in kana", "introReading": "こきょう"}', '{"primary": "こきょう", "accepted": ["こきょう", "故郷"]}', '[]', '{"audio": "/audio/words/2853884.m4a", "wordAudio": "/audio/words/2853884.m4a"}', NULL, 1, 'system', 'published', '2026-08-30 02:18:24.985234', '2026-09-02 04:34:13.3775', NULL),
 	('0315e221-7f2d-41a6-a437-9c9e1101e7d9', '2a2b7d27-7482-45f8-b286-9369862010fb', 'tpl-mcq', 'lang-ja', '{"kind": "word", "word": "覚める", "reading": "さめる", "instruction": "What does this mean?"}', '{"primary": "to wake", "accepted": ["to wake"]}', '["barefoot", "to be truant", "first day of the month"]', '{"audio": "/audio/words/1206070.m4a", "wordAudio": "/audio/words/1206070.m4a"}', NULL, 1, 'system', 'published', '2026-08-26 05:54:47.557995', '2026-09-02 04:34:13.3775', NULL) ON CONFLICT DO NOTHING;
-INSERT INTO public.exercise_prompts (id, facet_id, template_id, language_id, prompt, answer, distractors, assets, content_hash, version, generated_by, status, created_at, updated_at, requires_grammar_point_id) VALUES
+INSERT INTO exercise_prompts (id, facet_id, template_id, language_id, prompt, answer, distractors, assets, content_hash, version, generated_by, status, created_at, updated_at, requires_grammar_point_id) VALUES
 	('031736a8-9fd9-4dd8-b53f-42d2fb8cf309', '08369654-0b8e-4632-a1dd-33127f8ba806', 'tpl-dictation', 'lang-ja', '{"hint": "parent", "kind": "dictation", "introWord": "親", "instruction": "Listen and type what you hear, in kana", "introReading": "おや"}', '{"primary": "おや", "accepted": ["おや", "親", "祖"]}', '[]', '{"audio": "/audio/words/1365040.m4a", "image": "/images/vocab/1365040.svg", "wordAudio": "/audio/words/1365040.m4a"}', NULL, 1, 'system', 'published', '2026-08-30 02:18:24.985234', '2026-10-18 03:04:53.1707', NULL),
 	('0317de10-7c7e-4992-9f44-1ad406677dea', '6a1ba1e6-a708-4949-a80c-9a5d34861dc9', 'tpl-handwriting', 'lang-ja', '{"kind": "handwriting", "gloss": "deceit; cheat; delude", "label": "deceit", "readings": ["あざむ.く", "ギ"], "character": "欺", "instruction": "Write this character", "strokeCount": 12}', '{"primary": "欺", "accepted": ["欺"]}', '[]', '{"strokes": [{"path": "M12.34,33.34c1.78,0.41,3.76,0.32,5.66,0.07c7.07-0.93,21.96-3.3,30.1-4.2c1.76-0.2,3.52-0.2,5.45,0.05", "index": 0, "kvgType": "㇐"}, {"path": "M22.16,19.28c0.84,0.84,1.13,2.22,1.13,3.61c0,0.97-0.04,40.97-0.04,47.73", "index": 1, "kvgType": "㇑a"}, {"path": "M40.7,14.25c0.9,0.9,1.38,2.12,1.38,3.61C42.08,24.25,42,60.9,42,68", "index": 2, "kvgType": "㇑a"}, {"path": "M24.34,45.62c4.29-0.62,13.94-1.89,16.59-2.13", "index": 3, "kvgType": "㇐a"}, {"path": "M24.41,58.02c3.96-0.52,12.88-1.9,16.59-2.38", "index": 4, "kvgType": "㇐a"}, {"path": "M9.38,73.43c2.34,0.12,4.59,0.03,6.89-0.36c8.97-1.52,23.04-3.64,32.6-4.69c1.94-0.21,4.51-0.4,6.39,0.19", "index": 5, "kvgType": "㇐"}, {"path": "M25.48,79.21c0.11,0.97-0.08,1.88-0.55,2.74c-1.55,3.33-5.91,8.54-12.18,13.05", "index": 6, "kvgType": "㇒"}, {"path": "M38.75,77.38c3.09,2.01,7.98,8.25,8.75,11.38", "index": 7, "kvgType": "㇔/㇏"}, {"path": "M66.68,16.75c0.04,0.83,0.04,2.18-0.33,3.31C63.62,28.38,59.62,40.88,52,51.75", "index": 8, "kvgType": "㇒"}, {"path": "M62.35,39.49c1.9,0.39,3.55,0.25,5.18-0.09c4.16-0.87,16.12-4,17.49-4.34c6.35-1.56,5.48,1.69-1.27,10.19", "index": 9, "kvgType": "㇖a"}, {"path": "M67.71,48c0.79,1.38,0.9,3.14,0.63,4.77c-1.72,10.61-7.09,31.73-21.09,42.98", "index": 10, "kvgType": "㇒"}, {"path": "M67,61.5c3.75,5.38,12.62,17.12,20.24,25.89c2.15,2.47,4.89,4.98,8.01,7.11", "index": 11, "kvgType": "㇏"}], "viewBox": 109}', NULL, 1, 'system', 'published', '2026-08-26 05:53:04.609143', '2026-09-02 04:08:39.813188', NULL),
 	('03191539-68f0-44cb-8ba5-99dc53581fa6', '1823dabc-3152-41a6-b633-9bff22506f15', 'tpl-handwriting', 'lang-ja', '{"kind": "handwriting", "gloss": "quandary; become distressed; annoyed", "label": "quandary", "readings": ["こま.る", "コン"], "character": "困", "instruction": "Write this character", "strokeCount": 7}', '{"primary": "困", "accepted": ["困"]}', '[]', '{"strokes": [{"path": "M19,16.82c1.03,1.03,1.61,2.81,1.61,4.41c0,11.09-0.04,49.54-0.06,68.15c0,3.7,0,6.62,0,8.38", "index": 0, "kvgType": "㇑"}, {"path": "M21.23,18.65c19.15-1.9,49.27-4.77,64.02-4.9c2.75-0.02,4.5,2.24,4.5,5.25c0,12.41,0,52.9,0,69.12c0,3.56,0,5.95,0,6.62", "index": 1, "kvgType": "㇕a"}, {"path": "M30.23,40.92c1.88,0.61,4.43,0.69,6.41,0.56c8.53-0.56,25.75-2.5,36.11-3.6c1.76-0.19,3.76-0.17,5.52,0.01", "index": 2, "kvgType": "㇐"}, {"path": "M52.87,22.25c1,1,1.44,2.5,1.44,3.94c0,0.86,0.05,37.4,0.06,53.06c0,2.69,0,4.71,0,5.75", "index": 3, "kvgType": "㇑"}, {"path": "M52.75,41.02c0,1.23-0.64,3.3-1.35,4.81c-4.9,10.35-14.09,23.45-21.43,28.73", "index": 4, "kvgType": "㇒"}, {"path": "M54.56,42.83c3.44,4.92,14.6,17.81,19.48,23.39c1.49,1.7,3.26,3.56,5.23,4.71", "index": 5, "kvgType": "㇏"}, {"path": "M21.75,93.01c15.38-0.64,48.71-2.1,66.75-2.51", "index": 6, "kvgType": "㇐a"}], "viewBox": 109}', NULL, 1, 'system', 'published', '2026-08-26 03:49:47.1685', '2026-09-02 04:08:39.813188', NULL),

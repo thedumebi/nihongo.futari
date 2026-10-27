@@ -57,9 +57,12 @@ function historyName(file: string): string {
   return file.replace(/\.seed\.(ts|js)$/, '.seed')
 }
 
+// Named with its schema: a bare CREATE lands in the first schema on the
+// search_path, which is not `public`, and a second, empty history there would
+// run every seed again.
 async function ensureSeedHistory() {
   await db.execute(sql`
-    CREATE TABLE IF NOT EXISTS seed_history (
+    CREATE TABLE IF NOT EXISTS public.seed_history (
       name text PRIMARY KEY,
       run_at timestamptz NOT NULL DEFAULT now()
     )
@@ -67,7 +70,7 @@ async function ensureSeedHistory() {
 }
 
 async function appliedSeeds(): Promise<Set<string>> {
-  const result = await db.execute(sql`SELECT name FROM seed_history`)
+  const result = await db.execute(sql`SELECT name FROM public.seed_history`)
   const rows = (result.rows ?? []) as Array<Record<string, unknown>>
   return new Set(rows.map(r => String(r.name)))
 }
@@ -108,7 +111,7 @@ async function main() {
       const contents = await readFile(path.join(seedsDir, file), 'utf8')
       await db.transaction(async (tx) => {
         await tx.execute(sql.raw(contents))
-        await tx.execute(sql`INSERT INTO seed_history (name) VALUES (${name}) ON CONFLICT DO NOTHING`)
+        await tx.execute(sql`INSERT INTO public.seed_history (name) VALUES (${name}) ON CONFLICT DO NOTHING`)
       })
     } else {
       // Imported by URL so this works from src under tsx and from dist after a
@@ -119,7 +122,7 @@ async function main() {
       await mod.run()
       // Recorded only on success. A crash mid-way leaves no row, so the next
       // deploy retries — which is safe because these are idempotent.
-      await db.execute(sql`INSERT INTO seed_history (name) VALUES (${name}) ON CONFLICT DO NOTHING`)
+      await db.execute(sql`INSERT INTO public.seed_history (name) VALUES (${name}) ON CONFLICT DO NOTHING`)
     }
 
     console.log(`✅ seed "${file}" applied`)
