@@ -78,12 +78,16 @@ connection.on('connect', (client) => {
   client.query = timedQuery(client.query.bind(client)) as typeof client.query
 })
 
-// The wait for a free client is counted apart from the queries. A callback
-// waiting in the pool's queue is called by whichever request frees a client,
-// so it is bound back to the request that asked.
+// The wait for a free client is counted apart from the queries, and marked
+// queued when those already waiting take every idle client and every one the
+// pool still has room to open (it hands an idle one out on the next tick, so a
+// burst all sees it idle). A callback waiting in the pool's queue is called by
+// whichever request frees a client, so it is bound back to the request that
+// asked.
 const connect = connection.connect.bind(connection) as (callback?: Callback) => Promise<unknown> | undefined
 connection.connect = ((callback?: Callback) => {
-  const end = startWait()
+  const room = Math.max(0, connection.options.max - connection.totalCount)
+  const end = startWait(connection.waitingCount >= connection.idleCount + room)
   if (!callback)
     return (connect() as Promise<unknown>).finally(end)
   return connect(AsyncResource.bind((...result: unknown[]) => {

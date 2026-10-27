@@ -29,6 +29,8 @@ describe('a pooled connection', () => {
     expect(result).toBe('done')
     // Two of ours, plus the transaction's begin and commit.
     expect(timing.queries).toBe(4)
+    // A free client was there each time.
+    expect(timing.queued).toBe(0)
     expect(timing.ms).toBeGreaterThanOrEqual(20)
   })
 
@@ -48,9 +50,17 @@ describe('a pooled connection', () => {
     const busy = (n: number) => withQueryTiming(async () => {
       await Promise.all(Array.from({ length: n }, () => db.execute(sql`select pg_sleep(0.03)`)))
     })
+    // Every client open and idle first, so the wait below is for one to come
+    // free, not for a new connection.
+    await busy(connection.options.max)
+    expect(connection.totalCount).toBe(connection.options.max)
     const [a, b] = await Promise.all([busy(many), busy(1)])
     expect([a.timing.queries, b.timing.queries]).toEqual([many, 1])
-    expect(a.timing.waitMs + b.timing.waitMs).toBeGreaterThan(10)
+    // Every client busy for three of them, whichever request asked first.
+    expect(a.timing.queued + b.timing.queued).toBe(3)
+    // The queued ones wait out a 30 ms query side by side, counted once.
+    expect(a.timing.waitMs + b.timing.waitMs).toBeGreaterThan(20)
+    expect(a.timing.waitMs).toBeLessThan(80)
   })
 
   it('drops an idle connection the server closes, and carries on', async () => {

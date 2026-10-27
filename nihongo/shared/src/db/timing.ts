@@ -3,10 +3,12 @@ import { performance } from 'node:perf_hooks'
 
 import type { QueryTiming } from '@/types/timing.js'
 
-/** The tally, plus what it needs to count overlapping queries once. */
+/** The tally, plus what it needs to count overlapping queries and waits once. */
 interface Tally extends QueryTiming {
   running: number
   busySince: number
+  waiting: number
+  waitingSince: number
 }
 
 /**
@@ -19,9 +21,9 @@ const current = new AsyncLocalStorage<Tally>()
 
 /** Run `fn` with a fresh tally of its queries, and hand both back. */
 export async function withQueryTiming<T>(fn: () => Promise<T>): Promise<{ result: T, timing: QueryTiming }> {
-  const tally: Tally = { queries: 0, ms: 0, waitMs: 0, running: 0, busySince: 0 }
+  const tally: Tally = { queries: 0, ms: 0, waitMs: 0, queued: 0, running: 0, busySince: 0, waiting: 0, waitingSince: 0 }
   const result = await current.run(tally, fn)
-  return { result, timing: { queries: tally.queries, ms: tally.ms, waitMs: tally.waitMs } }
+  return { result, timing: { queries: tally.queries, ms: tally.ms, waitMs: tally.waitMs, queued: tally.queued } }
 }
 
 /**
@@ -45,13 +47,24 @@ export function startQuery(): () => void {
   }
 }
 
-/** Mark a wait for a connection as started; call what this returns when it has one. */
-export function startWait(): () => void {
+/**
+ * Mark a wait for a connection as started, `queued` when the pool had none
+ * free; call what this returns when it has one.
+ */
+export function startWait(queued: boolean): () => void {
   const tally = current.getStore()
   if (!tally)
     return () => {}
-  const start = performance.now()
+  if (queued)
+    tally.queued++
+  if (tally.waiting++ === 0)
+    tally.waitingSince = performance.now()
+  let ended = false
   return () => {
-    tally.waitMs += performance.now() - start
+    if (ended)
+      return
+    ended = true
+    if (--tally.waiting === 0)
+      tally.waitMs += performance.now() - tally.waitingSince
   }
 }
