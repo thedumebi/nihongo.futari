@@ -38,6 +38,7 @@ export const connection = new Pool({
   // so the other databases on the shared server keep their own setting.
   options: '-c jit=off',
   max: (env.DB_MIGRATING || env.DB_SEEDING) ? 1 : env.DB_POOL_MAX,
+  min: (env.DB_MIGRATING || env.DB_SEEDING) ? 0 : Math.min(env.DB_POOL_MIN, env.DB_POOL_MAX),
   idleTimeoutMillis: env.DB_POOL_IDLE_TIMEOUT_MS,
   connectionTimeoutMillis: env.DB_POOL_CONNECTION_TIMEOUT_MS,
   // Idle connections live for minutes: notice one the network dropped.

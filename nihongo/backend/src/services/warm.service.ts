@@ -2,6 +2,7 @@ import { pino } from '@nihongo/shared'
 
 import { catalogue, catalogueUnits, facetFacts, itemCharacters, languageByCode, languageCodes } from './catalogue.service.js'
 import { warmDialogues } from './dialogues.service.js'
+import { listLanguages } from './languages.service.js'
 import { warmReadings } from './readings.service.js'
 
 /**
@@ -19,6 +20,9 @@ export async function warmContent(): Promise<void> {
   try {
     // One language after another: each builds its own glossary, and a box
     // with two cores serving requests meanwhile need not build them at once.
+    // The language list is warmed beside them, and failing alone: the first
+    // GET /languages can retry it, and the rest need not wait on it.
+    void listLanguages().catch(err => pino.warn({ err }, 'Warming the language list failed; the first request will load it'))
     const codes = await languageCodes()
     for (const code of codes) {
       const language = await languageByCode(code)

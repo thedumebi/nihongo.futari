@@ -50,6 +50,10 @@ export const EnvSchema = z.object({
   // pool empty and waited on fresh handshakes (620-900 ms summed on Today).
   // Ten minutes keeps a pool that is in use warm.
   DB_POOL_IDLE_TIMEOUT_MS: z.coerce.number().default(600_000),
+  // ...and this many are kept past it, so the first open after a quiet hour
+  // does not pay for new backends either: a fresh one's first query took
+  // 110-155 ms in production, against 3-20 ms on a connection already open.
+  DB_POOL_MIN: z.coerce.number().default(4),
   DB_POOL_CONNECTION_TIMEOUT_MS: z.coerce.number().default(10000),
 
   // Auth

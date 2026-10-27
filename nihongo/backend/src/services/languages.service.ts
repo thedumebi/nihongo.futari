@@ -4,14 +4,23 @@ import db from '@nihongo/shared/db'
 import { languageLevels, languages, studyItems } from '@nihongo/shared/db/schema'
 import { and, asc, eq, sql } from 'drizzle-orm'
 
+import { cachedContent } from './catalogue.service.js'
+
 /**
  * Languages available to study.
  *
  * `itemCount` matters to the picker: the schema is multi-language from day one,
  * so a language can exist with no content yet. Showing that plainly beats
  * letting someone pick French and land on an empty queue.
+ *
+ * The same for everyone and asked on every page load, so cached with the
+ * catalogue: an approval that publishes items reloads it.
  */
 export async function listLanguages(): Promise<LanguageSummary[]> {
+  return cachedContent('language-summaries', loadLanguages)
+}
+
+async function loadLanguages(): Promise<LanguageSummary[]> {
   const rows = await db
     .select({
       id: languages.id,

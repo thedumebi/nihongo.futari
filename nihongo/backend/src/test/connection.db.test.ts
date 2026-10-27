@@ -72,6 +72,24 @@ describe('a pooled connection', () => {
     expect(a.timing.waitMs).toBeLessThan(80)
   })
 
+  it('closes idle connections past their timeout, down to the minimum it keeps open', async () => {
+    const min = connection.options.min ?? 0
+    expect(min).toBeGreaterThan(0)
+    const timeout = connection.options.idleTimeoutMillis
+    connection.options.idleTimeoutMillis = 30
+    try {
+      // Across the whole pool, so every connection is released under the short
+      // timeout, the ones earlier tests opened included.
+      await Promise.all(Array.from({ length: connection.options.max ?? 10 }, () => db.execute(sql`select pg_sleep(0.02)`)))
+      expect(connection.totalCount).toBeGreaterThan(min)
+      await vi.waitFor(() => {
+        expect(connection.totalCount).toBe(min)
+      })
+    } finally {
+      connection.options.idleTimeoutMillis = timeout
+    }
+  })
+
   it('drops an idle connection the server closes, and carries on', async () => {
     const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
     const [idle, other] = await Promise.all([connection.connect(), connection.connect()])
