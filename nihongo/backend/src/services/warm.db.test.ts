@@ -5,11 +5,21 @@ import { afterAll, describe, expect, it } from 'vitest'
 import { inRequestScope } from '../lib/request-scope.js'
 import { listDialogues } from './dialogues.service.js'
 import { listReadings } from './readings.service.js'
-import { warmContent } from './warm.service.js'
+import { warmConnections, warmContent } from './warm.service.js'
 
 describe('warming the content caches', () => {
   afterAll(async () => {
     await connection.end()
+  })
+
+  it('opens every connection the pool keeps, each its own, and leaves them idle', async () => {
+    const min = connection.options.min ?? 0
+    expect(min).toBeGreaterThan(1)
+    // A pool opens connections only as queries ask for them.
+    expect(connection.totalCount).toBeLessThan(min)
+    await warmConnections()
+    expect(connection.totalCount).toBeGreaterThanOrEqual(min)
+    expect(connection.idleCount).toBe(connection.totalCount)
   })
 
   it('leaves the first learner only their own rows to read', async () => {

@@ -53,7 +53,10 @@ export const EnvSchema = z.object({
   // ...and this many are kept past it, so the first open after a quiet hour
   // does not pay for new backends either: a fresh one's first query took
   // 110-155 ms in production, against 3-20 ms on a connection already open.
-  DB_POOL_MIN: z.coerce.number().default(4),
+  // Twelve covers Today, which asks about that many queries at once; with
+  // four kept, a warm Today still waited 27-40 ms on new handshakes. The boot
+  // warm-up opens them all (`warm.service.ts`).
+  DB_POOL_MIN: z.coerce.number().default(12),
   DB_POOL_CONNECTION_TIMEOUT_MS: z.coerce.number().default(10000),
 
   // Auth
