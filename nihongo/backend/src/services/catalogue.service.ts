@@ -1,9 +1,10 @@
-import type { Catalogue, CatalogueItem, CatalogueUnit, Language } from '@nihongo/shared/types'
+import type { Catalogue, CatalogueItem, CatalogueUnit, FacetFacts, Language } from '@nihongo/shared/types'
+import type { SQL } from 'drizzle-orm'
 
 import { pino } from '@nihongo/shared'
 import db from '@nihongo/shared/db'
-import { languages } from '@nihongo/shared/db/schema'
-import { sql } from 'drizzle-orm'
+import { kana, kanji, languages, studyItemFacets, studyItems } from '@nihongo/shared/db/schema'
+import { eq, inArray, sql } from 'drizzle-orm'
 
 /**
  * The curriculum of one language, held in memory (see `types/curriculum.ts`).
@@ -159,6 +160,67 @@ async function loadUnits(languageId: string): Promise<CatalogueUnit[]> {
     unit.itemIds.add(row.study_item_id)
   }
   return [...units.values()]
+}
+
+/** What a card needs of each facet `where` picks; the one definition of `FacetFacts`. */
+async function readFacetFacts(where: SQL): Promise<Map<string, FacetFacts>> {
+  const rows = await db
+    .select({
+      id: studyItemFacets.id,
+      itemId: studyItemFacets.studyItemId,
+      kind: studyItems.kind,
+      levelId: studyItems.levelId,
+      kanjiId: studyItems.kanjiId,
+      kanaId: studyItems.kanaId,
+      wordId: studyItems.wordId,
+      live: sql<boolean>`${studyItemFacets.enabled} and ${studyItems.published} and ${studyItems.active}`
+    })
+    .from(studyItemFacets)
+    .innerJoin(studyItems, eq(studyItems.id, studyItemFacets.studyItemId))
+    .where(where)
+  return new Map(rows.map(({ id, ...fact }) => [id, fact]))
+}
+
+/** The same facts for particular facets, read now rather than from the cache. */
+export function facetFactsOf(facetIds: string[]): Promise<Map<string, FacetFacts>> {
+  return readFacetFacts(inArray(studyItemFacets.id, facetIds))
+}
+
+/**
+ * Every facet of a language, enabled or not, by id, with what a learner's card
+ * needs of it (`FacetFacts`). Cached like the catalogue, and reloaded with it
+ * on an approval, which is what can enable or publish one.
+ */
+export async function facetFacts(languageId: string): Promise<Map<string, FacetFacts>> {
+  return cachedContent(`facet-facts:${languageId}`, () => readFacetFacts(eq(studyItems.languageId, languageId)))
+}
+
+/**
+ * The character of every kanji and kana a language's study items teach, by
+ * kanji or kana id: what a learner's known ids are read out as.
+ */
+export async function itemCharacters(languageId: string): Promise<Map<string, string>> {
+  return cachedContent(`characters:${languageId}`, () => Promise.all([
+    db.select({ id: kanji.id, character: kanji.character }).from(kanji).where(inArray(kanji.id, db.select({ id: studyItems.kanjiId }).from(studyItems).where(eq(studyItems.languageId, languageId)))),
+    db.select({ id: kana.id, character: kana.character }).from(kana).where(inArray(kana.id, db.select({ id: studyItems.kanaId }).from(studyItems).where(eq(studyItems.languageId, languageId))))
+  ]).then(byId))
+}
+
+/**
+ * The characters of particular kanji and kana ids, read now rather than from
+ * the cache: for one taught by an item added since `itemCharacters` loaded.
+ */
+export async function charactersOf(ids: string[]): Promise<Map<string, string>> {
+  if (ids.length === 0)
+    return new Map()
+  return byId(await Promise.all([
+    db.select({ id: kanji.id, character: kanji.character }).from(kanji).where(inArray(kanji.id, ids)),
+    db.select({ id: kana.id, character: kana.character }).from(kana).where(inArray(kana.id, ids))
+  ]))
+}
+
+function byId(lists: Array<Array<{ id: string, character: string }>>): Map<string, string> {
+  return new Map(lists.flat().map(r => [r.id, r.character]))
 }
 
 /** A language's published units that hold items, in `sort_index` order, cached like the catalogue. */

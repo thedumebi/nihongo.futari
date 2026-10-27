@@ -45,17 +45,23 @@ export interface Catalogue {
 }
 
 /**
+ * What a learner's card needs to know of its facet and item, for every facet
+ * of a language, enabled or not: held in memory beside the catalogue, so the
+ * learner's own read is of their cards alone.
+ */
+export type FacetFacts = Pick<StudyItem, 'kind' | 'levelId' | 'kanjiId' | 'kanaId' | 'wordId'> & {
+  itemId: StudyItemFacet['studyItemId']
+  /** The facet enabled and its item published and active. */
+  live: boolean
+}
+
+/**
  * One of the learner's cards, with what the counts need of its facet and item:
  * `itemId` (the facet's study item) and `live`, whether the facet is enabled
  * and the item published and active, which every due count requires.
  */
-export type LearnerCard = Pick<SrsCard, 'id' | 'state' | 'suspended' | 'due' | 'firstSeenAt' | 'origin' | 'createdAt' | 'ghost'> & {
-  itemId: StudyItemFacet['studyItemId']
-  /** The item's kind and level, for the deck filters (`matchesFilter`). */
-  kind: StudyItem['kind']
-  levelId: StudyItem['levelId']
-  live: boolean
-}
+export type LearnerCard = Pick<SrsCard, 'id' | 'state' | 'suspended' | 'due' | 'firstSeenAt' | 'origin' | 'createdAt' | 'ghost'>
+  & Pick<FacetFacts, 'itemId' | 'kind' | 'levelId' | 'live'>
 
 /** How much is due, in items (the headline) and in cards. */
 export interface DueCount {
@@ -75,6 +81,8 @@ export interface LearnerState {
   itemStates: Map<string, number>
   /** Kanji with a learned card (state 2 or more) on any of their items. */
   knownKanji: Set<string>
+  /** Kana the same way. */
+  knownKana: Set<string>
   /** Words with a learned card (state 2 or more) that is not suspended. */
   knownWords: Set<string>
   /** Items whose lesson has been opened, with how far the reader got. */

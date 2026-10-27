@@ -19,11 +19,12 @@
 import type { LessonDetail, LessonStatus, LessonSummary } from '@nihongo/shared/types'
 
 import db from '@nihongo/shared/db'
-import { exercisePrompts, exerciseTemplates, kana, lessonViews, srsCards, studyItemFacets, studyItems } from '@nihongo/shared/db/schema'
-import { and, asc, eq, inArray, sql } from 'drizzle-orm'
+import { exercisePrompts, exerciseTemplates, kana, studyItemFacets, studyItems } from '@nihongo/shared/db/schema'
+import { and, asc, eq, inArray } from 'drizzle-orm'
 
 import { assetUrl, withAssetUrls } from '../lib/assets.js'
 import { cachedContent } from './catalogue.service.js'
+import { learnerState } from './learner-state.service.js'
 
 /** `kana-hiragana-base-k`, and the vowel row has no consonant to name it by. */
 export const KANA_SLUG_PREFIX = 'kana-'
@@ -106,39 +107,24 @@ function weakest(statuses: LessonStatus[]): LessonStatus {
   return statuses.reduce((worst, s) => (rank[s] < rank[worst] ? s : worst), 'known' as LessonStatus)
 }
 
-async function statusByItem(userId: string, studyItemIds: string[]): Promise<Map<string, LessonStatus>> {
-  if (studyItemIds.length === 0)
-    return new Map()
-
-  const rows = await db
-    .select({
-      studyItemId: studyItems.id,
-      seen: sql<boolean>`${lessonViews.userId} is not null`,
-      completedAt: lessonViews.completedAt,
-      cardState: sql<number | null>`max(${srsCards.state})`
-    })
-    .from(studyItems)
-    .leftJoin(lessonViews, and(eq(lessonViews.studyItemId, studyItems.id), eq(lessonViews.userId, userId)))
-    .leftJoin(studyItemFacets, eq(studyItemFacets.studyItemId, studyItems.id))
-    .leftJoin(srsCards, and(eq(srsCards.facetId, studyItemFacets.id), eq(srsCards.userId, userId)))
-    .where(inArray(studyItems.id, studyItemIds))
-    .groupBy(studyItems.id, lessonViews.userId, lessonViews.completedAt)
-
-  const out = new Map<string, LessonStatus>()
-  for (const r of rows) {
-    out.set(r.studyItemId, (r.cardState ?? 0) >= 2
+/** Each item's status, from the request's read of the learner's cards and lessons. */
+async function statusByItem(userId: string, languageId: string, studyItemIds: string[]): Promise<Map<string, LessonStatus>> {
+  const { itemStates, lessonsViewed } = await learnerState(userId, languageId)
+  return new Map(studyItemIds.map((id) => {
+    const view = lessonsViewed.get(id)
+    const status: LessonStatus = (itemStates.get(id) ?? 0) >= 2
       ? 'known'
-      : r.completedAt
+      : view?.completedAt
         ? 'learned'
-        : r.seen ? 'seen' : 'not-started')
-  }
-  return out
+        : view ? 'seen' : 'not-started'
+    return [id, status]
+  }))
 }
 
 /** The writing-system lessons, in teaching order. */
 export async function kanaLessonSummaries(userId: string, languageId: string): Promise<LessonSummary[]> {
   const rows = await kanaRows(languageId)
-  const statuses = await statusByItem(userId, rows.flatMap(r => r.members.map(m => m.studyItemId)))
+  const statuses = await statusByItem(userId, languageId, rows.flatMap(r => r.members.map(m => m.studyItemId)))
 
   return rows.map((r) => {
     const characters = r.members.map(m => m.character)
@@ -168,7 +154,7 @@ export async function getKanaLesson(userId: string, languageId: string, slug: st
     return null
 
   const itemIds = row.members.map(m => m.studyItemId)
-  const statuses = await statusByItem(userId, itemIds)
+  const statuses = await statusByItem(userId, languageId, itemIds)
 
   // The questions these characters already have. `kana-romaji` asks which sound
   // a character makes, which is exactly what the lesson just taught; handwriting

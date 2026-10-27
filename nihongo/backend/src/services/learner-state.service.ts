@@ -1,14 +1,17 @@
-import type { LearnerState } from '@nihongo/shared/types'
+import type { FacetFacts, LearnerState } from '@nihongo/shared/types'
 
 import db from '@nihongo/shared/db'
-import { lessonViews, srsCards, studyItemFacets, studyItems } from '@nihongo/shared/db/schema'
+import { lessonViews, srsCards } from '@nihongo/shared/db/schema'
 import { and, asc, eq, sql } from 'drizzle-orm'
 
 import { perRequest } from '@/lib/request-scope.js'
 
+import { facetFacts, facetFactsOf } from './catalogue.service.js'
+
 /**
  * One learner's cards in a language, and the lessons they have opened, in two
- * indexed queries (see `types/curriculum.ts`). Load it once per request and
+ * indexed queries (see `types/curriculum.ts`); what each card needs of its
+ * facet and item comes from the cached `facetFacts`, not a join. Load it once per request and
  * hand it to whatever needs it: it is a snapshot, so a caller that writes cards
  * loads it again.
  *
@@ -16,7 +19,7 @@ import { perRequest } from '@/lib/request-scope.js'
  * here: facet ids compare differently under the database's collation.
  */
 export async function loadLearnerState(userId: string, languageId: string): Promise<LearnerState> {
-  const [cards, views] = await Promise.all([
+  const [rows, views, facts] = await Promise.all([
     db
       .select({
         facetId: srsCards.facetId,
@@ -28,21 +31,23 @@ export async function loadLearnerState(userId: string, languageId: string): Prom
         origin: srsCards.origin,
         createdAt: srsCards.createdAt,
         ghost: srsCards.ghost,
-        answered: sql<boolean>`${srsCards.reps} > 0 or ${srsCards.lastReview} is not null`,
-        itemId: studyItemFacets.studyItemId,
-        kind: studyItems.kind,
-        levelId: studyItems.levelId,
-        live: sql<boolean>`${studyItemFacets.enabled} and ${studyItems.published} and ${studyItems.active}`,
-        kanjiId: studyItems.kanjiId,
-        wordId: studyItems.wordId
+        answered: sql<boolean>`${srsCards.reps} > 0 or ${srsCards.lastReview} is not null`
       })
       .from(srsCards)
-      .innerJoin(studyItemFacets, eq(studyItemFacets.id, srsCards.facetId))
-      .innerJoin(studyItems, eq(studyItems.id, studyItemFacets.studyItemId))
       .where(and(eq(srsCards.userId, userId), eq(srsCards.languageId, languageId)))
       .orderBy(asc(srsCards.due), asc(srsCards.facetId)),
-    db.select({ studyItemId: lessonViews.studyItemId, completedAt: lessonViews.completedAt, quizScore: lessonViews.quizScore }).from(lessonViews).where(eq(lessonViews.userId, userId))
+    db.select({ studyItemId: lessonViews.studyItemId, completedAt: lessonViews.completedAt, quizScore: lessonViews.quizScore }).from(lessonViews).where(eq(lessonViews.userId, userId)),
+    facetFacts(languageId)
   ])
+
+  // A facet added since the index was loaded (an import between deploys) is
+  // read from the tables, so a card is never dropped for want of its facet.
+  const missing = rows.filter(r => !facts.has(r.facetId)).map(r => r.facetId)
+  const late = missing.length === 0 ? new Map<string, FacetFacts>() : await facetFactsOf(missing)
+  const cards = rows.flatMap((row) => {
+    const fact = facts.get(row.facetId) ?? late.get(row.facetId)
+    return fact ? [{ ...row, ...fact }] : []
+  })
 
   const state: LearnerState = {
     cards: new Map(),
@@ -50,10 +55,11 @@ export async function loadLearnerState(userId: string, languageId: string): Prom
     itemsAnswered: new Set(),
     itemStates: new Map(),
     knownKanji: new Set(),
+    knownKana: new Set(),
     knownWords: new Set(),
     lessonsViewed: new Map(views.map(({ studyItemId, ...view }) => [studyItemId, view]))
   }
-  for (const { facetId, kanjiId, wordId, answered, ...card } of cards) {
+  for (const { facetId, kanjiId, kanaId, wordId, answered, ...card } of cards) {
     state.cards.set(facetId, card)
     state.itemsWithCard.add(card.itemId)
     if (answered)
@@ -61,6 +67,8 @@ export async function loadLearnerState(userId: string, languageId: string): Prom
     state.itemStates.set(card.itemId, Math.max(card.state, state.itemStates.get(card.itemId) ?? 0))
     if (kanjiId !== null && card.state >= 2)
       state.knownKanji.add(kanjiId)
+    if (kanaId !== null && card.state >= 2)
+      state.knownKana.add(kanaId)
     if (wordId !== null && card.state >= 2 && !card.suspended)
       state.knownWords.add(wordId)
   }

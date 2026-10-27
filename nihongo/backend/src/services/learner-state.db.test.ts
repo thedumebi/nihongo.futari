@@ -1,11 +1,14 @@
 import db, { connection } from '@nihongo/shared/db'
-import { srsCards, studyItemFacets, studyItems, users } from '@nihongo/shared/db/schema'
+import { kanji as kanjiTable, srsCards, studyItemFacets, studyItems, users } from '@nihongo/shared/db/schema'
 import { and, asc, eq } from 'drizzle-orm'
 import { afterAll, describe, expect, it } from 'vitest'
 
 import { LANGUAGE_ID } from '@/test/learner-specs.js'
 
+import { inRequestScope } from '../lib/request-scope.js'
+import { itemCharacters } from './catalogue.service.js'
 import { loadLearnerState } from './learner-state.service.js'
+import { getKnownKanji } from './progress.service.js'
 import { markLessonSeen, saveStudyItem } from './srs.service.js'
 
 const USER = 'learner-state-test'
@@ -43,5 +46,31 @@ describe('loadLearnerState', () => {
     // Learned: the kanji now counts towards a sound series.
     await db.update(srsCards).set({ state: 2 }).where(eq(srsCards.userId, USER))
     expect((await loadLearnerState(USER, LANGUAGE_ID)).knownKanji).toEqual(new Set([kanji.kanjiId]))
+  })
+
+  it('reads a card whose facet came after the cached facet index, from the tables', async () => {
+    const kanji = await firstItem('kanji')
+    await loadLearnerState(USER, LANGUAGE_ID)
+    const [late] = await db.insert(studyItemFacets).values({ studyItemId: kanji.id, facet: 'late-test', enabled: false }).returning({ id: studyItemFacets.id })
+    const [card] = await db.select().from(srsCards).where(eq(srsCards.userId, USER)).limit(1)
+    const { id: _, facetId: __, ...copy } = card!
+    await db.insert(srsCards).values({ ...copy, facetId: late!.id })
+
+    const state = await loadLearnerState(USER, LANGUAGE_ID)
+    expect(state.cards.get(late!.id)).toMatchObject({ itemId: kanji.id, kind: 'kanji', live: false })
+  })
+
+  it('reads out a known kanji taught by an item added after the cached characters loaded', async () => {
+    await itemCharacters(LANGUAGE_ID)
+    const [added] = await db.insert(kanjiTable).values({ languageId: LANGUAGE_ID, character: '㐂' }).returning({ id: kanjiTable.id })
+    const [item] = await db.insert(studyItems).values({ languageId: LANGUAGE_ID, kind: 'kanji', kanjiId: added!.id, published: true }).returning({ id: studyItems.id })
+    const [facet] = await db.insert(studyItemFacets).values({ studyItemId: item!.id, facet: 'meaning' }).returning({ id: studyItemFacets.id })
+    const [card] = await db.select().from(srsCards).where(eq(srsCards.userId, USER)).limit(1)
+    const { id: _, facetId: __, ...copy } = card!
+    await db.insert(srsCards).values({ ...copy, facetId: facet!.id, state: 2 })
+
+    expect((await itemCharacters(LANGUAGE_ID)).has(added!.id)).toBe(false)
+    const { characters } = await inRequestScope(() => getKnownKanji(USER, 'ja'))
+    expect(characters).toContain('㐂')
   })
 })

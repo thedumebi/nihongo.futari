@@ -1,6 +1,6 @@
 import { pino } from '@nihongo/shared'
 
-import { catalogue, catalogueUnits, languageByCode, languageCodes } from './catalogue.service.js'
+import { catalogue, catalogueUnits, facetFacts, itemCharacters, languageByCode, languageCodes } from './catalogue.service.js'
 import { warmDialogues } from './dialogues.service.js'
 import { warmReadings } from './readings.service.js'
 
@@ -23,7 +23,7 @@ export async function warmContent(): Promise<void> {
     for (const code of codes) {
       const language = await languageByCode(code)
       if (language)
-        await Promise.all([catalogue(language.id), catalogueUnits(language.id), warmReadings(code), warmDialogues(code)])
+        await Promise.all([catalogue(language.id), catalogueUnits(language.id), facetFacts(language.id), itemCharacters(language.id), warmReadings(code), warmDialogues(code)])
     }
     pino.info({ ms: Math.round(performance.now() - started), languages: codes.length }, 'Content caches warmed')
   } catch (err) {

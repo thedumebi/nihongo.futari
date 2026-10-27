@@ -33,6 +33,7 @@ function stateOf(cards: Record<string, LearnerCard> = {}, extra: Partial<Learner
     itemsAnswered: new Set(),
     itemStates: new Map(),
     knownKanji: new Set(),
+    knownKana: new Set(),
     knownWords: new Set(),
     lessonsViewed: new Map(),
     ...extra

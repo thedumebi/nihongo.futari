@@ -5,8 +5,6 @@ import type { AggregateEvent, KnownKanji, LearnerHeadline, LearnerProfile, Progr
 import db from '@nihongo/shared/db'
 import {
   friendships,
-  kana,
-  kanji,
   languageLevels,
   learningActivities,
   srsCards,
@@ -27,7 +25,7 @@ import { and, eq, getTableColumns, gte, inArray, isNull, lt, sql } from 'drizzle
 import { perRequest } from '@/lib/request-scope.js'
 
 import { recomputeAchievements } from './achievements.service.js'
-import { catalogue, languageByCode } from './catalogue.service.js'
+import { catalogue, charactersOf, itemCharacters, languageByCode } from './catalogue.service.js'
 import { ghostBossHasCards } from './games.service.js'
 import { learnerState } from './learner-state.service.js'
 import { countDue, loadPolicy, newWordsToday } from './srs.service.js'
@@ -537,22 +535,18 @@ export async function getKnownKanji(userId: string, languageCode: string): Promi
   // romaji readings arrived: those go over kana too, so a set that cannot say
   // whether あ is known has nothing to filter on for exactly the characters
   // the romaji mode exists to help with.
-  const rows = await db.execute(sql`
-    select distinct c.character
-    from ${srsCards} sc
-    join ${studyItemFacets} f on f.id = sc.facet_id
-    join ${studyItems} si on si.id = f.study_item_id
-    join lateral (
-      select k.character from ${kanji} k where k.id = si.kanji_id
-      union all
-      select ka.character from ${kana} ka where ka.id = si.kana_id
-    ) c on true
-    where sc.user_id = ${userId}
-      and sc.language_id = ${language.id}
-      and sc.state >= 2
-  `)
-
-  return { characters: (rows.rows ?? []).map(r => String((r as Record<string, unknown>).character)) }
+  const [{ knownKanji, knownKana }, characters] = await Promise.all([learnerState(userId, language.id), itemCharacters(language.id)])
+  const ids = [...knownKanji, ...knownKana]
+  // An item added since the map loaded is read now, so none is left out.
+  const late = await charactersOf(ids.filter(id => !characters.has(id)))
+  const known = new Set<string>()
+  for (const id of ids) {
+    const character = characters.get(id) ?? late.get(id)
+    if (character)
+      known.add(character)
+  }
+  // A set to the reader; sorted so the same learner reads the same list.
+  return { characters: [...known].sort() }
 }
 
 /**
