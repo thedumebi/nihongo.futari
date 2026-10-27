@@ -1,14 +1,14 @@
 import db, { connection } from '@nihongo/shared/db'
-import { users, userSettings } from '@nihongo/shared/db/schema'
+import { srsDailyStats, users, userSettings, userStreaks, userXp } from '@nihongo/shared/db/schema'
 import { DEFAULT_DAY_BOUNDARY_HOUR } from '@nihongo/shared/lib'
 import { ghostPolicySchema } from '@nihongo/shared/types'
 import { eq } from 'drizzle-orm'
 import { afterAll, describe, expect, it } from 'vitest'
 
 import { inRequestScope } from '@/lib/request-scope.js'
-import { uuidFrom } from '@/test/learner-specs.js'
+import { LANGUAGE_ID, uuidFrom } from '@/test/learner-specs.js'
 
-import { learnerProfile, loadUserContext, studyLevelOf } from './progress.service.js'
+import { headlineToday, learnerHeadline, learnerProfile, loadUserContext, studiedToday, studyLevelOf } from './progress.service.js'
 import { loadPolicy } from './srs.service.js'
 
 async function bareUser(name: string): Promise<string> {
@@ -54,5 +54,24 @@ describe('the learner profile', () => {
     })
     expect(levels).toEqual(['N5', 'N5'])
     expect(await inRequestScope(() => studyLevelOf(id))).toBe('N3')
+  })
+
+  it('reads a headline of nothing yet for a learner who has not started', async () => {
+    const id = await bareUser('headline-empty')
+    expect(await headlineToday(id, LANGUAGE_ID)).toEqual({ xp: null, streak: null, reviewsToday: null, friendRequests: 0 })
+    expect(await studiedToday(id, LANGUAGE_ID)).toBe(false)
+  })
+
+  it('reads XP, streak and the study day\'s reviews in one headline', async () => {
+    const id = await bareUser('headline-full')
+    const now = new Date('2026-10-20T03:00:00Z') // 12:00 in Tokyo
+    await db.insert(userXp).values({ userId: id, languageId: LANGUAGE_ID, totalXp: 340, level: 3 })
+    await db.insert(userStreaks).values({ userId: id, languageId: LANGUAGE_ID, currentStreak: 5, longestStreak: 9 })
+    await db.insert(srsDailyStats).values([
+      { userId: id, languageId: LANGUAGE_ID, localDate: '2026-10-19', timezone: 'Asia/Tokyo', reviewCount: 40 },
+      { userId: id, languageId: LANGUAGE_ID, localDate: '2026-10-20', timezone: 'Asia/Tokyo', reviewCount: 12 }
+    ])
+    expect(await learnerHeadline(id, LANGUAGE_ID, '2026-10-20')).toEqual({ xp: { totalXp: 340, level: 3 }, streak: { currentStreak: 5, longestStreak: 9 }, reviewsToday: 12, friendRequests: 0 })
+    expect(await studiedToday(id, LANGUAGE_ID, now)).toBe(true)
   })
 })

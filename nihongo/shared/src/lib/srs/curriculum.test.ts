@@ -32,7 +32,8 @@ function stateOf(cards: Record<string, LearnerCard> = {}, extra: Partial<Learner
     itemsWithCard: new Set(Object.keys(cards).map(facet => facet.split('.')[0]!)),
     itemStates: new Map(),
     knownKanji: new Set(),
-    lessonsViewed: new Set(),
+    knownWords: new Set(),
+    lessonsViewed: new Map(),
     ...extra
   }
 }
@@ -125,7 +126,7 @@ describe('newCandidates', () => {
     const cat = catalogueOf([item('g', 1, { kind: 'grammar' }), item('far', 200)])
     const ceilings = new Map([['n5', 50]])
     expect(newCandidates(cat, stateOf(), {}, ceilings, false)).toEqual([])
-    expect(newCandidates(cat, stateOf({}, { lessonsViewed: new Set(['g']) }), {}, ceilings, false).map(f => f.id)).toEqual(['g.0'])
+    expect(newCandidates(cat, stateOf({}, { lessonsViewed: new Map([['g', { completedAt: null, quizScore: null }]]) }), {}, ceilings, false).map(f => f.id)).toEqual(['g.0'])
   })
 })
 

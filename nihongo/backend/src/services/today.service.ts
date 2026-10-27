@@ -4,10 +4,9 @@ import { nextDue } from '@nihongo/shared/lib'
 
 import { unseenAchievements } from './achievements.service.js'
 import { languageByCode } from './catalogue.service.js'
-import { pendingRequestCount } from './friends.service.js'
 import { learnerState } from './learner-state.service.js'
 import { listLessons } from './lesson.service.js'
-import { getSummary, lessonDoneToday, studiedToday, todayQuests } from './progress.service.js'
+import { getSummary, headlineToday, lessonDoneToday, studiedToday, todayQuests } from './progress.service.js'
 import { listReadings } from './readings.service.js'
 import { listSpeak } from './speak.service.js'
 import { claimStageCelebration, countDue, newLeftToday, stageProgress } from './srs.service.js'
@@ -56,7 +55,7 @@ export async function getToday(userId: string, languageCode: string, moreNew = 0
     todayQuests(userId, language.id),
     unseenAchievements(userId),
     listReadings(languageCode, undefined, userId),
-    pendingRequestCount(userId),
+    headlineToday(userId, language.id, now).then(h => h.friendRequests),
     stageProgress(userId, language.id, learner)
   ])
   // A stage passed while reviewing, or on another device, is announced here

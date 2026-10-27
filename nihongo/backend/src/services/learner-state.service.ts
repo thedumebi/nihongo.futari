@@ -37,7 +37,7 @@ export async function loadLearnerState(userId: string, languageId: string): Prom
       .innerJoin(studyItems, eq(studyItems.id, studyItemFacets.studyItemId))
       .where(and(eq(srsCards.userId, userId), eq(srsCards.languageId, languageId)))
       .orderBy(asc(srsCards.due), asc(srsCards.facetId)),
-    db.select({ studyItemId: lessonViews.studyItemId }).from(lessonViews).where(eq(lessonViews.userId, userId))
+    db.select({ studyItemId: lessonViews.studyItemId, completedAt: lessonViews.completedAt, quizScore: lessonViews.quizScore }).from(lessonViews).where(eq(lessonViews.userId, userId))
   ])
 
   const state: LearnerState = {
@@ -46,7 +46,7 @@ export async function loadLearnerState(userId: string, languageId: string): Prom
     itemStates: new Map(),
     knownKanji: new Set(),
     knownWords: new Set(),
-    lessonsViewed: new Set(views.map(r => r.studyItemId))
+    lessonsViewed: new Map(views.map(({ studyItemId, ...view }) => [studyItemId, view]))
   }
   for (const { facetId, kanjiId, wordId, ...card } of cards) {
     state.cards.set(facetId, card)
@@ -63,21 +63,4 @@ export async function loadLearnerState(userId: string, languageId: string): Prom
 /** `loadLearnerState`, once per request for everything that reads it. */
 export function learnerState(userId: string, languageId: string): Promise<LearnerState> {
   return perRequest(`learner-state:${userId}:${languageId}`, () => loadLearnerState(userId, languageId))
-}
-
-/**
- * Each item's highest card state, for readers that need no more than that:
- * one row per item met rather than one per card. `grammarOnly` narrows it to
- * lesson topics.
- */
-export async function loadItemStates(userId: string, languageId: string, { grammarOnly = false } = {}): Promise<Map<string, number>> {
-  const rows = await db.execute<{ study_item_id: string, state: number }>(sql`
-    select f.study_item_id, max(c.state) as state
-    from srs_cards c
-    join study_item_facets f on f.id = c.facet_id
-    join study_items si on si.id = f.study_item_id
-    where c.user_id = ${userId} and c.language_id = ${languageId}
-      ${grammarOnly ? sql`and si.grammar_point_id is not null` : sql``}
-    group by f.study_item_id`)
-  return new Map(rows.rows.map(r => [r.study_item_id, Number(r.state)]))
 }

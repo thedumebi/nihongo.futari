@@ -5,7 +5,7 @@ import { afterAll, describe, expect, it } from 'vitest'
 
 import { LANGUAGE_ID } from '@/test/learner-specs.js'
 
-import { loadItemStates, loadLearnerState } from './learner-state.service.js'
+import { loadLearnerState } from './learner-state.service.js'
 import { markLessonSeen, saveStudyItem } from './srs.service.js'
 
 const USER = 'learner-state-test'
@@ -35,10 +35,8 @@ describe('loadLearnerState', () => {
     expect([...state.cards]).toEqual(cards.map(c => [c.facetId, { id: c.id, state: c.state, suspended: c.suspended, due: c.due, firstSeenAt: c.firstSeenAt, origin: c.origin, createdAt: c.createdAt, itemId: c.itemId, live: c.enabled }]))
     expect(state.itemsWithCard).toEqual(new Set(cards.map(c => c.itemId)))
     expect(state.itemStates).toEqual(new Map(cards.map(c => [c.itemId, Math.max(...cards.filter(d => d.itemId === c.itemId).map(d => d.state))])))
-    expect(await loadItemStates(USER, LANGUAGE_ID)).toEqual(state.itemStates)
-    expect(await loadItemStates(USER, LANGUAGE_ID, { grammarOnly: true })).toEqual(new Map([...state.itemStates].filter(([id]) => id === grammar.id)))
     expect(state.knownKanji).toEqual(new Set())
-    expect(state.lessonsViewed).toEqual(new Set([grammar.id]))
+    expect(state.lessonsViewed).toEqual(new Map([[grammar.id, { completedAt: null, quizScore: null }]]))
 
     // Learned: the kanji now counts towards a sound series.
     await db.update(srsCards).set({ state: 2 }).where(eq(srsCards.userId, USER))

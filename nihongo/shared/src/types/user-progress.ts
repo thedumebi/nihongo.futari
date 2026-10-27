@@ -7,6 +7,7 @@ import type {
   userLanguages,
   userSettings,
   userStreaks,
+  userXp,
   xpEvents
 } from '@/db/schema/user-progress.js'
 
@@ -22,6 +23,7 @@ export type UserSettings = typeof userSettings.$inferSelect
 export type NewUserSettings = typeof userSettings.$inferInsert
 export type UserLanguage = typeof userLanguages.$inferSelect
 export type UserStreak = typeof userStreaks.$inferSelect
+export type UserXp = typeof userXp.$inferSelect
 export type XpEvent = typeof xpEvents.$inferSelect
 export type Achievement = typeof achievements.$inferSelect
 export type LevelReadinessSnapshot = typeof levelReadinessSnapshots.$inferSelect

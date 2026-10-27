@@ -1,6 +1,6 @@
 import type { LanguageLevel } from './languages.js'
 import type { SrsCard } from './srs.js'
-import type { CurriculumUnit, StudyItem, StudyItemFacet } from './study-items.js'
+import type { CurriculumUnit, LessonView, StudyItem, StudyItemFacet } from './study-items.js'
 import type { StudyDeck } from './study.js'
 
 /**
@@ -72,8 +72,8 @@ export interface LearnerState {
   knownKanji: Set<string>
   /** Words with a learned card (state 2 or more) that is not suspended. */
   knownWords: Set<string>
-  /** Items whose lesson has been opened. */
-  lessonsViewed: Set<string>
+  /** Items whose lesson has been opened, with how far the reader got. */
+  lessonsViewed: Map<string, Pick<LessonView, 'completedAt' | 'quizScore'>>
 }
 
 /**

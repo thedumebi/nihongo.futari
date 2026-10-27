@@ -1,5 +1,6 @@
 import type {
   curriculumUnits,
+  lessonViews,
   studyItemFacets,
   studyItems
 } from '@/db/schema/study-items.js'
@@ -15,3 +16,4 @@ export type NewStudyItem = typeof studyItems.$inferInsert
 export type StudyItemFacet = typeof studyItemFacets.$inferSelect
 export type NewStudyItemFacet = typeof studyItemFacets.$inferInsert
 export type CurriculumUnit = typeof curriculumUnits.$inferSelect
+export type LessonView = typeof lessonViews.$inferSelect

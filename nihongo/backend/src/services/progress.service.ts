@@ -1,9 +1,10 @@
 import type { ActivityKind } from '@nihongo/shared/constants'
 import type { QuestProgress, ReviewGoalCard } from '@nihongo/shared/lib'
-import type { AggregateEvent, KnownKanji, LearnerProfile, ProgressSummary, Readiness, ReviewEvent, Streak } from '@nihongo/shared/types'
+import type { AggregateEvent, KnownKanji, LearnerHeadline, LearnerProfile, ProgressSummary, Readiness, ReviewEvent, Streak } from '@nihongo/shared/types'
 
 import db from '@nihongo/shared/db'
 import {
+  friendships,
   kana,
   kanji,
   languageLevels,
@@ -421,16 +422,42 @@ export async function lessonDoneToday(userId: string, languageId: string, now = 
   return { done: kinds.some(kind => kind === 'lesson' || kind === 'kana-lesson'), day }
 }
 
+/**
+ * XP, streak, the study day's reviews and pending friend requests, once per
+ * request: four one-row reads that Today used to make one at a time.
+ */
+export async function learnerHeadline(userId: string, languageId: string, localDate: string): Promise<LearnerHeadline> {
+  return perRequest(`headline:${userId}:${languageId}:${localDate}`, async () => {
+    // Left joins from the user's own row, so every part is null, not missing,
+    // when it has not been written yet.
+    const [row] = await db
+      .select({
+        xp: { totalXp: userXp.totalXp, level: userXp.level },
+        streak: { currentStreak: userStreaks.currentStreak, longestStreak: userStreaks.longestStreak },
+        reviewsToday: srsDailyStats.reviewCount,
+        friendRequests: sql<number>`(select count(*) from ${friendships} where ${friendships.addresseeId} = ${users.id} and ${friendships.status} = 'pending')`.mapWith(Number)
+      })
+      .from(users)
+      .leftJoin(userXp, and(eq(userXp.userId, users.id), eq(userXp.languageId, languageId)))
+      .leftJoin(userStreaks, and(eq(userStreaks.userId, users.id), eq(userStreaks.languageId, languageId)))
+      .leftJoin(srsDailyStats, and(eq(srsDailyStats.userId, users.id), eq(srsDailyStats.languageId, languageId), eq(srsDailyStats.localDate, localDate)))
+      .where(eq(users.id, userId))
+      .limit(1)
+    return row ?? { xp: null, streak: null, reviewsToday: null, friendRequests: 0 }
+  })
+}
+
+/** `learnerHeadline` for the learner's study day at `now`. */
+export async function headlineToday(userId: string, languageId: string, now = new Date()): Promise<LearnerHeadline> {
+  const { timezone, dayBoundaryHour } = await loadUserContext(userId)
+  return learnerHeadline(userId, languageId, studyDateFor(now, timezone, dayBoundaryHour))
+}
+
 /** Whether the learner has done anything counted today, in their own study day. */
 export async function studiedToday(userId: string, languageId: string, now = new Date()): Promise<boolean> {
   const { timezone, dayBoundaryHour } = await loadUserContext(userId)
   const today = studyDateFor(now, timezone, dayBoundaryHour)
-  const [row] = await db
-    .select({ reviews: srsDailyStats.reviewCount })
-    .from(srsDailyStats)
-    .where(and(eq(srsDailyStats.userId, userId), eq(srsDailyStats.languageId, languageId), eq(srsDailyStats.localDate, today)))
-    .limit(1)
-  if ((row?.reviews ?? 0) > 0)
+  if (((await learnerHeadline(userId, languageId, today)).reviewsToday ?? 0) > 0)
     return true
   return (await activitiesOn(userId, languageId, today)).length > 0
 }
@@ -454,17 +481,8 @@ export async function getSummary(userId: string, languageCode = 'ja'): Promise<P
   if (!language)
     return empty
 
-  const [[xp], [streak], learner, due, studyLevel, cat] = await Promise.all([
-    db
-      .select({ totalXp: userXp.totalXp, level: userXp.level })
-      .from(userXp)
-      .where(and(eq(userXp.userId, userId), eq(userXp.languageId, language.id)))
-      .limit(1),
-    db
-      .select({ current: userStreaks.currentStreak, longest: userStreaks.longestStreak })
-      .from(userStreaks)
-      .where(and(eq(userStreaks.userId, userId), eq(userStreaks.languageId, language.id)))
-      .limit(1),
+  const [{ xp, streak }, learner, due, studyLevel, cat] = await Promise.all([
+    headlineToday(userId, language.id),
     learnerState(userId, language.id),
     // The canonical count, in items, exactly as the due list and Study report it.
     countDue(userId, language.id),
@@ -488,8 +506,8 @@ export async function getSummary(userId: string, languageCode = 'ja'): Promise<P
   return {
     totalXp: xp?.totalXp ?? 0,
     level: xp?.level ?? 1,
-    currentStreak: streak?.current ?? 0,
-    longestStreak: streak?.longest ?? 0,
+    currentStreak: streak?.currentStreak ?? 0,
+    longestStreak: streak?.longestStreak ?? 0,
     started: cards.started,
     learned: cards.learned,
     due: due.items,

@@ -40,7 +40,7 @@ import { withCurrentAudio } from './clips.service.js'
 import { glossary, glossLine, withPromptTokens } from './glossary.service.js'
 import { loadExamples, loadLessons } from './grammar.service.js'
 import { getKanaLesson, KANA_SLUG_PREFIX, kanaLessonItems, kanaLessonSummaries } from './kana-lesson.service.js'
-import { loadItemStates } from './learner-state.service.js'
+import { learnerState } from './learner-state.service.js'
 import { saveStudyItem } from './srs.service.js'
 
 /**
@@ -169,16 +169,13 @@ export async function listLessons(userId: string, languageCode: string, state?: 
   if (!language)
     return { levels: [], next: null }
 
-  const [topics, views, itemStates] = await Promise.all([
+  const [topics, learner] = await Promise.all([
     cachedContent(`lessons:${language.id}`, () => lessonRows(language.id)),
-    db.select({ studyItemId: lessonViews.studyItemId, completedAt: lessonViews.completedAt, quizScore: lessonViews.quizScore })
-      .from(lessonViews)
-      .where(eq(lessonViews.userId, userId)),
-    state?.itemStates ?? loadItemStates(userId, language.id, { grammarOnly: true })
+    state ?? learnerState(userId, language.id)
   ])
-  const viewOf = new Map(views.map(v => [v.studyItemId, v]))
+  const { itemStates, lessonsViewed } = learner
   const rows = topics.map((t) => {
-    const view = viewOf.get(t.studyItemId)
+    const view = lessonsViewed.get(t.studyItemId)
     return {
       ...t,
       seen: view !== undefined,
