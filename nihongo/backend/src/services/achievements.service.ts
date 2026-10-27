@@ -36,15 +36,19 @@ const HANDWRITING_PASS = 0.8
 async function gatherStats(userId: string, languageId: string): Promise<Partial<Record<AchievementKind, number>>> {
   const since = new Date(Date.now() - ACCURACY_DAYS * 24 * 60 * 60 * 1000).toISOString().slice(0, 10)
 
-  const [reviews, streak, learned, accuracy, kanjiKnown, handwriting, activities] = await Promise.all([
+  const [reviews, streak, learned, accuracy, handwriting, activities] = await Promise.all([
     db.select({ n: sql<number>`count(*)`.mapWith(Number) }).from(srsReviewLogs).where(and(eq(srsReviewLogs.userId, userId), eq(srsReviewLogs.languageId, languageId), eq(srsReviewLogs.superseded, false))),
     db.select({ longest: userStreaks.longestStreak }).from(userStreaks).where(and(eq(userStreaks.userId, userId), eq(userStreaks.languageId, languageId))),
-    db.select({ n: sql<number>`count(distinct ${studyItems.id})`.mapWith(Number) }).from(srsCards).innerJoin(studyItemFacets, eq(studyItemFacets.id, srsCards.facetId)).innerJoin(studyItems, eq(studyItems.id, studyItemFacets.studyItemId)).where(and(eq(srsCards.userId, userId), eq(srsCards.languageId, languageId), gte(srsCards.state, 2))),
+    // Items and kanji past learning, in one pass over the learner's cards
+    // (count distinct skips the null kanji of items that are not kanji).
+    db.select({
+      items: sql<number>`count(distinct ${studyItems.id})`.mapWith(Number),
+      kanji: sql<number>`count(distinct ${studyItems.kanjiId})`.mapWith(Number)
+    }).from(srsCards).innerJoin(studyItemFacets, eq(studyItemFacets.id, srsCards.facetId)).innerJoin(studyItems, eq(studyItems.id, studyItemFacets.studyItemId)).where(and(eq(srsCards.userId, userId), eq(srsCards.languageId, languageId), gte(srsCards.state, 2))),
     db.select({
       reviews: sql<number>`coalesce(sum(${srsDailyStats.reviewCount}), 0)`.mapWith(Number),
       correct: sql<number>`coalesce(sum(${srsDailyStats.correctCount}), 0)`.mapWith(Number)
     }).from(srsDailyStats).where(and(eq(srsDailyStats.userId, userId), eq(srsDailyStats.languageId, languageId), gte(srsDailyStats.localDate, since))),
-    db.select({ n: sql<number>`count(distinct ${studyItems.kanjiId})`.mapWith(Number) }).from(srsCards).innerJoin(studyItemFacets, eq(studyItemFacets.id, srsCards.facetId)).innerJoin(studyItems, eq(studyItems.id, studyItemFacets.studyItemId)).where(and(eq(srsCards.userId, userId), eq(srsCards.languageId, languageId), gte(srsCards.state, 2), isNotNull(studyItems.kanjiId))),
     db.select({ n: sql<number>`count(distinct ${handwritingAttempts.kanjiId})`.mapWith(Number) }).from(handwritingAttempts).where(and(eq(handwritingAttempts.userId, userId), gte(handwritingAttempts.score, String(HANDWRITING_PASS)))),
     db.select({ kind: learningActivities.kind, n: sql<number>`count(distinct ${learningActivities.refId})`.mapWith(Number) })
       .from(learningActivities)
@@ -57,10 +61,10 @@ async function gatherStats(userId: string, languageId: string): Promise<Partial<
   return {
     'reviews': reviews[0]?.n ?? 0,
     'streak': streak[0]?.longest ?? 0,
-    'items-learned': learned[0]?.n ?? 0,
+    'items-learned': learned[0]?.items ?? 0,
     // Too few reviews say nothing about accuracy.
     'accuracy': acc && acc.reviews >= ACCURACY_MIN_REVIEWS ? Math.floor((acc.correct / acc.reviews) * 100) : 0,
-    'kanji-known': kanjiKnown[0]?.n ?? 0,
+    'kanji-known': learned[0]?.kanji ?? 0,
     'handwriting': handwriting[0]?.n ?? 0,
     'lessons': distinct('lesson', 'kana-lesson'),
     'speak-sessions': distinct('speak', 'story'),
