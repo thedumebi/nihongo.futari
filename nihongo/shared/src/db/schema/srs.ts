@@ -6,7 +6,6 @@ import {
   doublePrecision,
   index,
   integer,
-  pgTable,
   primaryKey,
   smallint,
   text,
@@ -17,6 +16,7 @@ import {
 import { users } from './auth.js'
 import { primaryId, timestamps } from './columns.js'
 import { languages } from './languages.js'
+import { learnerSchema } from './schemas.js'
 import { studyItemFacets, studyItems } from './study-items.js'
 
 /**
@@ -29,7 +29,7 @@ import { studyItemFacets, studyItems } from './study-items.js'
  * FSRS floats are `doublePrecision` (not `real`) so a replay reproduces
  * bit-identical values.
  */
-export const srsCards = pgTable('srs_cards', {
+export const srsCards = learnerSchema.table('srs_cards', {
   id: primaryId(),
   userId: text('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
   facetId: text('facet_id').notNull().references(() => studyItemFacets.id, { onDelete: 'cascade' }),
@@ -102,7 +102,7 @@ export const srsCards = pgTable('srs_cards', {
  * The `*Before`/`*After` snapshot columns are rewritten during a replay, which
  * is why `replayGeneration` is recorded alongside them.
  */
-export const srsReviewLogs = pgTable('srs_review_logs', {
+export const srsReviewLogs = learnerSchema.table('srs_review_logs', {
   id: text('id').primaryKey(), // client-minted UUIDv7
   userId: text('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
   cardId: text('card_id').notNull().references(() => srsCards.id, { onDelete: 'cascade' }),
@@ -158,7 +158,7 @@ export const srsReviewLogs = pgTable('srs_review_logs', {
   userTimeIdx: index('srs_review_logs_user_time_idx').on(t.userId, t.reviewedAt)
 }))
 
-export const reviewSessions = pgTable('review_sessions', {
+export const reviewSessions = learnerSchema.table('review_sessions', {
   id: primaryId(),
   userId: text('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
   languageId: text('language_id').notNull().references(() => languages.id, { onDelete: 'cascade' }),
@@ -175,7 +175,7 @@ export const reviewSessions = pgTable('review_sessions', {
   userIdx: index('review_sessions_user_idx').on(t.userId, t.startedAt)
 }))
 
-export const srsGhostEvents = pgTable('srs_ghost_events', {
+export const srsGhostEvents = learnerSchema.table('srs_ghost_events', {
   id: primaryId(),
   cardId: text('card_id').notNull().references(() => srsCards.id, { onDelete: 'cascade' }),
   userId: text('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
@@ -196,7 +196,7 @@ export const srsGhostEvents = pgTable('srs_ghost_events', {
  * IANA timezone at write time and the timezone is stored alongside, so a
  * traveller's history stays correct.
  */
-export const srsDailyStats = pgTable('srs_daily_stats', {
+export const srsDailyStats = learnerSchema.table('srs_daily_stats', {
   userId: text('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
   languageId: text('language_id').notNull().references(() => languages.id, { onDelete: 'cascade' }),
   localDate: date('local_date').notNull(),

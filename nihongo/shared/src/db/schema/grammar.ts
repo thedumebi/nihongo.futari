@@ -1,9 +1,10 @@
 import { relations } from 'drizzle-orm'
-import { boolean, index, integer, pgTable, primaryKey, text, timestamp, uniqueIndex } from 'drizzle-orm/pg-core'
+import { boolean, index, integer, primaryKey, text, timestamp, uniqueIndex } from 'drizzle-orm/pg-core'
 
 import { users } from './auth.js'
 import { primaryId, timestamps } from './columns.js'
 import { languageLevels, languages } from './languages.js'
+import { contentSchema } from './schemas.js'
 import { sentences } from './sentences.js'
 
 /**
@@ -16,7 +17,7 @@ import { sentences } from './sentences.js'
  * no `provenance` spread and no `sourceRef` — which is also why nothing
  * third-party can be plagiarised into it even accidentally.
  */
-export const grammarPoints = pgTable('grammar_points', {
+export const grammarPoints = contentSchema.table('grammar_points', {
   id: primaryId(),
   languageId: text('language_id').notNull().references(() => languages.id, { onDelete: 'cascade' }),
   slug: text('slug').notNull(),
@@ -44,7 +45,7 @@ export const grammarPoints = pgTable('grammar_points', {
  * How the pattern attaches. One row per part-of-speech it can follow, which is
  * what makes the conjugation drill generatable rather than hand-written.
  */
-export const grammarFormations = pgTable('grammar_formations', {
+export const grammarFormations = contentSchema.table('grammar_formations', {
   id: primaryId(),
   grammarPointId: text('grammar_point_id').notNull().references(() => grammarPoints.id, { onDelete: 'cascade' }),
   attachesTo: text('attaches_to').notNull(), // verb-plain | verb-te | verb-masu-stem | i-adj-stem | na-adj | noun
@@ -58,7 +59,7 @@ export const grammarFormations = pgTable('grammar_formations', {
 }))
 
 /** Contracted and colloquial variants: ちゃう for てしまう. */
-export const grammarVariants = pgTable('grammar_variants', {
+export const grammarVariants = contentSchema.table('grammar_variants', {
   id: primaryId(),
   grammarPointId: text('grammar_point_id').notNull().references(() => grammarPoints.id, { onDelete: 'cascade' }),
   form: text('form').notNull(),
@@ -73,7 +74,7 @@ export const grammarVariants = pgTable('grammar_variants', {
  * with too little context; this is the antidote — wrong form, right form, and
  * why, always as a full sentence pair.
  */
-export const grammarMistakes = pgTable('grammar_mistakes', {
+export const grammarMistakes = contentSchema.table('grammar_mistakes', {
   id: primaryId(),
   grammarPointId: text('grammar_point_id').notNull().references(() => grammarPoints.id, { onDelete: 'cascade' }),
   wrong: text('wrong').notNull(),
@@ -91,7 +92,7 @@ export const grammarMistakes = pgTable('grammar_mistakes', {
  * `contrast` is the one that earns its keep: it powers "don't confuse this
  * with…", which is the single most requested thing in grammar-app reviews.
  */
-export const grammarPointRelationships = pgTable('grammar_relations', {
+export const grammarPointRelationships = contentSchema.table('grammar_relations', {
   fromId: text('from_id').notNull().references(() => grammarPoints.id, { onDelete: 'cascade' }),
   toId: text('to_id').notNull().references(() => grammarPoints.id, { onDelete: 'cascade' }),
   kind: text('kind').notNull(), // contrast | similar | prerequisite | more-formal-than | component-of
@@ -118,7 +119,7 @@ export const grammarPointRelationships = pgTable('grammar_relations', {
  * demonstrate the point using vocabulary already introduced, which is not
  * something a found sentence can be relied on to do.
  */
-export const grammarPointSentences = pgTable('grammar_point_sentences', {
+export const grammarPointSentences = contentSchema.table('grammar_point_sentences', {
   grammarPointId: text('grammar_point_id').notNull().references(() => grammarPoints.id, { onDelete: 'cascade' }),
   sentenceId: text('sentence_id').notNull().references(() => sentences.id, { onDelete: 'cascade' }),
   /** `example` teaches the point. `contrast` shows the neighbouring pattern it is confused with. */

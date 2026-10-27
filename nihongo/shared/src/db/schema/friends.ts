@@ -1,8 +1,9 @@
 import { sql } from 'drizzle-orm'
-import { boolean, check, index, integer, pgTable, primaryKey, text, timestamp, uniqueIndex } from 'drizzle-orm/pg-core'
+import { boolean, check, index, integer, primaryKey, text, timestamp, uniqueIndex } from 'drizzle-orm/pg-core'
 
 import { users } from './auth.js'
 import { timestamps } from './columns.js'
+import { socialSchema } from './schemas.js'
 
 /**
  * Friends are opt-in. A learner who never turns them on in Settings has no
@@ -15,7 +16,7 @@ import { timestamps } from './columns.js'
  * week. Words, accuracy and ghosts are never shared. Turning friends off
  * deletes the profile and, by cascade, every friendship.
  */
-export const friendProfiles = pgTable('friend_profiles', {
+export const friendProfiles = socialSchema.table('friend_profiles', {
   userId: text('user_id').primaryKey().references(() => users.id, { onDelete: 'cascade' }),
   /** What friends see you as. Not the account name, so nothing leaks by default. */
   displayName: text('display_name').notNull(),
@@ -38,7 +39,7 @@ export const friendProfiles = pgTable('friend_profiles', {
  * accepts; declining deletes the row. The CHECK and the pair index keep a pair
  * from being stored twice in either order.
  */
-export const friendships = pgTable('friendships', {
+export const friendships = socialSchema.table('friendships', {
   id: text('id').primaryKey(),
   requesterId: text('requester_id').notNull().references(() => friendProfiles.userId, { onDelete: 'cascade' }),
   addresseeId: text('addressee_id').notNull().references(() => friendProfiles.userId, { onDelete: 'cascade' }),
@@ -59,7 +60,7 @@ export const friendships = pgTable('friendships', {
  * so a day of yours dropping out of the seven never reads as being passed.
  * A notification cache, nothing more: deleting it costs one missed nudge.
  */
-export const friendBoardSnapshots = pgTable('friend_board_snapshots', {
+export const friendBoardSnapshots = socialSchema.table('friend_board_snapshots', {
   userId: text('user_id').notNull().references(() => friendProfiles.userId, { onDelete: 'cascade' }),
   friendId: text('friend_id').notNull().references(() => friendProfiles.userId, { onDelete: 'cascade' }),
   myDays: integer('my_days').notNull(),

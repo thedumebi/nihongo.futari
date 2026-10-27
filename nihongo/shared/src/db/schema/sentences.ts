@@ -1,12 +1,13 @@
 import { relations } from 'drizzle-orm'
-import { boolean, index, integer, jsonb, numeric, pgTable, text, uniqueIndex } from 'drizzle-orm/pg-core'
+import { boolean, index, integer, jsonb, numeric, text, uniqueIndex } from 'drizzle-orm/pg-core'
 
 import { primaryId, timestamps } from './columns.js'
 import { languageLevels, languages } from './languages.js'
 import { provenance } from './ops.js'
+import { contentSchema } from './schemas.js'
 import { words } from './words.js'
 
-export const sentences = pgTable('sentences', {
+export const sentences = contentSchema.table('sentences', {
   id: primaryId(),
   languageId: text('language_id').notNull().references(() => languages.id, { onDelete: 'cascade' }),
   text: text('text').notNull(),
@@ -36,7 +37,7 @@ export const sentences = pgTable('sentences', {
  * Per-translation licensing, because Tatoeba is CC BY 2.0 FR and attribution
  * attaches to the individual sentence, not the corpus.
  */
-export const sentenceTranslations = pgTable('sentence_translations', {
+export const sentenceTranslations = contentSchema.table('sentence_translations', {
   id: primaryId(),
   sentenceId: text('sentence_id').notNull().references(() => sentences.id, { onDelete: 'cascade' }),
   lang: text('lang').notNull(),
@@ -60,7 +61,7 @@ export const sentenceTranslations = pgTable('sentence_translations', {
  * `charStart`/`charEnd` are what let the cloze engine blank the right span
  * automatically instead of storing hand-made cloze strings.
  */
-export const sentenceTokens = pgTable('sentence_tokens', {
+export const sentenceTokens = contentSchema.table('sentence_tokens', {
   id: primaryId(),
   sentenceId: text('sentence_id').notNull().references(() => sentences.id, { onDelete: 'cascade' }),
   index: integer('index').notNull(),

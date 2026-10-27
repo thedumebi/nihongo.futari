@@ -1,9 +1,10 @@
 import { relations } from 'drizzle-orm'
-import { boolean, index, integer, jsonb, pgTable, text, uniqueIndex } from 'drizzle-orm/pg-core'
+import { boolean, index, integer, jsonb, text, uniqueIndex } from 'drizzle-orm/pg-core'
 
 import { primaryId, timestamps } from './columns.js'
 import { languageLevels, languages } from './languages.js'
 import { provenance } from './ops.js'
+import { contentSchema } from './schemas.js'
 
 /**
  * Short speeches to read aloud, scrolling like a teleprompter.
@@ -15,7 +16,7 @@ import { provenance } from './ops.js'
  * at a later level, but as a new speech; `check:readings` refuses lines copied
  * between speeches.
  */
-export const readings = pgTable('readings', {
+export const readings = contentSchema.table('readings', {
   id: primaryId(),
   languageId: text('language_id').notNull().references(() => languages.id, { onDelete: 'cascade' }),
   levelId: text('level_id').notNull().references(() => languageLevels.id, { onDelete: 'restrict' }),
@@ -39,7 +40,7 @@ export const readings = pgTable('readings', {
  * the particle は from the は inside はい needs part-of-speech, which nothing in
  * the data carries. An author knows; a heuristic does not.
  */
-export const readingLines = pgTable('reading_lines', {
+export const readingLines = contentSchema.table('reading_lines', {
   id: primaryId(),
   readingId: text('reading_id').notNull().references(() => readings.id, { onDelete: 'cascade' }),
   index: integer('index').notNull(),

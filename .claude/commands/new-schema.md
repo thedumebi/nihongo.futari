@@ -40,11 +40,13 @@ Schema files are the source of truth for the database. You define the table in T
 
    ```typescript
    import { relations } from 'drizzle-orm'
-   import { index, jsonb, pgTable, text, timestamp, uuid, varchar } from 'drizzle-orm/pg-core'
+   import { index, jsonb, text, timestamp, uuid, varchar } from 'drizzle-orm/pg-core'
    import { createInsertSchema, createSelectSchema } from 'drizzle-zod'
+
+   import { contentSchema } from './schemas.js' // or authSchema, editorialSchema, learnerSchema, socialSchema, opsSchema
    ```
 
-   - Define the table with `pgTable()`:
+   - Define the table in its schema, `contentSchema.table()` and so on (never a bare `pgTable()`; a hook blocks it):
      - UUID primary key: `id: uuid('id').defaultRandom().primaryKey()`
      - Foreign keys with cascade: `.references(() => table.id, { onDelete: 'cascade' })`
      - Timestamps: `createdAt` (required, defaultNow), `updatedAt` (optional)

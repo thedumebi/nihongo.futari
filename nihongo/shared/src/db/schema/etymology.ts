@@ -5,7 +5,6 @@ import {
   index,
   integer,
   jsonb,
-  pgTable,
   primaryKey,
   smallint,
   text,
@@ -18,6 +17,7 @@ import { primaryId, timestamps } from './columns.js'
 import { grammarPoints } from './grammar.js'
 import { kanji, phoneticSeries, radicals } from './kanji.js'
 import { languages } from './languages.js'
+import { editorialSchema } from './schemas.js'
 import { words } from './words.js'
 
 /**
@@ -27,7 +27,7 @@ import { words } from './words.js'
  *   2 = reputable secondary (KANJIDIC, JMdict, published textbooks)
  *   3 = community / crowd-sourced (Wiktionary)
  */
-export const sources = pgTable('sources', {
+export const sources = editorialSchema.table('sources', {
   id: primaryId(),
   slug: text('slug').notNull().unique(),
   kind: text('kind').notNull(), // dictionary | academic-paper | book | database | corpus | web
@@ -57,7 +57,7 @@ export const sources = pgTable('sources', {
  * no source, or with no human reviewer, CANNOT be published. Not by
  * convention — by constraint.
  */
-export const etymologyEntries = pgTable('etymology_entries', {
+export const etymologyEntries = editorialSchema.table('etymology_entries', {
   id: primaryId(),
   languageId: text('language_id').notNull().references(() => languages.id, { onDelete: 'cascade' }),
 
@@ -127,7 +127,7 @@ export const etymologyEntries = pgTable('etymology_entries', {
  * citation is mechanically detectable rather than a matter of reviewer
  * vigilance.
  */
-export const etymologySources = pgTable('etymology_sources', {
+export const etymologySources = editorialSchema.table('etymology_sources', {
   etymologyId: text('etymology_id').notNull().references(() => etymologyEntries.id, { onDelete: 'cascade' }),
   sourceId: text('source_id').notNull().references(() => sources.id, { onDelete: 'restrict' }),
   locator: text('locator').notNull().default(''), // page / entry
@@ -150,7 +150,7 @@ export const etymologySources = pgTable('etymology_sources', {
  * accidentally render one as the other, which is precisely what WaniKani does
  * and gets criticised for.
  */
-export const mnemonics = pgTable('mnemonics', {
+export const mnemonics = editorialSchema.table('mnemonics', {
   id: primaryId(),
   languageId: text('language_id').notNull().references(() => languages.id, { onDelete: 'cascade' }),
 

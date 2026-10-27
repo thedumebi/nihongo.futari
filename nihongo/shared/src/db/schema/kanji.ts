@@ -6,7 +6,6 @@ import {
   integer,
   jsonb,
   numeric,
-  pgTable,
   text,
   uniqueIndex
 } from 'drizzle-orm/pg-core'
@@ -15,13 +14,14 @@ import { primaryId, timestamps } from './columns.js'
 import { kana } from './kana.js'
 import { languageLevels, languages } from './languages.js'
 import { provenance } from './ops.js'
+import { contentSchema } from './schemas.js'
 
 /**
  * Kanji components: Kangxi radicals plus the non-radical pieces KanjiVG and
  * CHISE identify. `character` is nullable because a good number of components
  * have no Unicode codepoint of their own.
  */
-export const radicals = pgTable('radicals', {
+export const radicals = contentSchema.table('radicals', {
   id: primaryId(),
   languageId: text('language_id').notNull().references(() => languages.id, { onDelete: 'cascade' }),
   character: text('character'),
@@ -41,7 +41,7 @@ export const radicals = pgTable('radicals', {
   kangxiIdx: index('radicals_kangxi_idx').on(t.kangxiNumber)
 }))
 
-export const kanji = pgTable('kanji', {
+export const kanji = contentSchema.table('kanji', {
   id: primaryId(),
   languageId: text('language_id').notNull().references(() => languages.id, { onDelete: 'cascade' }),
   character: text('character').notNull(),
@@ -68,7 +68,7 @@ export const kanji = pgTable('kanji', {
  * `reliability` is the fraction of members that actually follow, so the UI can
  * be honest about the ones that drifted.
  */
-export const phoneticSeries = pgTable('phonetic_series', {
+export const phoneticSeries = contentSchema.table('phonetic_series', {
   id: primaryId(),
   languageId: text('language_id').notNull().references(() => languages.id, { onDelete: 'cascade' }),
   componentCharacter: text('component_character').notNull(),
@@ -85,7 +85,7 @@ export const phoneticSeries = pgTable('phonetic_series', {
   componentUnique: uniqueIndex('phonetic_series_component_unique').on(t.languageId, t.componentCharacter)
 }))
 
-export const phoneticSeriesMembers = pgTable('phonetic_series_members', {
+export const phoneticSeriesMembers = contentSchema.table('phonetic_series_members', {
   id: primaryId(),
   seriesId: text('series_id').notNull().references(() => phoneticSeries.id, { onDelete: 'cascade' }),
   kanjiId: text('kanji_id').notNull().references(() => kanji.id, { onDelete: 'cascade' }),
@@ -100,7 +100,7 @@ export const phoneticSeriesMembers = pgTable('phonetic_series_members', {
   kanjiIdx: index('phonetic_series_members_kanji_idx').on(t.kanjiId)
 }))
 
-export const kanjiReadings = pgTable('kanji_readings', {
+export const kanjiReadings = contentSchema.table('kanji_readings', {
   id: primaryId(),
   kanjiId: text('kanji_id').notNull().references(() => kanji.id, { onDelete: 'cascade' }),
   type: text('type').notNull(), // on | kun | nanori
@@ -117,7 +117,7 @@ export const kanjiReadings = pgTable('kanji_readings', {
 }))
 
 /** Per-stroke KanjiVG data. Drives stroke-order animation and handwriting grading. */
-export const characterStrokes = pgTable('character_strokes', {
+export const characterStrokes = contentSchema.table('character_strokes', {
   id: primaryId(),
   // Exclusive arc: strokes belong to EXACTLY one of a kanji or a kana. Kana get
   // the same treatment because hiragana is where handwriting practice actually
@@ -157,7 +157,7 @@ export const characterStrokes = pgTable('character_strokes', {
  * never both — hence the check. `role` is the part that matters pedagogically:
  * a phonetic component predicts the reading, a semantic one hints the meaning.
  */
-export const kanjiComponents = pgTable('kanji_components', {
+export const kanjiComponents = contentSchema.table('kanji_components', {
   id: primaryId(),
   parentKanjiId: text('parent_kanji_id').notNull().references(() => kanji.id, { onDelete: 'cascade' }),
   componentRadicalId: text('component_radical_id').references(() => radicals.id, { onDelete: 'cascade' }),
@@ -179,7 +179,7 @@ export const kanjiComponents = pgTable('kanji_components', {
 }))
 
 /** Look-alikes and sound-alikes — the distractor pool for multiple choice. */
-export const kanjiConfusables = pgTable('kanji_confusables', {
+export const kanjiConfusables = contentSchema.table('kanji_confusables', {
   id: primaryId(),
   kanjiId: text('kanji_id').notNull().references(() => kanji.id, { onDelete: 'cascade' }),
   confusableId: text('confusable_id').notNull().references(() => kanji.id, { onDelete: 'cascade' }),

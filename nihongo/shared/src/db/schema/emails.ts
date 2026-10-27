@@ -1,8 +1,9 @@
 import { sql } from 'drizzle-orm'
-import { check, index, integer, pgTable, text, timestamp, uniqueIndex } from 'drizzle-orm/pg-core'
+import { check, index, integer, text, timestamp, uniqueIndex } from 'drizzle-orm/pg-core'
 
 import { users } from './auth.js'
 import { primaryId, timestamps } from './columns.js'
+import { opsSchema } from './schemas.js'
 
 /**
  * Emails an admin writes and sends to learners — product updates and the like.
@@ -16,7 +17,7 @@ import { primaryId, timestamps } from './columns.js'
  * Only learners who leave "Product updates by email" on receive one, and every
  * email carries a one-click way to turn it off.
  */
-export const emailCampaigns = pgTable('email_campaigns', {
+export const emailCampaigns = opsSchema.table('email_campaigns', {
   id: primaryId(),
   subject: text('subject').notNull(),
   /** The line inboxes show after the subject. */
@@ -35,7 +36,7 @@ export const emailCampaigns = pgTable('email_campaigns', {
   audienceCheck: check('email_campaigns_audience_check', sql`${t.audience} in ('all', 'learners', 'admins')`)
 }))
 
-export const emailDeliveries = pgTable('email_deliveries', {
+export const emailDeliveries = opsSchema.table('email_deliveries', {
   id: primaryId(),
   campaignId: text('campaign_id').notNull().references(() => emailCampaigns.id, { onDelete: 'cascade' }),
   userId: text('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),

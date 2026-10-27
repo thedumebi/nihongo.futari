@@ -29,14 +29,18 @@ function buildSslConfig() {
 const ssl = buildSslConfig()
 
 /**
- * Every schema the tables live in (one not created yet is skipped), then
+ * Every schema the tables live in (`schema/schemas.ts`), then
  * `public` (pg_trgm, `seed_history`) and `pg_catalog` last, so raw SQL and the
  * seeds name tables bare. `pg_catalog` is named so that it comes after
  * `public`: the DB tests put a clock in as `public.now()` and need it found
  * first. In production nothing in `public` shares a name with the catalog, and
  * only the owner can create there.
  */
-export const SEARCH_PATH = ['auth', 'content', 'editorial', 'learner', 'social', 'ops', 'public', 'pg_catalog'].join(',')
+export const SEARCH_PATH = [
+  ...schema.appSchemas.map(s => s.schemaName),
+  'public',
+  'pg_catalog'
+].join(',')
 
 export const connection = new Pool({
   connectionString: env.DATABASE_URL,

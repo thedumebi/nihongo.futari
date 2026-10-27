@@ -1,7 +1,8 @@
 import { relations } from 'drizzle-orm'
-import { boolean, index, integer, jsonb, pgTable, text, uniqueIndex } from 'drizzle-orm/pg-core'
+import { boolean, index, integer, jsonb, text, uniqueIndex } from 'drizzle-orm/pg-core'
 
 import { primaryId, timestamps } from './columns.js'
+import { contentSchema } from './schemas.js'
 
 /**
  * Every content table carries `languageId`. Japanese is the only language
@@ -11,7 +12,7 @@ import { primaryId, timestamps } from './columns.js'
  * The rule that keeps this honest: no Japanese-specific literal lives outside
  * `shared/src/lib/ja/`.
  */
-export const languages = pgTable('languages', {
+export const languages = contentSchema.table('languages', {
   id: primaryId(),
   code: text('code').notNull().unique(), // ISO 639-1: ja, fr
   name: text('name').notNull(), // Japanese
@@ -27,7 +28,7 @@ export const languages = pgTable('languages', {
  * (1 = easiest) so queries never have to know which scheme is in play —
  * N5 and A1 are both rank 1.
  */
-export const languageLevels = pgTable('language_levels', {
+export const languageLevels = contentSchema.table('language_levels', {
   id: primaryId(),
   languageId: text('language_id').notNull().references(() => languages.id, { onDelete: 'cascade' }),
   code: text('code').notNull(), // N5
@@ -46,7 +47,7 @@ export const languageLevels = pgTable('language_levels', {
  * handwriting, furigana and stroke-order; French would enable gender and
  * accents and none of the above. `config` holds per-feature tuning.
  */
-export const languageFeatures = pgTable('language_features', {
+export const languageFeatures = contentSchema.table('language_features', {
   id: primaryId(),
   languageId: text('language_id').notNull().references(() => languages.id, { onDelete: 'cascade' }),
   key: text('key').notNull(), // kanji | pitch-accent | handwriting | furigana | conjugation | stroke-order | romanisation

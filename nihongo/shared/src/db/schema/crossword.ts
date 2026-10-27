@@ -1,9 +1,10 @@
 import { sql } from 'drizzle-orm'
-import { check, index, integer, pgTable, primaryKey, text, timestamp } from 'drizzle-orm/pg-core'
+import { check, index, integer, primaryKey, text, timestamp } from 'drizzle-orm/pg-core'
 
 import { users } from './auth.js'
 import { timestamps } from './columns.js'
 import { languageLevels, languages } from './languages.js'
+import { learnerSchema } from './schemas.js'
 
 /**
  * A learner's finished crosswords.
@@ -17,7 +18,7 @@ import { languageLevels, languages } from './languages.js'
  * One row per learner and puzzle, replaced on each finish: a marker, not a
  * count, so a retried request cannot inflate anything.
  */
-export const crosswordResults = pgTable('crossword_results', {
+export const crosswordResults = learnerSchema.table('crossword_results', {
   userId: text('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
   puzzleKey: text('puzzle_key').notNull(),
   languageId: text('language_id').notNull().references(() => languages.id, { onDelete: 'cascade' }),

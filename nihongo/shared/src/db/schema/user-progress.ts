@@ -6,7 +6,6 @@ import {
   integer,
   jsonb,
   numeric,
-  pgTable,
   primaryKey,
   text,
   timestamp,
@@ -17,8 +16,9 @@ import { users } from './auth.js'
 import { primaryId, timestamps } from './columns.js'
 import { kanji } from './kanji.js'
 import { languageLevels, languages } from './languages.js'
+import { contentSchema, learnerSchema } from './schemas.js'
 
-export const userSettings = pgTable('user_settings', {
+export const userSettings = learnerSchema.table('user_settings', {
   userId: text('user_id').primaryKey().references(() => users.id, { onDelete: 'cascade' }),
   /** New WORDS (items: words, kanji, kana) the queue introduces per study day. */
   dailyNewLimit: integer('daily_new_limit').notNull().default(10),
@@ -105,7 +105,7 @@ export const userSettings = pgTable('user_settings', {
   ...timestamps
 })
 
-export const userLanguages = pgTable('user_languages', {
+export const userLanguages = learnerSchema.table('user_languages', {
   userId: text('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
   languageId: text('language_id').notNull().references(() => languages.id, { onDelete: 'cascade' }),
   currentLevelId: text('current_level_id').references(() => languageLevels.id, { onDelete: 'set null' }),
@@ -150,7 +150,7 @@ export const userLanguages = pgTable('user_languages', {
  * it for good. Until 18 Oct the mark was also wrong from the start for the
  * owner (39 against a real 5, from the 053 backfill), and it never fired once.
  */
-export const stageCelebrations = pgTable('stage_celebrations', {
+export const stageCelebrations = learnerSchema.table('stage_celebrations', {
   userId: text('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
   levelId: text('level_id').notNull().references(() => languageLevels.id, { onDelete: 'cascade' }),
   highestStageSeen: integer('highest_stage_seen').notNull().default(0),
@@ -172,7 +172,7 @@ export const stageCelebrations = pgTable('stage_celebrations', {
  * Promotion rule: the kanji's `reading` facet reaches Review state with
  * stability >= 21 days.
  */
-export const userKnownKanji = pgTable('user_known_kanji', {
+export const userKnownKanji = learnerSchema.table('user_known_kanji', {
   userId: text('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
   kanjiId: text('kanji_id').notNull().references(() => kanji.id, { onDelete: 'cascade' }),
   languageId: text('language_id').notNull().references(() => languages.id, { onDelete: 'cascade' }),
@@ -184,7 +184,7 @@ export const userKnownKanji = pgTable('user_known_kanji', {
   pk: primaryKey({ columns: [t.userId, t.kanjiId] })
 }))
 
-export const userStreaks = pgTable('user_streaks', {
+export const userStreaks = learnerSchema.table('user_streaks', {
   userId: text('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
   languageId: text('language_id').notNull().references(() => languages.id, { onDelete: 'cascade' }),
   currentStreak: integer('current_streak').notNull().default(0),
@@ -198,7 +198,7 @@ export const userStreaks = pgTable('user_streaks', {
 }))
 
 /** Streak freeze: protects the chain on the day you'd otherwise break it and quit. */
-export const streakFreezes = pgTable('streak_freezes', {
+export const streakFreezes = learnerSchema.table('streak_freezes', {
   id: primaryId(),
   userId: text('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
   /** Per language, like the streak it protects. Null on a grant before this existed. */
@@ -232,7 +232,7 @@ export const streakFreezes = pgTable('streak_freezes', {
  * `localDate` is computed at write time in the learner's own zone and day
  * boundary — never re-derived later, which would rewrite history if they move.
  */
-export const learningActivities = pgTable('learning_activities', {
+export const learningActivities = learnerSchema.table('learning_activities', {
   id: text('id').primaryKey(),
   userId: text('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
   languageId: text('language_id').notNull().references(() => languages.id, { onDelete: 'cascade' }),
@@ -259,7 +259,7 @@ export const learningActivities = pgTable('learning_activities', {
  * from double-counting XP. Every derived write must either be keyed by log id
  * like this, or recomputed wholesale like srs_daily_stats.
  */
-export const xpEvents = pgTable('xp_events', {
+export const xpEvents = learnerSchema.table('xp_events', {
   id: primaryId(),
   userId: text('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
   languageId: text('language_id').notNull().references(() => languages.id, { onDelete: 'cascade' }),
@@ -272,7 +272,7 @@ export const xpEvents = pgTable('xp_events', {
   userIdx: index('xp_events_user_idx').on(t.userId, t.createdAt)
 }))
 
-export const userXp = pgTable('user_xp', {
+export const userXp = learnerSchema.table('user_xp', {
   userId: text('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
   languageId: text('language_id').notNull().references(() => languages.id, { onDelete: 'cascade' }),
   totalXp: integer('total_xp').notNull().default(0),
@@ -282,7 +282,7 @@ export const userXp = pgTable('user_xp', {
   pk: primaryKey({ columns: [t.userId, t.languageId] })
 }))
 
-export const achievements = pgTable('achievements', {
+export const achievements = contentSchema.table('achievements', {
   id: primaryId(),
   code: text('code').notNull().unique(),
   languageId: text('language_id').references(() => languages.id, { onDelete: 'cascade' }),
@@ -297,7 +297,7 @@ export const achievements = pgTable('achievements', {
   ...timestamps
 })
 
-export const userAchievements = pgTable('user_achievements', {
+export const userAchievements = learnerSchema.table('user_achievements', {
   userId: text('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
   achievementId: text('achievement_id').notNull().references(() => achievements.id, { onDelete: 'cascade' }),
   unlockedAt: timestamp('unlocked_at'),
@@ -314,7 +314,7 @@ export const userAchievements = pgTable('user_achievements', {
  * items at now(). FSRS already produces exactly the right signal; there is no
  * need to invent a second scoring model on top of it.
  */
-export const levelReadinessSnapshots = pgTable('level_readiness_snapshots', {
+export const levelReadinessSnapshots = learnerSchema.table('level_readiness_snapshots', {
   id: primaryId(),
   userId: text('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
   languageId: text('language_id').notNull().references(() => languages.id, { onDelete: 'cascade' }),

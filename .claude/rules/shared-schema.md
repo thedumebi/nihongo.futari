@@ -13,7 +13,7 @@ paths:
 ## Table idiom
 
 ```ts
-export const kanji = pgTable('kanji', {
+export const kanji = contentSchema.table('kanji', {
   id: primaryId(),                                   // text UUID, from columns.ts
   languageId: text('language_id').notNull()
     .references(() => languages.id, { onDelete: 'cascade' }),
@@ -25,6 +25,12 @@ export const kanji = pgTable('kanji', {
 }))
 ```
 
+- Every table is declared in its schema, from `./schemas.js`: `auth`
+  (accounts, invites), `content` (what is taught), `editorial` (sources,
+  etymology, imports, review queue), `learner` (one learner's study),
+  `social` (friends), `ops` (email, push). Never a bare `pgTable()`: it would
+  be created in the first schema on the search_path while its snapshot says
+  `public`. A PreToolUse hook blocks it.
 - `primaryId()` and `timestamps` come from `./columns.js`.
 - `provenance` comes from `./ops.js` and goes on **every table an importer
   writes to** — it is what makes re-imports non-destructive.

@@ -1,10 +1,11 @@
 import { relations, sql } from 'drizzle-orm'
-import { boolean, check, index, integer, pgTable, primaryKey, text, timestamp, uniqueIndex } from 'drizzle-orm/pg-core'
+import { boolean, check, index, integer, primaryKey, text, timestamp, uniqueIndex } from 'drizzle-orm/pg-core'
 
 import { users } from './auth.js'
 import { primaryId, timestamps } from './columns.js'
 import { languageLevels, languages } from './languages.js'
 import { provenance } from './ops.js'
+import { contentSchema, learnerSchema } from './schemas.js'
 
 /**
  * Speak: a build-up course in the Michel Thomas manner.
@@ -19,7 +20,7 @@ import { provenance } from './ops.js'
  * a miss — a prompt answered "Not quite" becomes a study item card for that
  * learner (`study_items.speak_step_id`).
  */
-export const speakSessions = pgTable('speak_sessions', {
+export const speakSessions = contentSchema.table('speak_sessions', {
   id: primaryId(),
   languageId: text('language_id').notNull().references(() => languages.id, { onDelete: 'cascade' }),
   levelId: text('level_id').notNull().references(() => languageLevels.id, { onDelete: 'restrict' }),
@@ -48,7 +49,7 @@ export const speakSessions = pgTable('speak_sessions', {
  * `readingKana` is authored for the same reason as everywhere else: a particle
  * は cannot be told from the は inside はい without part-of-speech.
  */
-export const speakSteps = pgTable('speak_steps', {
+export const speakSteps = contentSchema.table('speak_steps', {
   id: primaryId(),
   sessionId: text('session_id').notNull().references(() => speakSessions.id, { onDelete: 'cascade' }),
   index: integer('index').notNull(),
@@ -81,7 +82,7 @@ export const speakSteps = pgTable('speak_steps', {
  * One row per learner and session, replaced on each run: a marker of the
  * latest attempt, not a count, so replaying a completion cannot inflate it.
  */
-export const speakProgress = pgTable('speak_progress', {
+export const speakProgress = learnerSchema.table('speak_progress', {
   userId: text('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
   sessionId: text('session_id').notNull().references(() => speakSessions.id, { onDelete: 'cascade' }),
   completedAt: timestamp('completed_at').notNull().defaultNow(),

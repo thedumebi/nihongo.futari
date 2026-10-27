@@ -1,8 +1,9 @@
 import { relations, sql } from 'drizzle-orm'
-import { boolean, check, index, integer, jsonb, pgTable, text, uniqueIndex } from 'drizzle-orm/pg-core'
+import { boolean, check, index, integer, jsonb, text, uniqueIndex } from 'drizzle-orm/pg-core'
 
 import { primaryId, timestamps } from './columns.js'
 import { languageLevels, languages } from './languages.js'
+import { contentSchema } from './schemas.js'
 import { curriculumUnits } from './study-items.js'
 
 /**
@@ -19,7 +20,7 @@ import { curriculumUnits } from './study-items.js'
  * hold a conversation, but it cannot reliably tell you which particle you got
  * wrong and why.
  */
-export const dialogues = pgTable('dialogues', {
+export const dialogues = contentSchema.table('dialogues', {
   id: primaryId(),
   languageId: text('language_id').notNull().references(() => languages.id, { onDelete: 'cascade' }),
   levelId: text('level_id').references(() => languageLevels.id, { onDelete: 'set null' }),
@@ -65,7 +66,7 @@ export const dialogues = pgTable('dialogues', {
  * `sentences.reading_kana` is the same slot one table over, and it is NULL on
  * every row because nothing ever filled it in. Do not repeat that here.
  */
-export const dialogueTurns = pgTable('dialogue_turns', {
+export const dialogueTurns = contentSchema.table('dialogue_turns', {
   id: primaryId(),
   dialogueId: text('dialogue_id').notNull().references(() => dialogues.id, { onDelete: 'cascade' }),
   index: integer('index').notNull(),
@@ -96,7 +97,7 @@ export const dialogueTurns = pgTable('dialogue_turns', {
  * asking FOR the menu, not saying the menu acts. `grammar_mistakes.whyWrong`
  * is the same idea, already rendered on the grammar detail page.
  */
-export const dialogueReplies = pgTable('dialogue_replies', {
+export const dialogueReplies = contentSchema.table('dialogue_replies', {
   id: primaryId(),
   turnId: text('turn_id').notNull().references(() => dialogueTurns.id, { onDelete: 'cascade' }),
   text: text('text').notNull(),

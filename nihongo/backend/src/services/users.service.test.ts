@@ -13,7 +13,7 @@ describe('unconfirmedAccountsFilter', () => {
   const query = dialect.sqlToQuery(unconfirmedAccountsFilter(now)!)
 
   it('keeps confirmed accounts, newer accounts and admins', () => {
-    expect(query.sql).toBe('("users"."email_verified" = $1 and "users"."created_at" < $2 and "users"."role" <> $3)')
+    expect(query.sql).toBe('("auth"."users"."email_verified" = $1 and "auth"."users"."created_at" < $2 and "auth"."users"."role" <> $3)')
   })
 
   it('takes only unconfirmed, non-admin accounts', () => {

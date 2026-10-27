@@ -1,8 +1,9 @@
 import { relations } from 'drizzle-orm'
-import { integer, pgTable, text, uniqueIndex } from 'drizzle-orm/pg-core'
+import { integer, text, uniqueIndex } from 'drizzle-orm/pg-core'
 
 import { primaryId, timestamps } from './columns.js'
 import { languages } from './languages.js'
+import { contentSchema } from './schemas.js'
 
 /**
  * Hiragana and katakana. Small, fully enumerable, and hand-seeded rather than
@@ -11,7 +12,7 @@ import { languages } from './languages.js'
  * `row`/`column` are the gojūon coordinates (k/a for か), which is what lets
  * the UI render the traditional grid and lets drills target "the k-row".
  */
-export const kana = pgTable('kana', {
+export const kana = contentSchema.table('kana', {
   id: primaryId(),
   languageId: text('language_id').notNull().references(() => languages.id, { onDelete: 'cascade' }),
   script: text('script').notNull(), // hiragana | katakana

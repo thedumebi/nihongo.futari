@@ -1,12 +1,13 @@
 import { relations, sql } from 'drizzle-orm'
-import { boolean, index, integer, jsonb, numeric, pgTable, text, timestamp, uniqueIndex } from 'drizzle-orm/pg-core'
+import { boolean, index, integer, jsonb, numeric, text, timestamp, uniqueIndex } from 'drizzle-orm/pg-core'
 
 import { users } from './auth.js'
 import { primaryId, timestamps } from './columns.js'
 import { languages } from './languages.js'
+import { editorialSchema } from './schemas.js'
 
 /** Upstream open datasets. One row per dataset, not per download. */
-export const importSources = pgTable('import_sources', {
+export const importSources = editorialSchema.table('import_sources', {
   id: primaryId(),
   code: text('code').notNull().unique(), // jmdict | kanjidic2 | kanjivg | tatoeba | kanjium | chise-ids | wiktextract | edrdg-phonetic
   name: text('name').notNull(),
@@ -38,7 +39,7 @@ export const provenance = {
   upstreamRemovedAt: timestamp('upstream_removed_at')
 }
 
-export const importRuns = pgTable('import_runs', {
+export const importRuns = editorialSchema.table('import_runs', {
   id: primaryId(),
   sourceId: text('source_id').notNull().references(() => importSources.id, { onDelete: 'cascade' }),
   languageId: text('language_id').references(() => languages.id, { onDelete: 'set null' }),
@@ -61,7 +62,7 @@ export const importRuns = pgTable('import_runs', {
 }))
 
 /** Row-level audit of what an import run did, and why. */
-export const importRecords = pgTable('import_records', {
+export const importRecords = editorialSchema.table('import_records', {
   id: primaryId(),
   runId: text('run_id').notNull().references(() => importRuns.id, { onDelete: 'cascade' }),
   sourceId: text('source_id').notNull().references(() => importSources.id, { onDelete: 'cascade' }),
@@ -81,7 +82,7 @@ export const importRecords = pgTable('import_records', {
  * row is parked here for a person to resolve, which is what makes the whole
  * import pipeline safe to re-run.
  */
-export const importConflicts = pgTable('import_conflicts', {
+export const importConflicts = editorialSchema.table('import_conflicts', {
   id: primaryId(),
   runId: text('run_id').notNull().references(() => importRuns.id, { onDelete: 'cascade' }),
   targetTable: text('target_table').notNull(),
@@ -98,7 +99,7 @@ export const importConflicts = pgTable('import_conflicts', {
 }))
 
 /** One Claude enrichment pass. Batch API jobs record their batch id here. */
-export const enrichmentRuns = pgTable('enrichment_runs', {
+export const enrichmentRuns = editorialSchema.table('enrichment_runs', {
   id: primaryId(),
   kind: text('kind').notNull(), // grammar-prose | etymology-draft | mnemonic | example-selection | distractor-gen | mistake-gen | level-tagging
   languageId: text('language_id').references(() => languages.id, { onDelete: 'set null' }),
@@ -122,7 +123,7 @@ export const enrichmentRuns = pgTable('enrichment_runs', {
  * mechanical checks passed, so a reviewer can see why something was
  * auto-rejected without re-running anything.
  */
-export const enrichmentItems = pgTable('enrichment_items', {
+export const enrichmentItems = editorialSchema.table('enrichment_items', {
   id: primaryId(),
   runId: text('run_id').notNull().references(() => enrichmentRuns.id, { onDelete: 'cascade' }),
   targetTable: text('target_table').notNull(),
@@ -145,7 +146,7 @@ export const enrichmentItems = pgTable('enrichment_items', {
  * pending proposal per target at a time, so a re-run can't stack duplicates
  * on the reviewer.
  */
-export const contentReviewQueue = pgTable('content_review_queue', {
+export const contentReviewQueue = editorialSchema.table('content_review_queue', {
   id: primaryId(),
   languageId: text('language_id').references(() => languages.id, { onDelete: 'set null' }),
   targetTable: text('target_table').notNull(),

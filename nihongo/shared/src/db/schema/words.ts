@@ -1,17 +1,18 @@
 import { relations } from 'drizzle-orm'
-import { boolean, index, integer, jsonb, pgTable, text, uniqueIndex } from 'drizzle-orm/pg-core'
+import { boolean, index, integer, jsonb, text, uniqueIndex } from 'drizzle-orm/pg-core'
 
 import { primaryId, timestamps } from './columns.js'
 import { kanji } from './kanji.js'
 import { languageLevels, languages } from './languages.js'
 import { provenance } from './ops.js'
+import { contentSchema } from './schemas.js'
 
 /**
  * JMdict's shape is entry -> k_ele[] / r_ele[] / sense[], so it maps to four
  * tables rather than one. `entSeq` is JMdict's own stable id and the natural
  * key we re-import against.
  */
-export const words = pgTable('words', {
+export const words = contentSchema.table('words', {
   id: primaryId(),
   languageId: text('language_id').notNull().references(() => languages.id, { onDelete: 'cascade' }),
   entSeq: integer('ent_seq'),
@@ -51,7 +52,7 @@ export const words = pgTable('words', {
 }))
 
 /** Every written form of a word: kanji spellings and kana spellings alike. */
-export const wordForms = pgTable('word_forms', {
+export const wordForms = contentSchema.table('word_forms', {
   id: primaryId(),
   wordId: text('word_id').notNull().references(() => words.id, { onDelete: 'cascade' }),
   form: text('form').notNull(),
@@ -66,7 +67,7 @@ export const wordForms = pgTable('word_forms', {
   formIdx: index('word_forms_form_idx').on(t.form)
 }))
 
-export const wordSenses = pgTable('word_senses', {
+export const wordSenses = contentSchema.table('word_senses', {
   id: primaryId(),
   wordId: text('word_id').notNull().references(() => words.id, { onDelete: 'cascade' }),
   sortIndex: integer('sort_index').notNull().default(0),
@@ -89,7 +90,7 @@ export const wordSenses = pgTable('word_senses', {
  * data rather than prose so the "why" layer can cite it directly: パン is from
  * Portuguese pão, and that is a fact from the dictionary, not a Claude opinion.
  */
-export const wordSenseSources = pgTable('word_sense_sources', {
+export const wordSenseSources = contentSchema.table('word_sense_sources', {
   id: primaryId(),
   senseId: text('sense_id').notNull().references(() => wordSenses.id, { onDelete: 'cascade' }),
   sourceLang: text('source_lang').notNull(), // ISO 639-2: por, eng, deu
@@ -102,7 +103,7 @@ export const wordSenseSources = pgTable('word_sense_sources', {
 }))
 
 /** Which kanji a word uses. Powers "words using this kanji" and the furigana check. */
-export const wordKanji = pgTable('word_kanji', {
+export const wordKanji = contentSchema.table('word_kanji', {
   id: primaryId(),
   wordId: text('word_id').notNull().references(() => words.id, { onDelete: 'cascade' }),
   kanjiId: text('kanji_id').notNull().references(() => kanji.id, { onDelete: 'cascade' }),

@@ -1,10 +1,11 @@
 import { relations, sql } from 'drizzle-orm'
-import { boolean, index, integer, jsonb, pgTable, primaryKey, smallint, text, timestamp, uniqueIndex } from 'drizzle-orm/pg-core'
+import { boolean, index, integer, jsonb, primaryKey, smallint, text, timestamp, uniqueIndex } from 'drizzle-orm/pg-core'
 
 import { users } from './auth.js'
 import { primaryId, timestamps } from './columns.js'
 import { grammarPoints } from './grammar.js'
 import { languages } from './languages.js'
+import { contentSchema, learnerSchema } from './schemas.js'
 import { studyItemFacets } from './study-items.js'
 
 /**
@@ -19,7 +20,7 @@ import { studyItemFacets } from './study-items.js'
  * gets out of the way. (This is exactly where Bunpo gets criticised: it stays
  * multiple-choice forever.)
  */
-export const exerciseTemplates = pgTable('exercise_templates', {
+export const exerciseTemplates = contentSchema.table('exercise_templates', {
   id: primaryId(),
   code: text('code').notNull(),
   /** Null = universal across languages. */
@@ -43,7 +44,7 @@ export const exerciseTemplates = pgTable('exercise_templates', {
  * The DEFAULT template pool, keyed by (kind, facet). A small config table —
  * a few dozen rows — rather than a row per item.
  */
-export const kindFacetTemplates = pgTable('kind_facet_templates', {
+export const kindFacetTemplates = contentSchema.table('kind_facet_templates', {
   id: primaryId(),
   languageId: text('language_id').notNull().references(() => languages.id, { onDelete: 'cascade' }),
   kind: text('kind').notNull(),
@@ -59,7 +60,7 @@ export const kindFacetTemplates = pgTable('kind_facet_templates', {
 }))
 
 /** Sparse per-item override. Only written when an item needs to differ. */
-export const studyItemFacetTemplates = pgTable('study_item_facet_templates', {
+export const studyItemFacetTemplates = contentSchema.table('study_item_facet_templates', {
   facetId: text('facet_id').notNull().references(() => studyItemFacets.id, { onDelete: 'cascade' }),
   templateId: text('template_id').notNull().references(() => exerciseTemplates.id, { onDelete: 'cascade' }),
   weight: integer('weight').notNull().default(1),
@@ -76,7 +77,7 @@ export const studyItemFacetTemplates = pgTable('study_item_facet_templates', {
  * Generate LAZILY on first need plus a nightly warmer for the coming horizon —
  * eagerly cross-joining items x templates x versions explodes fast.
  */
-export const exercisePrompts = pgTable('exercise_prompts', {
+export const exercisePrompts = contentSchema.table('exercise_prompts', {
   id: primaryId(),
   facetId: text('facet_id').notNull().references(() => studyItemFacets.id, { onDelete: 'cascade' }),
   templateId: text('template_id').notNull().references(() => exerciseTemplates.id, { onDelete: 'cascade' }),
@@ -122,7 +123,7 @@ export const exerciseTemplatesRelations = relations(exerciseTemplates, ({ many }
  * question they missed rather than a random sibling of it. Cleared when they
  * finally get it right in review, at which point it returns to the rotation.
  */
-export const lessonMisses = pgTable('lesson_misses', {
+export const lessonMisses = learnerSchema.table('lesson_misses', {
   userId: text('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
   promptId: text('prompt_id').notNull().references(() => exercisePrompts.id, { onDelete: 'cascade' }),
   missedAt: timestamp('missed_at').notNull().defaultNow(),

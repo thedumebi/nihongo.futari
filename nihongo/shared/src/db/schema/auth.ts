@@ -1,4 +1,6 @@
-import { boolean, pgTable, text, timestamp, uniqueIndex } from 'drizzle-orm/pg-core'
+import { boolean, text, timestamp, uniqueIndex } from 'drizzle-orm/pg-core'
+
+import { authSchema } from './schemas.js'
 
 /**
  * better-auth managed tables. The schema is documented at
@@ -13,7 +15,7 @@ import { boolean, pgTable, text, timestamp, uniqueIndex } from 'drizzle-orm/pg-c
  * from the server clock breaks for anyone who travels or studies near
  * midnight.
  */
-export const users = pgTable('users', {
+export const users = authSchema.table('users', {
   id: text('id').primaryKey(),
   name: text('name').notNull(),
   email: text('email').notNull().unique(),
@@ -32,7 +34,7 @@ export const users = pgTable('users', {
   activeLanguageId: text('active_language_id')
 })
 
-export const sessions = pgTable('sessions', {
+export const sessions = authSchema.table('sessions', {
   id: text('id').primaryKey(),
   expiresAt: timestamp('expires_at').notNull(),
   token: text('token').notNull().unique(),
@@ -43,7 +45,7 @@ export const sessions = pgTable('sessions', {
   userId: text('user_id').notNull().references(() => users.id, { onDelete: 'cascade' })
 })
 
-export const accounts = pgTable('accounts', {
+export const accounts = authSchema.table('accounts', {
   id: text('id').primaryKey(),
   /**
    * Which authority vouched for this identity.
@@ -77,7 +79,7 @@ export const accounts = pgTable('accounts', {
   identityUnique: uniqueIndex('accounts_issuer_account_id_unique').on(t.issuer, t.accountId)
 }))
 
-export const verifications = pgTable('verifications', {
+export const verifications = authSchema.table('verifications', {
   id: text('id').primaryKey(),
   identifier: text('identifier').notNull(),
   value: text('value').notNull(),

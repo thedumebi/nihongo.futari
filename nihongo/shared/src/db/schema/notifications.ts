@@ -1,15 +1,16 @@
 import { sql } from 'drizzle-orm'
-import { boolean, index, integer, pgTable, text, timestamp, uniqueIndex } from 'drizzle-orm/pg-core'
+import { boolean, index, integer, text, timestamp, uniqueIndex } from 'drizzle-orm/pg-core'
 
 import { users } from './auth.js'
 import { primaryId, timestamps } from './columns.js'
+import { opsSchema } from './schemas.js'
 
 /**
  * Web Push endpoints. On iOS these only exist once the user has added the app
  * to their home screen (16.4+), and not at all for EU PWAs since Apple's DMA
  * change — so push is always an enhancement, never the only reminder channel.
  */
-export const pushSubscriptions = pgTable('push_subscriptions', {
+export const pushSubscriptions = opsSchema.table('push_subscriptions', {
   id: primaryId(),
   userId: text('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
   endpoint: text('endpoint').notNull().unique(),
@@ -32,7 +33,7 @@ export const pushSubscriptions = pgTable('push_subscriptions', {
  * `dedupeKey` = `${userId}:${kind}:${localDate}`, uniquely indexed, so the host
  * cron can fire twice (or be retried) without anyone getting two emails.
  */
-export const notificationLog = pgTable('notification_log', {
+export const notificationLog = opsSchema.table('notification_log', {
   id: primaryId(),
   userId: text('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
   channel: text('channel').notNull(), // email | push

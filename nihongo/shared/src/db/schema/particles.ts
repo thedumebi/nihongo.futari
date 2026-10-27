@@ -1,10 +1,11 @@
 import { relations, sql } from 'drizzle-orm'
-import { boolean, check, index, integer, pgTable, text, uniqueIndex } from 'drizzle-orm/pg-core'
+import { boolean, check, index, integer, text, uniqueIndex } from 'drizzle-orm/pg-core'
 
 import { primaryId, timestamps } from './columns.js'
 import { grammarPoints } from './grammar.js'
 import { languages } from './languages.js'
 import { provenance } from './ops.js'
+import { contentSchema } from './schemas.js'
 import { sentences } from './sentences.js'
 
 /**
@@ -20,7 +21,7 @@ import { sentences } from './sentences.js'
  * it in unpublished with one review-queue row, and approving that row is the
  * only thing that publishes it.
  */
-export const particleSets = pgTable('particle_sets', {
+export const particleSets = contentSchema.table('particle_sets', {
   id: primaryId(),
   languageId: text('language_id').notNull().references(() => languages.id, { onDelete: 'cascade' }),
   grammarPointId: text('grammar_point_id').notNull().references(() => grammarPoints.id, { onDelete: 'cascade' }),
@@ -31,7 +32,7 @@ export const particleSets = pgTable('particle_sets', {
   pointUnique: uniqueIndex('particle_sets_point_unique').on(t.grammarPointId)
 }))
 
-export const particleQuestions = pgTable('particle_questions', {
+export const particleQuestions = contentSchema.table('particle_questions', {
   id: primaryId(),
   setId: text('set_id').notNull().references(() => particleSets.id, { onDelete: 'cascade' }),
   sentenceId: text('sentence_id').notNull().references(() => sentences.id, { onDelete: 'cascade' }),

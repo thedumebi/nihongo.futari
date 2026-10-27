@@ -5,7 +5,6 @@ import {
   doublePrecision,
   index,
   integer,
-  pgTable,
   primaryKey,
   smallint,
   text,
@@ -20,6 +19,7 @@ import { grammarPoints } from './grammar.js'
 import { kana } from './kana.js'
 import { kanji, phoneticSeries } from './kanji.js'
 import { languageLevels, languages } from './languages.js'
+import { contentSchema, learnerSchema } from './schemas.js'
 import { sentences } from './sentences.js'
 import { speakSteps } from './speak.js'
 import { words } from './words.js'
@@ -35,7 +35,7 @@ import { words } from './words.js'
  * `payload jsonb`; that is the generic-blob failure mode arriving by the back
  * door, and it is the abstraction leak this design exists to prevent.
  */
-export const studyItems = pgTable('study_items', {
+export const studyItems = contentSchema.table('study_items', {
   id: primaryId(),
   languageId: text('language_id').notNull().references(() => languages.id, { onDelete: 'cascade' }),
   kind: text('kind').notNull(), // kana | kanji | word | grammar | sentence | phonetic-series | dialogue | speak
@@ -88,7 +88,7 @@ export const studyItems = pgTable('study_items', {
  * polymorphism contract: it never needs to know what kind of thing it is
  * scheduling.
  */
-export const studyItemFacets = pgTable('study_item_facets', {
+export const studyItemFacets = contentSchema.table('study_item_facets', {
   id: primaryId(),
   studyItemId: text('study_item_id').notNull().references(() => studyItems.id, { onDelete: 'cascade' }),
   facet: text('facet').notNull(), // meaning | production | reading | listening | writing | usage | pitch
@@ -102,7 +102,7 @@ export const studyItemFacets = pgTable('study_item_facets', {
 }))
 
 /** Don't teach 食べます before 食べる. `hard` blocks; `soft` only reorders. */
-export const studyItemPrerequisites = pgTable('study_item_prerequisites', {
+export const studyItemPrerequisites = contentSchema.table('study_item_prerequisites', {
   itemId: text('item_id').notNull().references(() => studyItems.id, { onDelete: 'cascade' }),
   requiresItemId: text('requires_item_id').notNull().references(() => studyItems.id, { onDelete: 'cascade' }),
   kind: text('kind').notNull().default('soft'), // hard | soft
@@ -123,7 +123,7 @@ export const studyItemPrerequisites = pgTable('study_item_prerequisites', {
  * Keyed on the study item rather than the grammar point so kana and kanji
  * lessons can follow without a second table.
  */
-export const lessonViews = pgTable('lesson_views', {
+export const lessonViews = learnerSchema.table('lesson_views', {
   userId: text('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
   studyItemId: text('study_item_id').notNull().references(() => studyItems.id, { onDelete: 'cascade' }),
   firstSeenAt: timestamp('first_seen_at').notNull().defaultNow(),
@@ -145,7 +145,7 @@ export const lessonViews = pgTable('lesson_views', {
 }))
 
 /** Ordered lesson groupings — "N5 Unit 3". Optional; the SRS works without them. */
-export const curriculumUnits = pgTable('curriculum_units', {
+export const curriculumUnits = contentSchema.table('curriculum_units', {
   id: primaryId(),
   languageId: text('language_id').notNull().references(() => languages.id, { onDelete: 'cascade' }),
   levelId: text('level_id').references(() => languageLevels.id, { onDelete: 'set null' }),
@@ -161,7 +161,7 @@ export const curriculumUnits = pgTable('curriculum_units', {
   codeUnique: uniqueIndex('curriculum_units_code_unique').on(t.languageId, t.code)
 }))
 
-export const curriculumUnitItems = pgTable('curriculum_unit_items', {
+export const curriculumUnitItems = contentSchema.table('curriculum_unit_items', {
   unitId: text('unit_id').notNull().references(() => curriculumUnits.id, { onDelete: 'cascade' }),
   studyItemId: text('study_item_id').notNull().references(() => studyItems.id, { onDelete: 'cascade' }),
   sortIndex: integer('sort_index').notNull().default(0),

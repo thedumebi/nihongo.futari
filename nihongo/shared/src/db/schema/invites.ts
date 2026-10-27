@@ -1,8 +1,9 @@
 import { relations, sql } from 'drizzle-orm'
-import { index, integer, pgTable, text, timestamp, uniqueIndex } from 'drizzle-orm/pg-core'
+import { index, integer, text, timestamp, uniqueIndex } from 'drizzle-orm/pg-core'
 
 import { users } from './auth.js'
 import { primaryId, timestamps } from './columns.js'
+import { authSchema } from './schemas.js'
 
 /**
  * Signup invitations.
@@ -15,7 +16,7 @@ import { primaryId, timestamps } from './columns.js'
  * A code may be bound to a specific email (a personal invitation) or left open
  * with a use limit (a small cohort sharing one link).
  */
-export const invites = pgTable('invites', {
+export const invites = authSchema.table('invites', {
   id: primaryId(),
   code: text('code').notNull(),
   /** When set, only this address may redeem the code. */
@@ -47,7 +48,7 @@ export const invites = pgTable('invites', {
  * rather than depending on an extra field surviving better-auth's request
  * body. It also makes the gate identical for both signup paths.
  */
-export const inviteReservations = pgTable('invite_reservations', {
+export const inviteReservations = authSchema.table('invite_reservations', {
   id: primaryId(),
   inviteId: text('invite_id').notNull().references(() => invites.id, { onDelete: 'cascade' }),
   email: text('email').notNull(),
@@ -64,7 +65,7 @@ export const inviteReservations = pgTable('invite_reservations', {
 }))
 
 /** Audit trail: which code created which account. */
-export const inviteRedemptions = pgTable('invite_redemptions', {
+export const inviteRedemptions = authSchema.table('invite_redemptions', {
   id: primaryId(),
   inviteId: text('invite_id').notNull().references(() => invites.id, { onDelete: 'cascade' }),
   userId: text('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),

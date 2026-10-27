@@ -1,11 +1,12 @@
 import { sql } from 'drizzle-orm'
-import { check, index, integer, jsonb, numeric, pgTable, text, timestamp, uniqueIndex } from 'drizzle-orm/pg-core'
+import { check, index, integer, jsonb, numeric, text, timestamp, uniqueIndex } from 'drizzle-orm/pg-core'
 
 import { users } from './auth.js'
 import { primaryId, timestamps } from './columns.js'
 import { kana } from './kana.js'
 import { kanji } from './kanji.js'
 import { languages } from './languages.js'
+import { contentSchema, learnerSchema } from './schemas.js'
 import { sentences } from './sentences.js'
 import { words } from './words.js'
 
@@ -20,7 +21,7 @@ import { words } from './words.js'
  * The unique on (textHash, voice, provider) dedupes across words and sentences
  * that happen to share text.
  */
-export const mediaAssets = pgTable('media_assets', {
+export const mediaAssets = contentSchema.table('media_assets', {
   id: primaryId(),
   languageId: text('language_id').notNull().references(() => languages.id, { onDelete: 'cascade' }),
   kind: text('kind').notNull(), // tts-word | tts-sentence | tts-kana | human | stroke-svg
@@ -41,7 +42,7 @@ export const mediaAssets = pgTable('media_assets', {
 }))
 
 /** Attach an asset to content. `role` distinguishes normal / slow / alt-voice takes. */
-export const contentAudio = pgTable('content_audio', {
+export const contentAudio = contentSchema.table('content_audio', {
   id: primaryId(),
   assetId: text('asset_id').notNull().references(() => mediaAssets.id, { onDelete: 'cascade' }),
   kanaId: text('kana_id').references(() => kana.id, { onDelete: 'cascade' }),
@@ -62,7 +63,7 @@ export const contentAudio = pgTable('content_audio', {
  * Handwriting attempts. `strokes` holds resampled points for grader debugging
  * and is aged out by a retention job — it is diagnostic data, not user content.
  */
-export const handwritingAttempts = pgTable('handwriting_attempts', {
+export const handwritingAttempts = learnerSchema.table('handwriting_attempts', {
   id: primaryId(),
   userId: text('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
   kanjiId: text('kanji_id').notNull().references(() => kanji.id, { onDelete: 'cascade' }),

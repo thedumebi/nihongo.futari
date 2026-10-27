@@ -181,6 +181,21 @@ if [[ -n "$NEW_CONTENT" ]] && \
   fi
 fi
 
+# Every table lives in a named schema (shared/src/db/schema/schemas.ts). A bare
+# pgTable() would be created in whichever schema comes first on the
+# connections' search_path, not in `public` where its snapshot says it is.
+if [[ -n "$NEW_CONTENT" ]] && \
+   [[ "$REL_FILE" =~ /shared/src/db/schema/.*\.ts$ ]]; then
+
+  BARE_TABLES=$(echo "$NEW_CONTENT" | grep -nE '\bpgTable\(' 2>/dev/null | head -3 || true)
+
+  if [[ -n "$BARE_TABLES" ]]; then
+    VIOLATIONS+="BLOCKED: Your edit declares a table with a bare pgTable():\n$BARE_TABLES\nDeclare it in its schema instead, e.g. \`contentSchema.table('...', {...})\` with the schema imported from './schemas.js' (auth, content, editorial, learner, social or ops), then retry.\n\n"
+    echo "[HOOK] ✗ Blocked edit — bare pgTable in schema file" >&2
+    log_hook "denied" "Bare pgTable in schema file $REL_FILE"
+  fi
+fi
+
 # ============================================================
 # CHECK 4: Hand-written interface duplicating a derived type
 # ============================================================

@@ -33,7 +33,7 @@ Print one line: `Scaffolding feature "<FEATURE>" for project "<PROJECT>"` so it'
 Plan and implement the **`<FEATURE>`** feature across all layers of the selected project. Work through each layer in order, ensuring types flow correctly from database to frontend.
 
 ### Layer 1: Database Schema (`<shared>/src/db/schema/`)
-- Define table(s) with `pgTable()`
+- Define table(s) in their schema with `<x>Schema.table()` from `./schemas.js`, never a bare `pgTable()`
 - Define relations
 - Derive Zod insert/select schemas with `drizzle-zod`
 - Export types, schemas, and table from barrel exports
