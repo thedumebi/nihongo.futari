@@ -1,7 +1,10 @@
 {
   "$schema": "https://turborepo.com/schema.json",
-  "globalDependencies": [],
+  "globalDependencies": [".nvmrc", "packages/typescript-config/*.json"],
   "ui": "tui",
+  "remoteCache": {
+    "enabled": true
+  },
   "tasks": {
     "build": {
       "dependsOn": ["^build"],
@@ -32,7 +35,9 @@
     "db:migrate": {
       "cache": false
     },
-    "test": {},
+    "test": {
+      "dependsOn": ["^build"]
+    },
     "typecheck": {
       "dependsOn": ["^typecheck"]
     }

@@ -91,6 +91,12 @@ jobs:
     needs: changes
     if: needs.changes.outputs.services != '[]'
     runs-on: ubuntu-latest
+    # Turbo's remote cache: lint, typecheck, test and the shared build replay
+    # for any workspace whose inputs have not changed since a run that passed.
+    # Unset (a fork, or no token yet), turbo runs everything as before.
+    env:
+      TURBO_TOKEN: ${{ secrets.TURBO_TOKEN }}
+      TURBO_TEAM: ${{ vars.TURBO_TEAM }}
     # For the DB-backed tests. The same Postgres as production's: 18 on
     # Alpine, whose musl libc sorts text byte by byte.
     services:
@@ -115,7 +121,7 @@ jobs:
           cache: pnpm
           cache-dependency-path: pnpm-lock.yaml
       - run: pnpm i --frozen-lockfile --ignore-scripts
-      - run: pnpm --filter @nihongo/shared build
+      - run: pnpm run build --filter=@nihongo/shared
       - run: pnpm run lint
       - run: pnpm run typecheck
       - run: pnpm run test
