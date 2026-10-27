@@ -1,11 +1,12 @@
 import type { FuriganaMode } from '@nihongo/shared/constants'
-import type { KnownKanji, StudySettings } from '@nihongo/shared/types'
+import type { KnownKanji } from '@nihongo/shared/types'
 
 import { API_ENDPOINTS, DEFAULT_FURIGANA_MODE } from '@nihongo/shared/constants'
 import { useLocalStorage } from '@vueuse/core'
 import { nextTick, ref, watch } from 'vue'
 
 import client from '@/api/client'
+import { getStudySettings } from '@/api/settings'
 import { setStreakCelebrations } from '@/composables/use-answer-streak'
 
 /**
@@ -49,7 +50,7 @@ const mode = useLocalStorage<FuriganaMode>('go-furigana', DEFAULT_FURIGANA_MODE)
  */
 export async function refreshFuriganaSetting(): Promise<void> {
   try {
-    const { data } = await client.get<StudySettings>(API_ENDPOINTS.USERS.SETTINGS)
+    const data = await getStudySettings()
     applying = true
     mode.value = data.furiganaMode
     // Same read, so the streak celebration setting follows the learner too.
@@ -81,14 +82,21 @@ export async function refreshFuriganaSetting(): Promise<void> {
  * returns to the foreground: a kanji learned today should lose its ruby without
  * a restart.
  */
-export async function refreshKnownKanji(languageCode: string): Promise<void> {
-  try {
-    const { data } = await client.get<KnownKanji>(API_ENDPOINTS.PROGRESS.KNOWN_KANJI, { params: { languageCode } })
-    knownKanji.value = new Set(data.characters)
-    knownLoaded = Promise.resolve()
-  } catch {
-    // Keep what we had: offline should not bring every reading back.
-  }
+export function refreshKnownKanji(languageCode: string): Promise<void> {
+  const before = knownLoaded
+  const refreshing: Promise<void> = client.get<KnownKanji>(API_ENDPOINTS.PROGRESS.KNOWN_KANJI, { params: { languageCode } })
+    .then(({ data }) => {
+      knownKanji.value = new Set(data.characters)
+    })
+    .catch(() => {
+      // Keep what we had: offline should not bring every reading back. And
+      // leave the next page free to ask, as if this had never been tried.
+      if (knownLoaded === refreshing)
+        knownLoaded = before
+    })
+  // A page asking for them meanwhile waits on this rather than asking again.
+  knownLoaded = refreshing
+  return refreshing
 }
 
 export function useFurigana() {

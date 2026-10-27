@@ -1,10 +1,9 @@
-import type { StudySettings } from '@nihongo/shared/types'
-
 import { API_ENDPOINTS } from '@nihongo/shared/constants'
 import { useLocalStorage } from '@vueuse/core'
 import { watch } from 'vue'
 
 import client from '@/api/client'
+import { getStudySettings } from '@/api/settings'
 
 /**
  * The JLPT level the reader is working at, shared across the whole app.
@@ -40,9 +39,8 @@ export function useLevel() {
 
   /** Pull the stored level once, then keep writing changes back. */
   async function loadLevel() {
-    settingsLoaded ??= client
-      .get<StudySettings>(API_ENDPOINTS.USERS.SETTINGS)
-      .then(({ data }) => {
+    settingsLoaded ??= getStudySettings()
+      .then((data) => {
         level.value = data.studyLevel
         // Only start syncing AFTER the server value has landed, so the
         // assignment above cannot echo back as a spurious write.
