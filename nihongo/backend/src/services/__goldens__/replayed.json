@@ -5511,11 +5511,11 @@
         "studyItemId": "ea750b12-70f6-45bc-8600-33a84b664fdc",
         "kind": "word",
         "facet": "meaning",
-        "due": "2026-09-11T09:16:40.001Z",
+        "due": "2026-09-11T09:16:40.000Z",
         "isNew": false,
         "ghost": false,
         "card": {
-          "due": "2026-09-11T09:16:40.001Z",
+          "due": "2026-09-11T09:16:40.000Z",
           "stability": 2.3065,
           "difficulty": 2.11121424,
           "elapsedDays": 0,
@@ -5524,7 +5524,7 @@
           "reps": 2,
           "lapses": 0,
           "state": 2,
-          "lastReview": "2026-09-09T09:16:40.001Z"
+          "lastReview": "2026-09-09T09:16:40.000Z"
         },
         "promptId": "8a9fc67f-79da-4cf7-b9c3-27826fd7e0f3",
         "templateCode": "mcq",

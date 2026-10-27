@@ -196,6 +196,12 @@ describe('canFastForward', () => {
     expect(canFastForward(state, incoming)).toBe(false)
   })
 
+  it('replays an answer just after the last review, which may be a second device reporting it', () => {
+    const last = state.lastReview!.getTime()
+    expect(canFastForward(state, [{ id: 'z', rating: 3, reviewedAt: new Date(last + 1500) }])).toBe(false)
+    expect(canFastForward(state, [{ id: 'z', rating: 3, reviewedAt: new Date(last + 2000) }])).toBe(true)
+  })
+
   it('treats a never-reviewed card as fast-forwardable', () => {
     expect(canFastForward(replay([]).state, makeEvents([3]))).toBe(true)
   })

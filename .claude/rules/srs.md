@@ -67,10 +67,16 @@ Every API response carries `serverTime`; the client stamps `reviewedAt` with its
 tracked offset and also sends the raw `clientReviewedAt`. The server clamps:
 
 - `reviewedAt > receivedAt + 5min` → clamp to `receivedAt`
-- `reviewedAt <= previousLog.reviewedAt` → clamp to `previousLog.reviewedAt + 1ms`
+- `reviewedAt < receivedAt - 30d` → clamp to the backlog limit
 
-Either clamp sets `clockAdjusted = true`. This guarantees a strict total order
-per card, which replay depends on.
+Either clamp sets `clockAdjusted = true`. Nothing else moves a review: it is
+dated when the learner answered, never when it arrived. An answer older than
+the card's last review takes the slow path and is replayed into its place; it
+is **not** re-dated to after the newest (that clamp existed, and made card
+state depend on sync order). The fold orders by `(reviewed_at, id)`, so equal
+timestamps are still a total order. Every date stamped from an answer
+(`first_seen_at`, `last_correct_at`, `ghost_since`, a miss's `cleared_at`) is
+the answer's time too.
 
 ## Timezones
 

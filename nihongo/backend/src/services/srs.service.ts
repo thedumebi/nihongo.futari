@@ -253,6 +253,11 @@ export async function countDue(
 
 export async function submitAnswer(userId: string, input: SubmitAnswerInput, deferred?: DeferredRecompute): Promise<AnswerResult> {
   const receivedAt = new Date()
+  // When the learner answered, which is what every date on the card follows:
+  // an offline session synced tomorrow still happened today. Only a clock that
+  // cannot be right (the future, or past any real backlog) is pulled in.
+  const clamped = clampReviewedAt(new Date(input.reviewedAt), receivedAt)
+  const answeredAt = clamped.reviewedAt
   const { policy, fsrsParams } = await loadPolicy(userId)
 
   const outcome = await db.transaction(async (tx) => {
@@ -280,7 +285,7 @@ export async function submitAnswer(userId: string, input: SubmitAnswerInput, def
 
     let card = existing
     if (!card) {
-      const seed = emptyCardState(receivedAt)
+      const seed = emptyCardState(answeredAt)
       const [created] = await tx
         .insert(srsCards)
         .values({
@@ -288,7 +293,7 @@ export async function submitAnswer(userId: string, input: SubmitAnswerInput, def
           facetId: facet.facetId,
           languageId: facet.languageId,
           ...cardStateColumns(seed),
-          firstSeenAt: receivedAt
+          firstSeenAt: answeredAt
         })
         .onConflictDoNothing()
         .returning()
@@ -301,10 +306,6 @@ export async function submitAnswer(userId: string, input: SubmitAnswerInput, def
         .limit(1))[0]!
     }
 
-    // Clamp the client's clock BEFORE it enters the log, so the per-card order
-    // stays strictly total — replay depends on that.
-    const clamped = clampReviewedAt(new Date(input.reviewedAt), receivedAt, card.lastReview)
-
     const [inserted] = await tx
       .insert(srsReviewLogs)
       .values({
@@ -315,7 +316,7 @@ export async function submitAnswer(userId: string, input: SubmitAnswerInput, def
         studyItemId: facet.studyItemId,
         languageId: facet.languageId,
         rating: input.rating,
-        reviewedAt: clamped.reviewedAt,
+        reviewedAt: answeredAt,
         clientReviewedAt: new Date(input.reviewedAt),
         receivedAt,
         clockAdjusted: clamped.adjusted,
@@ -352,7 +353,7 @@ export async function submitAnswer(userId: string, input: SubmitAnswerInput, def
     const event: ReviewEvent = {
       id: input.id,
       rating: input.rating,
-      reviewedAt: clamped.reviewedAt,
+      reviewedAt: answeredAt,
       ...(input.clientId ? { clientId: input.clientId } : {})
     }
 
@@ -362,6 +363,10 @@ export async function submitAnswer(userId: string, input: SubmitAnswerInput, def
     let replayed = false
     /** On a replay, the card's ratings in order, superseded ones left out. */
     let replayedRatings: number[] | null = null
+    /** When it was last answered correctly, on a replay read from the history. */
+    let lastCorrectAt = input.rating !== 1 ? answeredAt : card.lastCorrectAt
+    /** The newest answer the card now rests on: this one, unless replayed into the middle. */
+    let newestAt = answeredAt
 
     if (fast) {
       next = applyReview(cached, event, fsrsParams).state
@@ -390,14 +395,18 @@ export async function submitAnswer(userId: string, input: SubmitAnswerInput, def
       next = folded.state
       replayed = true
       const superseded = new Set(folded.supersededIds)
-      replayedRatings = history.filter(h => !superseded.has(h.id)).map(h => h.rating)
+      const kept = history.filter(h => !superseded.has(h.id))
+      replayedRatings = kept.map(h => h.rating)
+      lastCorrectAt = [...kept].reverse().find(h => h.rating !== 1)?.reviewedAt ?? null
+      newestAt = kept.at(-1)?.reviewedAt ?? answeredAt
 
-      if (folded.supersededIds.length > 0) {
-        await tx
-          .update(srsReviewLogs)
-          .set({ superseded: true })
-          .where(sql`${srsReviewLogs.id} in ${folded.supersededIds}`)
-      }
+      // The flags follow this fold, both ways: an answer landing in the middle
+      // can change which of two devices' near-simultaneous reports is the
+      // double, so one dropped before may be kept now.
+      await tx
+        .update(srsReviewLogs)
+        .set({ superseded: folded.supersededIds.length > 0 ? inArray(srsReviewLogs.id, folded.supersededIds) : sql`false` })
+        .where(and(eq(srsReviewLogs.userId, userId), eq(srsReviewLogs.cardId, card.id)))
     }
 
     const wasCorrect = input.rating !== 1
@@ -441,10 +450,12 @@ export async function submitAnswer(userId: string, input: SubmitAnswerInput, def
       .set({
         ...cardStateColumns(next),
         ghost: decision.ghost,
-        ...(decision.event === 'flagged' ? { ghostSince: receivedAt } : {}),
+        ...(decision.event === 'flagged' ? { ghostSince: newestAt } : {}),
         ...(decision.reason ? { ghostReason: decision.reason } : {}),
         ...counters,
-        ...(wasCorrect ? { lastCorrectAt: receivedAt } : {}),
+        lastCorrectAt,
+        // An answer older than any other on the card is when it was first met.
+        firstSeenAt: sql`least(${srsCards.firstSeenAt}, ${answeredAt.toISOString()}::timestamp)`,
         lastAppliedLogId: input.id,
         historyVersion: card.historyVersion + 1,
         ...(replayed ? { replayGeneration: card.replayGeneration + 1 } : {}),
@@ -467,11 +478,13 @@ export async function submitAnswer(userId: string, input: SubmitAnswerInput, def
     if (wasCorrect && input.promptId) {
       await tx
         .update(lessonMisses)
-        .set({ clearedAt: receivedAt, updatedAt: receivedAt })
+        .set({ clearedAt: answeredAt, updatedAt: receivedAt })
         .where(and(
           eq(lessonMisses.userId, userId),
           eq(lessonMisses.promptId, input.promptId),
-          isNull(lessonMisses.clearedAt)
+          isNull(lessonMisses.clearedAt),
+          // An answer pays off only a miss made before it, however late it syncs.
+          lte(lessonMisses.missedAt, answeredAt)
         ))
     }
 
@@ -517,7 +530,7 @@ export async function submitAnswer(userId: string, input: SubmitAnswerInput, def
   if (outcome.result.applied) {
     const since = outcome.result.replayed
       ? undefined
-      : new Date(new Date(input.reviewedAt).getTime() - 2 * 24 * 60 * 60 * 1000)
+      : new Date(answeredAt.getTime() - 2 * 24 * 60 * 60 * 1000)
     if (deferred)
       deferProgress(deferred, outcome.languageId, since)
     else

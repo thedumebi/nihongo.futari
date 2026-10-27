@@ -120,13 +120,16 @@ export function replay(events: readonly ReviewEvent[], params: FsrsParams = {}, 
 /**
  * Whether a batch of incoming events can take the cheap path.
  *
- * True when every new event is strictly later than the card's last review, so
- * they can be applied on top of the cached state. Any event landing earlier
- * means the cache is stale and the caller must `replay()` the full history.
+ * True when every new event is later than the card's last review by more than
+ * the dedupe window, so they can be applied on top of the cached state. Any
+ * event landing earlier means the cache is stale, and one inside the window
+ * may be the same answer reported by a second device, which only `replay()`
+ * can tell: either way the caller must replay the full history. Otherwise the
+ * card would depend on which device synced first.
  */
-export function canFastForward(cached: CardState, incoming: readonly ReviewEvent[]): boolean {
+export function canFastForward(cached: CardState, incoming: readonly ReviewEvent[], dedupeWindowMs: number = DEFAULTS.dedupeWindowMs): boolean {
   if (!cached.lastReview)
     return cached.reps === 0
   const last = cached.lastReview.getTime()
-  return incoming.every(e => e.reviewedAt.getTime() > last)
+  return incoming.every(e => e.reviewedAt.getTime() - last >= dedupeWindowMs)
 }

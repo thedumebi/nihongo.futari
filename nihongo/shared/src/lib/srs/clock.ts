@@ -8,7 +8,7 @@ export interface ClampOptions {
 export interface ClampResult {
   reviewedAt: Date
   adjusted: boolean
-  reason?: 'future' | 'stale' | 'not-after-previous'
+  reason?: 'future' | 'stale'
 }
 
 const DEFAULTS = {
@@ -20,12 +20,14 @@ const DEFAULTS = {
  * Pull a client-supplied review time into something the fold can trust.
  *
  * Device clocks are wrong more often than people expect — a phone that has been
- * off for a week, a manually-set date, a timezone bug. Two guarantees matter
- * downstream:
+ * off for a week, a manually-set date, a timezone bug. A review never claims to
+ * have happened in the future, nor further back than any real backlog.
  *
- *   1. A review never claims to have happened in the future.
- *   2. A review is never at or before the previous review on the same card,
- *      so the per-card order is strictly total. `replay()` depends on this.
+ * Within that, a review keeps the moment it was answered, even when the card
+ * has a later review already: an answer made offline and synced after another
+ * device's is replayed into its place, not re-dated to after the newest. The
+ * fold orders by `(reviewedAt, id)`, so two reviews at the same instant are
+ * still in a total order.
  *
  * Every clamp is reported so the caller can persist `clockAdjusted` and the
  * data stays auditable rather than silently rewritten.
@@ -33,7 +35,6 @@ const DEFAULTS = {
 export function clampReviewedAt(
   clientReviewedAt: Date,
   receivedAt: Date,
-  previousReviewedAt: Date | null,
   options: ClampOptions = {}
 ): ClampResult {
   const futureTolerance = options.futureToleranceMs ?? DEFAULTS.futureToleranceMs
@@ -51,12 +52,6 @@ export function clampReviewedAt(
     ms = receivedAt.getTime() - maxBacklog
     adjusted = true
     reason = 'stale'
-  }
-
-  if (previousReviewedAt && ms <= previousReviewedAt.getTime()) {
-    ms = previousReviewedAt.getTime() + 1
-    adjusted = true
-    reason = 'not-after-previous'
   }
 
   return { reviewedAt: new Date(ms), adjusted, ...(reason ? { reason } : {}) }

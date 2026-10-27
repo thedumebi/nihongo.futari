@@ -28,17 +28,16 @@ import { applyMutations } from './sync.service.js'
  * rebuilt for every learner at the same moment first, since "current" depends
  * on when you look.
  *
- * Three departures from the rule are known, and pinned with `it.fails` so that
+ * Every date on a card is the moment of the answer, never of the sync: an
+ * answer older than the card's newest is replayed into its place, and the card
+ * is first seen and last correct when the learner answered.
+ *
+ * Two departures from the rule are known, and pinned with `it.fails` so that
  * fixing one shows up here:
  *
- *   1. `clampReviewedAt` pulls an answer older than the card's last review to
- *      just after it, so an out-of-order answer is re-dated rather than
- *      replayed, and the card's state depends on arrival order.
- *   2. `first_seen_at`, `last_correct_at` and an achievement's `unlocked_at`
- *      are the time the server received the answer, so an offline session
- *      synced the next day counts its new words, and its quests, on the day of
- *      the sync.
- *   3. Quest XP is only ever awarded for the day of the rebuild, so an offline
+ *   1. An achievement's `unlocked_at` is when the rebuild found it earned,
+ *      which for an offline session is the day of the sync.
+ *   2. Quest XP is only ever awarded for the day of the rebuild, so an offline
  *      day that syncs later never earns its quests.
  *
  * Every sync happens in `beforeAll`, and its own checks (nothing rejected, the
@@ -91,8 +90,8 @@ async function sameLessons(userId: string): Promise<void> {
   }
 }
 
-/** Columns stamped with the time the server received an answer: divergence (2). */
-const ARRIVAL_TIMES = ['first_seen_at', 'last_correct_at', 'unlocked_at']
+/** Columns stamped with the time of the rebuild: divergence (1). */
+const ARRIVAL_TIMES = ['unlocked_at']
 
 /** Everything derived from the log, with ids written as what they stand for. */
 async function stateOf(userId: string, logIndex: Map<string, number>, { arrivalTimes = false } = {}) {
@@ -189,14 +188,13 @@ describe('a set of answers, however it arrives', () => {
     expect(await stateOf('perm-late', indexFor('late'))).toEqual(await stateOf('perm-online', indexFor('')))
   })
 
-  // Known: (2) and (3) in the header.
-  it.fails('in one late batch, dates each card and quest by the answer, not the sync', async () => {
-    expect(await stateOf('perm-late', indexFor('late'), { arrivalTimes: true }))
-      .toEqual(await stateOf('perm-online', indexFor(''), { arrivalTimes: true }))
+  it('in shuffled small batches, the first sent twice, leaves the same cards and aggregates', async () => {
+    expect(await stateOf('perm-shuffled', indexFor('shuffled'))).toEqual(await stateOf('perm-online', indexFor('')))
   })
 
-  // Known: (1) in the header.
-  it.fails('in shuffled small batches, the first sent twice, leaves the same cards and aggregates', async () => {
-    expect(await stateOf('perm-shuffled', indexFor('shuffled'))).toEqual(await stateOf('perm-online', indexFor('')))
+  // Known: (1) and (2) in the header.
+  it.fails('in one late batch, dates each achievement and quest by the answer, not the sync', async () => {
+    expect(await stateOf('perm-late', indexFor('late'), { arrivalTimes: true }))
+      .toEqual(await stateOf('perm-online', indexFor(''), { arrivalTimes: true }))
   })
 })
