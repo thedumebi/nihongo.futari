@@ -1,6 +1,6 @@
 import type { ActivityKind } from '@nihongo/shared/constants'
 import type { QuestProgress, ReviewGoalCard } from '@nihongo/shared/lib'
-import type { AggregateEvent, KnownKanji, LearnerState, ProgressSummary, Readiness, ReviewEvent, Streak } from '@nihongo/shared/types'
+import type { AggregateEvent, KnownKanji, LearnerProfile, LearnerState, ProgressSummary, Readiness, ReviewEvent, Streak } from '@nihongo/shared/types'
 
 import db from '@nihongo/shared/db'
 import {
@@ -21,7 +21,7 @@ import {
   xpEvents
 } from '@nihongo/shared/db/schema'
 import { aggregateReviews, computeStreak, DEFAULT_DAY_BOUNDARY_HOUR, QUEST_XP, questProgress, questsFor, replay, reviewGoal, studyDateFor, studyDayRange, xpToLevel } from '@nihongo/shared/lib'
-import { and, eq, gte, inArray, isNull, lt, sql } from 'drizzle-orm'
+import { and, eq, getTableColumns, gte, inArray, isNull, lt, sql } from 'drizzle-orm'
 
 import { perRequest } from '@/lib/request-scope.js'
 
@@ -54,29 +54,39 @@ interface UserContext {
 }
 
 export async function loadUserContext(userId: string): Promise<UserContext> {
-  return perRequest(`user-context:${userId}`, () => readUserContext(userId))
+  const { timezone, settings } = await learnerProfile(userId)
+  return {
+    timezone: timezone ?? 'UTC',
+    dayBoundaryHour: settings?.dayBoundaryHour ?? DEFAULT_DAY_BOUNDARY_HOUR
+  }
 }
 
 /** The level the learner chose to study, or null for none; once per request. */
 export async function studyLevelOf(userId: string): Promise<string | null> {
-  return perRequest(`study-level:${userId}`, async () => {
-    const [row] = await db.select({ level: userSettings.studyLevel }).from(userSettings).where(eq(userSettings.userId, userId)).limit(1)
-    return row?.level ?? null
-  })
+  return (await learnerProfile(userId)).settings?.studyLevel ?? null
 }
 
-async function readUserContext(userId: string): Promise<UserContext> {
+/**
+ * The learner's clock and settings in one read, shared by everything in the
+ * request: Today used to ask for them four times over.
+ */
+export async function learnerProfile(userId: string): Promise<LearnerProfile> {
+  return perRequest(`profile:${userId}`, () => readLearnerProfile(userId))
+}
+
+async function readLearnerProfile(userId: string): Promise<LearnerProfile> {
+  // A left-joined nested object comes back null when the row is missing.
   const [row] = await db
-    .select({ timezone: users.timezone, dayBoundaryHour: userSettings.dayBoundaryHour })
+    .select({
+      timezone: users.timezone,
+      settings: getTableColumns(userSettings)
+    })
     .from(users)
     .leftJoin(userSettings, eq(userSettings.userId, users.id))
     .where(eq(users.id, userId))
     .limit(1)
 
-  return {
-    timezone: row?.timezone ?? 'UTC',
-    dayBoundaryHour: row?.dayBoundaryHour ?? DEFAULT_DAY_BOUNDARY_HOUR
-  }
+  return row ?? { timezone: null, settings: null }
 }
 
 /**

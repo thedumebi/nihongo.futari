@@ -42,10 +42,11 @@ export async function getToday(userId: string, languageCode: string, moreNew = 0
 
   // One read of the learner's cards for the two that need them.
   const learner = await loadLearnerState(userId, language.id)
+  const now = new Date()
   const [due, nextDueAt, newToday, lessons, speak, summary, today, quests, unseen, readings, friendRequests, progress] = await Promise.all([
     countDue(userId, language.id),
-    nextDueAfter(userId, language.id, new Date()),
-    newLeftToday(userId, language.id, new Date(), moreNew, learner),
+    nextDueAfter(userId, language.id, now),
+    newLeftToday(userId, language.id, now, moreNew, learner),
     listLessons(userId, languageCode, learner),
     listSpeak(userId, languageCode),
     getSummary(userId, languageCode, learner),

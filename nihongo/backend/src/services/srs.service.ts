@@ -56,7 +56,6 @@ import {
   stageCelebrations,
   studyItemFacets,
   studyItems,
-  userSettings,
   words,
   wordSenses
 } from '@nihongo/shared/db/schema'
@@ -97,7 +96,7 @@ import { glossary, withDialogueTokens, withPromptTokens } from './glossary.servi
 import { hintFromLesson, loadLessons } from './grammar.service.js'
 import { loadLearnerState } from './learner-state.service.js'
 import { loadSeries } from './phonetics.service.js'
-import { loadUserContext, recomputeProgress, studyLevelOf } from './progress.service.js'
+import { learnerProfile, loadUserContext, recomputeProgress, studyLevelOf } from './progress.service.js'
 import { deferProgress } from './recompute.service.js'
 
 /**
@@ -147,19 +146,10 @@ function cardStateColumns(state: CardState) {
 }
 
 export async function loadPolicy(userId: string): Promise<{ policy: GhostPolicy, fsrsParams: Record<string, unknown> }> {
-  const [settings] = await db
-    .select({
-      threshold: userSettings.ghostThreshold,
-      factor: userSettings.ghostIntervalFactor,
-      fsrsParams: userSettings.fsrsParams
-    })
-    .from(userSettings)
-    .where(eq(userSettings.userId, userId))
-    .limit(1)
+  const { settings } = await learnerProfile(userId)
 
   const policy = ghostPolicySchema.parse({
-    ...(settings?.threshold !== undefined ? { threshold: settings.threshold } : {}),
-    ...(settings?.factor !== undefined ? { intervalFactor: Number(settings.factor) } : {})
+    ...(settings ? { threshold: settings.ghostThreshold, intervalFactor: Number(settings.ghostIntervalFactor) } : {})
   })
 
   return { policy, fsrsParams: settings?.fsrsParams ?? {} }
@@ -1335,11 +1325,8 @@ export async function wordsFirstMet(userIds: string[], since: Date): Promise<Arr
 
 /** Today's new words and extra practice, from the learner's settings and what they have started. */
 export async function todayBudget(userId: string, languageId: string, now: Date, moreNew = 0): Promise<NewBudget> {
-  const [[settings], cards, words] = await Promise.all([
-    db.select({ dailyNewLimit: userSettings.dailyNewLimit, extraPracticeMultiple: userSettings.extraPracticeMultiple })
-      .from(userSettings)
-      .where(eq(userSettings.userId, userId))
-      .limit(1),
+  const [{ settings }, cards, words] = await Promise.all([
+    learnerProfile(userId),
     newCardsToday(userId, languageId, now),
     newWordsToday(userId, languageId, now)
   ])
