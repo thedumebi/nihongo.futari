@@ -70,6 +70,8 @@ export interface LearnerState {
   itemStates: Map<string, number>
   /** Kanji with a learned card (state 2 or more) on any of their items. */
   knownKanji: Set<string>
+  /** Words with a learned card (state 2 or more) that is not suspended. */
+  knownWords: Set<string>
   /** Items whose lesson has been opened. */
   lessonsViewed: Set<string>
 }

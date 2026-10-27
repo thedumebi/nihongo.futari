@@ -18,6 +18,7 @@ import { and, asc, eq, inArray } from 'drizzle-orm'
 import { assetUrl } from '../lib/assets.js'
 import { dialogueAudioPath, VOICE_LEARNER, VOICE_OTHER } from '../lib/audio-key.js'
 import { respelledVersion } from '../lib/spoken-text.js'
+import { languageByCode } from './catalogue.service.js'
 import { coverageOf, dialogueWords, knownWordIds } from './coverage.service.js'
 import { glossary, glossLine } from './glossary.service.js'
 
@@ -30,6 +31,9 @@ import { glossary, glossLine } from './glossary.service.js'
  * the queue is still what brings it back.
  */
 export async function listDialogues(languageCode: string, userId: string): Promise<DialogueListResponse> {
+  const language = await languageByCode(languageCode)
+  if (!language)
+    return { dialogues: [] }
   const rows = await db
     .select({
       id: dialogues.id,
@@ -56,7 +60,7 @@ export async function listDialogues(languageCode: string, userId: string): Promi
 
   const [digest, known, practisedRows] = await Promise.all([
     turnDigest(),
-    knownWordIds(userId),
+    knownWordIds(userId, language.id),
     db.selectDistinct({ code: learningActivities.refId }).from(learningActivities).where(and(eq(learningActivities.userId, userId), eq(learningActivities.kind, 'conversation')))
   ])
   const practised = new Set(practisedRows.map(r => r.code))

@@ -1,8 +1,9 @@
 import db from '@nihongo/shared/db'
-import { dialogues, dialogueTurns, readingLines, readings, srsCards, studyItemFacets, studyItems } from '@nihongo/shared/db/schema'
-import { and, asc, eq, gte, isNotNull } from 'drizzle-orm'
+import { dialogues, dialogueTurns, readingLines, readings, studyItems } from '@nihongo/shared/db/schema'
+import { and, asc, eq, isNotNull } from 'drizzle-orm'
 
 import { glossary, glossLine } from './glossary.service.js'
+import { learnerState } from './learner-state.service.js'
 
 /**
  * "You can read this now": how much of a speech or conversation the learner
@@ -65,16 +66,12 @@ export async function dialogueWords(languageCode: string, dialogueId: string): P
   return words
 }
 
-/** Words this learner knows: any card on the word past its learning steps. */
-export async function knownWordIds(userId: string, languageId?: string): Promise<Set<string>> {
-  const rows = await db.selectDistinct({ id: studyItems.wordId }).from(srsCards).innerJoin(studyItemFacets, eq(studyItemFacets.id, srsCards.facetId)).innerJoin(studyItems, eq(studyItems.id, studyItemFacets.studyItemId)).where(and(
-    eq(srsCards.userId, userId),
-    gte(srsCards.state, 2),
-    eq(srsCards.suspended, false),
-    isNotNull(studyItems.wordId),
-    ...(languageId ? [eq(srsCards.languageId, languageId)] : [])
-  ))
-  return new Set(rows.map(r => r.id!))
+/**
+ * Words this learner knows in a language: any card on the word past its
+ * learning steps, not suspended. Read off the request's read of the cards.
+ */
+export async function knownWordIds(userId: string, languageId: string): Promise<Set<string>> {
+  return (await learnerState(userId, languageId)).knownWords
 }
 
 /** Known share of a text's words, 0–1; null for a text with nothing reviewable in it. */

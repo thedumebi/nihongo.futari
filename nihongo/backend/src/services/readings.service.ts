@@ -6,6 +6,7 @@ import { and, asc, count, eq } from 'drizzle-orm'
 
 import { assetUrl } from '../lib/assets.js'
 import { readingAudioPath } from '../lib/audio-key.js'
+import { cachedContent, languageByCode } from './catalogue.service.js'
 import { coverageOf, knownWordIds, readingWords } from './coverage.service.js'
 import { glossary, glossLine } from './glossary.service.js'
 
@@ -17,7 +18,28 @@ import { glossary, glossLine } from './glossary.service.js'
  * cannot reach a reader by any path through this file.
  */
 export async function listReadings(languageCode: string, levelCode: string | undefined, userId: string): Promise<ReadingListResponse> {
-  const rows = await db
+  const language = await languageByCode(languageCode)
+  if (!language)
+    return { readings: [] }
+  // One cached list per language, narrowed here: a level code from the request
+  // must never become a cache key of its own.
+  const rows = (await readingList(language.id)).filter(r => !levelCode || r.level === levelCode)
+
+  // What this learner knows, and which speeches they have read to the end.
+  const [known, readRows] = await Promise.all([
+    knownWordIds(userId, language.id),
+    db.selectDistinct({ code: learningActivities.refId }).from(learningActivities).where(and(eq(learningActivities.userId, userId), eq(learningActivities.kind, 'reading')))
+  ])
+  const read = new Set(readRows.map(r => r.code))
+  const out = []
+  for (const { id, ...r } of rows)
+    out.push({ ...r, coverage: coverageOf(known, await readingWords(languageCode, id)), read: read.has(r.code) })
+  return { readings: out }
+}
+
+/** A language's published speeches with their line counts, easiest first: content, so cached. */
+function readingList(languageId: string) {
+  return cachedContent(`reading-list:${languageId}`, () => db
     .select({
       id: readings.id,
       code: readings.code,
@@ -27,27 +49,11 @@ export async function listReadings(languageCode: string, levelCode: string | und
       lineCount: count(readingLines.id)
     })
     .from(readings)
-    .innerJoin(languages, eq(languages.id, readings.languageId))
     .innerJoin(languageLevels, eq(languageLevels.id, readings.levelId))
     .leftJoin(readingLines, eq(readingLines.readingId, readings.id))
-    .where(and(
-      eq(languages.code, languageCode),
-      eq(readings.published, true),
-      levelCode ? eq(languageLevels.code, levelCode) : undefined
-    ))
+    .where(and(eq(readings.languageId, languageId), eq(readings.published, true)))
     .groupBy(readings.id, languageLevels.code, languageLevels.rank)
-    .orderBy(asc(languageLevels.rank), asc(readings.sortIndex))
-
-  // What this learner knows, and which speeches they have read to the end.
-  const [known, readRows] = await Promise.all([
-    knownWordIds(userId),
-    db.selectDistinct({ code: learningActivities.refId }).from(learningActivities).where(and(eq(learningActivities.userId, userId), eq(learningActivities.kind, 'reading')))
-  ])
-  const read = new Set(readRows.map(r => r.code))
-  const out = []
-  for (const { id, ...r } of rows)
-    out.push({ ...r, coverage: coverageOf(known, await readingWords(languageCode, id)), read: read.has(r.code) })
-  return { readings: out }
+    .orderBy(asc(languageLevels.rank), asc(readings.sortIndex)))
 }
 
 /**

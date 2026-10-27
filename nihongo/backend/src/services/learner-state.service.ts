@@ -29,7 +29,8 @@ export async function loadLearnerState(userId: string, languageId: string): Prom
         createdAt: srsCards.createdAt,
         itemId: studyItemFacets.studyItemId,
         live: sql<boolean>`${studyItemFacets.enabled} and ${studyItems.published} and ${studyItems.active}`,
-        kanjiId: studyItems.kanjiId
+        kanjiId: studyItems.kanjiId,
+        wordId: studyItems.wordId
       })
       .from(srsCards)
       .innerJoin(studyItemFacets, eq(studyItemFacets.id, srsCards.facetId))
@@ -44,14 +45,17 @@ export async function loadLearnerState(userId: string, languageId: string): Prom
     itemsWithCard: new Set(),
     itemStates: new Map(),
     knownKanji: new Set(),
+    knownWords: new Set(),
     lessonsViewed: new Set(views.map(r => r.studyItemId))
   }
-  for (const { facetId, kanjiId, ...card } of cards) {
+  for (const { facetId, kanjiId, wordId, ...card } of cards) {
     state.cards.set(facetId, card)
     state.itemsWithCard.add(card.itemId)
     state.itemStates.set(card.itemId, Math.max(card.state, state.itemStates.get(card.itemId) ?? 0))
     if (kanjiId !== null && card.state >= 2)
       state.knownKanji.add(kanjiId)
+    if (wordId !== null && card.state >= 2 && !card.suspended)
+      state.knownWords.add(wordId)
   }
   return state
 }
