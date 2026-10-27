@@ -89,14 +89,15 @@ import { and, asc, desc, eq, gt, gte, inArray, isNotNull, isNull, lt, lte, notIn
 
 import { assetUrl, withAssetUrls, withDialogueAudio, withSpeakAudio } from '@/lib/assets.js'
 import { pickPrompt } from '@/lib/prompt-pick.js'
+import { perRequest } from '@/lib/request-scope.js'
 
-import { cachedContent, catalogue, catalogueUnits } from './catalogue.service.js'
+import { cachedContent, catalogue, catalogueUnits, languageByCode } from './catalogue.service.js'
 import { withCurrentAudio } from './clips.service.js'
 import { glossary, withDialogueTokens, withPromptTokens } from './glossary.service.js'
 import { hintFromLesson, loadLessons } from './grammar.service.js'
 import { loadLearnerState } from './learner-state.service.js'
 import { loadSeries } from './phonetics.service.js'
-import { loadUserContext, recomputeProgress } from './progress.service.js'
+import { loadUserContext, recomputeProgress, studyLevelOf } from './progress.service.js'
 import { deferProgress } from './recompute.service.js'
 
 /**
@@ -236,8 +237,15 @@ function dueCardsWhere(userId: string, languageId: string, at: Date): SQL {
 export async function countDue(
   userId: string,
   languageId: string,
-  at: Date = new Date()
+  at?: Date
 ): Promise<{ items: number, cards: number }> {
+  // "Now" is one moment to a request: Today and its summary both ask.
+  if (!at)
+    return perRequest(`count-due:${userId}:${languageId}`, () => countDueAt(userId, languageId, new Date()))
+  return countDueAt(userId, languageId, at)
+}
+
+async function countDueAt(userId: string, languageId: string, at: Date): Promise<{ items: number, cards: number }> {
   const [row] = await db
     .select({
       items: sql<number>`count(distinct ${studyItems.id})`.mapWith(Number),
@@ -1114,6 +1122,7 @@ export async function claimStageCelebration(
   ).map(({ levelId, ...marks }) => [levelId, marks]))
 
   const seen = await rowsFor()
+  let wrote = false
   for (const p of progress) {
     const levelId = idByCode.get(p.level)
     if (!levelId)
@@ -1124,6 +1133,7 @@ export async function claimStageCelebration(
     // First sight of a level: record where it is and say nothing.
     if (!marks) {
       await db.insert(stageCelebrations).values({ userId, levelId, ...next.marks }).onConflictDoNothing()
+      wrote = true
       continue
     }
 
@@ -1146,6 +1156,7 @@ export async function claimStageCelebration(
           eq(stageCelebrations.levelId, levelId),
           lt(stageCelebrations.highestStageSeen, p.stage)
         ))
+      wrote = true
       continue
     }
 
@@ -1155,12 +1166,14 @@ export async function claimStageCelebration(
         .update(stageCelebrations)
         .set({ lastStageSeen: p.stage, updatedAt: new Date() })
         .where(and(eq(stageCelebrations.userId, userId), eq(stageCelebrations.levelId, levelId)))
+      wrote = true
     }
   }
 
   // Whatever is waiting to be shown, this pass or one a lost response never
-  // delivered. It stays until a screen says it has shown it.
-  const after = await rowsFor()
+  // delivered. It stays until a screen says it has shown it. Read again only
+  // if something here wrote; otherwise it is what was read above.
+  const after = wrote ? await rowsFor() : seen
   for (const p of progress) {
     const marks = after.get(idByCode.get(p.level) ?? '')
     if (marks?.pendingTo != null && marks.pendingFrom != null)
@@ -1277,12 +1290,12 @@ export async function newLeftToday(userId: string, languageId: string, now: Date
   stageWait: StageProgress | null
 }> {
   const learner = state ?? loadLearnerState(userId, languageId)
-  const [{ rows, cat }, [settings]] = await Promise.all([
+  const [{ rows, cat }, studyLevel] = await Promise.all([
     stageRows(userId, languageId, learner),
-    db.select({ studyLevel: userSettings.studyLevel }).from(userSettings).where(eq(userSettings.userId, userId)).limit(1)
+    studyLevelOf(userId)
   ])
   const ceilings = ceilingsFrom(rows)
-  const levelCode = settings?.studyLevel ?? ''
+  const levelCode = studyLevel ?? ''
   const level = levelCode ? cat.levels.find(l => l.code === levelCode) : undefined
   const [budget, available] = await Promise.all([
     todayBudget(userId, languageId, now, moreNew),
@@ -1343,11 +1356,7 @@ export async function getQueue(userId: string, query: StudyQueueQuery): Promise<
   const now = new Date()
   const horizon = new Date(now.getTime() + query.horizonDays * 24 * 60 * 60 * 1000)
 
-  const [language] = await db
-    .select({ id: languages.id })
-    .from(languages)
-    .where(eq(languages.code, query.languageCode))
-    .limit(1)
+  const language = await languageByCode(query.languageCode)
 
   if (!language) {
     return { items: [], counts: { due: 0, dueCards: 0, learning: 0, newAvailable: 0, extrasAvailable: 0, ghost: 0, newToday: 0, newLimit: 0, extrasToday: 0, extrasLimit: 0 }, gate: null, progress: [], serverTime: now.toISOString() }
@@ -1868,11 +1877,7 @@ export async function getQueue(userId: string, query: StudyQueueQuery): Promise<
  */
 export async function getDecks(userId: string, languageCode: string, level?: string): Promise<StudyDecksResponse> {
   const now = new Date()
-  const [language] = await db
-    .select({ id: languages.id })
-    .from(languages)
-    .where(eq(languages.code, languageCode))
-    .limit(1)
+  const language = await languageByCode(languageCode)
   if (!language)
     return { decks: [] }
 
@@ -2031,11 +2036,7 @@ export async function nextDueAfter(userId: string, languageId: string, now: Date
 export async function getDueList(userId: string, query: DueListQuery): Promise<DueListResponse> {
   const now = new Date()
 
-  const [language] = await db
-    .select({ id: languages.id })
-    .from(languages)
-    .where(eq(languages.code, query.languageCode))
-    .limit(1)
+  const language = await languageByCode(query.languageCode)
   if (!language)
     return { items: [], total: 0, totalCards: 0, byKind: [], serverTime: now.toISOString(), nextDueAt: null }
 
@@ -2238,11 +2239,7 @@ function currentStagePredicate(ceilings: Map<string, number>, stageSize: number)
  * because fetching subjects for 280 stages to show six of them is waste.
  */
 export async function getCourse(userId: string, languageCode: string): Promise<CourseResponse> {
-  const [language] = await db
-    .select({ id: languages.id })
-    .from(languages)
-    .where(eq(languages.code, languageCode))
-    .limit(1)
+  const language = await languageByCode(languageCode)
   if (!language)
     return { levels: [] }
 

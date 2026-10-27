@@ -8,13 +8,14 @@ import {
   kanji,
   kanjiReadings,
   languageLevels,
-  languages,
   phoneticSeries,
   phoneticSeriesMembers,
   sources,
   words
 } from '@nihongo/shared/db/schema'
 import { and, asc, eq, sql } from 'drizzle-orm'
+
+import { languageByCode } from './catalogue.service.js'
 
 /**
  * One kanji, everything known about it.
@@ -24,7 +25,7 @@ import { and, asc, eq, sql } from 'drizzle-orm'
  * strokes, and that the explanation carries a citation you can check.
  */
 export async function getKanjiDetail(languageCode: string, character: string): Promise<KanjiDetail | null> {
-  const [language] = await db.select({ id: languages.id }).from(languages).where(eq(languages.code, languageCode)).limit(1)
+  const language = await languageByCode(languageCode)
   if (!language)
     return null
 

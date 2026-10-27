@@ -1,10 +1,7 @@
 import type { LessonFirst, LessonListResponse, Today } from '@nihongo/shared/types'
 
-import db from '@nihongo/shared/db'
-import { languages } from '@nihongo/shared/db/schema'
-import { eq } from 'drizzle-orm'
-
 import { unseenAchievements } from './achievements.service.js'
+import { languageByCode } from './catalogue.service.js'
 import { pendingRequestCount } from './friends.service.js'
 import { loadLearnerState } from './learner-state.service.js'
 import { listLessons } from './lesson.service.js'
@@ -20,7 +17,7 @@ import { claimStageCelebration, countDue, newLeftToday, nextDueAfter, stageProgr
  * order. Nothing waits when there is no lesson left to take.
  */
 export async function lessonFirst(userId: string, languageCode: string, lessons?: LessonListResponse): Promise<LessonFirst | null> {
-  const [language] = await db.select({ id: languages.id }).from(languages).where(eq(languages.code, languageCode)).limit(1)
+  const language = await languageByCode(languageCode)
   if (!language)
     return null
   const [{ done, day }, list] = await Promise.all([
@@ -39,7 +36,7 @@ export async function lessonFirst(userId: string, languageCode: string, lessons?
  * One request so the screen paints at once instead of four spinners.
  */
 export async function getToday(userId: string, languageCode: string, moreNew = 0): Promise<Today | null> {
-  const [language] = await db.select({ id: languages.id }).from(languages).where(eq(languages.code, languageCode)).limit(1)
+  const language = await languageByCode(languageCode)
   if (!language)
     return null
 

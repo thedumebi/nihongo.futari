@@ -7,6 +7,8 @@ import defaultHook from '@/openapi/default-hook.js'
 
 import type { AppBindings } from './types.js'
 
+import { requestScope } from './request-scope.js'
+
 export function createRouter() {
   return new OpenAPIHono<AppBindings>({ strict: false, defaultHook })
 }
@@ -21,6 +23,7 @@ export default function createApp() {
   }))
   app.use(serveEmojiFavicon('🧪'))
   app.use(pinoLogger())
+  app.use(requestScope)
 
   app.notFound(notFound)
   app.onError(onError)

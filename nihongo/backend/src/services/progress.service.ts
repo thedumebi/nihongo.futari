@@ -7,7 +7,6 @@ import {
   kana,
   kanji,
   languageLevels,
-  languages,
   learningActivities,
   srsCards,
   srsDailyStats,
@@ -24,8 +23,10 @@ import {
 import { aggregateReviews, computeStreak, DEFAULT_DAY_BOUNDARY_HOUR, QUEST_XP, questProgress, questsFor, replay, reviewGoal, studyDateFor, studyDayRange, xpToLevel } from '@nihongo/shared/lib'
 import { and, eq, gte, inArray, isNull, lt, sql } from 'drizzle-orm'
 
+import { perRequest } from '@/lib/request-scope.js'
+
 import { recomputeAchievements } from './achievements.service.js'
-import { catalogue } from './catalogue.service.js'
+import { catalogue, languageByCode } from './catalogue.service.js'
 import { ghostBossHasCards } from './games.service.js'
 import { loadItemStates } from './learner-state.service.js'
 import { countDue, loadPolicy, newWordsToday } from './srs.service.js'
@@ -53,6 +54,18 @@ interface UserContext {
 }
 
 export async function loadUserContext(userId: string): Promise<UserContext> {
+  return perRequest(`user-context:${userId}`, () => readUserContext(userId))
+}
+
+/** The level the learner chose to study, or null for none; once per request. */
+export async function studyLevelOf(userId: string): Promise<string | null> {
+  return perRequest(`study-level:${userId}`, async () => {
+    const [row] = await db.select({ level: userSettings.studyLevel }).from(userSettings).where(eq(userSettings.userId, userId)).limit(1)
+    return row?.level ?? null
+  })
+}
+
+async function readUserContext(userId: string): Promise<UserContext> {
   const [row] = await db
     .select({ timezone: users.timezone, dayBoundaryHour: userSettings.dayBoundaryHour })
     .from(users)
@@ -422,7 +435,7 @@ export async function studiedToday(userId: string, languageId: string, now = new
 
 /** Headline numbers for the progress page. All scoped to one user. */
 export async function getSummary(userId: string, languageCode = 'ja', state?: LearnerState): Promise<ProgressSummary> {
-  const [language] = await db.select({ id: languages.id }).from(languages).where(eq(languages.code, languageCode)).limit(1)
+  const language = await languageByCode(languageCode)
   const empty: ProgressSummary = {
     totalXp: 0,
     level: 1,
@@ -439,7 +452,7 @@ export async function getSummary(userId: string, languageCode = 'ja', state?: Le
   if (!language)
     return empty
 
-  const [[xp], [streak], [cards], due, [settings], cat, itemStates] = await Promise.all([
+  const [[xp], [streak], [cards], due, studyLevel, cat, itemStates] = await Promise.all([
     db
       .select({ totalXp: userXp.totalXp, level: userXp.level })
       .from(userXp)
@@ -471,7 +484,7 @@ export async function getSummary(userId: string, languageCode = 'ja', state?: Le
       .where(and(eq(srsCards.userId, userId), eq(srsCards.languageId, language.id))),
     // The canonical count, in items, exactly as the due list and Study report it.
     countDue(userId, language.id),
-    db.select({ level: userSettings.studyLevel }).from(userSettings).where(eq(userSettings.userId, userId)).limit(1),
+    studyLevelOf(userId),
     catalogue(language.id),
     state?.itemStates ?? loadItemStates(userId, language.id)
   ])
@@ -480,7 +493,7 @@ export async function getSummary(userId: string, languageCode = 'ja', state?: Le
   // was every card at every level — 33,691 — including kinds New words never
   // gives (grammar comes through lessons, Speak through its sessions), which
   // said nothing anyone could act on. Items never met: no card on any facet.
-  const newLevel = settings?.level ?? ''
+  const newLevel = studyLevel ?? ''
   const levelId = cat.levels.find(l => l.code === newLevel)?.id
   const unseen = cat.items.filter(item =>
     item.kind !== 'grammar' && item.kind !== 'speak'
@@ -511,11 +524,7 @@ export async function getSummary(userId: string, languageCode = 'ja', state?: Le
  * strange punishment for having forgotten once.
  */
 export async function getKnownKanji(userId: string, languageCode: string): Promise<KnownKanji> {
-  const [language] = await db
-    .select({ id: languages.id })
-    .from(languages)
-    .where(eq(languages.code, languageCode))
-    .limit(1)
+  const language = await languageByCode(languageCode)
   if (!language)
     return { characters: [] }
 
@@ -551,11 +560,7 @@ export async function getKnownKanji(userId: string, languageCode: string): Promi
  * matters — right after a big study session, when nothing has been retained yet.
  */
 export async function getReadiness(userId: string, languageCode: string, levelCode: string): Promise<Readiness | null> {
-  const [language] = await db
-    .select({ id: languages.id })
-    .from(languages)
-    .where(eq(languages.code, languageCode))
-    .limit(1)
+  const language = await languageByCode(languageCode)
   if (!language)
     return null
 

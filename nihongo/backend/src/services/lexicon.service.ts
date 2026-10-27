@@ -1,9 +1,11 @@
 import type { Lexicon } from '@nihongo/shared/lib'
 
 import db from '@nihongo/shared/db'
-import { languages, words } from '@nihongo/shared/db/schema'
+import { words } from '@nihongo/shared/db/schema'
 import { buildLexicon } from '@nihongo/shared/lib'
 import { and, eq, isNotNull } from 'drizzle-orm'
+
+import { languageByCode } from './catalogue.service.js'
 
 /**
  * The reading lexicon, built once per process.
@@ -31,11 +33,7 @@ export function getLexicon(languageCode: string): Promise<Lexicon> {
 }
 
 async function load(languageCode: string): Promise<Lexicon> {
-  const [language] = await db
-    .select({ id: languages.id })
-    .from(languages)
-    .where(eq(languages.code, languageCode))
-    .limit(1)
+  const language = await languageByCode(languageCode)
   if (!language)
     return buildLexicon([])
 

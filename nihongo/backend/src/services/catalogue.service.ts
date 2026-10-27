@@ -1,7 +1,8 @@
-import type { Catalogue, CatalogueItem, CatalogueUnit } from '@nihongo/shared/types'
+import type { Catalogue, CatalogueItem, CatalogueUnit, Language } from '@nihongo/shared/types'
 
 import { pino } from '@nihongo/shared'
 import db from '@nihongo/shared/db'
+import { languages } from '@nihongo/shared/db/schema'
 import { sql } from 'drizzle-orm'
 
 /**
@@ -163,6 +164,18 @@ async function loadUnits(languageId: string): Promise<CatalogueUnit[]> {
 /** A language's published units that hold items, in `sort_index` order, cached like the catalogue. */
 export async function catalogueUnits(languageId: string): Promise<CatalogueUnit[]> {
   return cachedContent(`units:${languageId}`, () => loadUnits(languageId))
+}
+
+/**
+ * A language by its code, or null if there is none. Asked by nearly every
+ * request, and languages change only with a deploy, so cached like the rest.
+ */
+export async function languageByCode(code: string): Promise<Pick<Language, 'id'> | null> {
+  // Every language under one key, so a code that is not one (it arrives
+  // straight from the request) is a miss in this map, not a new cache entry.
+  const byCode = await cachedContent('languages', async () =>
+    new Map((await db.select({ code: languages.code, id: languages.id }).from(languages)).map(l => [l.code, { id: l.id }])))
+  return byCode.get(code) ?? null
 }
 
 /**

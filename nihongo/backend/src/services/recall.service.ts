@@ -4,7 +4,6 @@ import db from '@nihongo/shared/db'
 import {
   kana,
   languageLevels,
-  languages,
   speakSessions,
   speakSteps,
   srsCards,
@@ -19,6 +18,7 @@ import { and, desc, eq, inArray, isNotNull, or, sql } from 'drizzle-orm'
 
 import { assetUrl, speakAnswerAudio, speakSay } from '../lib/assets.js'
 import { GLOSS_AUDIO_LEVELS, glossAudioPath } from '../lib/audio-key.js'
+import { languageByCode } from './catalogue.service.js'
 import { currentClips } from './clips.service.js'
 
 /**
@@ -39,7 +39,7 @@ const RECENT_MISS_DAYS = 7
 const MAX_SPEAK = 3
 
 export async function getRecallSession(userId: string, languageCode: string, size: number): Promise<RecallSession | null> {
-  const [language] = await db.select({ id: languages.id }).from(languages).where(eq(languages.code, languageCode)).limit(1)
+  const language = await languageByCode(languageCode)
   if (!language)
     return null
 

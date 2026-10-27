@@ -1,12 +1,12 @@
 import type { DeferredRecompute, RecordActivityInput, RecordActivityResult } from '@nihongo/shared/types'
 
 import db from '@nihongo/shared/db'
-import { languages, learningActivities, xpEvents } from '@nihongo/shared/db/schema'
+import { learningActivities, xpEvents } from '@nihongo/shared/db/schema'
 import { studyDateFor } from '@nihongo/shared/lib'
 import { XP_FOR_ACTIVITY } from '@nihongo/shared/types'
-import { eq } from 'drizzle-orm'
 import { randomUUID } from 'node:crypto'
 
+import { languageByCode } from './catalogue.service.js'
 import { loadUserContext, recomputeHabit } from './progress.service.js'
 import { deferHabit } from './recompute.service.js'
 
@@ -74,6 +74,6 @@ export async function recordActivity(
 
 /** The same, for a caller that knows the language by its code. */
 export async function recordActivityFor(userId: string, languageCode: string, input: RecordActivityInput, deferred?: DeferredRecompute): Promise<RecordActivityResult | null> {
-  const [language] = await db.select({ id: languages.id }).from(languages).where(eq(languages.code, languageCode)).limit(1)
+  const language = await languageByCode(languageCode)
   return language ? recordActivity(userId, language.id, input, { deferred }) : null
 }

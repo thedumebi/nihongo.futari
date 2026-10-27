@@ -6,6 +6,8 @@ import { kanji, languages, phoneticSeries, phoneticSeriesMembers } from '@nihong
 import { exampleWord, kanjiParts, orderMembers, seriesStatus } from '@nihongo/shared/lib'
 import { and, asc, desc, eq, gte, inArray, sql } from 'drizzle-orm'
 
+import { languageByCode } from './catalogue.service.js'
+
 /**
  * Phonetic series — "sound series".
  *
@@ -110,7 +112,7 @@ async function seriesStanding(seriesIds: string[], userId?: string): Promise<Map
 }
 
 export async function getSeries(languageCode: string, component: string): Promise<PhoneticSeriesView | null> {
-  const [language] = await db.select({ id: languages.id }).from(languages).where(eq(languages.code, languageCode)).limit(1)
+  const language = await languageByCode(languageCode)
   if (!language)
     return null
   return (await loadSeries(language.id, [component], new Set())).get(component) ?? null

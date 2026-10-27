@@ -35,7 +35,7 @@ import { DateTime } from 'luxon'
 import { withAssetUrls } from '../lib/assets.js'
 import { readingFor } from '../lib/token-reading.js'
 import { recordActivity } from './activities.service.js'
-import { cachedContent } from './catalogue.service.js'
+import { cachedContent, languageByCode } from './catalogue.service.js'
 import { withCurrentAudio } from './clips.service.js'
 import { glossary, glossLine, withPromptTokens } from './glossary.service.js'
 import { loadExamples, loadLessons } from './grammar.service.js'
@@ -165,11 +165,7 @@ async function lessonRows(languageId: string) {
 }
 
 export async function listLessons(userId: string, languageCode: string, state?: LearnerState): Promise<LessonListResponse> {
-  const [language] = await db
-    .select({ id: languages.id })
-    .from(languages)
-    .where(eq(languages.code, languageCode))
-    .limit(1)
+  const language = await languageByCode(languageCode)
   if (!language)
     return { levels: [], next: null }
 
@@ -280,7 +276,7 @@ export async function getLesson(userId: string, languageCode: string, slug: stri
   // characters and their sounds, not one pattern explained — so it takes its
   // own path rather than being forced through the grammar shape.
   if (slug.startsWith(KANA_SLUG_PREFIX)) {
-    const [language] = await db.select({ id: languages.id }).from(languages).where(eq(languages.code, languageCode)).limit(1)
+    const language = await languageByCode(languageCode)
     return language ? getKanaLesson(userId, language.id, slug) : null
   }
 
@@ -413,7 +409,7 @@ export async function completeLesson(
   deferred?: DeferredRecompute
 ): Promise<CompleteLessonResult | null> {
   if (slug.startsWith(KANA_SLUG_PREFIX)) {
-    const [language] = await db.select({ id: languages.id }).from(languages).where(eq(languages.code, languageCode)).limit(1)
+    const language = await languageByCode(languageCode)
     const items = language ? await kanaLessonItems(language.id, slug) : null
     if (!items || items.length === 0)
       return null

@@ -5,7 +5,7 @@ import { afterAll, afterEach, describe, expect, it, vi } from 'vitest'
 
 import { LANGUAGE_ID } from '@/test/learner-specs.js'
 
-import { cachedContent, catalogue, catalogueUnits, invalidateCatalogue } from './catalogue.service.js'
+import { cachedContent, catalogue, catalogueUnits, invalidateCatalogue, languageByCode } from './catalogue.service.js'
 
 /** A published item, to withdraw and put back. */
 async function publishedItem(): Promise<string> {
@@ -96,6 +96,11 @@ describe('the catalogue', () => {
     const units = await catalogueUnits(LANGUAGE_ID)
     expect(units.map(u => u.code)).toEqual([...new Set(expected.rows.map(r => r.code))])
     expect(units.flatMap(u => [...u.itemIds].map(id => `${u.code}:${id}`)).sort()).toEqual(expected.rows.map(r => `${r.code}:${r.study_item_id}`).sort())
+  })
+
+  it('finds a language by its code, and nothing for a code that is not one', async () => {
+    expect(await languageByCode('ja')).toEqual({ id: LANGUAGE_ID })
+    expect(await languageByCode('xx')).toBeNull()
   })
 
   it('runs a loader once, even one that hands back a query builder un-awaited', async () => {

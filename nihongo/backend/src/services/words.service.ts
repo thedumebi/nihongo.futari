@@ -6,7 +6,6 @@ import {
   etymologySources,
   kanji,
   languageLevels,
-  languages,
   sentences,
   sentenceTokens,
   sentenceTranslations,
@@ -19,6 +18,7 @@ import { and, asc, eq, inArray, sql } from 'drizzle-orm'
 
 import { assetUrl } from '@/lib/assets.js'
 
+import { languageByCode } from './catalogue.service.js'
 import { currentClips } from './clips.service.js'
 
 /**
@@ -29,7 +29,7 @@ import { currentClips } from './clips.service.js'
  * the two together in one place stops them disagreeing.
  */
 export async function getWordDetail(languageCode: string, id: string): Promise<WordDetail | null> {
-  const [language] = await db.select({ id: languages.id }).from(languages).where(eq(languages.code, languageCode)).limit(1)
+  const language = await languageByCode(languageCode)
   if (!language)
     return null
 

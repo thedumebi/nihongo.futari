@@ -1,8 +1,10 @@
 import type { WritingCharacter, WritingQueue } from '@nihongo/shared/types'
 
 import db from '@nihongo/shared/db'
-import { characterStrokes, kana, kanji, kanjiReadings, languages } from '@nihongo/shared/db/schema'
+import { characterStrokes, kana, kanji, kanjiReadings } from '@nihongo/shared/db/schema'
 import { and, asc, eq, inArray, isNotNull, sql } from 'drizzle-orm'
+
+import { languageByCode } from './catalogue.service.js'
 
 /**
  * Handwriting reference data.
@@ -32,8 +34,7 @@ function meaningOf(meanings: Array<{ gloss: string, lang: string }> | null): str
 }
 
 async function languageId(languageCode: string): Promise<string | null> {
-  const [row] = await db.select({ id: languages.id }).from(languages).where(eq(languages.code, languageCode)).limit(1)
-  return row?.id ?? null
+  return (await languageByCode(languageCode))?.id ?? null
 }
 
 async function strokesFor(
