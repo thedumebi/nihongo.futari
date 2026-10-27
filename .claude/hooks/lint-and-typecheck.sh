@@ -110,7 +110,10 @@ if [[ -n "$PROJECT" && -n "$SUBPKG" && -n "$TYPECHECKER" ]]; then
   if [[ -d "$PKG_DIR" && -f "$PKG_DIR/tsconfig.json" ]]; then
     echo "[HOOK] Running typecheck for $PROJECT/$SUBPKG ($TYPECHECKER)..." >&2
     set +e
-    TYPECHECK_OUTPUT=$(cd "$PKG_DIR" && npx "$TYPECHECKER" --noEmit 2>&1 | grep -A 2 "$(basename "$FILE")" | head -10)
+    # --incremental false: shared's tsconfig.json writes the build's own
+    # dist/.tsbuildinfo, and a check over a different file set (tests too)
+    # could leave the next build thinking it has nothing to emit.
+    TYPECHECK_OUTPUT=$(cd "$PKG_DIR" && npx "$TYPECHECKER" --noEmit --incremental false 2>&1 | grep -A 2 "$(basename "$FILE")" | head -10)
     TYPECHECK_EXIT=${PIPESTATUS[0]}
     set -e
   fi

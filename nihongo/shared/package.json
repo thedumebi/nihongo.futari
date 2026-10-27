@@ -59,7 +59,7 @@
     "drizzle:generate": "NODE_OPTIONS='--import tsx' dotenvx run -f ../backend/.env -- drizzle-kit generate --config=../backend/drizzle.config.ts",
     "create:db": "SCRIPT_SOURCE=shared dotenvx run --log-level=warn -f ../backend/.env -- tsx src/db/scripts/create-db.ts",
     "drop:db": "SCRIPT_SOURCE=shared dotenvx run --log-level=warn -f ../backend/.env -- tsx src/db/scripts/remove-db.ts",
-    "typecheck": "tsc -p tsconfig.build.json --noEmit"
+    "typecheck": "tsc -p tsconfig.json --noEmit --incremental false"
   },
   "dependencies": {
     "@dotenvx/dotenvx": "^1.48.2",
