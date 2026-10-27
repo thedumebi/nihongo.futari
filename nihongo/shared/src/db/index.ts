@@ -40,6 +40,8 @@ export const connection = new Pool({
   max: (env.DB_MIGRATING || env.DB_SEEDING) ? 1 : env.DB_POOL_MAX,
   idleTimeoutMillis: env.DB_POOL_IDLE_TIMEOUT_MS,
   connectionTimeoutMillis: env.DB_POOL_CONNECTION_TIMEOUT_MS,
+  // Idle connections live for minutes: notice one the network dropped.
+  keepAlive: true,
   ...(ssl ? { ssl } : {})
 })
 
@@ -65,6 +67,12 @@ function timedQuery(query: (...args: unknown[]) => unknown): (...args: unknown[]
     return (query(...args) as Promise<unknown>).finally(end)
   }
 }
+
+// An idle connection the server closes (a restart, an admin kill) is reported
+// here and dropped by the pool. Unheard, the event would end the process.
+connection.on('error', (err) => {
+  console.warn(`[db] idle connection lost: ${err.message}`)
+})
 
 connection.on('connect', (client) => {
   client.query = timedQuery(client.query.bind(client)) as typeof client.query

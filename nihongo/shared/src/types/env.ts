@@ -45,7 +45,11 @@ export const EnvSchema = z.object({
   // open fill the pool and queue the next request behind it. pg-main allows
   // 100 connections across every site on the box.
   DB_POOL_MAX: z.coerce.number().default(20),
-  DB_POOL_IDLE_TIMEOUT_MS: z.coerce.number().default(30000),
+  // Opening a connection costs more than most queries on this box, and with
+  // so little traffic a 30s idle timeout meant nearly every app open found the
+  // pool empty and waited on fresh handshakes (620-900 ms summed on Today).
+  // Ten minutes keeps a pool that is in use warm.
+  DB_POOL_IDLE_TIMEOUT_MS: z.coerce.number().default(600_000),
   DB_POOL_CONNECTION_TIMEOUT_MS: z.coerce.number().default(10000),
 
   // Auth

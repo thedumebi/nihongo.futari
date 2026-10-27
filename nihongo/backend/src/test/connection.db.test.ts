@@ -1,6 +1,6 @@
 import db, { connection, withQueryTiming } from '@nihongo/shared/db'
 import { sql } from 'drizzle-orm'
-import { afterAll, describe, expect, it } from 'vitest'
+import { afterAll, describe, expect, it, vi } from 'vitest'
 
 /**
  * The pool's connection settings reach Postgres. JIT in particular: left on,
@@ -51,5 +51,19 @@ describe('a pooled connection', () => {
     const [a, b] = await Promise.all([busy(many), busy(1)])
     expect([a.timing.queries, b.timing.queries]).toEqual([many, 1])
     expect(a.timing.waitMs + b.timing.waitMs).toBeGreaterThan(10)
+  })
+
+  it('drops an idle connection the server closes, and carries on', async () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
+    const [idle, other] = await Promise.all([connection.connect(), connection.connect()])
+    const pid = (await idle.query<{ pid: number }>('select pg_backend_pid() as pid')).rows[0]!.pid
+    idle.release()
+    await other.query('select pg_terminate_backend($1)', [pid])
+    other.release()
+    await vi.waitFor(() => {
+      expect(warn).toHaveBeenCalledWith(expect.stringContaining('[db] idle connection lost'))
+    })
+    expect((await db.execute<{ n: number }>(sql`select 1 as n`)).rows[0]?.n).toBe(1)
+    warn.mockRestore()
   })
 })
