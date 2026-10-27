@@ -51,7 +51,7 @@ export async function getToday(userId: string, languageCode: string, moreNew = 0
     newLeftToday(userId, language.id, now, moreNew, learner),
     listLessons(userId, languageCode, learner),
     listSpeak(userId, languageCode),
-    getSummary(userId, languageCode, learner),
+    getSummary(userId, languageCode),
     studiedToday(userId, language.id),
     todayQuests(userId, language.id),
     unseenAchievements(userId),

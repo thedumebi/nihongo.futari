@@ -38,7 +38,7 @@ function stateOf(cards: Record<string, LearnerCard> = {}, extra: Partial<Learner
 }
 
 const DUE = new Date('2026-01-01T00:00:00Z')
-const learned: LearnerCard = { state: 2, suspended: false, due: DUE, firstSeenAt: null, origin: 'queue', itemId: '', live: true }
+const learned: LearnerCard = { id: '', state: 2, suspended: false, due: DUE, firstSeenAt: null, origin: 'queue', createdAt: DUE, itemId: '', live: true }
 const learning: LearnerCard = { ...learned, state: 1 }
 
 describe('rollupStages', () => {

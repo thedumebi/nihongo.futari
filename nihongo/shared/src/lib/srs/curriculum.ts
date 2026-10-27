@@ -1,4 +1,5 @@
 import type { Catalogue, CatalogueFacet, CatalogueItem, DeckCounts, DueCount, InFlightCharge, ItemFilter, LearnerCard, LearnerState, StageRow } from '@/types/curriculum.js'
+import type { ProgressSummary } from '@/types/progress.js'
 import type { StageProgress } from '@/types/study.js'
 
 import { STAGE_PASS, STAGE_SIZE } from '@/constants/endpoints.js'
@@ -403,4 +404,27 @@ export function newWordsIn(state: LearnerState, start: Date, end: Date): number 
       n++
   }
   return n
+}
+
+/**
+ * The progress page's card numbers.
+ *
+ * `started` is every card that EXISTS, i.e. every item started. Deliberately
+ * not called "learned": it counted a card seen once the same as one genuinely
+ * retained, and sat directly above a coverage panel using the stricter
+ * graduated-only definition. `learned` is graduated past the learning steps.
+ * `learning` is how many are on a learning step, for the caption, NOT a
+ * headline: shown as a peer number it read as a second backlog. The due count
+ * itself is `dueCount`, the one definition every surface shares.
+ */
+export function cardTotals(state: LearnerState, now: Date): Pick<ProgressSummary, 'started' | 'learned' | 'learning'> {
+  let learned = 0
+  let learning = 0
+  for (const card of state.cards.values()) {
+    if (card.state >= 2)
+      learned++
+    if (card.due <= now && (card.state === 1 || card.state === 3) && !card.suspended)
+      learning++
+  }
+  return { started: state.cards.size, learned, learning }
 }

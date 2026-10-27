@@ -49,7 +49,7 @@ export interface Catalogue {
  * `itemId` (the facet's study item) and `live`, whether the facet is enabled
  * and the item published and active, which every due count requires.
  */
-export type LearnerCard = Pick<SrsCard, 'state' | 'suspended' | 'due' | 'firstSeenAt' | 'origin'> & {
+export type LearnerCard = Pick<SrsCard, 'id' | 'state' | 'suspended' | 'due' | 'firstSeenAt' | 'origin' | 'createdAt'> & {
   itemId: StudyItemFacet['studyItemId']
   live: boolean
 }

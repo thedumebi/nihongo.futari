@@ -20,11 +20,13 @@ export async function loadLearnerState(userId: string, languageId: string): Prom
     db
       .select({
         facetId: srsCards.facetId,
+        id: srsCards.id,
         state: srsCards.state,
         suspended: srsCards.suspended,
         due: srsCards.due,
         firstSeenAt: srsCards.firstSeenAt,
         origin: srsCards.origin,
+        createdAt: srsCards.createdAt,
         itemId: studyItemFacets.studyItemId,
         live: sql<boolean>`${studyItemFacets.enabled} and ${studyItems.published} and ${studyItems.active}`,
         kanjiId: studyItems.kanjiId

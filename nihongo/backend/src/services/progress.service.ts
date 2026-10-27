@@ -1,6 +1,6 @@
 import type { ActivityKind } from '@nihongo/shared/constants'
 import type { QuestProgress, ReviewGoalCard } from '@nihongo/shared/lib'
-import type { AggregateEvent, KnownKanji, LearnerProfile, LearnerState, ProgressSummary, Readiness, ReviewEvent, Streak } from '@nihongo/shared/types'
+import type { AggregateEvent, KnownKanji, LearnerProfile, ProgressSummary, Readiness, ReviewEvent, Streak } from '@nihongo/shared/types'
 
 import db from '@nihongo/shared/db'
 import {
@@ -20,7 +20,7 @@ import {
   userXp,
   xpEvents
 } from '@nihongo/shared/db/schema'
-import { aggregateReviews, computeStreak, DEFAULT_DAY_BOUNDARY_HOUR, QUEST_XP, questProgress, questsFor, replay, reviewGoal, studyDateFor, studyDayRange, xpToLevel } from '@nihongo/shared/lib'
+import { aggregateReviews, cardTotals, computeStreak, DEFAULT_DAY_BOUNDARY_HOUR, QUEST_XP, questProgress, questsFor, replay, reviewGoal, studyDateFor, studyDayRange, xpToLevel } from '@nihongo/shared/lib'
 import { and, eq, getTableColumns, gte, inArray, isNull, lt, sql } from 'drizzle-orm'
 
 import { perRequest } from '@/lib/request-scope.js'
@@ -28,7 +28,7 @@ import { perRequest } from '@/lib/request-scope.js'
 import { recomputeAchievements } from './achievements.service.js'
 import { catalogue, languageByCode } from './catalogue.service.js'
 import { ghostBossHasCards } from './games.service.js'
-import { loadItemStates } from './learner-state.service.js'
+import { learnerState } from './learner-state.service.js'
 import { countDue, loadPolicy, newWordsToday } from './srs.service.js'
 
 /**
@@ -248,47 +248,53 @@ export async function recomputeHabit(userId: string, languageId: string): Promis
  * were waiting when the day began.
  */
 async function reviewGoalCards(userId: string, languageId: string, day: { start: Date, end: Date }): Promise<ReviewGoalCard[]> {
-  const rows = await db.execute<{ id: string, state: number, due: Date, created_at: Date, reviewed: boolean }>(sql`
-    select c.id, c.state, c.due, c.created_at,
-      exists (select 1 from srs_review_logs l where l.user_id = c.user_id and l.card_id = c.id and l.reviewed_at >= ${day.start} and l.reviewed_at < ${day.end}) as reviewed
-    from srs_cards c
-    join study_item_facets f on f.id = c.facet_id and f.enabled
-    join study_items si on si.id = f.study_item_id and si.published and si.active
-    where c.user_id = ${userId} and c.language_id = ${languageId} and not c.suspended
-      and c.created_at < ${day.start}
-      and (
-        (c.state in (1, 2, 3) and c.due < ${day.end})
-        or exists (select 1 from srs_review_logs l where l.user_id = c.user_id and l.card_id = c.id and l.reviewed_at >= ${day.start} and l.reviewed_at < ${day.end})
-      )
-  `)
+  // The history up to the day's end of every card answered today: the answers
+  // today say which were reviewed, and the history before them what they were.
+  const answeredToday = db.select({ cardId: srsReviewLogs.cardId }).from(srsReviewLogs).where(and(eq(srsReviewLogs.userId, userId), eq(srsReviewLogs.languageId, languageId), gte(srsReviewLogs.reviewedAt, day.start), lt(srsReviewLogs.reviewedAt, day.end)))
+  const [state, logs] = await Promise.all([
+    learnerState(userId, languageId),
+    db.select({ id: srsReviewLogs.id, cardId: srsReviewLogs.cardId, rating: srsReviewLogs.rating, reviewedAt: srsReviewLogs.reviewedAt, clientId: srsReviewLogs.clientId })
+      .from(srsReviewLogs)
+      .where(and(eq(srsReviewLogs.userId, userId), eq(srsReviewLogs.languageId, languageId), inArray(srsReviewLogs.cardId, answeredToday), lt(srsReviewLogs.reviewedAt, day.end)))
+  ])
 
-  const answered = rows.rows.filter(r => r.reviewed).map(r => r.id)
+  const byCard = new Map<string, typeof logs>()
+  for (const log of logs)
+    byCard.set(log.cardId, [...(byCard.get(log.cardId) ?? []), log])
+  const reviewed = new Set([...byCard].filter(([, history]) => history.some(h => h.reviewedAt >= day.start)).map(([cardId]) => cardId))
+
+  const cards = [...state.cards.values()].filter(c =>
+    c.live && !c.suspended && c.createdAt < day.start
+    && ((c.state >= 1 && c.state <= 3 && c.due < day.end) || reviewed.has(c.id)))
+
   const before = new Map<string, { stateBefore: number, dueBefore: Date }>()
+  const answered = cards.filter(c => reviewed.has(c.id))
   if (answered.length > 0) {
-    const [{ fsrsParams }, logs] = await Promise.all([
-      loadPolicy(userId),
-      db.select({ id: srsReviewLogs.id, cardId: srsReviewLogs.cardId, rating: srsReviewLogs.rating, reviewedAt: srsReviewLogs.reviewedAt, clientId: srsReviewLogs.clientId })
-        .from(srsReviewLogs)
-        .where(and(eq(srsReviewLogs.userId, userId), inArray(srsReviewLogs.cardId, answered), lt(srsReviewLogs.reviewedAt, day.end)))
-    ])
-    const byCard = new Map<string, typeof logs>()
-    for (const log of logs)
-      byCard.set(log.cardId, [...(byCard.get(log.cardId) ?? []), log])
-    for (const [cardId, history] of byCard) {
+    const { fsrsParams } = await loadPolicy(userId)
+    for (const card of answered) {
+      const history = byCard.get(card.id) ?? []
       const at = new Map(history.map(h => [h.id, h.reviewedAt]))
       const { snapshots } = replay(history.map(h => ({ id: h.id, rating: h.rating as ReviewEvent['rating'], reviewedAt: h.reviewedAt, clientId: h.clientId })), fsrsParams)
       const first = snapshots.find(snap => at.get(snap.logId)! >= day.start)
       if (first)
-        before.set(cardId, { stateBefore: first.stateBefore, dueBefore: first.dueBefore })
+        before.set(card.id, { stateBefore: first.stateBefore, dueBefore: first.dueBefore })
     }
   }
 
-  return rows.rows.map(r => ({
-    state: Number(r.state),
-    due: new Date(r.due),
-    createdAt: new Date(r.created_at),
-    firstToday: r.reviewed ? before.get(r.id) ?? { stateBefore: null, dueBefore: null } : null
+  return cards.map(c => ({
+    state: c.state,
+    due: c.due,
+    createdAt: c.createdAt,
+    firstToday: reviewed.has(c.id) ? before.get(c.id) ?? { stateBefore: null, dueBefore: null } : null
   }))
+}
+
+/** The kinds of activity logged on one study day, once per request. */
+function activitiesOn(userId: string, languageId: string, localDate: string): Promise<ActivityKind[]> {
+  return perRequest(`activities:${userId}:${languageId}:${localDate}`, async () => {
+    const rows = await db.select({ kind: learningActivities.kind }).from(learningActivities).where(and(eq(learningActivities.userId, userId), eq(learningActivities.languageId, languageId), eq(learningActivities.localDate, localDate)))
+    return rows.map(r => r.kind as ActivityKind)
+  })
 }
 
 /**
@@ -304,7 +310,7 @@ export async function todayQuests(userId: string, languageId: string, now = new 
   const localDate = studyDateFor(now, timezone, dayBoundaryHour)
   const day = studyDayRange(localDate, timezone, dayBoundaryHour)
   const [activities, cards, newWords, ghosts] = await Promise.all([
-    db.select({ kind: learningActivities.kind }).from(learningActivities).where(and(eq(learningActivities.userId, userId), eq(learningActivities.languageId, languageId), eq(learningActivities.localDate, localDate))),
+    activitiesOn(userId, languageId, localDate),
     reviewGoalCards(userId, languageId, day),
     // Words, as the daily limit counts them: a second card of a word met
     // before is practice, not a new word.
@@ -318,7 +324,7 @@ export async function todayQuests(userId: string, languageId: string, now = new 
     quests: questProgress(questsFor(userId, localDate, goal.available, { ghosts }), {
       reviews: goal.reviewed,
       newWords,
-      activities: activities.map(a => ({ kind: a.kind as ActivityKind }))
+      activities: activities.map(kind => ({ kind }))
     })
   }
 }
@@ -411,17 +417,8 @@ async function persistStreak(
 export async function lessonDoneToday(userId: string, languageId: string, now = new Date()): Promise<{ done: boolean, day: string }> {
   const { timezone, dayBoundaryHour } = await loadUserContext(userId)
   const day = studyDateFor(now, timezone, dayBoundaryHour)
-  const [row] = await db
-    .select({ id: learningActivities.id })
-    .from(learningActivities)
-    .where(and(
-      eq(learningActivities.userId, userId),
-      eq(learningActivities.languageId, languageId),
-      eq(learningActivities.localDate, day),
-      inArray(learningActivities.kind, ['lesson', 'kana-lesson'])
-    ))
-    .limit(1)
-  return { done: row !== undefined, day }
+  const kinds = await activitiesOn(userId, languageId, day)
+  return { done: kinds.some(kind => kind === 'lesson' || kind === 'kana-lesson'), day }
 }
 
 /** Whether the learner has done anything counted today, in their own study day. */
@@ -435,16 +432,11 @@ export async function studiedToday(userId: string, languageId: string, now = new
     .limit(1)
   if ((row?.reviews ?? 0) > 0)
     return true
-  const [activity] = await db
-    .select({ id: learningActivities.id })
-    .from(learningActivities)
-    .where(and(eq(learningActivities.userId, userId), eq(learningActivities.languageId, languageId), eq(learningActivities.localDate, today)))
-    .limit(1)
-  return activity !== undefined
+  return (await activitiesOn(userId, languageId, today)).length > 0
 }
 
 /** Headline numbers for the progress page. All scoped to one user. */
-export async function getSummary(userId: string, languageCode = 'ja', state?: LearnerState): Promise<ProgressSummary> {
+export async function getSummary(userId: string, languageCode = 'ja'): Promise<ProgressSummary> {
   const language = await languageByCode(languageCode)
   const empty: ProgressSummary = {
     totalXp: 0,
@@ -462,7 +454,7 @@ export async function getSummary(userId: string, languageCode = 'ja', state?: Le
   if (!language)
     return empty
 
-  const [[xp], [streak], [cards], due, studyLevel, cat, itemStates] = await Promise.all([
+  const [[xp], [streak], learner, due, studyLevel, cat] = await Promise.all([
     db
       .select({ totalXp: userXp.totalXp, level: userXp.level })
       .from(userXp)
@@ -473,31 +465,14 @@ export async function getSummary(userId: string, languageCode = 'ja', state?: Le
       .from(userStreaks)
       .where(and(eq(userStreaks.userId, userId), eq(userStreaks.languageId, language.id)))
       .limit(1),
-    db
-      .select({
-        // Every card that EXISTS — i.e. every item started. Deliberately not
-        // called "learned" any more: it counted a card seen once the same as one
-        // genuinely retained, and sat directly above a coverage panel using the
-        // stricter graduated-only definition. Two numbers, one page, contradicting
-        // each other.
-        started: sql<number>`count(*)`.mapWith(Number),
-        // Graduated past the learning steps: the honest "learned".
-        learned: sql<number>`count(*) filter (where ${srsCards.state} >= 2)`.mapWith(Number),
-        // How many of those are on a learning step, for the caption. NOT a
-        // headline: shown as a peer number it read as a second backlog, and this
-        // page said "5 due · 21 in learning" while the list it linked to showed
-        // 26. `due` itself now comes from `countDue` below — the one definition
-        // every surface shares — rather than a fourth one written here.
-        learning: sql<number>`count(*) filter (where ${srsCards.due} <= now() and ${srsCards.state} in (1, 3) and not ${srsCards.suspended})`.mapWith(Number)
-      })
-      .from(srsCards)
-      .where(and(eq(srsCards.userId, userId), eq(srsCards.languageId, language.id))),
+    learnerState(userId, language.id),
     // The canonical count, in items, exactly as the due list and Study report it.
     countDue(userId, language.id),
     studyLevelOf(userId),
-    catalogue(language.id),
-    state?.itemStates ?? loadItemStates(userId, language.id)
+    catalogue(language.id)
   ])
+  const itemStates = learner.itemStates
+  const cards = cardTotals(learner, new Date())
 
   // What New words can still hand out, at the learner's level, in ITEMS. It
   // was every card at every level — 33,691 — including kinds New words never
@@ -515,11 +490,11 @@ export async function getSummary(userId: string, languageCode = 'ja', state?: Le
     level: xp?.level ?? 1,
     currentStreak: streak?.current ?? 0,
     longestStreak: streak?.longest ?? 0,
-    started: cards?.started ?? 0,
-    learned: cards?.learned ?? 0,
+    started: cards.started,
+    learned: cards.learned,
     due: due.items,
     dueCards: due.cards,
-    learning: cards?.learning ?? 0,
+    learning: cards.learning,
     newAvailable: unseen,
     newLevel
   }
