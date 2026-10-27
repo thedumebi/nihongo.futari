@@ -1,4 +1,4 @@
-import type { Catalogue, CatalogueFacet, CatalogueItem, DeckCounts, InFlightCharge, ItemFilter, LearnerState, StageRow } from '@/types/curriculum.js'
+import type { Catalogue, CatalogueFacet, CatalogueItem, DeckCounts, DueCount, InFlightCharge, ItemFilter, LearnerCard, LearnerState, StageRow } from '@/types/curriculum.js'
 import type { StageProgress } from '@/types/study.js'
 
 import { STAGE_PASS, STAGE_SIZE } from '@/constants/endpoints.js'
@@ -341,4 +341,66 @@ export function inFlightCharge(catalogue: Catalogue, state: LearnerState, inFlig
     }
   }
   return { words, extras }
+}
+
+/** A card the scheduler holds: started, not suspended, on live content. */
+function scheduled(card: LearnerCard): boolean {
+  return card.live && !card.suspended && card.state >= 1 && card.state <= 3
+}
+
+/** What is due at `at` (`dueCardsWhere` in srs.service): due on or before it. */
+export function dueCount(state: LearnerState, at: Date): DueCount {
+  const items = new Set<string>()
+  let cards = 0
+  for (const card of state.cards.values()) {
+    if (scheduled(card) && card.due <= at) {
+      cards++
+      items.add(card.itemId)
+    }
+  }
+  return { items: items.size, cards }
+}
+
+/** When the next card not yet due comes due, or null if none is waiting. */
+export function nextDue(state: LearnerState, now: Date): Date | null {
+  let soonest: Date | null = null
+  for (const card of state.cards.values()) {
+    if (scheduled(card) && card.due > now && (!soonest || card.due < soonest))
+      soonest = card.due
+  }
+  return soonest
+}
+
+/** Queue-made cards first answered in [start, end): today's new cards. */
+export function newCardsIn(state: LearnerState, start: Date, end: Date): number {
+  let n = 0
+  for (const card of state.cards.values()) {
+    if (card.origin === 'queue' && card.firstSeenAt && card.firstSeenAt >= start && card.firstSeenAt < end)
+      n++
+  }
+  return n
+}
+
+/**
+ * Items whose first card ever was first answered in [start, end), every card
+ * of them made by the queue: today's new words. A word met before, or brought
+ * in by a lesson, the dictionary or Speak, is not one.
+ */
+export function newWordsIn(state: LearnerState, start: Date, end: Date): number {
+  const first = new Map<string, Date | null>()
+  const byQueue = new Map<string, boolean>()
+  for (const card of state.cards.values()) {
+    const seen = first.get(card.itemId) ?? null
+    if (card.firstSeenAt && (!seen || card.firstSeenAt < seen))
+      first.set(card.itemId, card.firstSeenAt)
+    else if (!first.has(card.itemId))
+      first.set(card.itemId, null)
+    byQueue.set(card.itemId, (byQueue.get(card.itemId) ?? true) && card.origin === 'queue')
+  }
+  let n = 0
+  for (const [itemId, seen] of first) {
+    if (seen && seen >= start && seen < end && byQueue.get(itemId))
+      n++
+  }
+  return n
 }

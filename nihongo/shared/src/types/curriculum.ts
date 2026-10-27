@@ -44,11 +44,25 @@ export interface Catalogue {
   seriesKanji: Map<string, string[]>
 }
 
-export type LearnerCard = Pick<SrsCard, 'state' | 'suspended' | 'due'>
+/**
+ * One of the learner's cards, with what the counts need of its facet and item:
+ * `itemId` (the facet's study item) and `live`, whether the facet is enabled
+ * and the item published and active, which every due count requires.
+ */
+export type LearnerCard = Pick<SrsCard, 'state' | 'suspended' | 'due' | 'firstSeenAt' | 'origin'> & {
+  itemId: StudyItemFacet['studyItemId']
+  live: boolean
+}
+
+/** How much is due, in items (the headline) and in cards. */
+export interface DueCount {
+  items: number
+  cards: number
+}
 
 /** One learner's cards in one language, and the lessons they have opened. */
 export interface LearnerState {
-  /** By facet id. */
+  /** By facet id, in `due, facet_id` order as Postgres sorts them. */
   cards: Map<string, LearnerCard>
   /** Items with a card on any facet, enabled or not. */
   itemsWithCard: Set<string>

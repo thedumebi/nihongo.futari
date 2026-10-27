@@ -7,6 +7,7 @@ import type {
   CourseLevel,
   CourseResponse,
   DeferredRecompute,
+  DueCount,
   DueListQuery,
   DueListResponse,
   GhostPolicy,
@@ -67,6 +68,7 @@ import {
   clampReviewedAt,
   deckCounts,
   distinguishingStart,
+  dueCount,
   effectiveCardState,
   emptyCardState,
   evaluateGhost,
@@ -75,6 +77,8 @@ import {
   matchesFilter,
   newBudget,
   newCandidates,
+  newCardsIn,
+  newWordsIn,
   nextCelebration,
   progressFrom,
   replay,
@@ -94,7 +98,7 @@ import { cachedContent, catalogue, catalogueUnits, languageByCode } from './cata
 import { withCurrentAudio } from './clips.service.js'
 import { glossary, withDialogueTokens, withPromptTokens } from './glossary.service.js'
 import { hintFromLesson, loadLessons } from './grammar.service.js'
-import { loadLearnerState } from './learner-state.service.js'
+import { learnerState } from './learner-state.service.js'
 import { loadSeries } from './phonetics.service.js'
 import { learnerProfile, loadUserContext, recomputeProgress, studyLevelOf } from './progress.service.js'
 import { deferProgress } from './recompute.service.js'
@@ -228,25 +232,11 @@ export async function countDue(
   userId: string,
   languageId: string,
   at?: Date
-): Promise<{ items: number, cards: number }> {
+): Promise<DueCount> {
   // "Now" is one moment to a request: Today and its summary both ask.
   if (!at)
-    return perRequest(`count-due:${userId}:${languageId}`, () => countDueAt(userId, languageId, new Date()))
-  return countDueAt(userId, languageId, at)
-}
-
-async function countDueAt(userId: string, languageId: string, at: Date): Promise<{ items: number, cards: number }> {
-  const [row] = await db
-    .select({
-      items: sql<number>`count(distinct ${studyItems.id})`.mapWith(Number),
-      cards: sql<number>`count(*)`.mapWith(Number)
-    })
-    .from(srsCards)
-    .innerJoin(studyItemFacets, eq(studyItemFacets.id, srsCards.facetId))
-    .innerJoin(studyItems, eq(studyItems.id, studyItemFacets.studyItemId))
-    .where(dueCardsWhere(userId, languageId, at))
-
-  return { items: row?.items ?? 0, cards: row?.cards ?? 0 }
+    return perRequest(`count-due:${userId}:${languageId}`, async () => dueCount(await learnerState(userId, languageId), new Date()))
+  return dueCount(await learnerState(userId, languageId), at)
 }
 
 export async function submitAnswer(userId: string, input: SubmitAnswerInput, deferred?: DeferredRecompute): Promise<AnswerResult> {
@@ -734,7 +724,7 @@ const rollups = new WeakMap<LearnerState, WeakMap<Catalogue, StageRow[]>>()
  * you can write it.
  */
 async function stageRows(userId: string, languageId: string, state?: Snapshot): Promise<{ rows: StageRow[], cat: Catalogue }> {
-  const [cat, learner] = await Promise.all([catalogue(languageId), state ?? loadLearnerState(userId, languageId)])
+  const [cat, learner] = await Promise.all([catalogue(languageId), state ?? learnerState(userId, languageId)])
   const byCatalogue = rollups.get(learner) ?? new WeakMap<Catalogue, StageRow[]>()
   rollups.set(learner, byCatalogue)
   const rows = byCatalogue.get(cat) ?? rollupStages(cat, learner)
@@ -1203,19 +1193,9 @@ export async function markCelebrationSeen(userId: string, languageCode: string, 
  * not count against the day's limit.
  */
 export async function newCardsToday(userId: string, languageId: string, now: Date): Promise<number> {
-  const { timezone, dayBoundaryHour } = await loadUserContext(userId)
+  const [{ timezone, dayBoundaryHour }, state] = await Promise.all([loadUserContext(userId), learnerState(userId, languageId)])
   const { start, end } = studyDayRange(studyDateFor(now, timezone, dayBoundaryHour), timezone, dayBoundaryHour)
-  const [row] = await db
-    .select({ total: sql<number>`count(*)`.mapWith(Number) })
-    .from(srsCards)
-    .where(and(
-      eq(srsCards.userId, userId),
-      eq(srsCards.languageId, languageId),
-      eq(srsCards.origin, 'queue'),
-      gte(srsCards.firstSeenAt, start),
-      lt(srsCards.firstSeenAt, end)
-    ))
-  return row?.total ?? 0
+  return newCardsIn(state, start, end)
 }
 
 /**
@@ -1225,28 +1205,9 @@ export async function newCardsToday(userId: string, languageId: string, now: Dat
  * Speak; those were the learner's own choice.
  */
 export async function newWordsToday(userId: string, languageId: string, now: Date): Promise<number> {
-  const { timezone, dayBoundaryHour } = await loadUserContext(userId)
+  const [{ timezone, dayBoundaryHour }, state] = await Promise.all([loadUserContext(userId), learnerState(userId, languageId)])
   const { start, end } = studyDayRange(studyDateFor(now, timezone, dayBoundaryHour), timezone, dayBoundaryHour)
-  // Times are stored as UTC wall-clock (how the ORM writes a Date), so compare
-  // with UTC strings: a Date passed raw would be read in the session's zone.
-  const [from, to] = [start.toISOString(), end.toISOString()]
-  const res = await db.execute<{ n: number }>(sql`
-    select count(*)::int as n from (
-      select f.study_item_id
-      from srs_cards c
-      join study_item_facets f on f.id = c.facet_id
-      where c.user_id = ${userId}
-        and f.study_item_id in (
-          select f2.study_item_id from srs_cards c2
-          join study_item_facets f2 on f2.id = c2.facet_id
-          where c2.user_id = ${userId} and c2.language_id = ${languageId}
-            and c2.first_seen_at >= ${from}::timestamp and c2.first_seen_at < ${to}::timestamp
-        )
-      group by f.study_item_id
-      having min(c.first_seen_at) >= ${from}::timestamp and min(c.first_seen_at) < ${to}::timestamp
-        and bool_and(c.origin = 'queue')
-    ) t`)
-  return res.rows[0]?.n ?? 0
+  return newWordsIn(state, start, end)
 }
 
 /**
@@ -1279,7 +1240,7 @@ export async function newLeftToday(userId: string, languageId: string, now: Date
   newAvailable: number
   stageWait: StageProgress | null
 }> {
-  const learner = state ?? loadLearnerState(userId, languageId)
+  const learner = state ?? learnerState(userId, languageId)
   const [{ rows, cat }, studyLevel] = await Promise.all([
     stageRows(userId, languageId, learner),
     studyLevelOf(userId)
@@ -1362,7 +1323,7 @@ export async function getQueue(userId: string, query: StudyQueueQuery): Promise<
   // next refill counted the day afresh and the wall came straight back.
   const [budget, learner, cat, learnerPrompting] = await Promise.all([
     todayBudget(userId, language.id, now, query.moreNew ?? 0),
-    loadLearnerState(userId, language.id),
+    learnerState(userId, language.id),
     catalogue(language.id),
     promptContextFor(userId)
   ])
@@ -1889,7 +1850,7 @@ export async function getDecks(userId: string, languageCode: string, level?: str
 
   // Everything the counts need is in memory: no per-deck SQL.
   const [learner, cat, units] = await Promise.all([
-    loadLearnerState(userId, language.id),
+    learnerState(userId, language.id),
     catalogue(language.id),
     catalogueUnits(language.id)
   ])

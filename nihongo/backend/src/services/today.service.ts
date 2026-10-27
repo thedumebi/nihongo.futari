@@ -1,14 +1,16 @@
 import type { LessonFirst, LessonListResponse, Today } from '@nihongo/shared/types'
 
+import { nextDue } from '@nihongo/shared/lib'
+
 import { unseenAchievements } from './achievements.service.js'
 import { languageByCode } from './catalogue.service.js'
 import { pendingRequestCount } from './friends.service.js'
-import { loadLearnerState } from './learner-state.service.js'
+import { learnerState } from './learner-state.service.js'
 import { listLessons } from './lesson.service.js'
 import { getSummary, lessonDoneToday, studiedToday, todayQuests } from './progress.service.js'
 import { listReadings } from './readings.service.js'
 import { listSpeak } from './speak.service.js'
-import { claimStageCelebration, countDue, newLeftToday, nextDueAfter, stageProgress } from './srs.service.js'
+import { claimStageCelebration, countDue, newLeftToday, stageProgress } from './srs.service.js'
 
 /**
  * Lesson first, then words: until a lesson is finished today, today's new
@@ -40,12 +42,12 @@ export async function getToday(userId: string, languageCode: string, moreNew = 0
   if (!language)
     return null
 
-  // One read of the learner's cards for the two that need them.
-  const learner = await loadLearnerState(userId, language.id)
+  // One read of the learner's cards, shared by everything below.
+  const learner = await learnerState(userId, language.id)
   const now = new Date()
   const [due, nextDueAt, newToday, lessons, speak, summary, today, quests, unseen, readings, friendRequests, progress] = await Promise.all([
     countDue(userId, language.id),
-    nextDueAfter(userId, language.id, now),
+    nextDue(learner, now)?.toISOString() ?? null,
     newLeftToday(userId, language.id, now, moreNew, learner),
     listLessons(userId, languageCode, learner),
     listSpeak(userId, languageCode),
