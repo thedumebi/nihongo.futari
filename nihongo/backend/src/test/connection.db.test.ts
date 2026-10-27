@@ -34,6 +34,15 @@ describe('a pooled connection', () => {
     expect(timing.ms).toBeGreaterThanOrEqual(20)
   })
 
+  it('names the slowest query by its statement, without the values in it', async () => {
+    const { timing } = await withQueryTiming(async () => {
+      await db.execute(sql`select 1`)
+      await db.execute(sql`select 'someone@example.test' as who, ${'a parameter'}::text as p, pg_sleep(0.03)`)
+    })
+    expect(timing.slowest?.ms).toBeGreaterThanOrEqual(30)
+    expect(timing.slowest?.sql).toBe('select ? as who, $1::text as p, pg_sleep(0.03)')
+  })
+
   it('times queries run side by side as the wall time they took, not their sum', async () => {
     const { timing } = await withQueryTiming(async () => {
       await Promise.all([1, 2, 3].map(() => db.execute(sql`select pg_sleep(0.05)`)))

@@ -57,7 +57,8 @@ function timedQuery(query: (...args: unknown[]) => unknown): (...args: unknown[]
     const last = args.at(-1)
     if (typeof (args[0] as { submit?: unknown } | undefined)?.submit === 'function')
       return query(...args)
-    const end = startQuery()
+    const statement = args[0] as string | { text?: string } | undefined
+    const end = startQuery(typeof statement === 'string' ? statement : statement?.text ?? '')
     if (typeof last === 'function') {
       return query(...args.slice(0, -1), (...result: unknown[]) => {
         end()

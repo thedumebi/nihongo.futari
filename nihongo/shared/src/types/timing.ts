@@ -11,4 +11,10 @@ export interface QueryTiming {
   ms: number
   waitMs: number
   queued: number
+  /**
+   * The longest single query, by its statement alone: no parameters, no
+   * literals. Timed from when it was sent, so inside a transaction, where one
+   * connection runs its queries in turn, it includes any wait behind the others.
+   */
+  slowest: { ms: number, sql: string } | null
 }

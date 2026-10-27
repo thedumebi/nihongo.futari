@@ -27,7 +27,7 @@ export function pinoLogger(): MiddlewareHandler {
         const timing = timings.get(c.req.raw)
         return {
           res: { status: c.res.status },
-          ...(timing ? { db: { queries: timing.queries, ms: rounded(timing.ms), waitMs: rounded(timing.waitMs), queued: timing.queued } } : {})
+          ...(timing ? { db: { queries: timing.queries, ms: rounded(timing.ms), waitMs: rounded(timing.waitMs), queued: timing.queued, ...(timing.slowest ? { slowest: { ms: rounded(timing.slowest.ms), sql: timing.slowest.sql } } : {}) } } : {})
         }
       }
     }
