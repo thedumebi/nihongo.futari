@@ -65,7 +65,7 @@ pnpm 9 + Turbo 2 monorepo. Node version lives in `.nvmrc`; every PATH guard (hus
 - **Frontend** — Vue 3.5, Vite 7, Pinia, vue-router, Tailwind v4 (CSS-first
   `@theme` in `style.css`), lucide-vue-next. Hand-rolled UI components.
 - **Backend** — Hono 4, `@hono/zod-openapi`, Scalar docs, Drizzle 0.45,
-  Postgres 16, ioredis, `rate-limiter-flexible`, better-auth 1.4, pino. Port 3008.
+  Postgres 18, ioredis, `rate-limiter-flexible`, better-auth 1.4, pino. Port 3008.
 - **Shared** — `@nihongo/shared`, subpath exports (`./db`, `./db/schema`,
   `./types`, `./env`, `./emails`, `./constants`, `./middlewares`, `./openapi`,
   `./lib`, `./utils`).
