@@ -20,6 +20,7 @@ import { annotate } from '@nihongo/shared/lib'
 import { and, asc, eq, inArray } from 'drizzle-orm'
 
 import { assetUrl } from '../lib/assets.js'
+import { cachedContent, languageByCode } from './catalogue.service.js'
 import { currentClips } from './clips.service.js'
 import { glossary, glossLine } from './glossary.service.js'
 import { getLexicon } from './lexicon.service.js'
@@ -100,6 +101,30 @@ export async function loadExamples(
  * and loading four sentences per card to render two lines would be waste.
  */
 export async function loadLessons(
+  languageCode: string,
+  pointIds: string[],
+  withExamples: boolean
+): Promise<Map<string, StudyLesson>> {
+  const language = pointIds.length === 0 ? null : await languageByCode(languageCode)
+  if (!language)
+    return new Map()
+  // Content, the same for every learner, so each point is shaped once and kept.
+  // The cache fills as points are asked for: a point it does not hold yet (one
+  // just approved, say) is shaped on the spot, never missed, and nothing is
+  // ever rebuilt wholesale. When the catalogue goes stale the map starts afresh.
+  const held = await cachedContent(`study-lessons:${language.id}:${withExamples}`, async () => new Map<string, StudyLesson>())
+  const missing = pointIds.filter(id => !held.has(id))
+  if (missing.length > 0) {
+    for (const [id, lesson] of await shapeLessons(languageCode, missing, withExamples))
+      held.set(id, lesson)
+  }
+  return new Map(pointIds.flatMap((id) => {
+    const lesson = held.get(id)
+    return lesson ? [[id, lesson] as const] : []
+  }))
+}
+
+async function shapeLessons(
   languageCode: string,
   pointIds: string[],
   withExamples: boolean
