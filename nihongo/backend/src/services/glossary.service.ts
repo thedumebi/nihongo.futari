@@ -47,9 +47,10 @@ interface Glossary {
  * The dictionary only changes when a pipeline script runs, which means a
  * deploy or a restart, so there is nothing to invalidate against. A promise
  * rather than the value so concurrent first requests share one build instead
- * of racing to do it three times.
+ * of racing to do it three times; one per language; a failed build is dropped
+ * so the next request tries again.
  */
-let cached: Promise<Glossary> | null = null
+const built = new Map<string, Promise<Glossary>>()
 
 /**
  * Spellings JMdict marks as not the normal way to write the word: rare or
@@ -477,8 +478,13 @@ async function build(languageCode: string): Promise<Glossary> {
 }
 
 export async function glossary(languageCode: string): Promise<Glossary> {
-  cached ??= build(languageCode)
-  return cached
+  let g = built.get(languageCode)
+  if (!g) {
+    g = build(languageCode)
+    built.set(languageCode, g)
+    g.catch(() => built.delete(languageCode))
+  }
+  return g
 }
 
 /**

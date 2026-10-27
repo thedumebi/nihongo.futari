@@ -7,6 +7,7 @@ import app from './app.js'
 import testDatabaseConnection from './db/index.js'
 import { initGeo } from './lib/geo.js'
 import { runShutdownHooks } from './lib/shutdown.js'
+import { warmContent } from './services/warm.service.js'
 
 const server = serve({
   fetch: app.fetch,
@@ -15,6 +16,7 @@ const server = serve({
   await testDatabaseConnection()
   initGeo()
   pino.info(`Server is running on http://localhost:${info.port}`)
+  void warmContent()
 })
 
 const SHUTDOWN_TIMEOUT_MS = 30_000

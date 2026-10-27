@@ -171,11 +171,19 @@ export async function catalogueUnits(languageId: string): Promise<CatalogueUnit[
  * request, and languages change only with a deploy, so cached like the rest.
  */
 export async function languageByCode(code: string): Promise<Pick<Language, 'id'> | null> {
-  // Every language under one key, so a code that is not one (it arrives
-  // straight from the request) is a miss in this map, not a new cache entry.
-  const byCode = await cachedContent('languages', async () =>
+  return (await languagesByCode()).get(code) ?? null
+}
+
+/** Every language's code, from the same cached read. */
+export async function languageCodes(): Promise<Array<Language['code']>> {
+  return [...(await languagesByCode()).keys()]
+}
+
+// Every language under one key, so a code that is not one (it arrives
+// straight from the request) is a miss in this map, not a new cache entry.
+function languagesByCode(): Promise<Map<Language['code'], Pick<Language, 'id'>>> {
+  return cachedContent('languages', async () =>
     new Map((await db.select({ code: languages.code, id: languages.id }).from(languages)).map(l => [l.code, { id: l.id }])))
-  return byCode.get(code) ?? null
 }
 
 /**

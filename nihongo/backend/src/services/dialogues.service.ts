@@ -19,7 +19,7 @@ import { assetUrl } from '../lib/assets.js'
 import { dialogueAudioPath, VOICE_LEARNER, VOICE_OTHER } from '../lib/audio-key.js'
 import { respelledVersion } from '../lib/spoken-text.js'
 import { languageByCode } from './catalogue.service.js'
-import { coverageOf, dialogueWords, knownWordIds } from './coverage.service.js'
+import { coverageOf, dialogueIdsByCode, dialogueWords, knownWordIds } from './coverage.service.js'
 import { glossary, glossLine } from './glossary.service.js'
 
 /**
@@ -64,10 +64,11 @@ export async function listDialogues(languageCode: string, userId: string): Promi
     db.selectDistinct({ code: learningActivities.refId }).from(learningActivities).where(and(eq(learningActivities.userId, userId), eq(learningActivities.kind, 'conversation')))
   ])
   const practised = new Set(practisedRows.map(r => r.code))
+  const words = await dialogueWords(languageCode, rows.map(r => r.id))
   const coverage = new Map<string, number | null>()
   for (const r of rows) {
     if (!coverage.has(r.code))
-      coverage.set(r.code, coverageOf(known, await dialogueWords(languageCode, r.id)))
+      coverage.set(r.code, coverageOf(known, words.get(r.id)!))
   }
 
   return {
@@ -90,6 +91,13 @@ export async function listDialogues(languageCode: string, userId: string): Promi
       practised: practised.has(r.code)
     }))
   }
+}
+
+/** Work out every published conversation's words ahead of the first learner who asks. */
+export async function warmDialogues(languageCode: string): Promise<void> {
+  const language = await languageByCode(languageCode)
+  if (language)
+    await dialogueWords(languageCode, [...(await dialogueIdsByCode(language.id)).values()])
 }
 
 export async function getDialogue(languageCode: string, code: string): Promise<DialogueView | null> {

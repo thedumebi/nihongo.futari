@@ -1,6 +1,6 @@
 import db from '@nihongo/shared/db'
 import { dialogues, dialogueTurns, readingLines, readings, studyItems } from '@nihongo/shared/db/schema'
-import { and, asc, eq, isNotNull } from 'drizzle-orm'
+import { and, asc, eq, inArray, isNotNull } from 'drizzle-orm'
 
 import { glossary, glossLine } from './glossary.service.js'
 import { learnerState } from './learner-state.service.js'
@@ -16,8 +16,12 @@ import { learnerState } from './learner-state.service.js'
  * so the list can say which texts have just come within reach.
  */
 
-/** A text's reviewable word ids, worked out once per process — published texts do not change. */
-const contentCache = new Map<string, Set<string>>()
+/**
+ * A text's reviewable word ids, worked out once per process: published texts
+ * do not change. Held as promises, so concurrent first requests share one
+ * read and one glossing pass.
+ */
+const contentCache = new Map<string, Promise<Set<string>>>()
 
 async function reviewableWordIds(): Promise<Set<string>> {
   const rows = await db.selectDistinct({ id: studyItems.wordId }).from(studyItems).where(and(isNotNull(studyItems.wordId), eq(studyItems.published, true)))
@@ -25,8 +29,24 @@ async function reviewableWordIds(): Promise<Set<string>> {
 }
 let reviewable: Promise<Set<string>> | null = null
 
-async function wordsOf(lines: Array<{ text: string, reading: string | null }>, languageCode: string): Promise<Set<string>> {
-  const [g, ok] = await Promise.all([glossary(languageCode), (reviewable ??= reviewableWordIds())])
+/** Kept once read; a failed read is dropped so the next request tries again. */
+function reviewableWords(): Promise<Set<string>> {
+  if (!reviewable) {
+    const read = reviewableWordIds()
+    reviewable = read
+    read.catch(() => {
+      if (reviewable === read)
+        reviewable = null
+    })
+  }
+  return reviewable
+}
+
+/** One line of a speech or a conversation, and the text it belongs to. */
+interface TextLine { owner: string, text: string, reading: string | null }
+
+async function wordsOf(lines: Array<Omit<TextLine, 'owner'>>, languageCode: string): Promise<Set<string>> {
+  const [g, ok] = await Promise.all([glossary(languageCode), reviewableWords()])
   const out = new Set<string>()
   for (const line of lines) {
     for (const token of glossLine(line.text, g, line.reading ?? undefined, { regroupKana: true })) {
@@ -38,32 +58,44 @@ async function wordsOf(lines: Array<{ text: string, reading: string | null }>, l
   return out
 }
 
-export async function readingWords(languageCode: string, readingId: string): Promise<Set<string>> {
-  const key = `reading:${readingId}`
-  const cached = contentCache.get(key)
-  if (cached)
-    return cached
-  const lines = await db.select({ text: readingLines.text, reading: readingLines.readingKana })
-    .from(readingLines)
-    .where(eq(readingLines.readingId, readingId))
-    .orderBy(asc(readingLines.index))
-  const words = await wordsOf(lines, languageCode)
-  contentCache.set(key, words)
-  return words
+/**
+ * The word sets of several texts, keyed by id. Those not yet worked out are
+ * read in one query between them, not one each: a list of 55 speeches made 55
+ * round trips the first time it was opened.
+ */
+async function textWords(prefix: string, ids: string[], languageCode: string, readLines: (ids: string[]) => Promise<TextLine[]>): Promise<Map<string, Set<string>>> {
+  const missing = [...new Set(ids)].filter(id => !contentCache.has(`${prefix}:${id}`))
+  if (missing.length > 0) {
+    const lines = readLines(missing).then((rows) => {
+      const byOwner = new Map<string, TextLine[]>(missing.map(id => [id, []]))
+      for (const row of rows)
+        byOwner.get(row.owner)?.push(row)
+      return byOwner
+    })
+    for (const id of missing) {
+      const words = lines.then(byOwner => wordsOf(byOwner.get(id) ?? [], languageCode))
+      contentCache.set(`${prefix}:${id}`, words)
+      // A failed read is not kept: the next request tries again.
+      words.catch(() => contentCache.delete(`${prefix}:${id}`))
+    }
+  }
+  return new Map(await Promise.all(ids.map(async id => [id, await contentCache.get(`${prefix}:${id}`)!] as const)))
 }
 
-export async function dialogueWords(languageCode: string, dialogueId: string): Promise<Set<string>> {
-  const key = `dialogue:${dialogueId}`
-  const cached = contentCache.get(key)
-  if (cached)
-    return cached
-  const lines = await db.select({ text: dialogueTurns.text, reading: dialogueTurns.readingKana })
+export async function readingWords(languageCode: string, readingIds: string[]): Promise<Map<string, Set<string>>> {
+  return textWords('reading', readingIds, languageCode, ids => db
+    .select({ owner: readingLines.readingId, text: readingLines.text, reading: readingLines.readingKana })
+    .from(readingLines)
+    .where(inArray(readingLines.readingId, ids))
+    .orderBy(asc(readingLines.readingId), asc(readingLines.index)))
+}
+
+export async function dialogueWords(languageCode: string, dialogueIds: string[]): Promise<Map<string, Set<string>>> {
+  return textWords('dialogue', dialogueIds, languageCode, ids => db
+    .select({ owner: dialogueTurns.dialogueId, text: dialogueTurns.text, reading: dialogueTurns.readingKana })
     .from(dialogueTurns)
-    .where(eq(dialogueTurns.dialogueId, dialogueId))
-    .orderBy(asc(dialogueTurns.index))
-  const words = await wordsOf(lines, languageCode)
-  contentCache.set(key, words)
-  return words
+    .where(inArray(dialogueTurns.dialogueId, ids))
+    .orderBy(asc(dialogueTurns.dialogueId), asc(dialogueTurns.index)))
 }
 
 /**

@@ -31,10 +31,15 @@ export async function listReadings(languageCode: string, levelCode: string | und
     db.selectDistinct({ code: learningActivities.refId }).from(learningActivities).where(and(eq(learningActivities.userId, userId), eq(learningActivities.kind, 'reading')))
   ])
   const read = new Set(readRows.map(r => r.code))
-  const out = []
-  for (const { id, ...r } of rows)
-    out.push({ ...r, coverage: coverageOf(known, await readingWords(languageCode, id)), read: read.has(r.code) })
-  return { readings: out }
+  const words = await readingWords(languageCode, rows.map(r => r.id))
+  return { readings: rows.map(({ id, ...r }) => ({ ...r, coverage: coverageOf(known, words.get(id)!), read: read.has(r.code) })) }
+}
+
+/** Load the speech list and every speech's words ahead of the first learner who asks. */
+export async function warmReadings(languageCode: string): Promise<void> {
+  const language = await languageByCode(languageCode)
+  if (language)
+    await readingWords(languageCode, (await readingList(language.id)).map(r => r.id))
 }
 
 /** A language's published speeches with their line counts, easiest first: content, so cached. */
