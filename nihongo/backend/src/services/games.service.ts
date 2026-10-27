@@ -271,6 +271,18 @@ const NEARLY_DAYS = 14
 /** The kinds of study item the boss can ask about. */
 const BOSS_KINDS = sql`(si.kanji_id is not null or si.word_id is not null or si.grammar_point_id is not null or si.kana_id is not null)`
 
+/** A card's facet and its study item, when the item is live. */
+const BOSS_ITEM = sql`join study_item_facets f on f.id = c.facet_id
+  join study_items si on si.id = f.study_item_id and si.published and si.active`
+
+/** The learner's cards answered Again or Hard often enough lately to be nearly haunting, with how often. */
+function recentMisses(userId: string, languageId: string) {
+  return sql`select l.card_id, count(*) as misses from srs_review_logs l
+    where l.user_id = ${userId} and l.language_id = ${languageId} and not l.superseded
+      and l.rating in (1, 2) and l.reviewed_at > now() - make_interval(days => ${NEARLY_DAYS})
+    group by l.card_id having count(*) >= ${NEARLY_MISSES}`
+}
+
 /**
  * The cards for this week's boss: the ghosts, worst first, then (while there
  * are fewer than `BOSS_TOP_UP`) the cards nearly haunting, most slipped
@@ -282,8 +294,7 @@ async function bossCards(userId: string, languageId: string): Promise<Array<{ ke
     select key, facet from (
       select distinct on (si.id) si.id as key, f.facet, c.lapses
       from srs_cards c
-      join study_item_facets f on f.id = c.facet_id
-      join study_items si on si.id = f.study_item_id and si.published and si.active
+      ${BOSS_ITEM}
       where c.user_id = ${userId} and c.language_id = ${languageId} and c.ghost and not c.suspended and ${BOSS_KINDS}
       order by si.id, c.lapses desc
     ) g order by lapses desc limit ${BOSS_MAX}
@@ -294,15 +305,9 @@ async function bossCards(userId: string, languageId: string): Promise<Array<{ ke
     : (await db.execute<{ key: string, facet: string }>(sql`
         select key, facet from (
           select distinct on (si.id) si.id as key, f.facet, x.misses
-          from (
-            select l.card_id, count(*) as misses from srs_review_logs l
-            where l.user_id = ${userId} and l.language_id = ${languageId} and not l.superseded
-              and l.rating in (1, 2) and l.reviewed_at > now() - make_interval(days => ${NEARLY_DAYS})
-            group by l.card_id having count(*) >= ${NEARLY_MISSES}
-          ) x
+          from (${recentMisses(userId, languageId)}) x
           join srs_cards c on c.id = x.card_id and not c.ghost and not c.suspended
-          join study_item_facets f on f.id = c.facet_id
-          join study_items si on si.id = f.study_item_id and si.published and si.active
+          ${BOSS_ITEM}
           where ${BOSS_KINDS} and si.id not in ${ghosts.rows.length ? ghosts.rows.map(g => g.key) : ['']}
           order by si.id, x.misses desc
         ) n order by misses desc limit ${room}
@@ -313,9 +318,26 @@ async function bossCards(userId: string, languageId: string): Promise<Array<{ ke
   ]
 }
 
-/** Whether this week's boss has anyone to face: a ghost, or a card nearly one. */
+/**
+ * Whether this week's boss has anyone to face: a ghost, or a card nearly one.
+ * `bossCards` is non-empty exactly then, asked in one query (Today asks this
+ * on every open). Its nearly cards leave out the ghosts' items, which cannot
+ * matter here: with a ghost, the answer is already yes.
+ */
 export async function ghostBossHasCards(userId: string, languageId: string): Promise<boolean> {
-  return (await bossCards(userId, languageId)).length > 0
+  const [row] = (await db.execute<{ has: boolean }>(sql`
+    select exists (
+      select 1 from srs_cards c
+      ${BOSS_ITEM}
+      where c.user_id = ${userId} and c.language_id = ${languageId} and c.ghost and not c.suspended and ${BOSS_KINDS}
+    ) or exists (
+      select 1 from (${recentMisses(userId, languageId)}) x
+      join srs_cards c on c.id = x.card_id and not c.ghost and not c.suspended
+      ${BOSS_ITEM}
+      where ${BOSS_KINDS}
+    ) as has
+  `)).rows
+  return row?.has === true
 }
 
 /**
