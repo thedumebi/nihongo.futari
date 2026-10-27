@@ -4,6 +4,7 @@ import { catalogue, catalogueUnits, facetFacts, itemCharacters, languageByCode, 
 import { warmDialogues } from './dialogues.service.js'
 import { listLanguages } from './languages.service.js'
 import { warmReadings } from './readings.service.js'
+import { warmSpeak } from './speak.service.js'
 
 /**
  * Fill the content caches once the server is up, so the first learner after a
@@ -27,7 +28,7 @@ export async function warmContent(): Promise<void> {
     for (const code of codes) {
       const language = await languageByCode(code)
       if (language)
-        await Promise.all([catalogue(language.id), catalogueUnits(language.id), facetFacts(language.id), itemCharacters(language.id), warmReadings(code), warmDialogues(code)])
+        await Promise.all([catalogue(language.id), catalogueUnits(language.id), facetFacts(language.id), itemCharacters(language.id), warmReadings(code), warmDialogues(code), warmSpeak(language.id)])
     }
     pino.info({ ms: Math.round(performance.now() - started), languages: codes.length }, 'Content caches warmed')
   } catch (err) {

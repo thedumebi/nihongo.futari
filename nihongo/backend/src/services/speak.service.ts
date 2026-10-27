@@ -2,10 +2,11 @@ import type { DeferredRecompute, SaveWordResult, SpeakCompleteInput, SpeakListRe
 
 import db from '@nihongo/shared/db'
 import { languageLevels, languages, speakProgress, speakSessions, speakSteps } from '@nihongo/shared/db/schema'
-import { and, asc, count, eq, sql } from 'drizzle-orm'
+import { and, asc, count, eq, inArray, sql } from 'drizzle-orm'
 
 import { speakAnswerAudio, speakSay } from '../lib/assets.js'
 import { recordActivity } from './activities.service.js'
+import { cachedContent, languageByCode } from './catalogue.service.js'
 import { glossary, glossLine } from './glossary.service.js'
 import { saveSpeakStep } from './srs.service.js'
 
@@ -17,35 +18,56 @@ import { saveSpeakStep } from './srs.service.js'
  */
 
 export async function listSpeak(userId: string, languageCode: string): Promise<SpeakListResponse> {
-  const rows = await db
+  const language = await languageByCode(languageCode)
+  if (!language)
+    return { sessions: [], next: null }
+  const list = await publishedSessions(language.id)
+  const done = list.length === 0
+    ? []
+    : await db
+        .select({ sessionId: speakProgress.sessionId, completedAt: speakProgress.completedAt, gotIt: speakProgress.gotIt, total: speakProgress.total })
+        .from(speakProgress)
+        .where(and(eq(speakProgress.userId, userId), inArray(speakProgress.sessionId, list.map(s => s.id))))
+  const progressOf = new Map(done.map(p => [p.sessionId, p]))
+
+  const sessions = list.map(({ id, kind, ...rest }) => {
+    const p = progressOf.get(id)
+    return {
+      ...rest,
+      kind: kind === 'story' ? 'story' as const : 'course' as const,
+      progress: p ? { completedAt: p.completedAt.toISOString(), gotIt: p.gotIt, total: p.total } : null
+    }
+  })
+  // "Next" walks the course; stories sit beside it, picked when wanted.
+  return { sessions, next: sessions.find(s => s.kind === 'course' && !s.progress)?.code ?? null }
+}
+
+/** Load a language's session list into the cache, for the warm-up at boot. */
+export async function warmSpeak(languageId: string): Promise<void> {
+  await publishedSessions(languageId)
+}
+
+// A language's published sessions with their prompt counts, in course order:
+// the same for every learner, so cached like the catalogue (an approval is
+// what publishes one) and only the learner's progress is read per request.
+function publishedSessions(languageId: string) {
+  return cachedContent(`speak-sessions:${languageId}`, () => db
     .select({
+      id: speakSessions.id,
       code: speakSessions.code,
       kind: speakSessions.kind,
       number: speakSessions.number,
       title: speakSessions.title,
       titleEn: speakSessions.titleEn,
       level: languageLevels.code,
-      promptCount: count(speakSteps.id),
-      completedAt: speakProgress.completedAt,
-      gotIt: speakProgress.gotIt,
-      total: speakProgress.total
+      promptCount: count(speakSteps.id)
     })
     .from(speakSessions)
-    .innerJoin(languages, eq(languages.id, speakSessions.languageId))
     .innerJoin(languageLevels, eq(languageLevels.id, speakSessions.levelId))
     .leftJoin(speakSteps, and(eq(speakSteps.sessionId, speakSessions.id), eq(speakSteps.kind, 'prompt')))
-    .leftJoin(speakProgress, and(eq(speakProgress.sessionId, speakSessions.id), eq(speakProgress.userId, userId)))
-    .where(and(eq(languages.code, languageCode), eq(speakSessions.published, true)))
-    .groupBy(speakSessions.id, languageLevels.code, languageLevels.rank, speakProgress.completedAt, speakProgress.gotIt, speakProgress.total)
-    .orderBy(asc(languageLevels.rank), asc(speakSessions.kind), asc(speakSessions.number))
-
-  const sessions = rows.map(({ completedAt, gotIt, total, kind, ...rest }) => ({
-    ...rest,
-    kind: kind === 'story' ? 'story' as const : 'course' as const,
-    progress: completedAt ? { completedAt: completedAt.toISOString(), gotIt: gotIt!, total: total! } : null
-  }))
-  // "Next" walks the course; stories sit beside it, picked when wanted.
-  return { sessions, next: sessions.find(s => s.kind === 'course' && !s.progress)?.code ?? null }
+    .where(and(eq(speakSessions.languageId, languageId), eq(speakSessions.published, true)))
+    .groupBy(speakSessions.id, languageLevels.code, languageLevels.rank)
+    .orderBy(asc(languageLevels.rank), asc(speakSessions.kind), asc(speakSessions.number)))
 }
 
 export async function getSpeakSession(
