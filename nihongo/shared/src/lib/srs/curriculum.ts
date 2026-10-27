@@ -1,6 +1,6 @@
 import type { Catalogue, CatalogueFacet, CatalogueItem, DeckCounts, DueCount, InFlightCharge, ItemFilter, LearnerCard, LearnerState, StageRow } from '@/types/curriculum.js'
 import type { ProgressSummary } from '@/types/progress.js'
-import type { StageProgress } from '@/types/study.js'
+import type { StageProgress, StudyQueueResponse } from '@/types/study.js'
 
 import { STAGE_PASS, STAGE_SIZE } from '@/constants/endpoints.js'
 
@@ -146,7 +146,7 @@ export function inCurriculum(item: CatalogueItem, ceilings: ReadonlyMap<string, 
   return ceiling === undefined || item.sortIndex <= Math.floor(ceiling)
 }
 
-export function matchesFilter(item: CatalogueItem, filter: ItemFilter): boolean {
+export function matchesFilter(item: Pick<CatalogueItem, 'id' | 'kind' | 'levelId'>, filter: ItemFilter): boolean {
   if (filter.kind !== undefined && item.kind !== filter.kind)
     return false
   if (filter.levelId !== undefined && item.levelId !== null && item.levelId !== filter.levelId)
@@ -427,4 +427,31 @@ export function cardTotals(state: LearnerState, now: Date): Pick<ProgressSummary
       learning++
   }
   return { started: state.cards.size, learned, learning }
+}
+
+/**
+ * The queue header's numbers for the deck on screen: what is due (`dueCount`'s
+ * rule, in items and cards), how many of those cards are on a learning step,
+ * and how many items hold a ghost card. A ghost is not a due measure: it is a
+ * card the scheduler flagged as not sticking, due or not, so it is counted by
+ * its own rule, live content or not.
+ */
+export function deckDue(state: LearnerState, filter: ItemFilter, at: Date): Pick<StudyQueueResponse['counts'], 'due' | 'dueCards' | 'learning' | 'ghost'> {
+  const dueItems = new Set<string>()
+  const ghostItems = new Set<string>()
+  let dueCards = 0
+  let learning = 0
+  for (const card of state.cards.values()) {
+    if (!matchesFilter({ id: card.itemId, kind: card.kind, levelId: card.levelId }, filter))
+      continue
+    if (scheduled(card) && card.due <= at) {
+      dueCards++
+      dueItems.add(card.itemId)
+      if (card.state === 1 || card.state === 3)
+        learning++
+    }
+    if (card.ghost && !card.suspended)
+      ghostItems.add(card.itemId)
+  }
+  return { due: dueItems.size, dueCards, learning, ghost: ghostItems.size }
 }

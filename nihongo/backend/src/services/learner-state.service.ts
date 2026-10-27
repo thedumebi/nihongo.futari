@@ -27,7 +27,11 @@ export async function loadLearnerState(userId: string, languageId: string): Prom
         firstSeenAt: srsCards.firstSeenAt,
         origin: srsCards.origin,
         createdAt: srsCards.createdAt,
+        ghost: srsCards.ghost,
+        answered: sql<boolean>`${srsCards.reps} > 0 or ${srsCards.lastReview} is not null`,
         itemId: studyItemFacets.studyItemId,
+        kind: studyItems.kind,
+        levelId: studyItems.levelId,
         live: sql<boolean>`${studyItemFacets.enabled} and ${studyItems.published} and ${studyItems.active}`,
         kanjiId: studyItems.kanjiId,
         wordId: studyItems.wordId
@@ -43,14 +47,17 @@ export async function loadLearnerState(userId: string, languageId: string): Prom
   const state: LearnerState = {
     cards: new Map(),
     itemsWithCard: new Set(),
+    itemsAnswered: new Set(),
     itemStates: new Map(),
     knownKanji: new Set(),
     knownWords: new Set(),
     lessonsViewed: new Map(views.map(({ studyItemId, ...view }) => [studyItemId, view]))
   }
-  for (const { facetId, kanjiId, wordId, ...card } of cards) {
+  for (const { facetId, kanjiId, wordId, answered, ...card } of cards) {
     state.cards.set(facetId, card)
     state.itemsWithCard.add(card.itemId)
+    if (answered)
+      state.itemsAnswered.add(card.itemId)
     state.itemStates.set(card.itemId, Math.max(card.state, state.itemStates.get(card.itemId) ?? 0))
     if (kanjiId !== null && card.state >= 2)
       state.knownKanji.add(kanjiId)

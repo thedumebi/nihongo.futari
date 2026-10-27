@@ -61,7 +61,7 @@ export async function getToday(userId: string, languageCode: string, moreNew = 0
   // A stage passed while reviewing, or on another device, is announced here
   // too, not only on the next Study batch.
   const [celebrate, first] = await Promise.all([
-    claimStageCelebration(userId, progress),
+    claimStageCelebration(userId, language.id, progress),
     lessonFirst(userId, languageCode, lessons)
   ])
 

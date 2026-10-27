@@ -49,8 +49,11 @@ export interface Catalogue {
  * `itemId` (the facet's study item) and `live`, whether the facet is enabled
  * and the item published and active, which every due count requires.
  */
-export type LearnerCard = Pick<SrsCard, 'id' | 'state' | 'suspended' | 'due' | 'firstSeenAt' | 'origin' | 'createdAt'> & {
+export type LearnerCard = Pick<SrsCard, 'id' | 'state' | 'suspended' | 'due' | 'firstSeenAt' | 'origin' | 'createdAt' | 'ghost'> & {
   itemId: StudyItemFacet['studyItemId']
+  /** The item's kind and level, for the deck filters (`matchesFilter`). */
+  kind: StudyItem['kind']
+  levelId: StudyItem['levelId']
   live: boolean
 }
 
@@ -66,6 +69,8 @@ export interface LearnerState {
   cards: Map<string, LearnerCard>
   /** Items with a card on any facet, enabled or not. */
   itemsWithCard: Set<string>
+  /** Items with a card that has actually been answered: met, not merely made. */
+  itemsAnswered: Set<string>
   /** Each such item's highest card state: 2 or more is known. */
   itemStates: Map<string, number>
   /** Kanji with a learned card (state 2 or more) on any of their items. */

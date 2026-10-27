@@ -67,6 +67,7 @@ import {
   ceilingsFrom,
   clampReviewedAt,
   deckCounts,
+  deckDue,
   distinguishingStart,
   dueCount,
   effectiveCardState,
@@ -1078,16 +1079,14 @@ function introducedByQueue(): SQL {
  */
 export async function claimStageCelebration(
   userId: string,
+  languageId: string,
   progress: StageProgress[]
 ): Promise<StageCelebration | null> {
   if (progress.length === 0)
     return null
 
-  const levels = await db
-    .select({ id: languageLevels.id, code: languageLevels.code })
-    .from(languageLevels)
-    .where(inArray(languageLevels.code, progress.map(p => p.level)))
-  const idByCode = new Map(levels.map(l => [l.code, l.id]))
+  const codes = new Set(progress.map(p => p.level))
+  const idByCode = new Map((await catalogue(languageId)).levels.filter(l => codes.has(l.code)).map(l => [l.code, l.id]))
   const levelIds = [...idByCode.values()]
   const rowsFor = async () => new Map((await db
     .select({
@@ -1350,12 +1349,7 @@ export async function getQueue(userId: string, query: StudyQueueQuery): Promise<
   // than silently falling back to every level — a filter that quietly does not
   // apply is worse than one that returns an empty queue.
   const levelId = query.level
-    ? (await db
-        .select({ id: languageLevels.id })
-        .from(languageLevels)
-        .where(and(eq(languageLevels.languageId, language.id), eq(languageLevels.code, query.level)))
-        .limit(1)
-      )[0]?.id ?? ''
+    ? cat.levels.find(l => l.code === query.level)?.id ?? ''
     : null
   // Unlevelled items pass every level filter.
   //
@@ -1661,25 +1655,7 @@ export async function getQueue(userId: string, query: StudyQueueQuery): Promise<
   // before it was answered, came back later as a quiz with nothing taught.
   const itemIds = [...new Set(items.map(i => i.studyItemId))]
   const grammarIds = new Set(items.filter(i => i.kind === 'grammar').map(i => i.studyItemId))
-  const [viewed, answered] = itemIds.length === 0
-    ? [[], []]
-    : await Promise.all([
-        db.select({ studyItemId: lessonViews.studyItemId })
-          .from(lessonViews)
-          .where(and(eq(lessonViews.userId, userId), inArray(lessonViews.studyItemId, [...grammarIds]))),
-        db.selectDistinct({ studyItemId: studyItemFacets.studyItemId })
-          .from(srsCards)
-          .innerJoin(studyItemFacets, eq(studyItemFacets.id, srsCards.facetId))
-          .where(and(
-            eq(srsCards.userId, userId),
-            inArray(studyItemFacets.studyItemId, itemIds),
-            sql`(${srsCards.reps} > 0 or ${srsCards.lastReview} is not null)`
-          ))
-      ])
-  const seen = new Set([
-    ...viewed.map(r => r.studyItemId).filter(id => grammarIds.has(id)),
-    ...answered.map(r => r.studyItemId).filter(id => !grammarIds.has(id))
-  ])
+  const seen = new Set(itemIds.filter(id => grammarIds.has(id) ? learner.lessonsViewed.has(id) : learner.itemsAnswered.has(id)))
 
   const introducer = new Map<string, string>()
   for (const item of items) {
@@ -1747,38 +1723,8 @@ export async function getQueue(userId: string, query: StudyQueueQuery): Promise<
   // This used to be its own definition — `state = 2` only — which is why the
   // header said 5 while the list it linked to showed 26, and why Progress could
   // read 0 the moment after a session when every card sits in a learning step.
-  const [counts] = await db
-    .select({
-      due: sql<number>`count(distinct ${studyItems.id})`.mapWith(Number),
-      dueCards: sql<number>`count(*)`.mapWith(Number),
-      learning: sql<number>`count(*) filter (where ${srsCards.state} in (1, 3))`.mapWith(Number)
-    })
-    .from(srsCards)
-    .innerJoin(studyItemFacets, eq(studyItemFacets.id, srsCards.facetId))
-    .innerJoin(studyItems, eq(studyItems.id, studyItemFacets.studyItemId))
-    .where(and(
-      dueCardsWhere(userId, language.id, now),
-      ...kindFilter,
-      ...unitFilter,
-      ...levelFilter
-    ))
-
-  // Ghosts are not a due measure — a ghost is a card the scheduler has flagged
-  // as not sticking, due or not — so it keeps its own query and its own rules.
-  const [ghosts] = await db
-    .select({ total: sql<number>`count(distinct ${studyItems.id})`.mapWith(Number) })
-    .from(srsCards)
-    .innerJoin(studyItemFacets, eq(studyItemFacets.id, srsCards.facetId))
-    .innerJoin(studyItems, eq(studyItems.id, studyItemFacets.studyItemId))
-    .where(and(
-      eq(srsCards.userId, userId),
-      eq(srsCards.languageId, language.id),
-      eq(srsCards.suspended, false),
-      eq(srsCards.ghost, true),
-      ...kindFilter,
-      ...unitFilter,
-      ...levelFilter
-    ))
+  // Ghosts are not a due measure (see `deckDue`), so they keep their own rule.
+  const counts = deckDue(learner, filter, now)
 
   const available = await countAvailableNew(language.id, learner, filter, ceilings)
 
@@ -1798,14 +1744,14 @@ export async function getQueue(userId: string, query: StudyQueueQuery): Promise<
     items,
     gate,
     progress,
-    celebrate: await claimStageCelebration(userId, progress),
+    celebrate: await claimStageCelebration(userId, language.id, progress),
     counts: {
-      due: counts?.due ?? 0,
-      dueCards: counts?.dueCards ?? 0,
-      learning: counts?.learning ?? 0,
+      due: counts.due,
+      dueCards: counts.dueCards,
+      learning: counts.learning,
       newAvailable: available.words,
       extrasAvailable: available.extras,
-      ghost: ghosts?.total ?? 0,
+      ghost: counts.ghost,
       newToday: budget.wordsToday,
       newLimit: budget.wordsLimit,
       extrasToday: budget.extrasToday,

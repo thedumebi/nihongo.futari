@@ -30,6 +30,7 @@ function stateOf(cards: Record<string, LearnerCard> = {}, extra: Partial<Learner
   return {
     cards: new Map(Object.entries(cards)),
     itemsWithCard: new Set(Object.keys(cards).map(facet => facet.split('.')[0]!)),
+    itemsAnswered: new Set(),
     itemStates: new Map(),
     knownKanji: new Set(),
     knownWords: new Set(),
@@ -39,7 +40,7 @@ function stateOf(cards: Record<string, LearnerCard> = {}, extra: Partial<Learner
 }
 
 const DUE = new Date('2026-01-01T00:00:00Z')
-const learned: LearnerCard = { id: '', state: 2, suspended: false, due: DUE, firstSeenAt: null, origin: 'queue', createdAt: DUE, itemId: '', live: true }
+const learned: LearnerCard = { id: '', state: 2, suspended: false, due: DUE, firstSeenAt: null, origin: 'queue', createdAt: DUE, ghost: false, itemId: '', kind: 'word', levelId: null, live: true }
 const learning: LearnerCard = { ...learned, state: 1 }
 
 describe('rollupStages', () => {
