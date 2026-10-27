@@ -1,6 +1,7 @@
 import { z } from '@hono/zod-openapi'
 
 import type { ActivityKind } from '@/constants/endpoints.js'
+import type { StreakOptions } from '@/lib/progress/streak.js'
 
 import { SRS_RATINGS } from './srs.js'
 
@@ -236,10 +237,27 @@ export type AchievementsSeenInput = z.infer<typeof achievementsSeenSchema>
  * times and then once more over the whole history.
  *
  * `progress` maps a language to the earliest day that must be redone, or
- * `null` for its whole history (after a replay). `habit` holds languages whose
- * XP and streak need a rebuild without any review having changed.
+ * `null` for its whole history (after a replay). `habit` maps a language whose
+ * XP and streak need a rebuild to the study days its activities fell on, whose
+ * quests are scored along with today's.
  */
 export interface DeferredRecompute {
   progress: Map<string, Date | null>
-  habit: Set<string>
+  habit: Map<string, Set<string>>
+  /** When each answer was given, per language: made study days once, at the end. */
+  answeredAt: Map<string, Date[]>
+}
+
+/** Where a learner's day falls: their zone and the hour their day turns over. */
+export interface UserContext {
+  timezone: string
+  dayBoundaryHour: number
+}
+
+/**
+ * The study days a streak is folded from, and what the fold needs, so an
+ * achievement for a streak can be dated by the day the streak got there.
+ */
+export type StudyHistory = UserContext & Required<Pick<StreakOptions, 'freezesAvailable'>> & {
+  studyDates: string[]
 }

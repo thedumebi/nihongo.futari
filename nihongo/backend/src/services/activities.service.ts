@@ -55,7 +55,7 @@ export async function recordActivity(
   // rebuild never finished, so it still asks for one; online, nothing to do.
   if (inserted.length === 0) {
     if (deferred)
-      deferHabit(deferred, languageId)
+      deferHabit(deferred, languageId, localDate)
     return { recorded: false, xp: 0 }
   }
 
@@ -66,9 +66,9 @@ export async function recordActivity(
     .onConflictDoNothing()
 
   if (deferred)
-    deferHabit(deferred, languageId)
+    deferHabit(deferred, languageId, localDate)
   else
-    await recomputeHabit(userId, languageId)
+    await recomputeHabit(userId, languageId, [localDate])
   return { recorded: true, xp: amount }
 }
 

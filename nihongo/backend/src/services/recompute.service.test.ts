@@ -1,10 +1,10 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
-import { recomputeHabit, recomputeProgress } from './progress.service.js'
-import { deferHabit, deferProgress, deferRecompute, runDeferred } from './recompute.service.js'
+import { loadUserContext, recomputeHabit, recomputeProgress } from './progress.service.js'
+import { deferAnswer, deferHabit, deferProgress, deferRecompute, runDeferred } from './recompute.service.js'
 
 vi.mock('@nihongo/shared', () => ({ pino: { error: vi.fn() } }))
-vi.mock('./progress.service.js', () => ({ recomputeProgress: vi.fn(), recomputeHabit: vi.fn() }))
+vi.mock('./progress.service.js', () => ({ recomputeProgress: vi.fn(), recomputeHabit: vi.fn(), loadUserContext: vi.fn(async () => ({ timezone: 'Asia/Tokyo', dayBoundaryHour: 4 })) }))
 
 function day(iso: string) {
   return new Date(`${iso}T00:00:00.000Z`)
@@ -49,8 +49,8 @@ describe('runDeferred', () => {
     await runDeferred('user-1', deferred)
 
     expect(vi.mocked(recomputeProgress).mock.calls).toEqual([
-      ['user-1', 'ja', day('2026-10-19')],
-      ['user-1', 'fr', undefined]
+      ['user-1', 'ja', day('2026-10-19'), undefined],
+      ['user-1', 'fr', undefined, undefined]
     ])
     expect(recomputeHabit).not.toHaveBeenCalled()
   })
@@ -64,8 +64,36 @@ describe('runDeferred', () => {
 
     await runDeferred('user-1', deferred)
 
-    expect(vi.mocked(recomputeProgress).mock.calls).toEqual([['user-1', 'ja', day('2026-10-20')]])
-    expect(vi.mocked(recomputeHabit).mock.calls).toEqual([['user-1', 'fr']])
+    expect(vi.mocked(recomputeProgress).mock.calls).toEqual([['user-1', 'ja', day('2026-10-20'), new Set()]])
+    expect(vi.mocked(recomputeHabit).mock.calls).toEqual([['user-1', 'fr', new Set()]])
+  })
+
+  it('hands each rebuild the study days its activities fell on, so their quests are scored', async () => {
+    const deferred = deferRecompute()
+    deferProgress(deferred, 'ja', day('2026-10-20'))
+    deferHabit(deferred, 'ja', '2026-10-18')
+    deferHabit(deferred, 'fr', '2026-10-17')
+    deferHabit(deferred, 'fr', '2026-10-19')
+    deferHabit(deferred, 'fr', '2026-10-17')
+
+    await runDeferred('user-1', deferred)
+
+    expect(vi.mocked(recomputeProgress).mock.calls).toEqual([['user-1', 'ja', day('2026-10-20'), new Set(['2026-10-18'])]])
+    expect(vi.mocked(recomputeHabit).mock.calls).toEqual([['user-1', 'fr', new Set(['2026-10-17', '2026-10-19'])]])
+  })
+
+  it('turns each answer into its study day in the learner\'s zone, reading the learner once', async () => {
+    const deferred = deferRecompute()
+    deferProgress(deferred, 'ja', day('2026-10-17'))
+    // 03:00 in Tokyo is still the 17th with a 4am boundary; 05:00 is the 18th.
+    deferAnswer(deferred, 'ja', new Date('2026-10-17T18:00:00.000Z'))
+    deferAnswer(deferred, 'ja', new Date('2026-10-17T20:00:00.000Z'))
+    deferAnswer(deferred, 'ja', new Date('2026-10-17T19:30:00.000Z'))
+
+    await runDeferred('user-1', deferred)
+
+    expect(vi.mocked(loadUserContext).mock.calls).toEqual([['user-1']])
+    expect(vi.mocked(recomputeProgress).mock.calls).toEqual([['user-1', 'ja', day('2026-10-17'), new Set(['2026-10-17', '2026-10-18'])]])
   })
 
   it('keeps going after one language fails, and does not throw', async () => {
@@ -82,6 +110,6 @@ describe('runDeferred', () => {
     await expect(runDeferred('user-1', deferred)).resolves.toBeUndefined()
 
     expect(vi.mocked(recomputeProgress).mock.calls.map(call => call[1])).toEqual(['ja', 'fr'])
-    expect(vi.mocked(recomputeHabit).mock.calls).toEqual([['user-1', 'de']])
+    expect(vi.mocked(recomputeHabit).mock.calls).toEqual([['user-1', 'de', new Set()]])
   })
 })

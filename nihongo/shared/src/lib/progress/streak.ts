@@ -128,3 +128,18 @@ function addDays(date: string, days: number): string {
   dt.setUTCDate(dt.getUTCDate() + days)
   return dt.toISOString().slice(0, 10)
 }
+
+/**
+ * The study day on which the longest streak first reached `length`, or null
+ * if it never has: the day a streak achievement was earned. Each day is the
+ * fold of the days up to it, freezes included, so it agrees with what
+ * `computeStreak` said on that day.
+ */
+export function dayLongestReached(studyDates: readonly string[], length: number, options: Omit<StreakOptions, 'today'> = {}): string | null {
+  const dates = [...new Set(studyDates)].sort()
+  for (let i = 0; i < dates.length; i++) {
+    if (computeStreak(dates.slice(0, i + 1), { ...options, today: dates[i]! }).longestStreak >= length)
+      return dates[i]!
+  }
+  return null
+}

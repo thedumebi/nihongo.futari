@@ -71,6 +71,13 @@ const LEGACY_OTHERS: readonly QuestDef[] = [
 ]
 export const GAME_QUESTS_FROM = '2026-10-21'
 
+/**
+ * The first day there were quests (91edfba). A rebuild scores the quests of
+ * every study day it touches, a day studied offline included, but never one
+ * from before quests existed.
+ */
+export const QUESTS_FROM = '2026-10-14'
+
 /** Every quest that can be drawn today or later. */
 export const QUEST_POOL: readonly QuestDef[] = [...REVIEW_QUESTS, ...EVERYDAY, ...GAME_QUESTS]
 

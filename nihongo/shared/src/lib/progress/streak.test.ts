@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import { computeStreak } from './streak.js'
+import { computeStreak, dayLongestReached } from './streak.js'
 import { daysBetween, nextDate, studyDateFor, studyDayRange } from './study-day.js'
 
 describe('computeStreak — basics', () => {
@@ -124,6 +124,26 @@ describe('computeStreak — freezes', () => {
   it('lets the streak lapse when the trailing gap is unaffordable', () => {
     const r = computeStreak(['2026-03-08'], { today: '2026-03-14', freezesAvailable: 2 })
     expect(r.currentStreak).toBe(0)
+  })
+})
+
+describe('dayLongestReached', () => {
+  it('finds the day the longest run first reached the length, not a later run', () => {
+    const days = ['2026-03-01', '2026-03-02', '2026-03-03', '2026-03-10', '2026-03-11', '2026-03-12', '2026-03-13']
+    expect(dayLongestReached(days, 3)).toBe('2026-03-03')
+    expect(dayLongestReached(days, 4)).toBe('2026-03-13')
+    expect(dayLongestReached(days, 5)).toBeNull()
+  })
+
+  it('counts a day bridged by a freeze, as the streak itself does', () => {
+    const days = ['2026-03-01', '2026-03-02', '2026-03-04']
+    expect(computeStreak(days, { today: '2026-03-04', freezesAvailable: 1 }).longestStreak).toBe(4)
+    expect(dayLongestReached(days, 4, { freezesAvailable: 1 })).toBe('2026-03-04')
+    expect(dayLongestReached(days, 4)).toBeNull()
+  })
+
+  it('ignores order and repeats', () => {
+    expect(dayLongestReached(['2026-03-02', '2026-03-01', '2026-03-02'], 2)).toBe('2026-03-02')
   })
 })
 

@@ -1,6 +1,6 @@
 import type { ActivityKind } from '@nihongo/shared/constants'
 import type { QuestProgress, ReviewGoalCard } from '@nihongo/shared/lib'
-import type { AggregateEvent, KnownKanji, LearnerHeadline, LearnerProfile, ProgressSummary, Readiness, ReviewEvent, Streak } from '@nihongo/shared/types'
+import type { AggregateEvent, KnownKanji, LearnerHeadline, LearnerProfile, ProgressSummary, Readiness, ReviewEvent, Streak, UserContext } from '@nihongo/shared/types'
 
 import db from '@nihongo/shared/db'
 import {
@@ -19,10 +19,10 @@ import {
   userXp,
   xpEvents
 } from '@nihongo/shared/db/schema'
-import { aggregateReviews, cardTotals, computeStreak, DEFAULT_DAY_BOUNDARY_HOUR, QUEST_XP, questProgress, questsFor, replay, reviewGoal, studyDateFor, studyDayRange, xpToLevel } from '@nihongo/shared/lib'
+import { aggregateReviews, cardTotals, computeStreak, DEFAULT_DAY_BOUNDARY_HOUR, QUEST_XP, questProgress, QUESTS_FROM, questsFor, replay, reviewGoal, studyDateFor, studyDayRange, xpToLevel } from '@nihongo/shared/lib'
 import { and, eq, getTableColumns, gte, inArray, isNull, lt, sql } from 'drizzle-orm'
 
-import { perRequest } from '@/lib/request-scope.js'
+import { inRequestScope, perRequest } from '@/lib/request-scope.js'
 
 import { recomputeAchievements } from './achievements.service.js'
 import { catalogue, charactersOf, itemCharacters, languageByCode } from './catalogue.service.js'
@@ -46,11 +46,6 @@ import { countDue, loadPolicy, newWordsToday } from './srs.service.js'
  *
  * Nothing in this file reads a stored counter and adds to it.
  */
-
-interface UserContext {
-  timezone: string
-  dayBoundaryHour: number
-}
 
 export async function loadUserContext(userId: string): Promise<UserContext> {
   const { timezone, settings } = await learnerProfile(userId)
@@ -126,7 +121,7 @@ function toAggregateEvents(rows: Array<{
  * with a partial one — silent data loss, and exactly the class of bug this
  * whole recompute-wholesale approach exists to avoid.
  */
-export async function recomputeProgress(userId: string, languageId: string, since?: Date): Promise<Streak> {
+export async function recomputeProgress(userId: string, languageId: string, since?: Date, days: Iterable<string> = []): Promise<Streak> {
   const { timezone, dayBoundaryHour } = await loadUserContext(userId)
 
   const cutoff = since
@@ -194,7 +189,9 @@ export async function recomputeProgress(userId: string, languageId: string, sinc
     }
   })
 
-  return recomputeHabit(userId, languageId)
+  // Quests are scored for the days the batch's own answers and activities
+  // fell on, not every day rebuilt.
+  return recomputeHabit(userId, languageId, days)
 }
 
 /**
@@ -206,16 +203,36 @@ export async function recomputeProgress(userId: string, languageId: string, sinc
  * rows, the streak a fold over every study day. So it can run as often as it
  * likes, in any order, and land on the same answer.
  */
-export async function recomputeHabit(userId: string, languageId: string): Promise<Streak> {
+export async function recomputeHabit(userId: string, languageId: string, days: Iterable<string> = []): Promise<Streak> {
   const { timezone, dayBoundaryHour } = await loadUserContext(userId)
 
-  // Today's quests: a finished one earns its XP once, keyed by quest and day.
-  const { localDate, quests } = await todayQuests(userId, languageId)
-  const done = quests.filter(q => q.done)
+  // The quests of today and of every other day this rebuild touched since
+  // there were quests: a day studied offline earns its quests when it
+  // arrives, not never. A finished quest earns its XP once, keyed by quest
+  // and day.
+  const today = studyDateFor(new Date(), timezone, dayBoundaryHour)
+  const questDays = [...new Set([...days].filter(d => d >= QUESTS_FROM && d < today))].sort().concat(today)
+  const ghosts = ghostBossHasCards(userId, languageId)
+  const pastDays = questDays.slice(0, -1)
+  // Read-only, so the days share one read of the learner's cards and profile.
+  const [scored, paid] = await inRequestScope(() => Promise.all([
+    Promise.all(questDays.map(d => questsOn(userId, languageId, d, ghosts))),
+    paidQuests(userId, languageId, pastDays)
+  ]))
+  // A past day is drawn again from the cards as they are now, which may draw
+  // a different quest than the learner saw: it never pays more quests than
+  // one day's draw, counting what it already paid.
+  const done = scored.flatMap(({ localDate, quests }) => {
+    const finished = quests.filter(q => q.done).map(q => ({ localDate, code: q.code }))
+    const already = paid.get(localDate)
+    if (!already)
+      return finished
+    return finished.filter(q => !already.has(q.code)).slice(0, Math.max(0, quests.length - already.size))
+  })
   if (done.length > 0) {
     await db
       .insert(xpEvents)
-      .values(done.map(q => ({ userId, languageId, source: 'quest', refId: `${q.code}:${localDate}`, amount: QUEST_XP })))
+      .values(done.map(q => ({ userId, languageId, source: 'quest', refId: `${q.code}:${q.localDate}`, amount: QUEST_XP })))
       .onConflictDoNothing()
   }
 
@@ -234,58 +251,81 @@ export async function recomputeHabit(userId: string, languageId: string): Promis
       set: { totalXp, level: xpToLevel(totalXp), updatedAt: new Date() }
     })
 
-  const streak = await persistStreak(userId, languageId, timezone, dayBoundaryHour)
-  await recomputeAchievements(userId, languageId)
+  const { streak, studyDates, freezesAvailable } = await persistStreak(userId, languageId, timezone, dayBoundaryHour)
+  // Past days arriving can move an unlock earlier.
+  await recomputeAchievements(userId, languageId, { studyDates, freezesAvailable, timezone, dayBoundaryHour }, { redate: [...days].some(d => d < today) })
   return streak
 }
 
+/** The quest codes already paid on each of some study days. */
+async function paidQuests(userId: string, languageId: string, days: string[]): Promise<Map<string, Set<string>>> {
+  const paid = new Map<string, Set<string>>()
+  if (days.length === 0)
+    return paid
+  // A quest's ref is `code:localDate`.
+  const day = sql<string>`split_part(${xpEvents.refId}, ':', 2)`
+  const rows = await db
+    .select({ code: sql<string>`split_part(${xpEvents.refId}, ':', 1)`, day })
+    .from(xpEvents)
+    .where(and(eq(xpEvents.userId, userId), eq(xpEvents.languageId, languageId), eq(xpEvents.source, 'quest'), inArray(day, days)))
+  for (const row of rows)
+    paid.set(row.day, (paid.get(row.day) ?? new Set()).add(row.code))
+  return paid
+}
+
 /**
- * The cards behind today's review goal: every card that could have been owed
- * a review today. For a card already answered today, where it stood before
- * that first answer comes from replaying its log, the source of truth (the
- * log's own before-columns are not filled in). `reviewGoal` decides which
- * were waiting when the day began.
+ * The cards behind a day's review goal: every card that could have been owed
+ * a review that day. Where a card stood when the day began comes from
+ * replaying its log, the source of truth (the log's own before-columns are
+ * not filled in), for every card answered since: on the day itself that is
+ * the state before its first answer, and for an earlier day, a card answered
+ * only afterwards was where that later first answer found it. `reviewGoal`
+ * decides which were waiting when the day began.
  */
 async function reviewGoalCards(userId: string, languageId: string, day: { start: Date, end: Date }): Promise<ReviewGoalCard[]> {
-  // The history up to the day's end of every card answered today: the answers
-  // today say which were reviewed, and the history before them what they were.
-  const answeredToday = db.select({ cardId: srsReviewLogs.cardId }).from(srsReviewLogs).where(and(eq(srsReviewLogs.userId, userId), eq(srsReviewLogs.languageId, languageId), gte(srsReviewLogs.reviewedAt, day.start), lt(srsReviewLogs.reviewedAt, day.end)))
+  // The history, up to now, of every card answered since the day began (for
+  // today, up to the day's end).
+  const until = new Date(Math.max(day.end.getTime(), Date.now()))
+  const answeredSince = db.select({ cardId: srsReviewLogs.cardId }).from(srsReviewLogs).where(and(eq(srsReviewLogs.userId, userId), eq(srsReviewLogs.languageId, languageId), gte(srsReviewLogs.reviewedAt, day.start), lt(srsReviewLogs.reviewedAt, until)))
   const [state, logs] = await Promise.all([
     learnerState(userId, languageId),
     db.select({ id: srsReviewLogs.id, cardId: srsReviewLogs.cardId, rating: srsReviewLogs.rating, reviewedAt: srsReviewLogs.reviewedAt, clientId: srsReviewLogs.clientId })
       .from(srsReviewLogs)
-      .where(and(eq(srsReviewLogs.userId, userId), eq(srsReviewLogs.languageId, languageId), inArray(srsReviewLogs.cardId, answeredToday), lt(srsReviewLogs.reviewedAt, day.end)))
+      .where(and(eq(srsReviewLogs.userId, userId), eq(srsReviewLogs.languageId, languageId), inArray(srsReviewLogs.cardId, answeredSince), lt(srsReviewLogs.reviewedAt, until)))
   ])
 
   const byCard = new Map<string, typeof logs>()
   for (const log of logs)
     byCard.set(log.cardId, [...(byCard.get(log.cardId) ?? []), log])
-  const reviewed = new Set([...byCard].filter(([, history]) => history.some(h => h.reviewedAt >= day.start)).map(([cardId]) => cardId))
 
-  const cards = [...state.cards.values()].filter(c =>
-    c.live && !c.suspended && c.createdAt < day.start
-    && ((c.state >= 1 && c.state <= 3 && c.due < day.end) || reviewed.has(c.id)))
-
-  const before = new Map<string, { stateBefore: number, dueBefore: Date }>()
-  const answered = cards.filter(c => reviewed.has(c.id))
-  if (answered.length > 0) {
+  // The first answer at or after the day's start, and the card before it.
+  const firstSince = new Map<string, { at: Date, stateBefore: number, dueBefore: Date }>()
+  if (byCard.size > 0) {
     const { fsrsParams } = await loadPolicy(userId)
-    for (const card of answered) {
-      const history = byCard.get(card.id) ?? []
+    for (const [cardId, history] of byCard) {
       const at = new Map(history.map(h => [h.id, h.reviewedAt]))
       const { snapshots } = replay(history.map(h => ({ id: h.id, rating: h.rating as ReviewEvent['rating'], reviewedAt: h.reviewedAt, clientId: h.clientId })), fsrsParams)
       const first = snapshots.find(snap => at.get(snap.logId)! >= day.start)
       if (first)
-        before.set(card.id, { stateBefore: first.stateBefore, dueBefore: first.dueBefore })
+        firstSince.set(cardId, { at: at.get(first.logId)!, stateBefore: first.stateBefore, dueBefore: first.dueBefore })
     }
   }
+  const reviewed = new Set([...byCard.keys()].filter(id => byCard.get(id)!.some(h => h.reviewedAt >= day.start && h.reviewedAt < day.end)))
 
-  return cards.map(c => ({
-    state: c.state,
-    due: c.due,
-    createdAt: c.createdAt,
-    firstToday: reviewed.has(c.id) ? before.get(c.id) ?? { stateBefore: null, dueBefore: null } : null
-  }))
+  return [...state.cards.values()].flatMap((c): ReviewGoalCard[] => {
+    // A card answered offline is made on the server when it syncs, but the
+    // learner had it from their first answer.
+    const createdAt = c.firstSeenAt && c.firstSeenAt < c.createdAt ? c.firstSeenAt : c.createdAt
+    if (!c.live || c.suspended || createdAt >= day.start)
+      return []
+    const first = firstSince.get(c.id)
+    if (reviewed.has(c.id))
+      return [{ state: c.state, due: c.due, createdAt, firstToday: first && first.at < day.end ? { stateBefore: first.stateBefore, dueBefore: first.dueBefore } : { stateBefore: null, dueBefore: null } }]
+    // Not answered that day: as it stood then, which for a card answered
+    // since is where that answer found it.
+    const then = first ? { state: first.stateBefore, due: first.dueBefore } : { state: c.state, due: c.due }
+    return then.state >= 1 && then.state <= 3 && then.due < day.end ? [{ ...then, createdAt, firstToday: null }] : []
+  })
 }
 
 /** The kinds of activity logged on one study day, once per request. */
@@ -306,16 +346,25 @@ function activitiesOn(userId: string, languageId: string, localDate: string): Pr
  */
 export async function todayQuests(userId: string, languageId: string, now = new Date()): Promise<{ localDate: string, quests: QuestProgress[] }> {
   const { timezone, dayBoundaryHour } = await loadUserContext(userId)
-  const localDate = studyDateFor(now, timezone, dayBoundaryHour)
+  return questsOn(userId, languageId, studyDateFor(now, timezone, dayBoundaryHour), ghostBossHasCards(userId, languageId))
+}
+
+/**
+ * One study day's quests and how far each got, today's or an earlier one's:
+ * every input is that day's (its reviews, activities and new words, and the
+ * cards as they stood when it began). Only whether the ghost boss has anyone
+ * is today's, as nothing records it for a past day.
+ */
+async function questsOn(userId: string, languageId: string, localDate: string, ghostsHas: Promise<boolean>): Promise<{ localDate: string, quests: QuestProgress[] }> {
+  const { timezone, dayBoundaryHour } = await loadUserContext(userId)
   const day = studyDayRange(localDate, timezone, dayBoundaryHour)
   const [activities, cards, newWords, ghosts] = await Promise.all([
     activitiesOn(userId, languageId, localDate),
     reviewGoalCards(userId, languageId, day),
     // Words, as the daily limit counts them: a second card of a word met
     // before is practice, not a new word.
-    newWordsToday(userId, languageId, now),
-    // Whether this week's ghost boss has anyone to face, by its own rule.
-    ghostBossHasCards(userId, languageId)
+    newWordsToday(userId, languageId, day.start),
+    ghostsHas
   ])
   const goal = reviewGoal(cards, day)
   return {
@@ -349,7 +398,7 @@ async function persistStreak(
   languageId: string,
   timezone: string,
   dayBoundaryHour: number
-): Promise<Streak> {
+): Promise<{ streak: Streak, studyDates: string[], freezesAvailable: number }> {
   const days = await studyDays(userId, languageId)
 
   // Granted freezes only — earned ones are the fold's own output, below.
@@ -359,10 +408,8 @@ async function persistStreak(
     .where(and(eq(streakFreezes.userId, userId), eq(streakFreezes.reason, 'admin'), isNull(streakFreezes.usedOnDate)))
 
   const today = studyDateFor(new Date(), timezone, dayBoundaryHour)
-  const streak = computeStreak(days, {
-    today,
-    freezesAvailable: granted?.available ?? 0
-  })
+  const freezesAvailable = granted?.available ?? 0
+  const streak = computeStreak(days, { today, freezesAvailable })
 
   // Earned freezes are rebuilt wholesale from the fold — which ones exist, and
   // which day each covered — so a replay that fills a past day can hand one
@@ -406,7 +453,7 @@ async function persistStreak(
       }
     })
 
-  return streak
+  return { streak, studyDates: days, freezesAvailable }
 }
 
 /**

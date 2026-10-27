@@ -2,11 +2,12 @@ import type { SubmitAnswerInput, SyncResult } from '@nihongo/shared/types'
 
 import db, { connection } from '@nihongo/shared/db'
 import { users } from '@nihongo/shared/db/schema'
-import { sql } from 'drizzle-orm'
+import { QUESTS_FROM } from '@nihongo/shared/lib'
+import { eq, sql } from 'drizzle-orm'
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 
 import { resetClock, seedRandom, setClock } from '@/test/clock.js'
-import { DAY_MS, LANGUAGE_ID, START, uuidFrom } from '@/test/learner-specs.js'
+import { DAY_MS, LANGUAGE_ID, uuidFrom } from '@/test/learner-specs.js'
 
 import { completeLesson, listLessons } from './lesson.service.js'
 import { recomputeProgress } from './progress.service.js'
@@ -32,18 +33,13 @@ import { applyMutations } from './sync.service.js'
  * answer older than the card's newest is replayed into its place, and the card
  * is first seen and last correct when the learner answered.
  *
- * Two departures from the rule are known, and pinned with `it.fails` so that
- * fixing one shows up here:
- *
- *   1. An achievement's `unlocked_at` is when the rebuild found it earned,
- *      which for an offline session is the day of the sync.
- *   2. Quest XP is only ever awarded for the day of the rebuild, so an offline
- *      day that syncs later never earns its quests.
- *
- * Every sync happens in `beforeAll`, and its own checks (nothing rejected, the
- * resend counted as duplicates) are ordinary tests, so a pinned test can only
- * pass by the comparison itself failing.
+ * So is every date an achievement was unlocked, and every quest earned: an
+ * offline day earns its quests when it syncs, and an achievement is dated by
+ * the answer that crossed the line. Quests are drawn per learner, so that is
+ * checked with one learner taking both routes.
  */
+/** Days with quests, so the offline days have quests to earn. */
+const START = new Date(`${QUESTS_FROM}T00:00:00.000Z`)
 const SYNC_AT = new Date(START.getTime() + 5 * DAY_MS)
 
 async function makeUser(id: string): Promise<void> {
@@ -90,7 +86,7 @@ async function sameLessons(userId: string): Promise<void> {
   }
 }
 
-/** Columns stamped with the time of the rebuild: divergence (1). */
+/** Columns dated by the answer, compared only for one learner by both routes. */
 const ARRIVAL_TIMES = ['unlocked_at']
 
 /** Everything derived from the log, with ids written as what they stand for. */
@@ -192,9 +188,19 @@ describe('a set of answers, however it arrives', () => {
     expect(await stateOf('perm-shuffled', indexFor('shuffled'))).toEqual(await stateOf('perm-online', indexFor('')))
   })
 
-  // Known: (1) and (2) in the header.
-  it.fails('in one late batch, dates each achievement and quest by the answer, not the sync', async () => {
-    expect(await stateOf('perm-late', indexFor('late'), { arrivalTimes: true }))
-      .toEqual(await stateOf('perm-online', indexFor(''), { arrivalTimes: true }))
+  // Quests are drawn per learner, so the same learner takes both routes: as
+  // studied online, then again from nothing, all of it in one late batch.
+  it('in one late batch, dates each achievement and quest by the answer, not the sync', async () => {
+    const online = await stateOf('perm-online', indexFor(''), { arrivalTimes: true })
+    await db.delete(users).where(eq(users.id, 'perm-online'))
+    await makeUser('perm-online')
+    await sameLessons('perm-online')
+    await setClock(SYNC_AT)
+    const again = await applyMutations('perm-online', {
+      deviceId: 'again',
+      mutations: answers.map(a => ({ ...a, id: uuidFrom('again', a.id), offline: true })).reverse()
+    })
+    expect(again.rejected).toEqual([])
+    expect(await stateOf('perm-online', indexFor('again'), { arrivalTimes: true })).toEqual(online)
   })
 })

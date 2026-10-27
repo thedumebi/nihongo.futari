@@ -16,7 +16,7 @@ vi.mock('./activities.service.js', () => ({ recordActivityFor: vi.fn() }))
 vi.mock('./lesson.service.js', () => ({ completeLesson: vi.fn() }))
 vi.mock('./speak.service.js', () => ({ completeSpeakSession: vi.fn(), missSpeakStep: vi.fn() }))
 vi.mock('./recompute.service.js', () => ({
-  deferRecompute: (): DeferredRecompute => ({ progress: new Map(), habit: new Set() }),
+  deferRecompute: (): DeferredRecompute => ({ progress: new Map(), habit: new Map(), answeredAt: new Map() }),
   runDeferred: vi.fn()
 }))
 

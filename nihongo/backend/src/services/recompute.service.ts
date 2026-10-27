@@ -1,8 +1,9 @@
 import type { DeferredRecompute } from '@nihongo/shared/types'
 
 import { pino } from '@nihongo/shared'
+import { studyDateFor } from '@nihongo/shared/lib'
 
-import { recomputeHabit, recomputeProgress } from './progress.service.js'
+import { loadUserContext, recomputeHabit, recomputeProgress } from './progress.service.js'
 
 /**
  * Rebuilds owed by a batch, run once at its end instead of once per item.
@@ -16,7 +17,7 @@ import { recomputeHabit, recomputeProgress } from './progress.service.js'
 
 /** An empty collector for a batch's rebuilds. */
 export function deferRecompute(): DeferredRecompute {
-  return { progress: new Map(), habit: new Set() }
+  return { progress: new Map(), habit: new Map(), answeredAt: new Map() }
 }
 
 /**
@@ -32,9 +33,17 @@ export function deferProgress(deferred: DeferredRecompute, languageId: string, s
     deferred.progress.set(languageId, since)
 }
 
-/** Notes that a language's XP and streak need rebuilding. */
-export function deferHabit(deferred: DeferredRecompute, languageId: string): void {
-  deferred.habit.add(languageId)
+/** Notes that a language's XP and streak need rebuilding, and the study day the activity fell on. */
+export function deferHabit(deferred: DeferredRecompute, languageId: string, localDate?: string): void {
+  const days = deferred.habit.get(languageId) ?? new Set<string>()
+  if (localDate)
+    days.add(localDate)
+  deferred.habit.set(languageId, days)
+}
+
+/** Notes when an answer in a language was given, so its study day has its quests scored. */
+export function deferAnswer(deferred: DeferredRecompute, languageId: string, answeredAt: Date): void {
+  deferred.answeredAt.set(languageId, [...(deferred.answeredAt.get(languageId) ?? []), answeredAt])
 }
 
 /**
@@ -49,12 +58,20 @@ export function deferHabit(deferred: DeferredRecompute, languageId: string): voi
  * a resent batch does too: duplicates still note what they owe.
  */
 export async function runDeferred(userId: string, deferred: DeferredRecompute): Promise<void> {
+  // Answers' study days, worked out once for the batch.
+  if (deferred.answeredAt.size > 0) {
+    const { timezone, dayBoundaryHour } = await loadUserContext(userId)
+    for (const [languageId, moments] of deferred.answeredAt) {
+      for (const at of moments)
+        deferHabit(deferred, languageId, studyDateFor(at, timezone, dayBoundaryHour))
+    }
+  }
   const owed: Array<[string, () => Promise<unknown>]> = [
     ...[...deferred.progress].map(([languageId, since]): [string, () => Promise<unknown>] =>
-      [languageId, () => recomputeProgress(userId, languageId, since ?? undefined)]),
+      [languageId, () => recomputeProgress(userId, languageId, since ?? undefined, deferred.habit.get(languageId))]),
     ...[...deferred.habit]
-      .filter(languageId => !deferred.progress.has(languageId))
-      .map((languageId): [string, () => Promise<unknown>] => [languageId, () => recomputeHabit(userId, languageId)])
+      .filter(([languageId]) => !deferred.progress.has(languageId))
+      .map(([languageId, days]): [string, () => Promise<unknown>] => [languageId, () => recomputeHabit(userId, languageId, days)])
   ]
   for (const [languageId, rebuild] of owed) {
     try {

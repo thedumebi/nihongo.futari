@@ -102,7 +102,7 @@ import { hintFromLesson, loadLessons } from './grammar.service.js'
 import { learnerState } from './learner-state.service.js'
 import { loadSeries } from './phonetics.service.js'
 import { learnerProfile, loadUserContext, recomputeProgress, studyLevelOf } from './progress.service.js'
-import { deferProgress } from './recompute.service.js'
+import { deferAnswer, deferProgress } from './recompute.service.js'
 
 /**
  * SRS persistence.
@@ -516,6 +516,10 @@ export async function submitAnswer(userId: string, input: SubmitAnswerInput, def
   // history again rather than trust it did.
   if (deferred && !outcome.result.applied)
     deferProgress(deferred, outcome.languageId, undefined)
+  // The answer's own study day has its quests scored when the batch ends,
+  // however long ago it was.
+  if (deferred)
+    deferAnswer(deferred, outcome.languageId, answeredAt)
   if (outcome.result.applied) {
     const since = outcome.result.replayed
       ? undefined
