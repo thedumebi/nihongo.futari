@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import { distinguishingStart, typedTwin } from './twins.js'
+import { distinguishingStart, gradeWithTwins, typedTwin } from './twins.js'
 
 describe('distinguishingStart', () => {
   it('needs only the first sound when that tells the words apart', () => {
@@ -33,5 +33,24 @@ describe('typedTwin', () => {
   it('is null for anything else', () => {
     expect(typedTwin('normalised-jp', 'jidousha', twins)).toBeNull()
     expect(typedTwin('normalised-jp', '', twins)).toBeNull()
+  })
+})
+
+describe('gradeWithTwins', () => {
+  const answer = { primary: '自動車', accepted: ['じどうしゃ'] }
+  const twins = [{ form: '車', reading: 'くるま' }]
+
+  it('counts a twin as right, and says which twin it was', () => {
+    expect(gradeWithTwins('normalised-jp', 'kuruma', answer, twins)).toEqual({ correct: true, expected: '自動車', twin: twins[0] })
+    expect(gradeWithTwins('normalised-jp', '車', answer, twins)).toEqual({ correct: true, expected: '自動車', twin: twins[0] })
+  })
+
+  it('counts the card\'s own word as right, with no twin', () => {
+    expect(gradeWithTwins('normalised-jp', 'jidousha', answer, twins)).toEqual({ correct: true, expected: '自動車', twin: null })
+  })
+
+  it('marks anything else wrong', () => {
+    expect(gradeWithTwins('normalised-jp', 'densha', answer, twins)).toEqual({ correct: false, expected: '自動車', twin: null })
+    expect(gradeWithTwins('normalised-jp', 'kuruma', answer, [])).toEqual({ correct: false, expected: '自動車', twin: null })
   })
 })

@@ -1,3 +1,5 @@
+import type { Twin } from '@/types/study.js'
+
 import { gradeAnswer } from './index.js'
 
 /**
@@ -6,14 +8,10 @@ import { gradeAnswer } from './index.js'
  * on cannot say which one it wants, and typing the other was marked wrong.
  *
  * The question names the sound its word starts with, as far as it takes to
- * tell it from its twins, and a twin typed anyway is neither right nor wrong:
- * the learner is told it works too, and asked for the card's word.
+ * tell it from its twins, and a twin typed anyway counts as right: it is the
+ * right word for the meaning, and the learner is shown which one the sentence
+ * used.
  */
-
-export interface Twin {
-  form: string
-  reading: string
-}
 
 const SMALL = new Set([...'ゃゅょぁぃぅぇぉャュョァィゥェォ'])
 
@@ -48,4 +46,20 @@ export function typedTwin(graderCode: string, typed: string, twins: readonly Twi
   if (!typed.trim())
     return null
   return twins.find(t => gradeAnswer(graderCode, typed, { primary: t.form, accepted: [t.form, t.reading] }).correct) ?? null
+}
+
+/**
+ * A fill-in graded with its twins: the card's own word is right, and so is a
+ * twin, which comes back as `twin` so the page can say which word the sentence
+ * used.
+ */
+export function gradeWithTwins(
+  graderCode: string,
+  typed: string,
+  answer: Parameters<typeof gradeAnswer>[2],
+  twins: readonly Twin[]
+): ReturnType<typeof gradeAnswer> & { twin: Twin | null } {
+  const graded = gradeAnswer(graderCode, typed, answer)
+  const twin = graded.correct ? null : typedTwin(graderCode, typed, twins)
+  return { ...graded, correct: graded.correct || twin !== null, twin }
 }

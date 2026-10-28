@@ -40,7 +40,7 @@ const loading = ref(true)
 const failed = ref(false)
 
 // ============ Computed Properties ============
-const played = computed(() => session.value ? recallSteps(session.value) : { steps: [], tags: [] })
+const played = computed(() => session.value ? recallSteps(session.value) : { steps: [], tags: [], also: [] })
 
 // ============ Lifecycle Hooks ============
 onMounted(async () => {
@@ -106,6 +106,7 @@ function onFinished() {
           class="mt-6"
           :steps="played.steps"
           :tags="played.tags"
+          :also="played.also"
           title="Recall"
           album="Recall"
           :think-scale="thinkScale"

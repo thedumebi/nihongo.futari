@@ -74,8 +74,8 @@ describe('ambiguousPrompts', () => {
 describe('recallSteps', () => {
   const session = {
     items: [
-      { key: 'w1', kind: 'word' as const, prompt: 'one', promptAudio: ['en/one.mp3', 'ja/hi.mp3'], hint: 'ひ', text: '一つ', reading: 'ひとつ', answerAudio: 'ja/hitotsu.mp3' },
-      { key: 'w2', kind: 'word' as const, prompt: 'cat', promptAudio: ['en/cat.mp3'], hint: null, text: '猫', reading: 'ねこ', answerAudio: 'ja/neko.mp3' }
+      { key: 'w1', kind: 'word' as const, prompt: 'one', promptAudio: ['en/one.mp3', 'ja/hi.mp3'], hint: 'ひ', also: [{ text: '一', reading: 'いち' }], text: '一つ', reading: 'ひとつ', answerAudio: 'ja/hitotsu.mp3' },
+      { key: 'w2', kind: 'word' as const, prompt: 'cat', promptAudio: ['en/cat.mp3'], hint: null, also: [], text: '猫', reading: 'ねこ', answerAudio: 'ja/neko.mp3' }
     ],
     order: [0, 1, 0]
   }
@@ -86,6 +86,10 @@ describe('recallSteps', () => {
     expect(steps.map(s => s.index)).toEqual([0, 1, 2])
     expect(tags).toEqual([null, null, 'again'])
     expect(steps[1]).toMatchObject({ kind: 'prompt', reading: 'ねこ', answerAudio: 'ja/neko.mp3' })
+  })
+
+  it('names the other words the English asks for, on every asking of the word', () => {
+    expect(recallSteps(session).also).toEqual(['Also 一 (いち)', null, 'Also 一 (いち)'])
   })
 
   it('says the English, then the hint, each with its own clip', () => {

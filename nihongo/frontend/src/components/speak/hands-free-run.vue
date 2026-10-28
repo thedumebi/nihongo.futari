@@ -33,9 +33,11 @@ interface Props {
   tags?: Array<string | null>
   /** Show the reading under the answer when it is written with kanji. */
   showReading?: boolean
+  /** A line under the answer per step, by position: Recall's other words for the same English. */
+  also?: Array<string | null>
 }
 
-const props = withDefaults(defineProps<Props>(), { tags: () => [], showReading: false })
+const props = withDefaults(defineProps<Props>(), { tags: () => [], showReading: false, also: () => [] })
 
 const emit = defineEmits<{
   /** Played through to the end — a listen, recorded apart from a scored run. */
@@ -201,6 +203,7 @@ function setState(state: MediaSessionPlaybackState) {
         >
           {{ step.text }}
           <span v-if="showReading && step.reading && step.reading !== step.text" class="block text-sm text-[var(--color-muted)]">{{ step.reading }}</span>
+          <span v-if="also[current]" class="mt-2 block text-sm text-[var(--color-muted)]">{{ also[current] }}</span>
         </p>
       </template>
       <slot v-else-if="finished" name="finished" />

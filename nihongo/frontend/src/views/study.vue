@@ -14,10 +14,11 @@ import type {
   StudyQueueItem,
   StudyQueueQuery,
   StudyQueueResponse,
+  Twin,
   WordGloss
 } from '@nihongo/shared/types'
 
-import { describeScript, gradeAnswer, gradeHandwriting, ratingFromGrade, samplePath, scriptOf, seriesReading, typedTwin, uuidv7, VERB_CLASS_NOTE, VERB_FORM_INFO } from '@nihongo/shared/lib'
+import { describeScript, gradeHandwriting, gradeWithTwins, ratingFromGrade, samplePath, scriptOf, seriesReading, uuidv7, VERB_CLASS_NOTE, VERB_FORM_INFO } from '@nihongo/shared/lib'
 import { useLocalStorage } from '@vueuse/core'
 import { GraduationCap, Layers } from 'lucide-vue-next'
 import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
@@ -861,18 +862,18 @@ const clozeGloss = computed(() => {
 /**
  * Other everyday words the same English fits (車 and 自動車 are both "car"),
  * and the sound that tells this card's word from them. Without it the
- * meaning alone could not say which word was wanted, and typing the other
- * one was marked wrong.
+ * meaning alone could not say which word was wanted. Typing the other one
+ * anyway is right, and the verdict says which word the sentence used.
  */
 const clozeTwins = computed(() => {
   const value = current.value?.prompt?.twins
-  return isCloze.value && Array.isArray(value) ? value as Array<{ form: string, reading: string }> : []
+  return isCloze.value && Array.isArray(value) ? value as Twin[] : []
 })
 const clozeStart = computed(() => {
   const value = current.value?.prompt?.startsWith
   return clozeTwins.value.length && typeof value === 'string' ? value : ''
 })
-/** A twin typed: it fits too, but this card wants its own word. Neither right nor wrong. */
+/** A twin typed: right, and this says which word the sentence used. */
 const twinNote = ref('')
 
 /**
@@ -1436,17 +1437,15 @@ function check() {
     return
   }
 
-  const result = gradeAnswer(item.graderCode, answer.value, item.answer)
-  // The other word the English fits: not a miss, and not this card's word.
-  // Say so and let them try again; nothing is recorded.
-  const twin = !result.correct && isCloze.value ? typedTwin(item.graderCode, answer.value, clozeTwins.value) : null
-  if (twin) {
-    twinNote.value = `${twin.form} (${twin.reading}) fits too, but this card wants another word for it${clozeStart.value ? `, one starting with ${clozeStart.value}` : ''}. Try again.`
-    answer.value = ''
-    answerInput.value?.focus()
-    return
-  }
-  twinNote.value = ''
+  // The other word the English fits (車 where the sentence has 自動車) is the
+  // right word for the meaning, so it counts. The verdict says which word the
+  // sentence used. `clozeTwins` is empty on any other card.
+  const result = gradeWithTwins(item.graderCode, answer.value, item.answer, clozeTwins.value)
+  const wantedReading = item.prompt?.hint
+  const sentenceReading = typeof wantedReading === 'string' && wantedReading !== result.expected ? ` (${wantedReading})` : ''
+  twinNote.value = result.twin
+    ? `This sentence uses ${result.expected}${sentenceReading}. ${result.twin.form} (${result.twin.reading}) means the same, so it counts.`
+    : ''
   wasCorrect.value = result.correct
   expected.value = result.expected
   if (!result.correct && isCloze.value && answer.value.trim())
@@ -2377,10 +2376,6 @@ watch(() => lang.code, loadDecksAndQueue)
                 autocorrect="off"
                 spellcheck="false"
               >
-              <p v-if="twinNote && !revealed" class="text-center text-sm text-[var(--color-muted)]" style="font-family: var(--font-jp)">
-                {{ twinNote }}
-              </p>
-
               <div v-if="revealed && handwriting" class="text-center">
                 <p class="font-semibold" :class="handwriting.passed ? 'text-[var(--color-success)]' : 'text-[var(--color-danger)]'">
                   {{ Math.round(handwriting.score) }}% accuracy
@@ -2415,6 +2410,9 @@ watch(() => lang.code, loadDecksAndQueue)
                 </p>
                 <p v-else class="font-semibold text-[var(--color-danger)]">
                   Not quite, it's <strong>{{ expected }}</strong>
+                </p>
+                <p v-if="wasCorrect && twinNote" class="mx-auto mt-2 max-w-sm text-sm text-[var(--color-muted)]">
+                  {{ twinNote }}
                 </p>
                 <p v-if="otherWordLine" class="mx-auto mt-2 max-w-sm text-sm text-[var(--color-muted)]">
                   {{ otherWordLine }}

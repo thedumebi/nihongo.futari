@@ -15,6 +15,19 @@ import { cardStateSchema } from './srs.js'
  */
 
 /**
+ * Another everyday word a fill-in's English fits, sent on the card's prompt: 車
+ * (くるま) beside 自動車 (じどうしゃ), both "car".
+ */
+export const twinSchema = z.object({ form: z.string(), reading: z.string() }).openapi('Twin')
+
+export type Twin = z.infer<typeof twinSchema>
+
+/** A twin as the queue finds it, with the meaning it was found by. */
+export const twinCandidateSchema = twinSchema.extend({ gloss: z.string() })
+
+export type TwinCandidate = z.infer<typeof twinCandidateSchema>
+
+/**
  * One line on the "what's due" list.
  *
  * Deliberately NOT a StudyQueueItem: this is a list you read, not a card you

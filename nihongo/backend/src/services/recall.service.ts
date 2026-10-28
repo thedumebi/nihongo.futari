@@ -81,16 +81,18 @@ export async function getRecallSession(userId: string, languageCode: string, siz
 
   // English said for more than one word this learner has: "one" is いち and
   // ひとつ. Those prompts get the answer's first sound as a hint, or there is
-  // no telling which word is wanted.
-  const ambiguous = ambiguousPrompts((await db
-    .selectDistinct({ wordId: words.id, glosses: wordSenses.glosses })
+  // no telling which word is wanted, and the answer names the others too.
+  const learnerWords = (await db
+    .selectDistinct({ wordId: words.id, form: words.primaryForm, reading: words.primaryReading, glosses: wordSenses.glosses })
     .from(srsCards)
     .innerJoin(studyItemFacets, eq(studyItemFacets.id, srsCards.facetId))
     .innerJoin(studyItems, eq(studyItems.id, studyItemFacets.studyItemId))
     .innerJoin(words, eq(words.id, studyItems.wordId))
     .innerJoin(wordSenses, and(eq(wordSenses.wordId, words.id), eq(wordSenses.sortIndex, 0)))
     .where(and(eq(srsCards.userId, userId), eq(srsCards.languageId, language.id))))
-    .map(w => ({ word: w.wordId, prompt: recallGloss(w.glosses.filter(g => g.lang === 'en').map(g => g.text)) })))
+    .map(w => ({ word: w.wordId, form: w.form, reading: w.reading ?? '', prompt: recallGloss(w.glosses.filter(g => g.lang === 'en').map(g => g.text)) }))
+  const ambiguous = ambiguousPrompts(learnerWords)
+  const saidAs = (prompt: string) => prompt.toLowerCase().replace(/\s+/g, ' ').trim()
   // The clip for a single kana, to say the hint aloud.
   const kanaClips = new Map((await db.select({ character: kana.character, romaji: kana.romaji, script: kana.script }).from(kana))
     .map(k => [k.character, assetUrl(`/audio/kana/${k.script}-${k.romaji}.m4a`)]))
@@ -106,7 +108,7 @@ export async function getRecallSession(userId: string, languageCode: string, siz
   const asked = new Set<string>()
   for (const r of wordRows) {
     const prompt = recallGloss(r.glosses.filter(g => g.lang === 'en').map(g => g.text))
-    const said = prompt.toLowerCase().replace(/\s+/g, ' ').trim()
+    const said = saidAs(prompt)
     const answerClip = answerClips.get(Number(r.entSeq))
     if (!prompt || !answerClip || seen.has(r.wordId) || asked.has(said) || items.length >= size)
       continue
@@ -114,12 +116,18 @@ export async function getRecallSession(userId: string, languageCode: string, siz
     asked.add(said)
     const hint = ambiguous.has(said) ? firstMora(r.reading) || null : null
     const hintClip = hint ? kanaClips.get(hint) : undefined
+    const also = ambiguous.has(said)
+      ? [...new Map(learnerWords
+          .filter(w => w.word !== r.wordId && w.prompt && saidAs(w.prompt) === said)
+          .map(w => [w.word, { text: w.form, reading: w.reading }])).values()]
+      : []
     items.push({
       key: r.wordId,
       kind: 'word',
       prompt,
       promptAudio: [assetUrl(glossAudioPath(prompt)), ...(hintClip ? [hintClip] : [])],
       hint,
+      also,
       text: r.form,
       reading: r.reading,
       answerAudio: assetUrl(answerClip)
@@ -164,6 +172,7 @@ export async function getRecallSession(userId: string, languageCode: string, siz
       prompt: say.map(s => s.text).join(' '),
       promptAudio: say.flatMap(s => s.audio ? [s.audio] : []),
       hint: null,
+      also: [],
       text: r.text,
       reading: r.reading,
       answerAudio: speakAnswerAudio(r.text)

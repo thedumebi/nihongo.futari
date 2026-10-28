@@ -28,6 +28,7 @@ import type {
   StudyQueueQuery,
   StudyQueueResponse,
   SubmitAnswerInput,
+  TwinCandidate,
   WordStatus
 } from '@nihongo/shared/types'
 import type { SQL } from 'drizzle-orm'
@@ -975,23 +976,25 @@ function plainGloss(text: string): string {
 }
 
 /**
- * Give each fill-in card the other words its meaning fits, and the sound that
- * tells its own word from them (see `distinguishingStart`). "The missing word
- * means 'car'" is as true of 車 as of 自動車, so the card says which it wants
- * ("starts with じ"), and the page treats the other word typed as neither
- * right nor wrong.
+ * `plainGloss` in SQL, over one gloss `g`.
  *
- * A twin is an everyday N5 or N4 word whose first meaning, asides aside, is
- * exactly the card's meaning: one a learner might actually type.
+ * `String.raw` because the regexes need their backslashes: in a tagged template
+ * `\s` and `\(` are no escapes at all, and drizzle's `sql` received `s*([^)]*)`,
+ * which matched every gloss whole and blanked it. No meaning ever matched, so
+ * no fill-in ever had a twin.
  */
-async function withClozeTwins(items: StudyQueueItem[], languageId: string): Promise<StudyQueueItem[]> {
-  const cloze = items.filter(i => i.prompt?.kind === 'cloze' && typeof i.prompt.gloss === 'string')
-  const glosses = [...new Set(cloze.map(i => plainGloss(String(i.prompt!.gloss))))].filter(Boolean)
+const PLAIN_GLOSS_SQL = sql.raw(String.raw`lower(trim(regexp_replace(regexp_replace(g->>'text', '\s*\([^)]*\)', '', 'g'), '\s+', ' ', 'g')))`)
+
+/**
+ * The everyday words each meaning fits: N5 and N4, common, studied, whose first
+ * sense has the meaning (asides aside) among its glosses. One a learner might
+ * actually type.
+ */
+export async function twinCandidates(languageId: string, glosses: readonly string[]): Promise<TwinCandidate[]> {
   if (glosses.length === 0)
-    return items
-  const rows = await db.execute<{ form: string, reading: string, gloss: string }>(sql`
-    select distinct w.primary_form as form, w.primary_reading as reading,
-      lower(trim(regexp_replace(regexp_replace(g->>'text', '\s*\([^)]*\)', '', 'g'), '\s+', ' ', 'g'))) as gloss
+    return []
+  const rows = await db.execute<TwinCandidate>(sql`
+    select distinct w.primary_form as form, w.primary_reading as reading, ${PLAIN_GLOSS_SQL} as gloss
     from words w
     join study_items si on si.word_id = w.id and si.published and si.active
     join word_senses ws on ws.word_id = w.id and ws.sort_index = 0
@@ -999,15 +1002,31 @@ async function withClozeTwins(items: StudyQueueItem[], languageId: string): Prom
     cross join lateral jsonb_array_elements(ws.glosses) g
     where w.language_id = ${languageId} and w.published and w.is_common and w.primary_reading is not null
       and coalesce(g->>'lang', 'en') in ('en', 'eng')
-      and lower(trim(regexp_replace(regexp_replace(g->>'text', '\s*\([^)]*\)', '', 'g'), '\s+', ' ', 'g'))) in ${glosses}
+      and ${PLAIN_GLOSS_SQL} in ${glosses}
   `)
+  return rows.rows
+}
+
+/**
+ * Give each fill-in card the other words its meaning fits, and the sound that
+ * tells its own word from them (see `distinguishingStart`). "The missing word
+ * means 'car'" is as true of 車 as of 自動車, so the card says which it wants
+ * ("starts with じ"), and the page counts the other word typed as right, saying
+ * which one the sentence used.
+ */
+async function withClozeTwins(items: StudyQueueItem[], languageId: string): Promise<StudyQueueItem[]> {
+  const cloze = items.filter(i => i.prompt?.kind === 'cloze' && typeof i.prompt.gloss === 'string')
+  const glosses = [...new Set(cloze.map(i => plainGloss(String(i.prompt!.gloss))))].filter(Boolean)
+  if (glosses.length === 0)
+    return items
+  const candidates = await twinCandidates(languageId, glosses)
   return items.map((item) => {
     if (item.prompt?.kind !== 'cloze' || typeof item.prompt.gloss !== 'string')
       return item
     const gloss = plainGloss(item.prompt.gloss)
     const reading = typeof item.prompt.hint === 'string' ? item.prompt.hint : ''
     const accepted = new Set([item.answer.primary, ...item.answer.accepted])
-    const twins = [...new Map(rows.rows
+    const twins = [...new Map(candidates
       .filter(r => r.gloss === gloss && !accepted.has(r.form) && !accepted.has(r.reading) && r.reading !== reading)
       .map(r => [`${r.form}|${r.reading}`, { form: r.form, reading: r.reading }])).values()]
     if (twins.length === 0 || !reading)
@@ -2046,7 +2065,8 @@ export async function getDueList(userId: string, query: DueListQuery): Promise<D
     const [subject, detail, href] = r.kanaCharacter
       ? [r.kanaCharacter, r.kanaRomaji, null]
       : r.kanjiCharacter
-        ? [r.kanjiCharacter, (r.kanjiMeanings ?? []).slice(0, 3).join(', ') || null, `${ROUTE_BASE_PATHS.KANJI}/${encodeURIComponent(r.kanjiCharacter)}`]
+        // Meanings are `{ gloss, lang }`: joined whole they read "[object Object]".
+        ? [r.kanjiCharacter, (r.kanjiMeanings ?? []).filter(m => m.lang === 'en').map(m => m.gloss).slice(0, 3).join(', ') || null, `${ROUTE_BASE_PATHS.KANJI}/${encodeURIComponent(r.kanjiCharacter)}`]
         : r.wordForm
           ? [r.wordForm, r.wordReading, null]
           : r.grammarTitle

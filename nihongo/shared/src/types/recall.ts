@@ -17,6 +17,11 @@ export const recallItemSchema = z.object({
    * word the learner has — "one" is いち or ひとつ. Null when it cannot.
    */
   hint: z.string().nullable(),
+  /**
+   * The learner's other words for the same English, shown with the answer: the
+   * hint asks for 自動車, and 車 is right too. Empty when there are none.
+   */
+  also: z.array(z.object({ text: z.string(), reading: z.string() })),
   /** The answer as written, and in kana for sizing the pause. */
   text: z.string(),
   reading: z.string(),

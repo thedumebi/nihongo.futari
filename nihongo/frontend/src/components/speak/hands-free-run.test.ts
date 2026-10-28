@@ -12,16 +12,16 @@ vi.mock('@/composables/use-audio', () => ({
 
 const session = {
   items: [
-    { key: 'w1', kind: 'word' as const, prompt: 'one', promptAudio: ['one.mp3', 'hi.mp3'], hint: 'ひ', text: '一つ', reading: 'ひとつ', answerAudio: 'hitotsu.mp3' },
-    { key: 'w2', kind: 'word' as const, prompt: 'cat', promptAudio: ['cat.mp3'], hint: null, text: '猫', reading: 'ねこ', answerAudio: 'neko.mp3' }
+    { key: 'w1', kind: 'word' as const, prompt: 'one', promptAudio: ['one.mp3', 'hi.mp3'], hint: 'ひ', also: [{ text: '一', reading: 'いち' }], text: '一つ', reading: 'ひとつ', answerAudio: 'hitotsu.mp3' },
+    { key: 'w2', kind: 'word' as const, prompt: 'cat', promptAudio: ['cat.mp3'], hint: null, also: [], text: '猫', reading: 'ねこ', answerAudio: 'neko.mp3' }
   ],
   order: [0, 1, 0]
 }
 
 function open() {
-  const { steps, tags } = recallSteps(session)
+  const { steps, tags, also } = recallSteps(session)
   return mount(HandsFreeRun, {
-    props: { steps, tags, title: 'Recall', album: 'Recall', thinkScale: 1, showReading: true },
+    props: { steps, tags, also, title: 'Recall', album: 'Recall', thinkScale: 1, showReading: true },
     slots: { intro: '<p>Recall intro</p>' }
   })
 }
@@ -41,6 +41,14 @@ describe('hands-free run, playing Recall', () => {
     await wrapper.find('[aria-label="Next"]').trigger('click')
     expect(wrapper.text()).toContain('3 of 3')
     expect(wrapper.text()).toContain('again')
+  })
+
+  it('names the other word for the same English with the answer, and only for that word', async () => {
+    const wrapper = open()
+    expect(wrapper.text()).toContain('Also 一 (いち)')
+    await wrapper.find('[aria-label="Next"]').trigger('click')
+    expect(wrapper.text()).toContain('2 of 3')
+    expect(wrapper.text()).not.toContain('Also')
   })
 
   it('goes back as well as on', async () => {

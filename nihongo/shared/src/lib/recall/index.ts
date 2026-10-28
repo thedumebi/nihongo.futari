@@ -103,11 +103,14 @@ export function ambiguousPrompts(prompts: ReadonlyArray<{ word: string, prompt: 
  *
  * Each asking is one step, repeats included, in `order`. The English is said
  * first; a hint's clip comes after it, shown as "starts with ひ". `tags`
- * marks a word asked before in the session, which comes back on purpose.
+ * marks a word asked before in the session, which comes back on purpose, and
+ * `also` names the learner's other words for the same English.
  */
-export function recallSteps(session: RecallSession): { steps: SpeakStepView[], tags: Array<string | null> } {
+export function recallSteps(session: RecallSession): { steps: SpeakStepView[], tags: Array<string | null>, also: Array<string | null> } {
   const steps: SpeakStepView[] = []
   const tags: Array<string | null> = []
+  // "Also 車 (くるま)": the other words the English asks for, under the answer.
+  const also: Array<string | null> = []
   const asked = new Set<number>()
   session.order.forEach((at, index) => {
     const item = session.items[at]
@@ -131,7 +134,10 @@ export function recallSteps(session: RecallSession): { steps: SpeakStepView[], t
       answerAudio: item.answerAudio
     })
     tags.push(asked.has(at) ? 'again' : null)
+    also.push(item.also.length
+      ? `Also ${item.also.map(w => w.reading && w.reading !== w.text ? `${w.text} (${w.reading})` : w.text).join(', ')}`
+      : null)
     asked.add(at)
   })
-  return { steps, tags }
+  return { steps, tags, also }
 }
