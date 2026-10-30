@@ -17,6 +17,14 @@ export interface Point {
 /** One pen-down-to-pen-up stroke, in the order the points were produced. */
 export type Stroke = Point[]
 
+/** A sharp turn inside one stroke, where the pen does not lift (see `strokeCorners`). */
+export interface StrokeCorner {
+  /** On the stroke, at the sharpest point of the turn. */
+  at: Point
+  /** The way the stroke goes on from here, in radians. */
+  heading: number
+}
+
 /** What went wrong, as codes rather than prose so the UI owns the wording. */
 export const HANDWRITING_ISSUES = [
   'too-few-strokes',

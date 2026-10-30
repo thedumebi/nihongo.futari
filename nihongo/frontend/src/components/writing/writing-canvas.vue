@@ -1,7 +1,7 @@
 <script setup lang="ts">
-import type { Point, ReferenceStroke, Stroke } from '@nihongo/shared/types'
+import type { Point, ReferenceStroke, Stroke, StrokeCorner } from '@nihongo/shared/types'
 
-import { samplePath } from '@nihongo/shared/lib'
+import { pathLength, samplePath, strokeCorners } from '@nihongo/shared/lib'
 import { computed, onBeforeUnmount, ref, watch } from 'vue'
 
 /**
@@ -69,6 +69,24 @@ const strokes = ref<Stroke[]>([])
 const active = ref<Point[] | null>(null)
 
 const referencePoints = computed(() => props.reference.map(s => samplePath(s.path)))
+/** Where each stroke turns without the pen lifting: 口's right-then-down, フ, a hook. */
+const referenceCorners = computed(() => referencePoints.value.map(points => strokeCorners(points)))
+
+/**
+ * The stroke to draw next, while following along with the guide on. It is
+ * painted whole, in the hint colour, so a stroke that turns a corner reads as
+ * ONE line: the ghost alone draws 口's second stroke exactly like two strokes
+ * meeting, and nothing said the pen does not lift.
+ */
+const nextStroke = computed(() => props.showGuide && props.followAlong && !props.disabled
+  ? referencePoints.value[strokes.value.length] ?? null
+  : null)
+
+/** The next stroke's length, worked out once rather than on every frame of the trace. */
+const nextLength = computed(() => pathLength(nextStroke.value ?? []))
+
+/** How far along the next stroke the tracing pen is, 0 to 1, or null when it is not moving. */
+const trace = ref<number | null>(null)
 
 function toBoxSpace(event: PointerEvent): Point {
   const rect = canvas.value!.getBoundingClientRect()
@@ -193,6 +211,79 @@ function drawStrokeOrder(ctx: CanvasRenderingContext2D, colour: string) {
   ctx.restore()
 }
 
+/** A small open chevron centred on a point, pointing along `heading`. */
+function drawChevron(ctx: CanvasRenderingContext2D, at: Point, heading: number, colour: string) {
+  const SIZE = 2.2
+  const back = heading + Math.PI
+  ctx.save()
+  ctx.strokeStyle = colour
+  ctx.lineWidth = 1.2
+  ctx.lineCap = 'round'
+  ctx.lineJoin = 'round'
+  ctx.beginPath()
+  ctx.moveTo(at.x + Math.cos(back - 0.7) * SIZE, at.y + Math.sin(back - 0.7) * SIZE)
+  ctx.lineTo(at.x + Math.cos(heading) * SIZE * 0.6, at.y + Math.sin(heading) * SIZE * 0.6)
+  ctx.lineTo(at.x + Math.cos(back + 0.7) * SIZE, at.y + Math.sin(back + 0.7) * SIZE)
+  ctx.stroke()
+  ctx.restore()
+}
+
+/** The part of a stroke from its start to `fraction` of its `total` length, and where that ends. */
+function strokeUpTo(points: Point[], total: number, fraction: number): { part: Point[], tip: Point } {
+  const target = total * fraction
+  const part: Point[] = [points[0]!]
+  let run = 0
+  for (let i = 1; i < points.length; i++) {
+    const a = points[i - 1]!
+    const b = points[i]!
+    const seg = Math.hypot(b.x - a.x, b.y - a.y)
+    if (run + seg >= target) {
+      const t = seg === 0 ? 0 : (target - run) / seg
+      const tip = { x: a.x + (b.x - a.x) * t, y: a.y + (b.y - a.y) * t }
+      part.push(tip)
+      return { part, tip }
+    }
+    run += seg
+    part.push(b)
+  }
+  return { part, tip: points[points.length - 1]! }
+}
+
+/**
+ * The next stroke, whole, with a chevron at every corner pointing the way it
+ * goes on and an arrowhead at its end, so the path reads start to finish
+ * without the pen lifting. The tracing pen runs along it on top.
+ */
+function drawNextStroke(ctx: CanvasRenderingContext2D, points: Point[], corners: StrokeCorner[], hint: string, ink: string, mark: string) {
+  ctx.strokeStyle = hint
+  ctx.lineWidth = 6
+  drawPolyline(ctx, points)
+
+  if (trace.value !== null) {
+    const { part, tip } = strokeUpTo(points, nextLength.value, trace.value)
+    ctx.save()
+    ctx.globalAlpha = 0.55
+    ctx.strokeStyle = ink
+    ctx.lineWidth = 3
+    drawPolyline(ctx, part)
+    ctx.globalAlpha = 1
+    ctx.fillStyle = ink
+    ctx.beginPath()
+    ctx.arc(tip.x, tip.y, 2.4, 0, Math.PI * 2)
+    ctx.fill()
+    ctx.restore()
+  }
+
+  for (const corner of corners)
+    drawChevron(ctx, corner.at, corner.heading, mark)
+
+  // The end: which way the stroke is travelling when the pen lifts.
+  const last = points[points.length - 1]
+  const before = points[Math.max(0, points.length - 4)]
+  if (last && before && (last.x !== before.x || last.y !== before.y))
+    drawChevron(ctx, last, Math.atan2(last.y - before.y, last.x - before.x), mark)
+}
+
 function drawPolyline(ctx: CanvasRenderingContext2D, points: Point[]) {
   if (points.length === 0)
     return
@@ -205,7 +296,19 @@ function drawPolyline(ctx: CanvasRenderingContext2D, points: Point[]) {
   ctx.stroke()
 }
 
-function draw() {
+/** The theme's colours for the canvas, as CSS custom properties on it. */
+function readPalette(el: HTMLCanvasElement) {
+  const styles = getComputedStyle(el)
+  return {
+    ink: styles.getPropertyValue('--canvas-ink').trim() || '#1b2a33',
+    guide: styles.getPropertyValue('--canvas-guide').trim() || '#dce6ec',
+    hint: styles.getPropertyValue('--canvas-hint').trim() || '#8fb4c8',
+    mark: styles.getPropertyValue('--canvas-mark').trim() || '#ffffff'
+  }
+}
+let palette: ReturnType<typeof readPalette> | null = null
+
+function draw(fromTrace = false) {
   const el = canvas.value
   if (!el)
     return
@@ -222,10 +325,10 @@ function draw() {
     el.height = Math.round(size * ratio)
   }
 
-  const styles = getComputedStyle(el)
-  const ink = styles.getPropertyValue('--canvas-ink').trim() || '#1b2a33'
-  const guide = styles.getPropertyValue('--canvas-guide').trim() || '#dce6ec'
-  const hint = styles.getPropertyValue('--canvas-hint').trim() || '#8fb4c8'
+  // Read from the theme on every ordinary draw; a frame of the trace reuses the last read.
+  if (!fromTrace || !palette)
+    palette = readPalette(el)
+  const { ink, guide, hint, mark } = palette
 
   ctx.save()
   ctx.clearRect(0, 0, el.width, el.height)
@@ -252,6 +355,8 @@ function draw() {
     ctx.strokeStyle = guide
     ctx.lineWidth = 5
     for (const stroke of referencePoints.value) drawPolyline(ctx, stroke)
+    if (nextStroke.value)
+      drawNextStroke(ctx, nextStroke.value, referenceCorners.value[strokes.value.length] ?? [], hint, ink, mark)
     if (props.showOrder)
       drawStrokeOrder(ctx, hint)
   }
@@ -333,6 +438,66 @@ function clear() {
   emit('update:strokes', strokes.value)
 }
 
+/**
+ * The tracing pen: a dot runs the next stroke from start to end in one go,
+ * then waits, then runs it again, until the stroke is drawn. Watching it go
+ * round 口's corner without stopping is what says "one stroke" best.
+ * Paused while the reader is drawing, and off for reduced motion.
+ */
+/** The rest between runs of the pen, and the wait after the reader stops drawing. */
+const TRACE_PAUSE_MS = 1400
+/** A run of the pen takes about as long as a steady hand: so long per unit, within bounds. */
+const TRACE_MS_PER_UNIT = 11
+const TRACE_MIN_MS = 500
+const TRACE_MAX_MS = 1400
+let traceFrame = 0
+let traceTimer: ReturnType<typeof setTimeout> | null = null
+
+function stopTrace() {
+  cancelAnimationFrame(traceFrame)
+  if (traceTimer)
+    clearTimeout(traceTimer)
+  traceTimer = null
+  trace.value = null
+}
+
+function startTrace() {
+  stopTrace()
+  const points = nextStroke.value
+  if (!points || points.length < 2 || window.matchMedia?.('(prefers-reduced-motion: reduce)').matches)
+    return
+  // Nobody is watching a hidden tab: check back later instead of drawing.
+  if (document.hidden) {
+    traceTimer = setTimeout(startTrace, TRACE_PAUSE_MS)
+    return
+  }
+  const duration = Math.min(TRACE_MAX_MS, Math.max(TRACE_MIN_MS, nextLength.value * TRACE_MS_PER_UNIT))
+  const started = performance.now()
+  const step = (now: number) => {
+    if (active.value) {
+      // The reader is drawing: get out of the way, and try again after.
+      trace.value = null
+      draw()
+      traceTimer = setTimeout(startTrace, TRACE_PAUSE_MS)
+      return
+    }
+    trace.value = Math.min(1, (now - started) / duration)
+    draw(true)
+    if (trace.value < 1) {
+      traceFrame = requestAnimationFrame(step)
+      return
+    }
+    traceTimer = setTimeout(() => {
+      trace.value = null
+      draw(true)
+      traceTimer = setTimeout(startTrace, TRACE_PAUSE_MS / 2)
+    }, TRACE_PAUSE_MS / 2)
+  }
+  traceFrame = requestAnimationFrame(step)
+}
+
+watch(nextStroke, startTrace, { immediate: true })
+
 const observer = new ResizeObserver(() => draw())
 watch(canvas, (el) => {
   observer.disconnect()
@@ -342,7 +507,10 @@ watch(canvas, (el) => {
   }
 }, { immediate: true })
 watch(() => [props.reference, props.showGuide, props.showOrder, props.followAlong, props.revealStrokes], () => draw(), { deep: true })
-onBeforeUnmount(() => observer.disconnect())
+onBeforeUnmount(() => {
+  observer.disconnect()
+  stopTrace()
+})
 
 defineExpose({ undo, clear })
 </script>
@@ -350,7 +518,7 @@ defineExpose({ undo, clear })
 <template>
   <canvas
     ref="canvas"
-    class="aspect-square w-full touch-none rounded-2xl border border-line bg-card [--canvas-guide:var(--color-washi)] [--canvas-hint:var(--color-hover)] [--canvas-ink:var(--color-ink)]"
+    class="aspect-square w-full touch-none rounded-2xl border border-line bg-card [--canvas-guide:var(--color-washi)] [--canvas-hint:var(--color-hover)] [--canvas-ink:var(--color-ink)] [--canvas-mark:var(--color-card)]"
     :class="disabled ? 'cursor-not-allowed' : 'cursor-crosshair'"
     @pointerdown="onPointerDown"
     @pointermove="onPointerMove"

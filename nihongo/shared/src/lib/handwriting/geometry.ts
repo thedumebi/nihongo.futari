@@ -9,6 +9,12 @@ function arcLengths(points: Stroke): number[] {
   return lengths
 }
 
+/** How long a polyline is, end to end along it. */
+export function pathLength(points: Stroke): number {
+  const lengths = arcLengths(points)
+  return lengths[lengths.length - 1] ?? 0
+}
+
 /**
  * Resample a stroke to `count` points spaced equally by arc length.
  *
