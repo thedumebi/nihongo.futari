@@ -4,6 +4,7 @@ import { useRoute, useRouter } from 'vue-router'
 
 import { syncTimezone } from '@/api/notifications'
 import StreakCelebration from '@/components/celebrations/streak-celebration.vue'
+import WordEntrySheet from '@/components/ja/word-entry-sheet.vue'
 import ConfirmDialog from '@/components/ui/confirm-dialog.vue'
 import ToastNotification from '@/components/ui/toast-notification.vue'
 import { refreshFuriganaSetting, refreshKnownKanji } from '@/composables/use-furigana'
@@ -138,6 +139,7 @@ onMounted(() => {
   </div>
 
   <StreakCelebration />
+  <WordEntrySheet />
   <ConfirmDialog />
   <ToastNotification />
 </template>

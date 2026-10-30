@@ -2,9 +2,10 @@
 import type { WordGloss } from '@nihongo/shared/types'
 
 import { kanaLineToRomaji } from '@nihongo/shared/lib'
-import { Check, Plus, X } from 'lucide-vue-next'
+import { BookOpen, Check, Plus, X } from 'lucide-vue-next'
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 
+import { useWordEntrySheet } from '@/composables/use-word-entry-sheet'
 import { useWordReview } from '@/composables/use-word-review'
 
 /**
@@ -25,6 +26,10 @@ import { useWordReview } from '@/composables/use-word-review'
  * action only the reader passed in, so the same word tapped in a conversation,
  * a lesson or a review card could be looked up but never kept. The default
  * slot is still there for anything else a page wants beside it.
+ *
+ * "Full entry" opens the whole dictionary entry in a half-screen sheet. That
+ * sheet is not this component's (see `useWordEntrySheet`); this one steps
+ * aside while it is up and is back where it was when it closes.
  */
 defineOptions({ inheritAttrs: false })
 
@@ -34,6 +39,12 @@ const emit = defineEmits<{ (e: 'close'): void }>()
 
 const sheet = ref<HTMLElement | null>(null)
 const { status, saving, add, dueText } = useWordReview(computed(() => props.word.wordId), computed(() => props.word.form))
+const { isOpen: entryOpen, open: openWordEntry } = useWordEntrySheet()
+
+function openEntry() {
+  if (props.word.wordId)
+    openWordEntry(props.word.wordId)
+}
 
 const WORD_BUTTON = 'button[aria-label^="What does"]'
 
@@ -62,6 +73,9 @@ watch(() => props.word, revealWord)
 
 /** Tapping another word replaces the sheet; tapping anything else closes it. */
 function onPointerDown(event: PointerEvent) {
+  // A tap inside the full entry is not a tap outside this sheet.
+  if (entryOpen.value)
+    return
   const target = event.target as Element | null
   if (!target || sheet.value?.contains(target) || target.closest('button[aria-label^="What does"]'))
     return
@@ -69,7 +83,9 @@ function onPointerDown(event: PointerEvent) {
 }
 
 function onKeyDown(event: KeyboardEvent) {
-  if (event.key === 'Escape')
+  // Escape over the full entry closes the entry, and only the entry. Read in
+  // the capture phase, before the entry's own handler has closed it.
+  if (event.key === 'Escape' && !entryOpen.value)
     emit('close')
 }
 
@@ -77,19 +93,19 @@ onMounted(() => {
   void revealWord()
   document.addEventListener('pointerdown', rememberWord, true)
   document.addEventListener('pointerdown', onPointerDown)
-  document.addEventListener('keydown', onKeyDown)
+  document.addEventListener('keydown', onKeyDown, true)
 })
 
 onBeforeUnmount(() => {
   document.removeEventListener('pointerdown', rememberWord, true)
   document.removeEventListener('pointerdown', onPointerDown)
-  document.removeEventListener('keydown', onKeyDown)
+  document.removeEventListener('keydown', onKeyDown, true)
 })
 </script>
 
 <template>
   <Teleport to="body">
-    <div class="pointer-events-none fixed inset-x-0 bottom-0 z-40 flex justify-center px-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
+    <div v-show="!entryOpen" class="pointer-events-none fixed inset-x-0 bottom-0 z-40 flex justify-center px-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
       <div
         ref="sheet"
         role="region"
@@ -141,8 +157,16 @@ onBeforeUnmount(() => {
             <X class="h-4 w-4" />
           </button>
         </div>
-        <div v-if="$slots.default || status?.reviewable" class="mt-3 flex items-center justify-end gap-3">
+        <div v-if="$slots.default || status?.reviewable || word.wordId" class="mt-3 flex flex-wrap items-center justify-end gap-3">
           <slot />
+          <button
+            v-if="word.wordId"
+            type="button"
+            class="mr-auto inline-flex items-center gap-1 rounded-lg border border-[var(--color-border)] px-3 py-1.5 text-sm transition hover:border-[var(--color-text)]"
+            @click="openEntry"
+          >
+            <BookOpen class="h-4 w-4" /> Full entry
+          </button>
           <p v-if="status?.inReview" class="flex items-center gap-1 text-sm text-[var(--color-muted)]">
             <Check class="h-4 w-4" />
             In your reviews{{ status.ghost ? ' · keeps slipping' : '' }} · {{ dueText }}

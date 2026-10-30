@@ -54,6 +54,7 @@ import { useFurigana } from '@/composables/use-furigana'
 import { useLessonFirst } from '@/composables/use-lesson-first'
 import { useLevel } from '@/composables/use-level'
 import { useScriptChange } from '@/composables/use-script-change'
+import { wordEntryOpen } from '@/composables/use-word-entry-sheet'
 import { ROUTES } from '@/constants'
 import { addMoreNew, readMoreNew } from '@/lib/more-new'
 import { cacheBundle, enqueueAnswer, readBundle, requestPersistence } from '@/offline/db'
@@ -1647,8 +1648,8 @@ function onEnter() {
  * answer, and space replays the audio without leaving the field.
  */
 function onKey(e: KeyboardEvent) {
-  // A celebration is open on top: its button takes the key, not the card.
-  if (!revealed.value || celebrationOpen.value)
+  // A celebration or the dictionary is open on top: the key is theirs, not the card's.
+  if (!revealed.value || celebrationOpen.value || wordEntryOpen.value)
     return
   const rating = RATINGS.find(r => r.key === e.key)
   if (rating && wasCorrect.value) {
