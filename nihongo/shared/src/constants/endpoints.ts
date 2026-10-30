@@ -84,6 +84,14 @@ export const EXERCISE_TEMPLATE_CODES = [
 ] as const
 export type ExerciseTemplateCode = typeof EXERCISE_TEMPLATE_CODES[number]
 
+/**
+ * What a card asks the learner to produce, as the answer cue names it. Typed
+ * scripts first, then the cards answered some other way. Derived on the client
+ * from the card's grader and accepted forms (`answerScriptFor`), never stored.
+ */
+export const ANSWER_SCRIPTS = ['romaji', 'kana', 'hiragana', 'katakana', 'kanji', 'japanese', 'english', 'write', 'choose', 'order', 'say'] as const
+export type AnswerScript = typeof ANSWER_SCRIPTS[number]
+
 /** FSRS ratings. */
 export const REVIEW_RATINGS = { AGAIN: 1, HARD: 2, GOOD: 3, EASY: 4 } as const
 export type ReviewRating = typeof REVIEW_RATINGS[keyof typeof REVIEW_RATINGS]

@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import type { AnswerScript } from '@nihongo/shared/constants'
 import type {
   DialogueTurn,
   FuriganaSegment,
@@ -18,7 +19,7 @@ import type {
   WordGloss
 } from '@nihongo/shared/types'
 
-import { describeScript, gradeHandwriting, gradeWithTwins, ratingFromGrade, samplePath, scriptOf, seriesReading, uuidv7, VERB_CLASS_NOTE, VERB_FORM_INFO } from '@nihongo/shared/lib'
+import { ANSWER_SCRIPT_INFO, answerScriptFor, gradeHandwriting, gradeWithTwins, looksLikeRomaji, ratingFromGrade, romajiToHiragana, samplePath, scriptOf, seriesReading, takesRomaji, uuidv7, VERB_CLASS_NOTE, VERB_FORM_INFO } from '@nihongo/shared/lib'
 import { useLocalStorage } from '@vueuse/core'
 import { GraduationCap, Layers } from 'lucide-vue-next'
 import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
@@ -32,6 +33,7 @@ import { getDecks, getQueue, markLessonSeen } from '@/api/study'
 import FuriganaText from '@/components/ja/furigana-text.vue'
 import WordMeaning from '@/components/ja/word-meaning.vue'
 import AppShell from '@/components/layout/app-shell.vue'
+import AnswerCue from '@/components/study/answer-cue.vue'
 import ChoiceInput from '@/components/study/choice-input.vue'
 import ClozePrompt from '@/components/study/cloze-prompt.vue'
 import DialogueCard from '@/components/study/dialogue-card.vue'
@@ -51,6 +53,7 @@ import { playAudio } from '@/composables/use-audio'
 import { useFurigana } from '@/composables/use-furigana'
 import { useLessonFirst } from '@/composables/use-lesson-first'
 import { useLevel } from '@/composables/use-level'
+import { useScriptChange } from '@/composables/use-script-change'
 import { ROUTES } from '@/constants'
 import { addMoreNew, readMoreNew } from '@/lib/more-new'
 import { cacheBundle, enqueueAnswer, readBundle, requestPersistence } from '@/offline/db'
@@ -643,12 +646,6 @@ const grammarPoint = computed(() => {
   return typeof value === 'string' ? value : ''
 })
 
-/** A grammar sentence with the blank already in it, rather than before/after halves. */
-const grammarBlank = computed(() => {
-  const value = current.value?.prompt?.sentence
-  return current.value?.prompt?.kind === 'grammar' && typeof value === 'string' ? value : ''
-})
-
 /**
  * Whether to name the pattern before the answer is given.
  *
@@ -1076,30 +1073,33 @@ function openArt(event: MouseEvent) {
 }
 
 /**
- * What the input should say it wants.
- *
- * A cloze card's instruction is "Fill in the blank", which does not say whether
- * the grader expects kana, katakana or kanji — and the grader accepts only the
- * surface forms in `accepted`, so guessing the wrong script fails a card the
- * reader actually knew. Derived from those accepted forms rather than stated
- * per prompt, so it cannot drift away from what is really being checked.
+ * What the card wants, for the cue above the answer and the input's
+ * placeholder. Decided from the grader and the accepted forms
+ * (`answerScriptFor`), so it says what is actually checked: a fill-in that
+ * only takes 車 says kanji, one that takes 車 or くるま says Japanese.
  */
-const inputHint = computed(() => {
-  const instruction = current.value?.prompt?.instruction
-  const accepted = current.value?.answer?.accepted ?? []
-
-  // Any prompt that blanks part of a sentence needs the script named. That is
-  // the cloze shape AND the grammar shape, whose `kind` is 'grammar' but whose
-  // instruction is the same unhelpful "Fill the blank".
-  const blanks = isCloze.value || Boolean(grammarBlank.value)
-  if (typeof instruction === 'string' && !blanks)
-    return instruction
-
-  const described = describeScript(accepted)
-  if (described === 'Your answer')
-    return typeof instruction === 'string' ? instruction : 'Your answer'
-  return described
+const answerScript = computed<AnswerScript | null>(() => current.value ? answerScriptFor(current.value) : null)
+const inputHint = computed(() => (answerScript.value && ANSWER_SCRIPT_INFO[answerScript.value].placeholder) || 'Your answer')
+const instruction = computed(() => {
+  const value = current.value?.prompt?.instruction
+  return typeof value === 'string' ? value : ''
 })
+/** Japanese answers get a Japanese keyboard hint; English and romaji do not. */
+const inputLang = computed(() => answerScript.value === 'english' || answerScript.value === 'romaji' ? 'en' : 'ja')
+/**
+ * The kana romaji typed here will be read as. The grader already converts it;
+ * this shows that it did, so typing "hiroba" on a kana card is not a leap of
+ * faith.
+ */
+const romajiPreview = computed(() => {
+  const typed = answer.value.trim()
+  if (!answerScript.value || !takesRomaji(answerScript.value) || !typed || !looksLikeRomaji(typed))
+    return ''
+  return romajiToHiragana(typed)
+})
+
+/** The last card wanted something else: the cue pulses once. */
+const { changed: scriptChanged } = useScriptChange(current, answerScript)
 
 const audioSrc = computed(() => {
   const src = current.value?.assets?.audio
@@ -2308,6 +2308,13 @@ watch(() => lang.code, loadDecksAndQueue)
             </div>
 
             <form v-if="!isDialogue && !isSpeak" id="study-answer" class="flex flex-col gap-4" @submit.prevent="onEnter">
+              <AnswerCue
+                v-if="answerScript && !revealed"
+                :key="current.promptId + index"
+                :script="answerScript"
+                :instruction="instruction"
+                :changed="scriptChanged"
+              />
               <ChoiceInput
                 v-if="isChoice"
                 :options="choices"
@@ -2371,11 +2378,16 @@ watch(() => lang.code, loadDecksAndQueue)
                 :readonly="revealed"
                 class="w-full rounded-lg border border-[var(--color-border)] bg-transparent px-4 py-3 text-center text-xl outline-none focus:border-[var(--color-text)]"
                 :placeholder="inputHint"
+                :lang="inputLang"
+                enterkeyhint="done"
                 autocomplete="off"
                 autocapitalize="off"
                 autocorrect="off"
                 spellcheck="false"
               >
+              <p v-if="romajiPreview && !revealed" class="-mt-2 text-center text-sm text-[var(--color-muted)]" style="font-family: var(--font-jp)">
+                → {{ romajiPreview }}
+              </p>
               <div v-if="revealed && handwriting" class="text-center">
                 <p class="font-semibold" :class="handwriting.passed ? 'text-[var(--color-success)]' : 'text-[var(--color-danger)]'">
                   {{ Math.round(handwriting.score) }}% accuracy

@@ -1,7 +1,8 @@
 <script setup lang="ts">
+import type { AnswerScript } from '@nihongo/shared/constants'
 import type { FuriganaSegment, GlossedToken, LessonDetail, LessonQuestion } from '@nihongo/shared/types'
 
-import { gradeAnswer } from '@nihongo/shared/lib'
+import { ANSWER_SCRIPT_INFO, answerScriptFor, gradeAnswer } from '@nihongo/shared/lib'
 import { Volume2 } from 'lucide-vue-next'
 import { computed, onMounted, ref, shallowRef, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
@@ -9,6 +10,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { completeLesson, getLesson, getLessons } from '@/api/lessons'
 import { markLessonSeen } from '@/api/study'
 import AppShell from '@/components/layout/app-shell.vue'
+import AnswerCue from '@/components/study/answer-cue.vue'
 import ChoiceInput from '@/components/study/choice-input.vue'
 import ClozePrompt from '@/components/study/cloze-prompt.vue'
 import GrammarLesson from '@/components/study/grammar-lesson.vue'
@@ -19,6 +21,7 @@ import Input from '@/components/ui/input.vue'
 import { useAnswerStreak } from '@/composables/use-answer-streak'
 import { playAudio } from '@/composables/use-audio'
 import { useFurigana } from '@/composables/use-furigana'
+import { useScriptChange } from '@/composables/use-script-change'
 import { ROUTES } from '@/constants'
 import { isNetworkError, queueAction } from '@/offline/queue'
 import { useLanguageStore } from '@/store/language'
@@ -71,6 +74,10 @@ const revealed = ref(false)
 const correct = ref(false)
 
 const question = computed(() => queue.value[0])
+/** What the question wants, said above the answer as Study says it. */
+const answerScript = computed<AnswerScript | null>(() => question.value ? answerScriptFor(question.value) : null)
+const { changed: scriptChanged } = useScriptChange(question, answerScript)
+const answerPlaceholder = computed(() => (answerScript.value && ANSWER_SCRIPT_INFO[answerScript.value].placeholder) || 'Your answer')
 const total = computed(() => detail.value?.questions.length ?? 0)
 
 const isChoice = computed(() => question.value?.inputMode === 'choice')
@@ -292,9 +299,13 @@ onMounted(async () => {
             <span>{{ answered }}/{{ total }}</span>
           </div>
 
-          <p v-if="promptText.instruction" class="text-center text-sm text-[var(--color-muted)]">
-            {{ promptText.instruction }}
-          </p>
+          <AnswerCue
+            v-if="answerScript"
+            :key="question.id"
+            :script="answerScript"
+            :instruction="promptText.instruction"
+            :changed="scriptChanged"
+          />
 
           <p v-if="promptText.subject" class="text-center text-5xl leading-tight" style="font-family: var(--font-jp)">
             {{ promptText.subject }}
@@ -369,7 +380,7 @@ onMounted(async () => {
               v-else
               v-model="answer"
               :disabled="revealed"
-              placeholder="Your answer"
+              :placeholder="answerPlaceholder"
               answer
             />
 
