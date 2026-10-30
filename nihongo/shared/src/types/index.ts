@@ -1,6 +1,7 @@
 export * from './activities.js'
 export * from './auth.js'
 export * from './base.js'
+export * from './conjugation.js'
 export * from './crossword.js'
 export * from './curriculum.js'
 export * from './email-campaigns.js'

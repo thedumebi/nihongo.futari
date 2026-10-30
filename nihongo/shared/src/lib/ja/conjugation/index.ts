@@ -94,8 +94,9 @@ export function conjugatesReliably(pos: readonly string[]): boolean {
   return classifyVerb(pos) !== null && !pos.some(p => IRREGULAR_VERB_POS.has(p))
 }
 
+/** い-adjectives, いい/良い (`adj-ix`, whose stem is よ) among them. */
 export function isIAdjective(pos: readonly string[]): boolean {
-  return pos.includes('adj-i')
+  return pos.includes('adj-i') || pos.includes('adj-ix')
 }
 
 export function isNaAdjective(pos: readonly string[]): boolean {
@@ -244,6 +245,24 @@ const KURU: Record<ConjugationForm, [string, string]> = {
   'conditional-tara': ['来たら', 'きたら']
 }
 
+/**
+ * 来る keeps whatever comes before it (やって来る → やって来ます), and a くる
+ * written in kana stays in kana (くる → こない). A surface and reading that do
+ * not both end in it get the bare forms, as before: a prefix kept on one side
+ * and not the other would misalign the furigana.
+ */
+function kuruForm(surface: string, reading: string, form: ConjugationForm): { surface: string, reading: string } {
+  const [s, r] = KURU[form]
+  const ending = 'くる'.length
+  if (!reading.endsWith('くる'))
+    return { surface: s, reading: r }
+  if (surface.endsWith('来る'))
+    return { surface: surface.slice(0, -ending) + s, reading: reading.slice(0, -ending) + r }
+  if (surface.endsWith('くる'))
+    return { surface: surface.slice(0, -ending) + r, reading: reading.slice(0, -ending) + r }
+  return { surface: s, reading: r }
+}
+
 /** ある is godan except in the negative, where it is ない, not あらない. */
 function aruForm(surface: string, reading: string, form: ConjugationForm): { surface: string, reading: string } | null {
   if (form === 'nai')
@@ -311,11 +330,9 @@ export function conjugate(input: ConjugateInput, form: VerbForm): Conjugated | n
       result = { surface: prefixSurface + s, reading: prefixReading + r }
       break
     }
-    case 'kuru': {
-      const [s, r] = KURU[form]
-      result = { surface: s, reading: r }
+    case 'kuru':
+      result = kuruForm(surface, reading, form)
       break
-    }
   }
 
   return result ? { form, ...result } : null
@@ -327,4 +344,5 @@ export function conjugateAll(input: ConjugateInput): Conjugated[] {
     .map(form => conjugate(input, form))
     .filter((c): c is Conjugated => c !== null)
 }
+export * from './adjective.js'
 export * from './forms.js'

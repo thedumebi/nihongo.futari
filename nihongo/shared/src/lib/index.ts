@@ -21,6 +21,8 @@ export * from './handwriting/index.js'
 export * from './imagery/index.js'
 export * from './ja/annotate/index.js'
 export * from './ja/conjugation/index.js'
+// Apart from the barrel above: the table reads the verb engine, so the engine cannot re-export it.
+export * from './ja/conjugation/table.js'
 export * from './ja/furigana/index.js'
 export * from './ja/line-reading/index.js'
 export * from './ja/pitch/index.js'

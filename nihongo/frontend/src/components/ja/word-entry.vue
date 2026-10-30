@@ -1,10 +1,12 @@
 <script setup lang="ts">
 import type { WordDetail } from '@nihongo/shared/types'
 
+import { conjugationTables } from '@nihongo/shared/lib'
 import { Check, Plus } from 'lucide-vue-next'
 import { computed, onMounted, ref, watch } from 'vue'
 
 import { getWord } from '@/api/words'
+import ConjugationTable from '@/components/ja/conjugation-table.vue'
 import FuriganaText from '@/components/ja/furigana-text.vue'
 import PitchAccent from '@/components/ja/pitch-accent.vue'
 import { playAudio } from '@/composables/use-audio'
@@ -39,6 +41,10 @@ const { mode: furiganaMode, knownKanji, loadKnownKanji, loadSettings } = useFuri
 const word = ref<WordDetail | null>(null)
 const loading = ref(true)
 const errorMsg = ref('')
+/** How the word changes, when it is a verb or an adjective. Worked out here, from the senses' part of speech. */
+const tables = computed(() => word.value
+  ? conjugationTables({ form: word.value.form, reading: word.value.reading, pos: word.value.senses.map(s => s.pos) })
+  : [])
 const review = useWordReview(computed(() => word.value?.id), computed(() => word.value?.form ?? ''))
 
 // ============ Methods ============
@@ -161,6 +167,16 @@ onMounted(() => {
             </span>
           </li>
         </ol>
+      </section>
+
+      <section v-if="tables.length" class="mt-8 space-y-3">
+        <ConjugationTable
+          v-for="table in tables"
+          :key="table.kind"
+          :table="table"
+          :mode="furiganaMode"
+          :known-kanji="knownKanji"
+        />
       </section>
 
       <section v-if="word.kanji.length" class="mt-8">
