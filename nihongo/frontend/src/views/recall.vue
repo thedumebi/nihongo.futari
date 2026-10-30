@@ -9,6 +9,7 @@ import { recordActivity } from '@/api/activities'
 import { getRecall } from '@/api/recall'
 import AppShell from '@/components/layout/app-shell.vue'
 import HandsFreeRun from '@/components/speak/hands-free-run.vue'
+import PageTour from '@/components/tours/page-tour.vue'
 import Button from '@/components/ui/button.vue'
 import Slider from '@/components/ui/slider.vue'
 import { usePace } from '@/composables/use-pace'
@@ -66,6 +67,7 @@ function onFinished() {
     <div class="mx-auto max-w-xl px-4 py-8 sm:px-6 sm:py-12">
       <h1 class="flex items-center gap-2 text-3xl font-semibold">
         <Headphones class="h-7 w-7" /> Recall
+        <PageTour page="recall" />
       </h1>
       <p class="mt-2 text-[var(--color-muted)]">
         The words you are still learning, the ones that keep slipping, and the ones you missed this

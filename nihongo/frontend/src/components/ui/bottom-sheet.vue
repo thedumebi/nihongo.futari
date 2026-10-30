@@ -1,6 +1,9 @@
 <script setup lang="ts">
 import { X } from 'lucide-vue-next'
+import { onBeforeUnmount, watch } from 'vue'
 import { VueFinalModal } from 'vue-final-modal'
+
+import { useOpenSheets } from '@/composables/use-open-sheets'
 
 /**
  * A sheet that rises over the bottom half of the screen and scrolls on its
@@ -17,9 +20,27 @@ interface Props {
   label: string
 }
 
-defineProps<Props>()
+const props = defineProps<Props>()
 
 const emit = defineEmits<{ close: [] }>()
+
+// ============ Composables ============
+const sheets = useOpenSheets()
+
+// ============ Watchers ============
+// Counted app-wide, so a page's own shortcuts stand aside while a sheet is up.
+watch(() => props.open, (open, was) => {
+  if (open && !was)
+    sheets.opened()
+  else if (!open && was)
+    sheets.closed()
+}, { immediate: true })
+
+// ============ Lifecycle Hooks ============
+onBeforeUnmount(() => {
+  if (props.open)
+    sheets.closed()
+})
 </script>
 
 <template>

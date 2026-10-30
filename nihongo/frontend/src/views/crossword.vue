@@ -13,6 +13,7 @@ import { getCrossword, saveCrosswordResult } from '@/api/crossword'
 import CrosswordFinish from '@/components/crossword/crossword-finish.vue'
 import CrosswordGrid from '@/components/crossword/crossword-grid.vue'
 import AppShell from '@/components/layout/app-shell.vue'
+import PageTour from '@/components/tours/page-tour.vue'
 import Button from '@/components/ui/button.vue'
 import Segmented from '@/components/ui/segmented.vue'
 import { playAudio, prefetchAudio } from '@/composables/use-audio'
@@ -396,8 +397,9 @@ const kanjiVisible = computed(() => Boolean(current.value && kanjiShown.value.ha
 <template>
   <AppShell>
     <div class="mx-auto max-w-xl px-4 py-8 sm:px-6 sm:py-12">
-      <h1 class="text-3xl font-semibold">
+      <h1 class="flex items-center gap-2 text-3xl font-semibold">
         Crossword
+        <PageTour page="crossword" />
       </h1>
       <p class="mt-1 text-[var(--color-muted)]">
         Read the meaning, fill in the word in kana. Type romaji or use a Japanese keyboard.

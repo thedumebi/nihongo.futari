@@ -1,5 +1,7 @@
-import { mount } from '@vue/test-utils'
-import { describe, expect, it } from 'vitest'
+import { enableAutoUnmount, mount } from '@vue/test-utils'
+import { afterEach, describe, expect, it } from 'vitest'
+
+import { sheetOpen } from '@/composables/use-open-sheets'
 
 import BottomSheet from './bottom-sheet.vue'
 
@@ -17,6 +19,9 @@ function sheet(open: boolean) {
   })
 }
 
+// An open sheet left mounted would hold the app-wide count up for the next test.
+enableAutoUnmount(afterEach)
+
 describe('bottomSheet', () => {
   it('shows its header and body when open', () => {
     const text = sheet(true).text()
@@ -32,5 +37,16 @@ describe('bottomSheet', () => {
     const wrapper = sheet(true)
     await wrapper.find('button[aria-label="Close"]').trigger('click')
     expect(wrapper.emitted('close')).toHaveLength(1)
+  })
+
+  it('counts itself open app-wide while up, and stops when closed or unmounted', async () => {
+    const wrapper = sheet(true)
+    expect(sheetOpen.value).toBe(true)
+    await wrapper.setProps({ open: false })
+    expect(sheetOpen.value).toBe(false)
+    await wrapper.setProps({ open: true })
+    expect(sheetOpen.value).toBe(true)
+    wrapper.unmount()
+    expect(sheetOpen.value).toBe(false)
   })
 })

@@ -7,6 +7,7 @@ import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 
 import { getQueue } from '@/api/writing'
 import AppShell from '@/components/layout/app-shell.vue'
+import PageTour from '@/components/tours/page-tour.vue'
 import Dropdown from '@/components/ui/dropdown.vue'
 import Tooltip from '@/components/ui/tooltip.vue'
 import WritingCanvas from '@/components/writing/writing-canvas.vue'
@@ -253,8 +254,9 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
     <div class="mx-auto max-w-2xl px-4 py-8">
       <header class="mb-6 flex items-center justify-between gap-4">
         <div>
-          <h1 class="text-2xl font-semibold text-heading">
+          <h1 class="flex items-center gap-2 text-2xl font-semibold text-heading">
             Writing
+            <PageTour page="writing" />
           </h1>
           <p class="text-sm text-muted">
             Trace it, then write it from memory.

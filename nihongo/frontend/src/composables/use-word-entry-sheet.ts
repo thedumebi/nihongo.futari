@@ -11,8 +11,8 @@ import { computed, ref } from 'vue'
 
 const wordId = ref<string | null>(null)
 
-/** For a keyboard handler that must not act behind the sheet. */
-export const wordEntryOpen = computed(() => wordId.value !== null)
+/** Whether the entry is up; word-meaning steps aside while it is. */
+const wordEntryOpen = computed(() => wordId.value !== null)
 
 export function useWordEntrySheet() {
   return {

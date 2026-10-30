@@ -43,6 +43,7 @@ import SeriesCard from '@/components/study/series-card.vue'
 import SpeakCard from '@/components/study/speak-card.vue'
 import StageUpModal from '@/components/study/stage-up-modal.vue'
 import StageWait from '@/components/study/stage-wait.vue'
+import PageTour from '@/components/tours/page-tour.vue'
 import AnswerBar from '@/components/ui/answer-bar.vue'
 import Button from '@/components/ui/button.vue'
 import Dropdown from '@/components/ui/dropdown.vue'
@@ -53,8 +54,8 @@ import { playAudio } from '@/composables/use-audio'
 import { useFurigana } from '@/composables/use-furigana'
 import { useLessonFirst } from '@/composables/use-lesson-first'
 import { useLevel } from '@/composables/use-level'
+import { sheetOpen } from '@/composables/use-open-sheets'
 import { useScriptChange } from '@/composables/use-script-change'
-import { wordEntryOpen } from '@/composables/use-word-entry-sheet'
 import { ROUTES } from '@/constants'
 import { addMoreNew, readMoreNew } from '@/lib/more-new'
 import { cacheBundle, enqueueAnswer, readBundle, requestPersistence } from '@/offline/db'
@@ -1648,8 +1649,8 @@ function onEnter() {
  * answer, and space replays the audio without leaving the field.
  */
 function onKey(e: KeyboardEvent) {
-  // A celebration or the dictionary is open on top: the key is theirs, not the card's.
-  if (!revealed.value || celebrationOpen.value || wordEntryOpen.value)
+  // A celebration or a sheet (the dictionary, the tour) is open on top: the key is theirs, not the card's.
+  if (!revealed.value || celebrationOpen.value || sheetOpen.value)
     return
   const rating = RATINGS.find(r => r.key === e.key)
   if (rating && wasCorrect.value) {
@@ -1820,6 +1821,9 @@ watch(() => lang.code, loadDecksAndQueue)
             <template v-if="!wordsDone">{{ counts.newToday }}/{{ counts.newLimit }} new words today</template>
             <template v-else-if="counts.extrasLimit > 0">{{ counts.extrasToday }}/{{ counts.extrasLimit }} extra cards, on top of today's {{ counts.newLimit }} new words</template>
           </span>
+        </span>
+        <span class="ml-auto">
+          <PageTour page="study" />
         </span>
       </div>
       <StageWait v-if="stageWait && !finished" class="mb-6" :stage="stageWait" compact />

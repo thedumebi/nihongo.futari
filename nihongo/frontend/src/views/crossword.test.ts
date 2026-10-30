@@ -36,7 +36,7 @@ vi.mock('vue-router', async original => ({ ...await original<typeof import('vue-
 
 async function open() {
   const wrapper = mount(CrosswordView, {
-    global: { stubs: { AppShell: { template: '<div><slot /></div>' }, CrosswordFinish: true } }
+    global: { stubs: { AppShell: { template: '<div><slot /></div>' }, CrosswordFinish: true, PageTour: true } }
   })
   await flushPromises()
   return wrapper
