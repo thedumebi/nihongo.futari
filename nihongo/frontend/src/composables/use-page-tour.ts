@@ -34,6 +34,8 @@ export function usePageTour(page: TourPage) {
     }
   }
 
+  // The router settles the session before any page mounts, so the learner is
+  // known by now and the key is theirs.
   onMounted(() => {
     if (!seen())
       open.value = true

@@ -45,7 +45,7 @@ export const TOURS: Record<TourPage, { title: string, steps: TourStep[] }> = {
       },
       {
         title: 'Writing cards',
-        body: 'Draw in the box. With the guide on, the next stroke is in colour, arrows mark where it turns, and a dot runs along it. A stroke that turns a corner is one stroke: keep the pen down. Undo takes back a stroke, Clear starts over.'
+        body: 'Draw in the box. With the guide on, the next stroke is a dotted outline, arrows mark where it turns, and a dot runs along it. A stroke that turns a corner is one stroke: keep the pen down. Undo takes back a stroke, Clear starts over.'
       },
       {
         title: 'Skip and Back',
@@ -62,7 +62,7 @@ export const TOURS: Record<TourPage, { title: string, steps: TourStep[] }> = {
       },
       {
         title: 'Follow the guide',
-        body: 'The grey character is the guide; Guide turns it on and off. The stroke to draw next is in colour, numbered where it starts, with arrows where it turns, and a dot runs along it. A stroke that turns a corner is one stroke: keep the pen down.'
+        body: 'The grey character is the guide; Guide turns it on and off. The stroke to draw next is outlined in dots, numbered where it starts, with arrows where it turns, and a dot runs along it. A stroke that turns a corner is one stroke: keep the pen down.'
       },
       {
         title: 'Hint, Undo, Clear',

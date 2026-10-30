@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import { CircleHelp } from 'lucide-vue-next'
 import { computed, ref, watch } from 'vue'
 
 import type { TourPage } from '@/components/tours/tours'
@@ -40,14 +39,13 @@ watch(tour.open, (open) => {
 </script>
 
 <template>
+  <!-- Words, not an icon: a "?" is easy to miss and does not say what it opens. -->
   <button
     type="button"
-    class="inline-flex items-center gap-1 rounded-full p-1 text-sm text-[var(--color-muted)] transition hover:text-[var(--color-text)]"
-    :aria-label="content.title"
-    :title="content.title"
+    class="rounded-full border border-[var(--color-border)] px-3 py-1 text-sm text-[var(--color-text)] transition hover:border-[var(--color-text)]"
     @click="tour.show"
   >
-    <CircleHelp class="h-5 w-5" />
+    How it works
   </button>
 
   <BottomSheet :open="tour.open.value" :label="content.title" @close="tour.dismiss">

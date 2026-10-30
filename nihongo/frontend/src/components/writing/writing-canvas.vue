@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { Point, ReferenceStroke, Stroke, StrokeCorner } from '@nihongo/shared/types'
 
-import { pathLength, samplePath, strokeCorners } from '@nihongo/shared/lib'
+import { pathLength, resample, samplePath, strokeCorners } from '@nihongo/shared/lib'
 import { computed, onBeforeUnmount, ref, watch } from 'vue'
 
 /**
@@ -64,6 +64,18 @@ const emit = defineEmits<{
 /** KanjiVG's box. Every coordinate below is in this space. */
 const BOX = 109
 
+/** The ghost's width, and how far out from its middle the outline's dots sit: just clear of it. */
+const GHOST_WIDTH = 5
+const OUTLINE_CLEARANCE = 0.7
+const GUIDE_HALF_WIDTH = GHOST_WIDTH / 2 + OUTLINE_CLEARANCE
+/** Gap between the dots of an outline, and their radius. */
+const OUTLINE_GAP = 2.2
+const OUTLINE_DOT = 0.5
+/** The fewest dots that still read as a ring round a stroke that is only a dot. */
+const MIN_RING_DOTS = 6
+/** The tracing pen that runs along the next stroke. */
+const TRACE_DOT_RADIUS = 2.2
+
 const canvas = ref<HTMLCanvasElement | null>(null)
 const strokes = ref<Stroke[]>([])
 const active = ref<Point[] | null>(null)
@@ -71,12 +83,14 @@ const active = ref<Point[] | null>(null)
 const referencePoints = computed(() => props.reference.map(s => samplePath(s.path)))
 /** Where each stroke turns without the pen lifting: 口's right-then-down, フ, a hook. */
 const referenceCorners = computed(() => referencePoints.value.map(points => strokeCorners(points)))
+/** Each stroke's dotted outline, built once: the trace redraws them every frame. */
+const referenceOutlines = computed(() => referencePoints.value.map(dottedOutline))
 
 /**
  * The stroke to draw next, while following along with the guide on. It is
- * painted whole, in the hint colour, so a stroke that turns a corner reads as
- * ONE line: the ghost alone draws 口's second stroke exactly like two strokes
- * meeting, and nothing said the pen does not lift.
+ * outlined whole, so a stroke that turns a corner reads as ONE line: the ghost
+ * alone draws 口's second stroke exactly like two strokes meeting, and nothing
+ * said the pen does not lift.
  */
 const nextStroke = computed(() => props.showGuide && props.followAlong && !props.disabled
   ? referencePoints.value[strokes.value.length] ?? null
@@ -228,10 +242,9 @@ function drawChevron(ctx: CanvasRenderingContext2D, at: Point, heading: number, 
   ctx.restore()
 }
 
-/** The part of a stroke from its start to `fraction` of its `total` length, and where that ends. */
-function strokeUpTo(points: Point[], total: number, fraction: number): { part: Point[], tip: Point } {
+/** The point `fraction` of the way along a stroke whose length is `total`. */
+function pointAlong(points: Point[], total: number, fraction: number): Point {
   const target = total * fraction
-  const part: Point[] = [points[0]!]
   let run = 0
   for (let i = 1; i < points.length; i++) {
     const a = points[i - 1]!
@@ -239,49 +252,100 @@ function strokeUpTo(points: Point[], total: number, fraction: number): { part: P
     const seg = Math.hypot(b.x - a.x, b.y - a.y)
     if (run + seg >= target) {
       const t = seg === 0 ? 0 : (target - run) / seg
-      const tip = { x: a.x + (b.x - a.x) * t, y: a.y + (b.y - a.y) * t }
-      part.push(tip)
-      return { part, tip }
+      return { x: a.x + (b.x - a.x) * t, y: a.y + (b.y - a.y) * t }
     }
     run += seg
-    part.push(b)
   }
-  return { part, tip: points[points.length - 1]! }
+  return points[points.length - 1]!
 }
 
 /**
- * The next stroke, whole, with a chevron at every corner pointing the way it
- * goes on and an arrowhead at its end, so the path reads start to finish
- * without the pen lifting. The tracing pen runs along it on top.
+ * Where the dots of a stroke's outline go: both sides, a dot every
+ * `OUTLINE_GAP`, rounded at each end. A stroke too short to have sides, a dot,
+ * gets a ring.
  */
-function drawNextStroke(ctx: CanvasRenderingContext2D, points: Point[], corners: StrokeCorner[], hint: string, ink: string, mark: string) {
-  ctx.strokeStyle = hint
-  ctx.lineWidth = 6
-  drawPolyline(ctx, points)
+function outlineDots(points: Point[], halfWidth: number): Point[] {
+  if (points.length === 0)
+    return []
 
-  if (trace.value !== null) {
-    const { part, tip } = strokeUpTo(points, nextLength.value, trace.value)
-    ctx.save()
-    ctx.globalAlpha = 0.55
-    ctx.strokeStyle = ink
-    ctx.lineWidth = 3
-    drawPolyline(ctx, part)
-    ctx.globalAlpha = 1
-    ctx.fillStyle = ink
-    ctx.beginPath()
-    ctx.arc(tip.x, tip.y, 2.4, 0, Math.PI * 2)
-    ctx.fill()
-    ctx.restore()
+  const length = pathLength(points)
+  if (length < OUTLINE_GAP)
+    return arcDots(points[0]!, halfWidth, 0, Math.PI * 2, Math.max(MIN_RING_DOTS, Math.round((Math.PI * 2 * halfWidth) / OUTLINE_GAP)))
+
+  const even = resample(points, Math.ceil(length / OUTLINE_GAP) + 1)
+  const dots: Point[] = []
+  for (let i = 0; i < even.length; i++) {
+    const a = even[Math.max(0, i - 1)]!
+    const b = even[Math.min(even.length - 1, i + 1)]!
+    const run = Math.hypot(b.x - a.x, b.y - a.y) || 1
+    const nx = (-(b.y - a.y) / run) * halfWidth
+    const ny = ((b.x - a.x) / run) * halfWidth
+    dots.push({ x: even[i]!.x + nx, y: even[i]!.y + ny }, { x: even[i]!.x - nx, y: even[i]!.y - ny })
   }
+  // A half circle round each end, facing outwards: from one side, round the
+  // end, to the other. Its first dot is the side dot already placed, so it is
+  // dropped rather than drawn twice.
+  const capSteps = Math.max(2, Math.round((Math.PI * halfWidth) / OUTLINE_GAP))
+  const first = even[0]!
+  const last = even[even.length - 1]!
+  const outFirst = Math.atan2(first.y - even[1]!.y, first.x - even[1]!.x)
+  const outLast = Math.atan2(last.y - even[even.length - 2]!.y, last.x - even[even.length - 2]!.x)
+  const QUARTER = Math.PI / 2
+  dots.push(...arcDots(first, halfWidth, outFirst - QUARTER, Math.PI, capSteps).slice(1))
+  dots.push(...arcDots(last, halfWidth, outLast - QUARTER, Math.PI, capSteps).slice(1))
+  return dots
+}
+
+/** `steps` dots spaced along an arc of `radius` round `centre`, starting at angle `from`. */
+function arcDots(centre: Point, radius: number, from: number, sweep: number, steps: number): Point[] {
+  const out: Point[] = []
+  for (let k = 0; k < steps; k++) {
+    const angle = from + (sweep * k) / steps
+    out.push({ x: centre.x + Math.cos(angle) * radius, y: centre.y + Math.sin(angle) * radius })
+  }
+  return out
+}
+
+/**
+ * A stroke as a dotted outline around where the ink should go. Dotted rather
+ * than solid because a solid band in any dark colour looks like the reader's
+ * own ink; a ring of dots never does. One path, so a frame fills it in one call.
+ */
+function dottedOutline(points: Point[]): Path2D {
+  const path = new Path2D()
+  for (const { x, y } of outlineDots(points, GUIDE_HALF_WIDTH)) {
+    path.moveTo(x + OUTLINE_DOT, y)
+    path.arc(x, y, OUTLINE_DOT, 0, Math.PI * 2)
+  }
+  return path
+}
+
+/**
+ * The next stroke, outlined whole, with a chevron at every corner pointing the
+ * way it goes on and an arrowhead at its end, so the path reads start to
+ * finish without the pen lifting. The tracing pen, a lone dot in the guide's
+ * colour, runs along it: nothing on the guide is drawn in the reader's ink.
+ */
+function drawNextStroke(ctx: CanvasRenderingContext2D, points: Point[], outline: Path2D, corners: StrokeCorner[], hint: string) {
+  ctx.save()
+  ctx.fillStyle = hint
+  ctx.fill(outline)
+  if (trace.value !== null) {
+    const tip = pointAlong(points, nextLength.value, trace.value)
+    ctx.beginPath()
+    ctx.arc(tip.x, tip.y, TRACE_DOT_RADIUS, 0, Math.PI * 2)
+    ctx.fill()
+  }
+  ctx.restore()
 
   for (const corner of corners)
-    drawChevron(ctx, corner.at, corner.heading, mark)
+    drawChevron(ctx, corner.at, corner.heading, hint)
 
   // The end: which way the stroke is travelling when the pen lifts.
   const last = points[points.length - 1]
   const before = points[Math.max(0, points.length - 4)]
   if (last && before && (last.x !== before.x || last.y !== before.y))
-    drawChevron(ctx, last, Math.atan2(last.y - before.y, last.x - before.x), mark)
+    drawChevron(ctx, last, Math.atan2(last.y - before.y, last.x - before.x), hint)
 }
 
 function drawPolyline(ctx: CanvasRenderingContext2D, points: Point[]) {
@@ -302,8 +366,7 @@ function readPalette(el: HTMLCanvasElement) {
   return {
     ink: styles.getPropertyValue('--canvas-ink').trim() || '#1b2a33',
     guide: styles.getPropertyValue('--canvas-guide').trim() || '#dce6ec',
-    hint: styles.getPropertyValue('--canvas-hint').trim() || '#8fb4c8',
-    mark: styles.getPropertyValue('--canvas-mark').trim() || '#ffffff'
+    hint: styles.getPropertyValue('--canvas-hint').trim() || '#8fb4c8'
   }
 }
 let palette: ReturnType<typeof readPalette> | null = null
@@ -328,7 +391,7 @@ function draw(fromTrace = false) {
   // Read from the theme on every ordinary draw; a frame of the trace reuses the last read.
   if (!fromTrace || !palette)
     palette = readPalette(el)
-  const { ink, guide, hint, mark } = palette
+  const { ink, guide, hint } = palette
 
   ctx.save()
   ctx.clearRect(0, 0, el.width, el.height)
@@ -353,20 +416,20 @@ function draw(fromTrace = false) {
 
   if (props.showGuide) {
     ctx.strokeStyle = guide
-    ctx.lineWidth = 5
+    ctx.lineWidth = GHOST_WIDTH
     for (const stroke of referencePoints.value) drawPolyline(ctx, stroke)
-    if (nextStroke.value)
-      drawNextStroke(ctx, nextStroke.value, referenceCorners.value[strokes.value.length] ?? [], hint, ink, mark)
+    const outline = referenceOutlines.value[strokes.value.length]
+    if (nextStroke.value && outline)
+      drawNextStroke(ctx, nextStroke.value, outline, referenceCorners.value[strokes.value.length] ?? [], hint)
     if (props.showOrder)
       drawStrokeOrder(ctx, hint)
   }
 
-  // Revealed hint strokes sit above the ghost but below the user's ink.
-  if (props.revealStrokes > 0) {
-    ctx.strokeStyle = hint
-    ctx.lineWidth = 5
-    for (const stroke of referencePoints.value.slice(0, props.revealStrokes)) drawPolyline(ctx, stroke)
-  }
+  // Revealed hint strokes sit above the ghost but below the user's ink,
+  // outlined like the next stroke so they never pass for something drawn.
+  ctx.fillStyle = hint
+  for (let i = 0; i < Math.min(props.revealStrokes, referenceOutlines.value.length); i++)
+    ctx.fill(referenceOutlines.value[i]!)
 
   ctx.strokeStyle = ink
   ctx.lineWidth = 4.5
@@ -518,7 +581,7 @@ defineExpose({ undo, clear })
 <template>
   <canvas
     ref="canvas"
-    class="aspect-square w-full touch-none rounded-2xl border border-line bg-card [--canvas-guide:var(--color-washi)] [--canvas-hint:var(--color-hover)] [--canvas-ink:var(--color-ink)] [--canvas-mark:var(--color-card)]"
+    class="aspect-square w-full touch-none rounded-2xl border border-line bg-card [--canvas-guide:var(--color-washi)] [--canvas-hint:var(--color-hover)] [--canvas-ink:var(--color-ink)]"
     :class="disabled ? 'cursor-not-allowed' : 'cursor-crosshair'"
     @pointerdown="onPointerDown"
     @pointermove="onPointerMove"

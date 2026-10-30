@@ -254,10 +254,12 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
     <div class="mx-auto max-w-2xl px-4 py-8">
       <header class="mb-6 flex items-center justify-between gap-4">
         <div>
-          <h1 class="flex items-center gap-2 text-2xl font-semibold text-heading">
-            Writing
+          <div class="flex flex-wrap items-center gap-3">
+            <h1 class="text-2xl font-semibold text-heading">
+              Writing
+            </h1>
             <PageTour page="writing" />
-          </h1>
+          </div>
           <p class="text-sm text-muted">
             Trace it, then write it from memory.
           </p>

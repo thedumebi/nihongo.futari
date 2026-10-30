@@ -65,10 +65,12 @@ function onFinished() {
 <template>
   <AppShell>
     <div class="mx-auto max-w-xl px-4 py-8 sm:px-6 sm:py-12">
-      <h1 class="flex items-center gap-2 text-3xl font-semibold">
-        <Headphones class="h-7 w-7" /> Recall
+      <div class="flex flex-wrap items-center justify-between gap-3">
+        <h1 class="flex items-center gap-2 text-3xl font-semibold">
+          <Headphones class="h-7 w-7" /> Recall
+        </h1>
         <PageTour page="recall" />
-      </h1>
+      </div>
       <p class="mt-2 text-[var(--color-muted)]">
         The words you are still learning, the ones that keep slipping, and the ones you missed this
         week. Hear the English, say the Japanese out loud, then hear it. Each comes back a little

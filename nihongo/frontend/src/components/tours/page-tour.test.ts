@@ -55,7 +55,7 @@ describe('pageTour', () => {
     expect(again.find('[data-test="sheet"]').exists()).toBe(false)
   })
 
-  it('closing it counts as seen, and the help button brings it back from the start', async () => {
+  it('closing it counts as seen, and How it works brings it back from the start', async () => {
     const wrapper = tour()
     await wrapper.vm.$nextTick()
     await wrapper.findAll('button').find(b => b.text() === 'Next')!.trigger('click')
@@ -64,7 +64,7 @@ describe('pageTour', () => {
     expect(wrapper.find('[data-test="sheet"]').exists()).toBe(false)
     expect(localStorage.getItem('go-tour:recall:u1')).toBe('1')
 
-    await wrapper.find(`button[aria-label="${TOURS.recall.title}"]`).trigger('click')
+    await wrapper.findAll('button').find(b => b.text() === 'How it works')!.trigger('click')
     expect(wrapper.text()).toContain(steps[0]!.title)
   })
 })
