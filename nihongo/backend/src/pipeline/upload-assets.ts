@@ -106,7 +106,7 @@ async function main() {
     for (const file of await walk(path.join(PUBLIC, tree))) {
       const { size } = await stat(file)
       // The key mirrors the path the database already stores, minus the
-      // leading slash: /audio/words/1234.m4a -> audio/words/1234.m4a
+      // leading slash: /images/vocab/1234.svg -> images/vocab/1234.svg
       plans.push({ key: path.relative(PUBLIC, file), file, size, contentType: contentType! })
     }
   }
@@ -136,10 +136,10 @@ async function main() {
         Key: plan.key,
         Body: await readFile(plan.file),
         ContentType: plan.contentType,
-        // A year, immutable: every filename is derived from a stable id, so a
-        // given key's contents never change. Regenerating audio for a word
-        // reuses its ent_seq, so bump the key, not the cache header, if a clip
-        // ever has to be replaced.
+        // A year, immutable: a given key's contents never change. Audio is
+        // keyed by its text and voice, so an edit gets a new key by itself;
+        // an illustration is keyed by an id or code, so a redrawing needs a
+        // new key, not a different cache header.
         CacheControl: 'public, max-age=31536000, immutable'
       }))
 

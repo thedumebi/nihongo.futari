@@ -6,8 +6,8 @@ user-facing should be Japanese-specific: a language is a COURSE inside the app,
 never the brand. The icon is 言, the speech radical inside 語.
 
 A language-learning PWA. Japanese first, built so other languages can follow.
-Sibling to `dmb.futari` and `abm.futari`; shares their VPS, Caddy edge, Postgres
-and Redis.
+Sibling to `dmb.futari` and `abm.futari`; runs beside them on the nagaya box
+(see Deployment).
 
 ## Types: define once, never redefine
 
@@ -111,7 +111,10 @@ pnpm 9 + Turbo 2 monorepo. Node version lives in `.nvmrc`; every PATH guard (hus
   generation → queue `needs-source`. Every returned quote must be a literal
   substring of the input, and every `sourceId` must be one that was passed in;
   otherwise auto-reject. Nothing AI-generated reaches a user unreviewed.
-- **Furigana is precomputed at import**, never aligned at render time.
+- **Furigana is precomputed at import**, never aligned at render time. Grammar
+  prose included: after changing any grammar text, run
+  `pnpm -C nihongo/backend seed:grammar-furigana` and commit the seed it
+  writes. `grammar-furigana.db.test.ts` fails CI until you do.
 - **Timezones**: store IANA zone on the user (kept in step with the device, so
   it follows them when they travel), compute local date at write time with
   luxon. The day runs **midnight to midnight local** by default

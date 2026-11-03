@@ -77,9 +77,10 @@ export async function listKeys(prefix: string): Promise<Map<string, number>> {
 /**
  * Store one object.
  *
- * A year, immutable: every key is derived from a stable id, so a given key's
- * contents never change. Regenerating a word's audio reuses its ent_seq, so if
- * a clip ever has to be replaced, bump the key rather than the cache header.
+ * A year, immutable: a given key's contents never change. Audio keys are made
+ * from the text and voice (`audioKeyFor`), so an edited line gets a new key by
+ * itself. Illustrations are keyed by a stable id or code (`<entSeq>.svg`), so a
+ * redrawn picture needs a new key, never a new cache header.
  */
 export async function putAsset(key: string, body: Buffer, contentType: string): Promise<void> {
   await bucket().send(new PutObjectCommand({

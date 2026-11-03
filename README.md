@@ -9,7 +9,7 @@ learning 青 = セイ makes 晴・清・請・精・静 predictable instead of f
 memorisations. Sourced, cited, and never confused with an invented mnemonic.
 
 Sibling to [`dmb.futari`](../dmb.futari) and [`abm.futari`](../abm.futari);
-shares their VPS, Caddy edge, Postgres and Redis.
+runs beside them on the nagaya box (see Deployment).
 
 ## Stack
 
@@ -43,8 +43,8 @@ Dev ports are offset from dmb's and abm's so all three stacks can run at once.
 
 ## Content
 
-Vocabulary comes from open datasets, imported locally (never on the VPS — JMdict
-is 63 MB of XML):
+Vocabulary comes from open datasets, imported locally (never on the server: JMdict is
+63 MB of XML):
 
 ```
 pnpm -C nihongo/backend import:n5         # JMdict + KANJIDIC2 -> words & kanji
@@ -130,16 +130,14 @@ always an enhancement here, never the only channel.
 
 ## Deployment
 
-Shares dmb's infrastructure on one Hetzner box. `docker-compose.prod.yml` builds
-only backend + frontend, joined to the external `futari` network, against
-`dmb-postgres` (database `nihongo`) and `dmb-redis`. The `Caddyfile` here is
-intentionally inert — routing lives in `dmb.futari/Caddyfile`, which already has
-the `nihongo.futari.live` block.
+Runs on the nagaya box, deployed by `.github/workflows/deploy-nagaya.yml`. Every
+push to `master` deploys, except one touching only `.claude/`, `.husky/`,
+`.claudeignore` or `*.md`. CI works out which of backend and frontend changed,
+runs lint, typecheck and the tests, builds those images and pushes them to
+GHCR, then asks nagaya to pull, health-check and roll back on failure. Nothing
+is built on the box. Box setup lives in the nagaya repo's `RUNBOOK.md`.
 
-Deploys run from `.github/workflows/deploy-vps.yaml` on push to `master`.
-
-Step-by-step for the first deploy — DNS, the shared database, encrypted config,
-cron and verification — is in [DEPLOY.md](DEPLOY.md).
+[DEPLOY.md](DEPLOY.md) is the retired Hetzner runbook, kept for history.
 
 ## Working on this
 

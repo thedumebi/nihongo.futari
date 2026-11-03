@@ -281,6 +281,13 @@
       "when": 1793705661932,
       "tag": "0039_real_luke_cage",
       "breakpoints": true
+    },
+    {
+      "idx": 40,
+      "version": "7",
+      "when": 1793707486407,
+      "tag": "0040_lonely_vindicator",
+      "breakpoints": true
     }
   ]
 }

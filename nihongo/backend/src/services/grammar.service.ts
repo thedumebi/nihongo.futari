@@ -16,14 +16,13 @@ import {
   sentenceTranslations,
   sources
 } from '@nihongo/shared/db/schema'
-import { annotate } from '@nihongo/shared/lib'
 import { and, asc, eq, inArray } from 'drizzle-orm'
 
 import { assetUrl } from '../lib/assets.js'
 import { cachedContent, languageByCode } from './catalogue.service.js'
 import { currentClips } from './clips.service.js'
 import { glossary, glossLine } from './glossary.service.js'
-import { getLexicon } from './lexicon.service.js'
+import { grammarReadings, readingsFor } from './grammar-furigana.service.js'
 
 /**
  * The example sentences for a set of grammar points, ready to render.
@@ -173,13 +172,13 @@ async function shapeLessons(
     .orderBy(asc(grammarMistakes.sortIndex))
 
   const examples = withExamples ? await loadExamples(languageCode, points.map(p => p.id)) : new Map()
-  const lexicon = await getLexicon(languageCode)
+  const readings = await grammarReadings()
 
   for (const p of points) {
     out.set(p.id, {
       slug: p.slug,
       title: p.title,
-      titleFurigana: annotate(p.title, lexicon),
+      titleFurigana: readingsFor(readings, p.title),
       pattern: p.pattern,
       meaningShort: p.meaningShort,
       meaningLong: p.meaningLong,
@@ -230,13 +229,13 @@ export async function listGrammar(languageCode: string): Promise<GrammarListResp
     .where(and(eq(languages.code, languageCode), eq(grammarPoints.published, true)))
     .orderBy(asc(grammarPoints.sortIndex))
 
-  const lexicon = await getLexicon(languageCode)
+  const readings = await grammarReadings()
 
   return {
     points: rows.map(r => ({
       slug: r.slug,
       title: r.title,
-      titleFurigana: annotate(r.title, lexicon),
+      titleFurigana: readingsFor(readings, r.title),
       pattern: r.pattern,
       meaningShort: r.meaningShort,
       category: r.category,
@@ -350,11 +349,12 @@ export async function getGrammarPoint(languageCode: string, slug: string): Promi
   }))
 
   // Ruby for the prose. Every explanation on this page is written in mixed
-  // English and Japanese, and the Japanese half carried no readings at all —
+  // English and Japanese, and the Japanese half carried no readings at all,
   // which made the pages that explain the language the least readable thing in
-  // the app.
-  const lexicon = await getLexicon(languageCode)
-  const ruby = (text: string | null) => annotate(text ?? '', lexicon)
+  // the app. The readings are precomputed (seed:grammar-furigana), never made
+  // here.
+  const readings = await grammarReadings()
+  const ruby = (text: string | null) => readingsFor(readings, text)
 
   const examples = (await loadExamples(languageCode, [point.id])).get(point.id) ?? []
 

@@ -1,5 +1,5 @@
 import { relations } from 'drizzle-orm'
-import { boolean, index, integer, primaryKey, text, timestamp, uniqueIndex } from 'drizzle-orm/pg-core'
+import { boolean, index, integer, jsonb, primaryKey, text, timestamp, uniqueIndex } from 'drizzle-orm/pg-core'
 
 import { users } from './auth.js'
 import { primaryId, timestamps } from './columns.js'
@@ -148,3 +148,27 @@ export const grammarPointSentencesRelations = relations(grammarPointSentences, (
   }),
   sentence: one(sentences, { fields: [grammarPointSentences.sentenceId], references: [sentences.id] })
 }))
+
+/**
+ * Furigana for the grammar pages' prose, precomputed.
+ *
+ * The explanations are mixed English and Japanese written by hand, and no
+ * importer tokenises them, so their readings come from the dictionary through
+ * the shared annotator. That ran on every request, which broke the rule that
+ * furigana is computed at import (and gave 分け the ふん of the noun 分). Now
+ * `seed:grammar-furigana` runs it on a laptop and ships the result as a seed,
+ * so a reading can be read in review and corrected in the data.
+ *
+ * Keyed by the text itself (sha256 hex), not by row and column: an edited
+ * sentence asks for a new key, so a stale reading can never sit on new words,
+ * and the same text in two places shares one entry. `source` says whether the
+ * annotator produced it or a person corrected it; a re-run never overwrites a
+ * correction.
+ */
+export const grammarFurigana = contentSchema.table('grammar_furigana', {
+  textHash: text('text_hash').primaryKey(),
+  text: text('text').notNull(),
+  segments: jsonb('segments').$type<Array<{ t: string, r?: string }>>().notNull(),
+  source: text('source').notNull().default('annotator'), // annotator | corrected
+  ...timestamps
+})
