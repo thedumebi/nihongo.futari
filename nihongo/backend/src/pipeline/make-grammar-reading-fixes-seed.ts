@@ -1,0 +1,112 @@
+/* eslint-disable no-console */
+/**
+ * Turn checked grammar reading fixes into review-queue proposals.
+ *
+ *   pnpm -C nihongo/backend seed:grammar-reading-fixes <rules.jsonl> <seed-number>
+ *
+ * The grammar pages' furigana was precomputed by the annotator
+ * (make-grammar-furigana-seed.ts), which reads a compound it does not know one
+ * kanji at a time (使役 as 使[つか]役[えき]) and picks a reading without the
+ * sentence (場合 as ばやい). Each rule here says how one word reads; it was
+ * drafted, then checked by a second reader against every place it lands.
+ *
+ * Nothing is changed by the seed. Each grammar text a rule touches becomes one
+ * proposal in the admin review queue (Corrections): the text as it reads now,
+ * as it would read, and each word that changes and why. Approving it writes the
+ * readings and marks the row 'corrected', so a later seed:grammar-furigana run
+ * leaves it alone (review-queue.service applyCorrection).
+ *
+ * Input lines: {"span":"使役","final":"使役[しえき]","why":"…"}
+ * Longer spans are applied first, so a compound's fix wins over a part of it.
+ */
+
+import type { CorrectionProposal, GrammarReadingChange } from '@nihongo/shared/types'
+
+import db, { connection } from '@nihongo/shared/db'
+import { grammarFurigana } from '@nihongo/shared/db/schema'
+import { correctionProposalSchema, grammarReadingRuleSchema } from '@nihongo/shared/types'
+import { readFileSync, writeFileSync } from 'node:fs'
+import { join } from 'node:path'
+
+import { grammarProseTexts, proseKey } from '../services/grammar-furigana.service.js'
+import { applyWordFix } from './lib/reading-fix.js'
+import { sqlJsonb as json, sqlText as q } from './lib/sql.js'
+
+/** As the sentence reading fixes: lower is reviewed first, so after new content (0). */
+const PRIORITY = 900
+/** Hex digits of the text hash in a proposal's id: unique among ~1,200 texts. */
+const ID_HASH_LENGTH = 16
+
+async function main() {
+  const [file, number] = process.argv.slice(2)
+  if (!file || !number)
+    throw new Error('usage: make-grammar-reading-fixes-seed.ts <rules.jsonl> <seed-number>')
+
+  const rules = readFileSync(file, 'utf8').split('\n').filter(Boolean).map((line, i) => {
+    const parsed = grammarReadingRuleSchema.safeParse(JSON.parse(line))
+    if (!parsed.success)
+      throw new Error(`${file}:${i + 1}: ${parsed.error.message}`)
+    return parsed.data
+  }).sort((a, b) => [...b.span].length - [...a.span].length)
+
+  const pointOf = new Map((await grammarProseTexts()).map(t => [proseKey(t.text), t]))
+  const stored = await db
+    .select({ textHash: grammarFurigana.textHash, text: grammarFurigana.text, segments: grammarFurigana.segments, source: grammarFurigana.source })
+    .from(grammarFurigana)
+
+  const out: string[] = []
+  let wordCount = 0
+  for (const row of stored) {
+    const prose = pointOf.get(row.textHash)
+    if (row.source !== 'annotator' || !prose)
+      continue
+    let segments = row.segments
+    const changes: GrammarReadingChange[] = []
+    for (const rule of rules) {
+      const applied = applyWordFix(segments, rule)
+      segments = applied.segments
+      changes.push(...applied.changes.map(c => ({ ...c, why: rule.why })))
+    }
+    if (changes.length === 0)
+      continue
+    wordCount += changes.length
+
+    // Checked here, not at review: a proposal the queue cannot parse cannot be approved.
+    const proposal: CorrectionProposal = correctionProposalSchema.parse({ type: 'grammar', text: row.text, point: prose.point, before: row.segments, after: segments, changes })
+    out.push(`-- ${prose.point}: ${changes.map(c => c.word).join(', ')}
+INSERT INTO content_review_queue (id, language_id, target_table, target_id, change_type, proposed, current, origin, priority, status)
+SELECT ${q(`crq-grammar-${row.textHash.slice(0, ID_HASH_LENGTH)}`)}, l.id, 'grammar_furigana', g.text_hash, 'update', ${json(proposal)}, ${json({ furigana: row.segments })}, 'ai', ${PRIORITY}, 'pending'
+FROM content.grammar_furigana g, languages l
+WHERE g.text_hash = ${q(row.textHash)} AND l.code = ${q(prose.languageCode)}
+  AND g.segments = ${json(row.segments)}
+  AND NOT EXISTS (SELECT 1 FROM content_review_queue c WHERE c.target_table = 'grammar_furigana' AND c.target_id = g.text_hash AND c.status = 'pending')
+ON CONFLICT DO NOTHING;`)
+  }
+
+  const header = `-- Reading fixes for the grammar pages, for review.
+--
+-- The grammar prose furigana was precomputed by the annotator, which reads an
+-- unknown compound one kanji at a time (使役 as 使[つか]役[えき]) and chooses a
+-- reading without the sentence (場合 as ばやい). A drafter proposed word-level
+-- fixes; a second reader checked each against every place it would land.
+-- Nothing changes here: each text becomes one proposal in the admin review
+-- queue (Corrections). Approving one writes its readings and marks the row
+-- corrected, so seed:grammar-furigana never overwrites it.
+--
+-- ${out.length} texts, ${wordCount} word readings. ${rules.length} rules.
+--
+-- Generated by pipeline/make-grammar-reading-fixes-seed.ts. A proposal is only
+-- queued while the stored readings still match what it was made from, and a
+-- text already awaiting review is skipped.
+`
+  const path = join('src/db/seeds', `${number}-grammar-readings.sql`)
+  writeFileSync(path, `${header}\n${out.join('\n\n')}\n`)
+  console.log(`${path}: ${out.length} texts, ${wordCount} words, ${rules.length} rules`)
+}
+
+main()
+  .catch((err) => {
+    console.error(err)
+    process.exitCode = 1
+  })
+  .finally(() => connection.end())

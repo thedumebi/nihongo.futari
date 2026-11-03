@@ -33,6 +33,31 @@ export type ContentReviewItem = typeof contentReviewQueue.$inferSelect
 export type NewContentReviewItem = typeof contentReviewQueue.$inferInsert
 
 /**
+ * A reviewed rule for the grammar pages' readings: every place `span` appears
+ * reads as `final` (使役 → 使役[しえき]). The pipeline turns rules into
+ * grammar corrections (make-grammar-reading-fixes-seed.ts).
+ */
+export const grammarReadingRuleSchema = z.object({
+  /** The word as written, without readings. */
+  span: z.string().min(1),
+  /** The word with its readings, brackets after the kanji they read. */
+  final: z.string().min(1),
+  why: z.string().min(1)
+})
+
+export type GrammarReadingRule = z.infer<typeof grammarReadingRuleSchema>
+
+/** One word in a grammar text whose reading a correction changes. */
+export const grammarReadingChangeSchema = z.object({
+  word: z.string(),
+  from: z.array(furiganaSegmentSchema),
+  to: z.array(furiganaSegmentSchema),
+  why: z.string()
+})
+
+export type GrammarReadingChange = z.infer<typeof grammarReadingChangeSchema>
+
+/**
  * A proposed correction to readings already live, as the queue row's
  * `proposed` column holds it. Everything a reviewer needs is in it — the line
  * as it reads now and as it would read — and so is everything approval needs
@@ -65,6 +90,17 @@ export const correctionProposalSchema = z.discriminatedUnion('type', [
     from: z.string(),
     to: z.string(),
     why: z.string()
+  }),
+  z.object({
+    type: z.literal('grammar'),
+    /** A piece of grammar prose, and the grammar point it is shown on. */
+    text: z.string(),
+    point: z.string(),
+    /** The text's stored furigana now, and after the change. */
+    before: z.array(furiganaSegmentSchema),
+    after: z.array(furiganaSegmentSchema),
+    /** Each word whose reading changes: from → to. */
+    changes: z.array(grammarReadingChangeSchema)
   })
 ]).openapi('CorrectionProposal')
 

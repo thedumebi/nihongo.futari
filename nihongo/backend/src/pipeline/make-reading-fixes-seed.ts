@@ -26,38 +26,16 @@ import type { FuriganaSegment } from '@nihongo/shared/lib'
 import type { CorrectionProposal } from '@nihongo/shared/types'
 
 import db, { connection } from '@nihongo/shared/db'
-import { hasHiragana, hasKatakana, sentenceFurigana } from '@nihongo/shared/lib'
+import { sentenceFurigana } from '@nihongo/shared/lib'
 import { sql } from 'drizzle-orm'
 import { createHash } from 'node:crypto'
 import { readFileSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 
+import { parseBracketed } from './lib/reading-fix.js'
+import { sqlJsonb as json, sqlText as q } from './lib/sql.js'
+
 interface Fix { id: string, index?: number, final?: string | null, verdict?: string, gap_at?: number, t?: string, reading?: string, why?: string }
-
-/** `来[き]た` → [{t:'来', r:'き'}, {t:'た'}]. */
-export function parseBracketed(token: string): FuriganaSegment[] {
-  const out: FuriganaSegment[] = []
-  for (const match of token.matchAll(/([^[\]]+)(?:\[([^\]]+)\])?/g)) {
-    const [, text, reading] = match
-    if (!reading) {
-      out.push({ t: text! })
-      continue
-    }
-    // Brackets follow a kanji run; any kana before it stay plain.
-    const chars = [...text!]
-    let start = chars.length
-    while (start > 0 && !hasHiragana(chars[start - 1]!) && !hasKatakana(chars[start - 1]!))
-      start--
-    const head = chars.slice(0, start).join('')
-    if (head)
-      out.push({ t: head })
-    out.push({ t: chars.slice(start).join('') || text!, r: reading })
-  }
-  return out
-}
-
-const q = (s: string) => `'${s.replace(/'/g, '\'\'')}'`
-const json = (v: unknown) => `${q(JSON.stringify(v))}::jsonb`
 
 interface Tok { index: number, charStart: number, charEnd: number, furigana: FuriganaSegment[] }
 

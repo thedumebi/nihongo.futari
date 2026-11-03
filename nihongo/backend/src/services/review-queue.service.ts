@@ -11,6 +11,7 @@ import {
   etymologyEntries,
   etymologySources,
   exercisePrompts,
+  grammarFurigana,
   grammarPoints,
   kanji,
   languageLevels,
@@ -31,6 +32,7 @@ import { correctionProposalSchema, particleProposalSchema } from '@nihongo/share
 import { aliasedTable, and, asc, eq, inArray, like, sql } from 'drizzle-orm'
 
 import { invalidateCatalogue } from './catalogue.service.js'
+import { forgetGrammarReadings } from './grammar-furigana.service.js'
 import { MNEMONIC_TABLE, forReview as mnemonicsForReview, publishReviewed as publishMnemonic } from './mnemonics.service.js'
 
 /** Second alias: a queue row can point straight at a grammar point. */
@@ -408,8 +410,10 @@ export async function approve(id: string, reviewerId: string, note?: string): Pr
   })
   // Approval can publish study items: the in-memory catalogue reloads, after
   // the commit so the reload sees them.
-  if (approved)
+  if (approved) {
     invalidateCatalogue()
+    forgetGrammarReadings()
+  }
   return approved
 }
 
@@ -503,6 +507,8 @@ function correctionSubject(table: string, proposed: unknown): string | null {
   const p = proposalOf(proposed)
   if (!p)
     return null
+  if (p.type === 'grammar')
+    return `Grammar · ${p.point}`
   return p.type === 'line' ? `Conversation · ${p.dialogue}` : 'Imported sentence'
 }
 
@@ -516,6 +522,18 @@ type Tx = Parameters<Parameters<typeof db.transaction>[0]>[0]
  */
 async function applyCorrection(tx: Tx, table: CorrectionTable, targetId: string, p: CorrectionProposal): Promise<void> {
   const now = new Date()
+  if (p.type === 'grammar') {
+    // Marked corrected, so seed:grammar-furigana never puts the guess back.
+    // Guarded by the readings it replaces: a text whose readings have changed
+    // since the proposal was made is left alone.
+    await tx.update(grammarFurigana)
+      .set({ segments: p.after, source: 'corrected', updatedAt: now })
+      .where(and(
+        eq(grammarFurigana.textHash, targetId),
+        sql`${grammarFurigana.segments} = ${JSON.stringify(p.before)}::jsonb`
+      ))
+    return
+  }
   if (p.type === 'line') {
     const target = table === 'dialogue_replies' ? dialogueReplies : dialogueTurns
     await tx.update(target)

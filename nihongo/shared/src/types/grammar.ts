@@ -24,8 +24,8 @@ export type GrammarVariant = typeof grammarVariants.$inferSelect
 export type GrammarMistake = typeof grammarMistakes.$inferSelect
 /** One precomputed reading of a piece of grammar prose (seed:grammar-furigana). */
 export type StoredGrammarFurigana = typeof grammarFurigana.$inferSelect
-/** A piece of grammar prose that needs a stored reading, and the language it is in. */
-export type GrammarProseText = Pick<StoredGrammarFurigana, 'text'> & { languageCode: string }
+/** A piece of grammar prose that needs a stored reading, the language it is in, and the point it is first shown on. */
+export type GrammarProseText = Pick<StoredGrammarFurigana, 'text'> & { languageCode: string, point: string }
 
 /** A sourced explanation, with its citations. Never merged with a mnemonic. */
 export const etymologyViewSchema = z.object({

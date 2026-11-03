@@ -52,6 +52,7 @@
     "seed:clip-audio": "tsx src/pipeline/make-clip-audio-seed.ts",
     "seed:images": "tsx src/pipeline/make-image-seed.ts",
     "seed:grammar-furigana": "tsx src/pipeline/make-grammar-furigana-seed.ts",
+    "seed:grammar-reading-fixes": "tsx src/pipeline/make-grammar-reading-fixes-seed.ts",
     "verify:assets": "tsx src/pipeline/verify-assets.ts",
     "upload:assets": "tsx src/pipeline/upload-assets.ts",
     "import:dialogues": "tsx src/pipeline/import-dialogues.ts",

@@ -47,6 +47,25 @@ function bracketed(segments: readonly FuriganaSegment[]): string {
       </ul>
     </template>
 
+    <template v-else-if="correction.type === 'grammar'">
+      <div class="grid grid-cols-[4.5rem_1fr] items-baseline gap-x-3 gap-y-2">
+        <span class="text-xs uppercase tracking-wide text-[var(--color-muted)]">Now</span>
+        <p class="leading-[2.2]">
+          <FuriganaText :text="correction.text" :segments="correction.before" mode="always" />
+        </p>
+        <span class="text-xs uppercase tracking-wide text-[var(--color-success)]">Proposed</span>
+        <p class="leading-[2.2]">
+          <FuriganaText :text="correction.text" :segments="correction.after" mode="always" />
+        </p>
+      </div>
+      <ul class="space-y-1">
+        <li v-for="(c, i) in correction.changes" :key="i">
+          <span style="font-family: var(--font-jp)">{{ bracketed(c.from) }} → <strong>{{ bracketed(c.to) }}</strong></span>
+          <span class="text-[var(--color-muted)]">: {{ c.why }}</span>
+        </li>
+      </ul>
+    </template>
+
     <template v-else>
       <p class="text-lg" style="font-family: var(--font-jp)">
         {{ correction.text }}
@@ -62,7 +81,7 @@ function bracketed(segments: readonly FuriganaSegment[]): string {
       </p>
     </template>
 
-    <p v-if="correction.translation" class="text-[var(--color-muted)]">
+    <p v-if="'translation' in correction && correction.translation" class="text-[var(--color-muted)]">
       {{ correction.translation }}
     </p>
   </div>

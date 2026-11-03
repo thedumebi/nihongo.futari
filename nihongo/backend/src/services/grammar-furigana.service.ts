@@ -55,6 +55,11 @@ export function readingsFor(readings: ReadonlyMap<string, FuriganaSegment[]>, te
 
 let loaded: Promise<ReadonlyMap<string, FuriganaSegment[]>> | null = null
 
+/** Drop the loaded readings, so the next page reads a correction just approved. */
+export function forgetGrammarReadings(): void {
+  loaded = null
+}
+
 /**
  * Every stored reading, by its text. Loaded once per process: they change only
  * with a seed, and a seed only lands with a deploy.
@@ -94,20 +99,21 @@ export async function grammarProseTexts(): Promise<GrammarProseText[]> {
       .from(etymologyEntries)
       .where(isNotNull(etymologyEntries.grammarPointId))
   ])
-  const languageOf = new Map(points.map(p => [p.id, p.code]))
+  const pointOf = new Map(points.map(p => [p.id, p]))
 
   const seen = new Set<string>()
   const out: GrammarProseText[] = []
   const add = (pointId: string | null, ...texts: Array<string | null>) => {
-    const languageCode = pointId ? languageOf.get(pointId) : undefined
-    if (!languageCode)
+    const point = pointId ? pointOf.get(pointId) : undefined
+    if (!point)
       return
+    const languageCode = point.code
     for (const text of texts) {
       const key = `${languageCode}\u0000${text}`
       if (!text || !needsReading(text) || seen.has(key))
         continue
       seen.add(key)
-      out.push({ languageCode, text })
+      out.push({ languageCode, text, point: point.title })
     }
   }
   for (const p of points)

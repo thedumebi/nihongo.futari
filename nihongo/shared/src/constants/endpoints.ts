@@ -186,7 +186,7 @@ export type EmailAudience = typeof EMAIL_AUDIENCES[number]
 export const EMAIL_CAMPAIGN_STATUSES = ['draft', 'sending', 'sent'] as const
 export type EmailCampaignStatus = typeof EMAIL_CAMPAIGN_STATUSES[number]
 
-export const CORRECTION_TABLES = ['sentences', 'dialogue_turns', 'dialogue_replies'] as const
+export const CORRECTION_TABLES = ['sentences', 'dialogue_turns', 'dialogue_replies', 'grammar_furigana'] as const
 export type CorrectionTable = typeof CORRECTION_TABLES[number]
 
 /** Native / Sino-Japanese / loan / hybrid — drives the word-origin explanation. */
