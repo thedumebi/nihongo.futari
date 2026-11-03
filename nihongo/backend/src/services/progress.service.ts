@@ -175,7 +175,9 @@ export async function recomputeProgress(userId: string, languageId: string, sinc
     }
 
     if (aggregate.xp.length > 0) {
-      // Idempotent on (userId, source, refId) — the dedupe index does the work.
+      // Keyed by (userId, source, refId), so a replay never adds twice. The
+      // amount is recomputed from the log, so a rebuild corrects one written
+      // wrong (every review once paid as a new card) rather than keeping it.
       await tx
         .insert(xpEvents)
         .values(aggregate.xp.map(x => ({
@@ -185,7 +187,11 @@ export async function recomputeProgress(userId: string, languageId: string, sinc
           refId: x.refId,
           amount: x.amount
         })))
-        .onConflictDoNothing()
+        .onConflictDoUpdate({
+          target: [xpEvents.userId, xpEvents.source, xpEvents.refId],
+          set: { amount: sql`excluded.amount` },
+          setWhere: sql`${xpEvents.amount} is distinct from excluded.amount`
+        })
     }
   })
 
@@ -478,7 +484,7 @@ export async function learnerHeadline(userId: string, languageId: string, localD
     const [row] = await db
       .select({
         xp: { totalXp: userXp.totalXp, level: userXp.level },
-        streak: { currentStreak: userStreaks.currentStreak, longestStreak: userStreaks.longestStreak },
+        streak: { currentStreak: userStreaks.currentStreak, longestStreak: userStreaks.longestStreak, freezeCount: userStreaks.freezeCount },
         reviewsToday: srsDailyStats.reviewCount,
         friendRequests: sql<number>`(select count(*) from ${friendships} where ${friendships.addresseeId} = ${users.id} and ${friendships.status} = 'pending')`.mapWith(Number)
       })

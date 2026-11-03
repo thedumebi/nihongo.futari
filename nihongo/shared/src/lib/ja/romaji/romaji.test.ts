@@ -14,6 +14,12 @@ describe('romajiToHiragana', () => {
     expect(romajiToHiragana('chikatetsu')).toBe('ちかてつ')
   })
 
+  it('reads nn as one ん, not two', () => {
+    expect(romajiToHiragana('honn')).toBe('ほん')
+    expect(romajiToHiragana('konnnichiha')).toBe('こんにちは')
+    expect(romajiToHiragana('onna')).toBe('おんな')
+  })
+
   it('accepts both Hepburn and kunrei', () => {
     // Learners type whichever they were taught.
     expect(romajiToHiragana('shi')).toBe(romajiToHiragana('si'))
@@ -120,6 +126,15 @@ describe('consumeRomaji', () => {
     expect(consumeRomaji('konna')).toEqual({ kana: 'こんな', rest: '' })
     expect(consumeRomaji("n'")).toEqual({ kana: 'ん', rest: '' })
     expect(consumeRomaji('hon', { final: true })).toEqual({ kana: 'ほん', rest: '' })
+  })
+
+  it('reads nn as one ん, keeping the second n when a vowel follows', () => {
+    expect(consumeRomaji('nn')).toEqual({ kana: '', rest: 'nn' })
+    expect(consumeRomaji('nn', { final: true })).toEqual({ kana: 'ん', rest: '' })
+    expect(consumeRomaji('honn', { final: true })).toEqual({ kana: 'ほん', rest: '' })
+    expect(consumeRomaji('nnk')).toEqual({ kana: 'ん', rest: 'k' })
+    expect(consumeRomaji('onna')).toEqual({ kana: 'おんな', rest: '' })
+    expect(consumeRomaji('konnnichiha')).toEqual({ kana: 'こんにちは', rest: '' })
   })
 
   it('gives the sokuon for a doubled consonant and ー for a dash', () => {

@@ -167,7 +167,10 @@ export const mnemonics = editorialSchema.table('mnemonics', {
   visibility: text('visibility').notNull().default('system'), // system | private | shared
   isOfficial: boolean('is_official').notNull().default(false),
   generatedBy: text('generated_by').notNull().default('human'),
-  status: text('status').notNull().default('draft'),
+  status: text('status').notNull().default('draft'), // draft | in-review | published
+  /** Who signed it off in the review queue. Nothing is published without one. */
+  reviewedBy: text('reviewed_by').references(() => users.id, { onDelete: 'set null' }),
+  reviewedAt: timestamp('reviewed_at'),
   upvotes: integer('upvotes').notNull().default(0),
   ...timestamps
 }, t => ({
@@ -175,6 +178,13 @@ export const mnemonics = editorialSchema.table('mnemonics', {
     'mnemonics_exactly_one_target',
     sql`num_nonnulls(${t.kanjiId}, ${t.wordId}, ${t.grammarPointId}) = 1`
   ),
+  // An invented memory aid reaches a learner only after a human has read it,
+  // whoever or whatever wrote it. Enforced here, not by a service remembering.
+  publishNeedsReviewer: check(
+    'mnemonics_publish_needs_reviewer',
+    sql`${t.status} <> 'published' or ${t.reviewedBy} is not null`
+  ),
+  wordIdx: index('mnemonics_word_idx').on(t.wordId, t.visibility),
   // One private mnemonic per user per kanji — their own beats the system one.
   onePrivatePerKanji: uniqueIndex('mnemonics_one_private_per_kanji')
     .on(t.kanjiId, t.authorUserId)

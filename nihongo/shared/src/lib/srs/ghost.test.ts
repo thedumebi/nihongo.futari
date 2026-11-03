@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 
 import type { GhostPolicy, SrsRating } from '@/types/srs.js'
 
-import { applyGhostInterval, evaluateGhost, streakSpanDays } from './ghost.js'
+import { applyGhostInterval, evaluateGhost, streakSpanDays, withGhostInterval } from './ghost.js'
 
 const POLICY: GhostPolicy = {
   threshold: 4,
@@ -131,5 +131,32 @@ describe('applyGhostInterval', () => {
   it('leaves a healthy card untouched', () => {
     const healthy = evaluateGhost(base, POLICY)
     expect(applyGhostInterval(30, healthy, POLICY)).toBe(30)
+  })
+})
+
+describe('withGhostInterval', () => {
+  const ghosted = evaluateGhost({ ...base, ghost: true, lapses: 5 }, POLICY)
+  const answered = new Date('2026-03-01T09:00:00Z')
+  const card = {
+    due: new Date('2026-03-11T09:00:00Z'),
+    stability: 12,
+    difficulty: 6,
+    elapsedDays: 4,
+    scheduledDays: 10,
+    learningSteps: 0,
+    reps: 8,
+    lapses: 5,
+    state: 2,
+    lastReview: answered
+  }
+
+  it('brings a ghost back sooner, counted from the answer, leaving its memory alone', () => {
+    expect(withGhostInterval(card, ghosted, POLICY)).toEqual({ ...card, scheduledDays: 5, due: new Date('2026-03-06T09:00:00Z') })
+  })
+
+  it('leaves a healthy card, or one in its learning steps, as FSRS scheduled it', () => {
+    expect(withGhostInterval(card, evaluateGhost(base, POLICY), POLICY)).toBe(card)
+    const learning = { ...card, scheduledDays: 0, state: 3, due: new Date('2026-03-01T09:10:00Z') }
+    expect(withGhostInterval(learning, ghosted, POLICY)).toBe(learning)
   })
 })

@@ -66,12 +66,12 @@ describe('the learner profile', () => {
     const id = await bareUser('headline-full')
     const now = new Date('2026-10-20T03:00:00Z') // 12:00 in Tokyo
     await db.insert(userXp).values({ userId: id, languageId: LANGUAGE_ID, totalXp: 340, level: 3 })
-    await db.insert(userStreaks).values({ userId: id, languageId: LANGUAGE_ID, currentStreak: 5, longestStreak: 9 })
+    await db.insert(userStreaks).values({ userId: id, languageId: LANGUAGE_ID, currentStreak: 5, longestStreak: 9, freezeCount: 1 })
     await db.insert(srsDailyStats).values([
       { userId: id, languageId: LANGUAGE_ID, localDate: '2026-10-19', timezone: 'Asia/Tokyo', reviewCount: 40 },
       { userId: id, languageId: LANGUAGE_ID, localDate: '2026-10-20', timezone: 'Asia/Tokyo', reviewCount: 12 }
     ])
-    expect(await learnerHeadline(id, LANGUAGE_ID, '2026-10-20')).toEqual({ xp: { totalXp: 340, level: 3 }, streak: { currentStreak: 5, longestStreak: 9 }, reviewsToday: 12, friendRequests: 0 })
+    expect(await learnerHeadline(id, LANGUAGE_ID, '2026-10-20')).toEqual({ xp: { totalXp: 340, level: 3 }, streak: { currentStreak: 5, longestStreak: 9, freezeCount: 1 }, reviewsToday: 12, friendRequests: 0 })
     expect(await studiedToday(id, LANGUAGE_ID, now)).toBe(true)
   })
 })

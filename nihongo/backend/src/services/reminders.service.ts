@@ -477,15 +477,21 @@ export async function pushEvent(userId: string, kind: string, dedupeKey: string,
 }
 
 /**
- * The two nudges besides the daily reminder, by push and by email — each to
- * whoever has that channel on for reminders:
+ * The timed nudges besides the daily reminder, each to whoever has that
+ * channel on for reminders:
  *
- * - **streak at risk** — 20:00 local, a streak of 3+ days, nothing studied
- *   today, and no earned freeze that would cover the day anyway. Once a day.
- * - **ghost alert** — Saturday morning, when 5+ cards keep being forgotten.
- *   Once a week; it opens the Due list, where ghosts are marked.
+ * - **streak at risk** (push and email): 20:00 local, a streak of 3+ days,
+ *   nothing studied today, and no earned freeze that would cover the day
+ *   anyway. Once a day.
+ * - **ghost alert** (push and email): Saturday morning, when 5+ cards keep
+ *   being forgotten. Once a week; it opens this week's ghost boss
+ *   (/games/ghost-boss).
+ * - **reviews ready** (`due-alert`, push only): at most once a day, in the
+ *   daytime, within the day's nudge cap (`shouldSendDueAlert`).
  *
- * Both were named in the schema from the start and never sent.
+ * The two leaderboard nudges (`board-passed`, `board-close`) are not sent
+ * here: friends.service pushes them as events through `pushEvent`. All five
+ * kinds count towards the day's cap (NUDGE_KINDS).
  */
 export async function runNudges(now = new Date()): Promise<ReminderRunResult> {
   const result = emptyRun()

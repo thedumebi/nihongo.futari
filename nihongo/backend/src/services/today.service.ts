@@ -44,7 +44,7 @@ export async function getToday(userId: string, languageCode: string, moreNew = 0
   // One read of the learner's cards, shared by everything below.
   const learner = await learnerState(userId, language.id)
   const now = new Date()
-  const [due, nextDueAt, newToday, lessons, speak, summary, today, quests, unseen, readings, friendRequests, progress] = await Promise.all([
+  const [due, nextDueAt, newToday, lessons, speak, summary, today, quests, unseen, readings, headline, progress] = await Promise.all([
     countDue(userId, language.id),
     nextDue(learner, now)?.toISOString() ?? null,
     newLeftToday(userId, language.id, now, moreNew, learner),
@@ -55,7 +55,7 @@ export async function getToday(userId: string, languageCode: string, moreNew = 0
     todayQuests(userId, language.id),
     unseenAchievements(userId),
     listReadings(languageCode, undefined, userId),
-    headlineToday(userId, language.id, now).then(h => h.friendRequests),
+    headlineToday(userId, language.id, now),
     stageProgress(userId, language.id, learner)
   ])
   // A stage passed while reviewing, or on another device, is announced here
@@ -86,13 +86,13 @@ export async function getToday(userId: string, languageCode: string, moreNew = 0
     nextLesson: lessons.next ?? null,
     lessonFirst: first,
     nextSpeak: nextSpeak ? { code: nextSpeak.code, number: nextSpeak.number, level: nextSpeak.level, titleEn: nextSpeak.titleEn } : null,
-    streak: { current: summary.currentStreak, longest: summary.longestStreak, studiedToday: today },
+    streak: { current: summary.currentStreak, longest: summary.longestStreak, studiedToday: today, freezes: headline.streak?.freezeCount ?? 0 },
     xp: { total: summary.totalXp, level: summary.level },
     quests: quests.quests,
     suggestedReading: suggested
       ? { code: suggested.code, title: suggested.title, titleEn: suggested.titleEn, level: suggested.level, coverage: suggested.coverage }
       : null,
     unseenAchievements: unseen,
-    friendRequests
+    friendRequests: headline.friendRequests
   }
 }

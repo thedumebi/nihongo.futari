@@ -14,7 +14,7 @@ Both are produced on a laptop by a CLI and served from a Cloudflare R2 bucket.
 **The bucket is the only copy.** `public/audio` and `public/images` are staging
 areas, not stores: git ignores both, `.dockerignore` keeps both out of the
 deployed image, and either can be deleted at any time. Audio never lands there
-at all any more — `generate-audio.ts` synthesises to a temp file and uploads
+at all any more: `generate-audio.ts` synthesises to a temp file and uploads
 straight to R2. Illustrations are drawn there and cleared once uploaded.
 
 Because of that, **"does this asset already exist" is a question for the bucket,
@@ -45,27 +45,54 @@ missing CORS header, or a clip that was generated but never uploaded.
 macOS `say` plus `afconvert`. This is a local step; there is no audio service.
 
 ```bash
-pnpm -C nihongo/backend audio:all         # kana, words, sentences, dialogues
+pnpm -C nihongo/backend audio:all         # every kind, in order
 pnpm -C nihongo/backend audio:dialogues   # or one kind at a time
 ```
 
-No upload step: clips go straight to the bucket. Idempotent — a clip the bucket
+The kinds are `kana`, `words`, `sentences`, `dialogues`, `speak`, `readings`
+and `glosses`, each with its own `audio:<kind>` script. After `words` or
+`sentences`, run `seed:clip-audio`: it writes the seed that tells production
+which recordings exist.
+
+No upload step: clips go straight to the bucket. Idempotent: a clip the bucket
 already holds is skipped, so re-running after adding content only makes what is
 new. Roughly 11,100 clips and 103 MB at full coverage.
 
-Filenames are derived from database ids, never from text:
+**Clips are named for what they say, not for a database id.** Everything except
+kana is keyed by `audioKeyFor(text, voice)` in `backend/src/lib/audio-key.ts`:
+the first 16 base64url characters of `sha256("<voice> <text>")`.
 
 | Kind | Path | Keyed by |
 | --- | --- | --- |
 | kana | `audio/kana/<script>-<romaji>.m4a` | script + romaji |
-| words | `audio/words/<entSeq>.m4a` | JMdict `ent_seq` |
-| sentences | `audio/sentences/<id>.m4a` | `sentences.id` |
-| dialogues | `audio/dialogues/<id>.m4a` | turn id AND reply id |
+| everything else | `audio/<kind>/<key>.m4a` | `audioKeyFor(text, voice)` |
 
-**Two voices in conversations.** Kyoko speaks the other party, Reed speaks the
-learner's lines and every reply option. A dialogue read in one voice is a
-monologue with line breaks — you cannot hear whose turn it is, which is most of
-what makes an exchange followable.
+Why content keys: clips are served `max-age=31536000, immutable`, which promises
+a URL's bytes never change. Filed by id (or, for dialogues, by position), an
+edited line kept its old name, so the generator skipped it as already present
+and the stale clip went on saying the old words, cached for a year. Named for
+text and voice, an edit asks for a new URL, the old clip is simply no longer
+referenced, and the cache header holds by construction. Two lines with the same
+text and voice share one file, which is correct.
+
+**`audioKeyFor` is the only place a key is made.** The generator and every path
+helper the services and seeds use (`dialogueAudioPath`, `sentenceAudioPath`, `wordAudioPath`,
+`speakAudioPath`, `readingAudioPath`, `glossAudioPath`) go through it. Never
+build an audio key by hand: a URL that names a different voice or a differently
+spelled text from the one recorded points at nothing.
+
+**Voices live in `audio-key.ts`**, because the key depends on them. Japanese is
+Kyoko (Enhanced) and Otoya (Enhanced). In conversations Kyoko speaks the other
+party and Otoya speaks the learner's lines and every reply option, so whose turn
+it is is audible before the words are. Words and sentences are split between the
+two by `voiceForClip(id)`, always the same voice for the same item. The Speak
+teachers are Zoe (Premium) and Nathan (Enhanced), alternating by session; Recall
+prompts (`glosses`) use Zoe. These must exist in `say -v '?'` on the machine
+that generates audio; the enhanced and premium variants are downloaded, not
+built in (System Settings > Accessibility > Spoken Content > Manage Voices), and
+a missing one fails the clip rather than substituting. Changing a voice changes
+every key that uses it, so the next run records the new clips and the URLs move
+by themselves.
 
 **Every clip has a 20 second timeout.** `say` has been seen to hang for ever on
 one input; a words run once sat for eight hours having produced nothing. A

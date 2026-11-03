@@ -49,7 +49,12 @@ export const todaySchema = z.object({
     current: z.number().int(),
     longest: z.number().int(),
     /** Whether today already counts — so the page can say "keep it going" or "done for today". */
-    studiedToday: z.boolean()
+    studiedToday: z.boolean(),
+    /**
+     * Streak freezes held: each covers one missed day so the streak survives.
+     * One is earned every week of study, two held at most (`computeStreak`).
+     */
+    freezes: z.number().int()
   }),
   xp: z.object({ total: z.number().int(), level: z.number().int() }),
   /** Today's three small goals — the same all day. */

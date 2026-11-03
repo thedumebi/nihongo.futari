@@ -234,3 +234,17 @@ export function buildGhostRounds(subjects: readonly GhostSubject[], pools: Ghost
   // Every ghost's first round, then every second: the same card is not asked twice running.
   return [...perGhost.map(r => r[0]), ...perGhost.map(r => r[1])].filter((r): r is GhostRound => Boolean(r))
 }
+
+/**
+ * Whether the same ghost's reading is still to be asked after round `at`.
+ *
+ * Furigana on any earlier round about that word would print the answer to
+ * the reading question before it is asked, so the word goes bare until then.
+ * A missed reading round comes back at the end, so that counts too.
+ */
+export function readingAskedLater(rounds: readonly GhostRound[], at: number): boolean {
+  const ghost = rounds[at]?.ghost
+  if (ghost === undefined)
+    return false
+  return rounds.slice(at + 1).some(r => r.ghost === ghost && r.kind === 'reading')
+}

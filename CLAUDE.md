@@ -216,7 +216,13 @@ run. Verify with `pnpm -C <workspace> exec eslint .`.
 
 ## Deployment
 
-Shares dmb's infrastructure. `docker-compose.prod.yml` builds only backend +
-frontend, joined to the external `futari` network, against `dmb-postgres`
-(database `nihongo`) and `dmb-redis`. The Caddyfile here is intentionally inert —
-routing lives in `dmb.futari/Caddyfile`.
+Runs on the nagaya box (shared with the sibling apps), deployed by
+`.github/workflows/deploy-nagaya.yml`. Every push to `master` deploys, except
+one touching only `.claude/`, `.husky/`, `.claudeignore` or `*.md`. CI works
+out which of backend and frontend changed (shared code and dependencies count
+for both), runs lint, typecheck and test (plus the DB tests when the backend changed),
+builds those images and
+pushes them to GHCR, then SSHes to nagaya, which pulls, health-checks and rolls
+back on failure. Nothing is built on the box; a manual run redeploys a commit.
+Box setup lives in the nagaya repo's `RUNBOOK.md`. `DEPLOY.md` is the retired
+Hetzner runbook, kept for history.

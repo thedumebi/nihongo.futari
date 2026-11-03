@@ -1,6 +1,8 @@
-import type { GhostEvent, GhostPolicy, SrsRating } from '@/types/srs.js'
+import type { CardState, GhostEvent, GhostPolicy, SrsRating } from '@/types/srs.js'
 
 import { SRS_RATINGS } from '@/types/srs.js'
+
+const MS_PER_DAY = 86_400_000
 
 export interface GhostInput {
   ghost: boolean
@@ -88,7 +90,7 @@ export function streakSpanDays(recent: ReadonlyArray<{ rating: number, reviewedA
   let first = last
   for (let i = recent.length - 1; i >= 0 && recent[i]!.rating !== 1; i--)
     first = recent[i]!
-  return (last.reviewedAt.getTime() - first.reviewedAt.getTime()) / 86_400_000
+  return (last.reviewedAt.getTime() - first.reviewedAt.getTime()) / MS_PER_DAY
 }
 
 /** Shorten a ghosted card's interval, capped so it never runs away. */
@@ -97,4 +99,21 @@ export function applyGhostInterval(scheduledDays: number, decision: GhostDecisio
     return scheduledDays
   const shortened = Math.round(scheduledDays * decision.intervalFactor)
   return Math.max(1, Math.min(shortened, policy.maxGhostIntervalDays))
+}
+
+/**
+ * A ghost comes back sooner: the card's interval is cut by the policy's factor,
+ * counted from the answer that produced it. Only the due date moves. Stability
+ * and difficulty stay as FSRS left them, so the next answer is scheduled from
+ * the card's real memory, and a replay (which folds the log, then applies this
+ * to the result) lands on the same card as answering it live.
+ */
+export function withGhostInterval(state: CardState, decision: GhostDecision, policy: GhostPolicy): CardState {
+  // Learning steps are minutes, not days: nothing to shorten.
+  if (!decision.ghost || state.scheduledDays < 1 || !state.lastReview)
+    return state
+  const days = applyGhostInterval(state.scheduledDays, decision, policy)
+  if (days === state.scheduledDays)
+    return state
+  return { ...state, scheduledDays: days, due: new Date(state.lastReview.getTime() + days * MS_PER_DAY) }
 }

@@ -41,7 +41,7 @@ onMounted(async () => {
 
 <template>
   <AppShell>
-    <div class="mx-auto max-w-3xl px-6 py-12">
+    <div class="mx-auto max-w-3xl px-4 py-12 sm:px-6">
       <h1 class="text-3xl font-semibold">
         Sound series
       </h1>
@@ -59,8 +59,8 @@ onMounted(async () => {
         Loading…
       </p>
 
-      <ul v-else class="mt-8 grid gap-3 sm:grid-cols-2">
-        <li v-for="s in series" :key="s.component">
+      <ul v-else class="mt-8 grid grid-cols-1 gap-3 sm:grid-cols-2">
+        <li v-for="s in series" :key="s.component" class="min-w-0">
           <router-link
             :to="ROUTES.SOUND_SERIES_DETAIL(s.component)"
             class="flex items-center gap-4 rounded-xl border border-[var(--color-border)] p-4 transition hover:border-[var(--color-text)]"

@@ -158,6 +158,15 @@ export function romajiToHiragana(input: string): string {
       continue
     }
 
+    // "nn" is one ん, as on every IME, unless the second n starts a syllable
+    // of its own: "konna" is こんな, "onna" おんな, but "konnnichi" and a bare
+    // "nn" are one ん, not two.
+    if (a === 'n' && b === 'n') {
+      out += 'ん'
+      i += /[aiueoy]/.test(rest[2] ?? '') ? 1 : 2
+      continue
+    }
+
     // "n" before a consonant (or at the end) is ん, not the start of "na".
     if (a === 'n' && (!b || !/[aiueoy]/.test(b))) {
       out += 'ん'
@@ -226,6 +235,21 @@ export function consumeRomaji(input: string, { final = false }: { final?: boolea
       if (b === '\'') {
         out += 'ん'
         i += 2
+        continue
+      }
+      // "nn" is one ん. Whether the second n is also the start of な depends
+      // on the key after it, so at the end of what is typed so far it waits.
+      if (b === 'n') {
+        const c = rest[2]
+        if (c === undefined) {
+          if (!final)
+            break
+          out += 'ん'
+          i += 2
+          continue
+        }
+        out += 'ん'
+        i += /[aiueoy]/.test(c) ? 1 : 2
         continue
       }
       if (!/[aiueoy]/.test(b)) {

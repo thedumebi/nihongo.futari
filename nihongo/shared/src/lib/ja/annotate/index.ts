@@ -138,6 +138,17 @@ export function annotate(text: string, lexicon: Lexicon): FuriganaSegment[] {
 
     const candidates = buckets.get(char) ?? []
     const word = candidates.find(k => text.startsWith(k, i))
+    // A lone kanji that is a word in its own right is weak evidence when the
+    // text carries on in a longer word: 分け is the 分 of 分ける (わ), not the
+    // noun 分 (ふん). A word sharing more of the text wins.
+    const inflected = word?.length === 1 && KANJI.test(char)
+      ? readingFromNeighbours(text, i, candidates, lexicon)
+      : undefined
+    if (inflected) {
+      push(char, inflected)
+      i += 1
+      continue
+    }
     if (word && KANJI.test(word)) {
       const reading = lexicon.words.get(word)!
       const aligned = alignFurigana(word, reading)

@@ -31,6 +31,7 @@ import { correctionProposalSchema, particleProposalSchema } from '@nihongo/share
 import { aliasedTable, and, asc, eq, inArray, like, sql } from 'drizzle-orm'
 
 import { invalidateCatalogue } from './catalogue.service.js'
+import { MNEMONIC_TABLE, forReview as mnemonicsForReview, publishReviewed as publishMnemonic } from './mnemonics.service.js'
 
 /** Second alias: a queue row can point straight at a grammar point. */
 const directPoint = aliasedTable(grammarPoints, 'direct_point')
@@ -259,6 +260,9 @@ export async function listPending(
     }
   }
 
+  // Mnemonics are read by their own service: they share nothing with etymology.
+  const mnemonicsOnPage = await mnemonicsForReview(rows.filter(r => r.targetTable === MNEMONIC_TABLE).map(r => r.targetId))
+
   const [count] = await db
     .select({ total: sql<number>`count(*)`.mapWith(Number) })
     .from(contentReviewQueue)
@@ -273,7 +277,7 @@ export async function listPending(
       status: r.status,
       createdAt: r.createdAt.toISOString(),
       kind: kindOf(r.targetTable),
-      subject: r.etySubject ?? r.gpTitle ?? r.readingTitle ?? r.speakTitle ?? r.particleTitle ?? correctionSubject(r.targetTable, r.proposed),
+      subject: r.etySubject ?? r.gpTitle ?? r.readingTitle ?? r.speakTitle ?? r.particleTitle ?? mnemonicsOnPage.get(r.targetId)?.subject ?? correctionSubject(r.targetTable, r.proposed),
       claim: r.claim,
       body: r.body,
       confidence: r.confidence,
@@ -288,7 +292,8 @@ export async function listPending(
       reading: speech(r),
       speak: speakSession(r),
       particles: particleSet(r),
-      correction: isCorrection(r.targetTable) ? proposalOf(r.proposed) : null
+      correction: isCorrection(r.targetTable) ? proposalOf(r.proposed) : null,
+      mnemonic: r.targetTable === MNEMONIC_TABLE ? mnemonicsOnPage.get(r.targetId) ?? null : null
     })),
     pending: count?.total ?? 0
   }
@@ -324,6 +329,10 @@ export async function approve(id: string, reviewerId: string, note?: string): Pr
         .update(etymologyEntries)
         .set({ status: 'published', reviewedBy: reviewerId, reviewedAt: now, publishedAt: now, updatedAt: now })
         .where(eq(etymologyEntries.id, row.targetId))
+    } else if (row.targetTable === MNEMONIC_TABLE) {
+      // An invented memory aid: published with its reviewer, which the
+      // table's CHECK insists on.
+      await publishMnemonic(tx, row.targetId, reviewerId, now)
     } else if (row.targetTable === 'grammar_points') {
       // Grammar points are already visible (published) but flagged as drafts.
       // Approving clears the draft badge and records who signed it off.

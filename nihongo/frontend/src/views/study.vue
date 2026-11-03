@@ -1698,12 +1698,18 @@ async function selectDeck(id: string) {
 }
 
 onMounted(async () => {
-  // Cached value renders now; the stored one replaces it when it lands.
-  void loadLevel()
   window.addEventListener('keydown', onKey)
   void requestPersistence()
   void loadKnownKanji(lang.code)
   void loadSettings()
+  // The queue is filtered by level, so it waits for the stored one. On a fresh
+  // device the cache is empty, which means every level, and an N5 learner was
+  // served N1 words first. loadLevel never throws: offline it settles on the
+  // cached value. A `?level=` from the course page already chose, so there
+  // the queue need not wait.
+  const levelReady = loadLevel()
+  if (!(typeof route.query.level === 'string' && route.query.level))
+    await levelReady
   await loadDecksAndQueue()
 })
 onUnmounted(() => {

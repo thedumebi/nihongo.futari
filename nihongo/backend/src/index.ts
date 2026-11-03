@@ -7,6 +7,7 @@ import app from './app.js'
 import testDatabaseConnection from './db/index.js'
 import { initGeo } from './lib/geo.js'
 import { runShutdownHooks } from './lib/shutdown.js'
+import { repairReviewSnapshots } from './services/srs.service.js'
 import { warmContent } from './services/warm.service.js'
 
 const server = serve({
@@ -17,6 +18,11 @@ const server = serve({
   initGeo()
   pino.info(`Server is running on http://localhost:${info.port}`)
   void warmContent()
+  // Answers recorded before their before/after state was kept: fill it in and
+  // rebuild those learners' XP. Finds nothing once done.
+  void repairReviewSnapshots()
+    .then(({ cards, learners, failed }) => (cards > 0 || failed > 0) && pino.info({ cards, learners, failed }, 'Review snapshots repaired'))
+    .catch(err => pino.error({ err }, 'Repairing review snapshots failed; it will retry on the next start'))
 })
 
 const SHUTDOWN_TIMEOUT_MS = 30_000

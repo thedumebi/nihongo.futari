@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest'
 
-import type { GhostBossEntry, GhostPools, GhostSubject } from '@/types/games.js'
+import type { GhostBossEntry, GhostPools, GhostRound, GhostSubject } from '@/types/games.js'
 
-import { buildGhostRounds, KANA_LOOKALIKES } from './ghost-boss.js'
+import { buildGhostRounds, KANA_LOOKALIKES, readingAskedLater } from './ghost-boss.js'
 
 function seeded(seed = 1): () => number {
   let s = seed
@@ -97,5 +97,35 @@ describe('buildGhostRounds', () => {
       expect(alike).not.toContain(kana)
       expect(new Set(alike).size).toBe(3)
     }
+  })
+})
+
+describe('readingAskedLater', () => {
+  function r(ghost: string, kind: GhostRound['kind']): GhostRound {
+    return { ghost, kind, question: '?', answer: '!', options: ['!'], script: 'en', audio: null }
+  }
+
+  it('is true while the same ghost still has a reading round to come', () => {
+    const rounds = [r('a', 'meaning'), r('b', 'meaning'), r('a', 'reading')]
+    expect(readingAskedLater(rounds, 0)).toBe(true)
+  })
+
+  it('is false once the reading round has been asked', () => {
+    const rounds = [r('a', 'reading'), r('b', 'meaning'), r('a', 'meaning')]
+    expect(readingAskedLater(rounds, 2)).toBe(false)
+  })
+
+  it('ignores another ghost\'s reading round', () => {
+    const rounds = [r('a', 'meaning'), r('b', 'reading')]
+    expect(readingAskedLater(rounds, 0)).toBe(false)
+  })
+
+  it('counts a missed reading round that comes back at the end', () => {
+    const rounds = [r('a', 'reading'), r('a', 'meaning'), r('a', 'reading')]
+    expect(readingAskedLater(rounds, 1)).toBe(true)
+  })
+
+  it('is false past the end of the rounds', () => {
+    expect(readingAskedLater([r('a', 'meaning')], 3)).toBe(false)
   })
 })

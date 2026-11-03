@@ -18,6 +18,7 @@ import type {
   NewBudget,
   PromptOption,
   ReviewEvent,
+  ReviewSnapshot,
   SaveWordResult,
   SrsCard,
   StageCelebration,
@@ -33,6 +34,7 @@ import type {
 } from '@nihongo/shared/types'
 import type { SQL } from 'drizzle-orm'
 
+import { pino } from '@nihongo/shared'
 import { ROUTE_BASE_PATHS, STAGE_PASS, STAGE_SIZE } from '@nihongo/shared/constants'
 import db from '@nihongo/shared/db'
 import {
@@ -87,7 +89,8 @@ import {
   rollupStages,
   streakSpanDays,
   studyDateFor,
-  studyDayRange
+  studyDayRange,
+  withGhostInterval
 } from '@nihongo/shared/lib'
 import { ghostPolicySchema } from '@nihongo/shared/types'
 import { and, asc, desc, eq, gt, gte, inArray, isNotNull, isNull, lt, lte, notInArray, or, sql } from 'drizzle-orm'
@@ -149,6 +152,34 @@ function cardStateColumns(state: CardState) {
     state: state.state,
     lastReview: state.lastReview
   }
+}
+
+/**
+ * Write each answer's before/after scheduler state onto its log row.
+ *
+ * Progress reads `stateBefore` to tell a new card from a review: XP, the daily
+ * new count and lapses all hang off it. These were computed and then dropped,
+ * so every review read as a new card. One statement for the lot: a replay
+ * rewrites the card's whole history.
+ */
+async function writeSnapshots(tx: Pick<typeof db, 'execute'>, userId: string, snapshots: readonly ReviewSnapshot[]): Promise<void> {
+  if (snapshots.length === 0)
+    return
+  const rows = snapshots.map(s => sql`(${s.logId}, ${s.stateBefore}::smallint, ${s.stabilityBefore}::double precision, ${s.difficultyBefore}::double precision, ${s.dueBefore.toISOString()}::timestamptz, ${s.elapsedDays}::integer, ${s.scheduledDays}::integer, ${s.stateAfter}::smallint, ${s.stabilityAfter}::double precision, ${s.difficultyAfter}::double precision, ${s.dueAfter.toISOString()}::timestamptz)`)
+  await tx.execute(sql`
+    update ${srsReviewLogs} as l set
+      state_before = v.state_before,
+      stability_before = v.stability_before,
+      difficulty_before = v.difficulty_before,
+      due_before = v.due_before,
+      elapsed_days = v.elapsed_days,
+      scheduled_days = v.scheduled_days,
+      state_after = v.state_after,
+      stability_after = v.stability_after,
+      difficulty_after = v.difficulty_after,
+      due_after = v.due_after
+    from (values ${sql.join(rows, sql`, `)}) as v(id, state_before, stability_before, difficulty_before, due_before, elapsed_days, scheduled_days, state_after, stability_after, difficulty_after, due_after)
+    where l.id = v.id and l.user_id = ${userId}`)
 }
 
 export async function loadPolicy(userId: string): Promise<{ policy: GhostPolicy, fsrsParams: Record<string, unknown> }> {
@@ -239,6 +270,68 @@ export async function countDue(
   if (!at)
     return perRequest(`count-due:${userId}:${languageId}`, async () => dueCount(await learnerState(userId, languageId), new Date()))
   return dueCount(await learnerState(userId, languageId), at)
+}
+
+/**
+ * Fill in the before/after state of answers recorded before it was kept.
+ *
+ * Until it was, every review's `stateBefore` was null, which progress read as
+ * a new card: 3 XP for every answer, every answer counted as new, and no lapse
+ * ever counted. This replays each such card's history (the same fold an answer
+ * runs), writes the snapshots, then rebuilds the learner's progress from the
+ * whole log so XP and daily stats come out right.
+ *
+ * Runs at boot and is idempotent: once every answer has its snapshot it finds
+ * nothing to do. One learner at a time: all their cards in one transaction
+ * (each locked, so a live answer waits rather than racing), then their
+ * progress. A learner whose rebuild fails has their snapshots cleared again, so
+ * the next start still finds them, and the others carry on.
+ */
+export async function repairReviewSnapshots(): Promise<{ cards: number, learners: number, failed: number }> {
+  const broken = await db
+    .selectDistinct({ cardId: srsReviewLogs.cardId, userId: srsReviewLogs.userId, languageId: srsReviewLogs.languageId })
+    .from(srsReviewLogs)
+    .where(and(isNull(srsReviewLogs.stateBefore), eq(srsReviewLogs.superseded, false)))
+
+  const byLearner = new Map<string, { userId: string, languageId: string, cardIds: string[] }>()
+  for (const { cardId, userId, languageId } of broken) {
+    const key = `${userId}:${languageId}`
+    const learner = byLearner.get(key) ?? { userId, languageId, cardIds: [] }
+    learner.cardIds.push(cardId)
+    byLearner.set(key, learner)
+  }
+
+  let cards = 0
+  let failed = 0
+  for (const { userId, languageId, cardIds } of byLearner.values()) {
+    let written = false
+    try {
+      const { fsrsParams } = await loadPolicy(userId)
+      await db.transaction(async (tx) => {
+        await tx.select({ id: srsCards.id }).from(srsCards).where(and(eq(srsCards.userId, userId), inArray(srsCards.id, cardIds))).for('update')
+        const history = await tx
+          .select({ id: srsReviewLogs.id, cardId: srsReviewLogs.cardId, rating: srsReviewLogs.rating, reviewedAt: srsReviewLogs.reviewedAt, clientId: srsReviewLogs.clientId })
+          .from(srsReviewLogs)
+          .where(and(eq(srsReviewLogs.userId, userId), inArray(srsReviewLogs.cardId, cardIds)))
+          .orderBy(asc(srsReviewLogs.reviewedAt), asc(srsReviewLogs.id))
+        for (const cardId of cardIds) {
+          const events = history.filter(h => h.cardId === cardId).map(h => ({ id: h.id, rating: h.rating as ReviewEvent['rating'], reviewedAt: h.reviewedAt, clientId: h.clientId }))
+          await writeSnapshots(tx, userId, replay(events, fsrsParams).snapshots)
+        }
+      })
+      written = true
+      await recomputeProgress(userId, languageId, undefined)
+      cards += cardIds.length
+    } catch (err) {
+      failed += 1
+      pino.error({ err, userId, languageId }, 'Repairing review snapshots failed for a learner; it will retry on the next start')
+      // Snapshots without the rebuild would hide this learner from the retry.
+      if (written) {
+        await db.update(srsReviewLogs).set({ stateBefore: null }).where(and(eq(srsReviewLogs.userId, userId), inArray(srsReviewLogs.cardId, cardIds))).catch(undo => pino.error({ err: undo, userId, languageId }, 'Could not clear the snapshots of a failed repair; this learner\'s XP needs a manual rebuild'))
+      }
+    }
+  }
+  return { cards, learners: byLearner.size - failed, failed }
 }
 
 export async function submitAnswer(userId: string, input: SubmitAnswerInput, deferred?: DeferredRecompute): Promise<AnswerResult> {
@@ -359,7 +452,9 @@ export async function submitAnswer(userId: string, input: SubmitAnswerInput, def
     let newestAt = answeredAt
 
     if (fast) {
-      next = applyReview(cached, event, fsrsParams).state
+      const applied = applyReview(cached, event, fsrsParams)
+      next = applied.state
+      await writeSnapshots(tx, userId, [applied.snapshot])
     } else {
       // Stale cache: re-fold the entire history for this card.
       const history = await tx
@@ -384,6 +479,8 @@ export async function submitAnswer(userId: string, input: SubmitAnswerInput, def
       )
       next = folded.state
       replayed = true
+      // A replay rewrites every answer's before/after, not just this one's.
+      await writeSnapshots(tx, userId, folded.snapshots)
       const superseded = new Set(folded.supersededIds)
       const kept = history.filter(h => !superseded.has(h.id))
       replayedRatings = kept.map(h => h.rating)
@@ -434,6 +531,7 @@ export async function submitAnswer(userId: string, input: SubmitAnswerInput, def
       recentRatings: recent.map(r => r.rating as 1 | 2 | 3 | 4),
       streakSpanDays: streakSpanDays(recent)
     }, policy)
+    next = withGhostInterval(next, decision, policy)
 
     await tx
       .update(srsCards)
@@ -446,6 +544,11 @@ export async function submitAnswer(userId: string, input: SubmitAnswerInput, def
         lastCorrectAt,
         // An answer older than any other on the card is when it was first met.
         firstSeenAt: sql`least(${srsCards.firstSeenAt}, ${answeredAt.toISOString()}::timestamp)`,
+        // An answer older than the card is what first brought it, so the card
+        // came from the queue, whatever route made the row before this answer
+        // synced. Otherwise origin would depend on the order answers arrive in.
+        // SET reads the old row, so this compares with the old first_seen_at.
+        origin: sql`case when ${answeredAt.toISOString()}::timestamp < ${srsCards.firstSeenAt} then ${'queue' satisfies CardOrigin} else ${srsCards.origin} end`,
         lastAppliedLogId: input.id,
         historyVersion: card.historyVersion + 1,
         ...(replayed ? { replayGeneration: card.replayGeneration + 1 } : {}),

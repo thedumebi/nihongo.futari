@@ -4,7 +4,7 @@ A language-learning PWA (repo: `nihongo.futari`). Japanese first, built so other
 languages can follow — the name comes from 語, the suffix meaning "language".
 
 The thing that makes it different: it explains **why**. Not just "〜てしまう means
-regret" but where です came from, why 山 is やま alone and さん in 火山, and why
+regret" but where です came from, why 山 is やま alone and さん in 富士山 (ふじさん), and why
 learning 青 = セイ makes 晴・清・請・精・静 predictable instead of five separate
 memorisations. Sourced, cited, and never confused with an invented mnemonic.
 

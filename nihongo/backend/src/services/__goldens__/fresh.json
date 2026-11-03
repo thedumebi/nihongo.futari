@@ -28,7 +28,8 @@
     "streak": {
       "current": 0,
       "longest": 0,
-      "studiedToday": false
+      "studiedToday": false,
+      "freezes": 0
     },
     "xp": {
       "total": 0,
@@ -163,116 +164,91 @@
     "items": [
       {
         "cardId": null,
-        "facetId": "5fcbc353-13ee-48aa-a3b7-6f692267027b",
-        "studyItemId": "0ce5817c-4f68-4515-ac1c-3f57b8933fe3",
-        "kind": "word",
-        "facet": "meaning",
+        "facetId": "33699cd9-5de0-4b66-b2be-aa72b09fbb50",
+        "studyItemId": "si-kana-h6",
+        "kind": "kana",
+        "facet": "writing",
         "due": "2026-09-01T12:00:00.000Z",
         "isNew": true,
         "ghost": false,
         "card": null,
-        "promptId": "ffa36007-00ff-4b2c-bdd0-c562531550fc",
-        "templateCode": "mcq",
-        "inputMode": "choice",
-        "graderCode": "choice-id",
+        "promptId": "d3bcf487-06e1-4d98-93d6-8d3b47cf9278",
+        "templateCode": "handwriting",
+        "inputMode": "canvas",
+        "graderCode": "stroke-match",
         "prompt": {
-          "kind": "word",
-          "word": "与党",
-          "reading": "よとう",
-          "instruction": "What does this mean?",
-          "senses": [
-            "ruling party, government party, party in power, government"
-          ]
+          "kind": "handwriting",
+          "label": "ki",
+          "readings": [
+            "ki"
+          ],
+          "character": "き",
+          "instruction": "Write this character",
+          "strokeCount": 4
         },
         "answer": {
-          "primary": "ruling party",
+          "primary": "き",
           "accepted": [
-            "ruling party"
+            "き"
           ]
         },
-        "distractors": [
-          "circumference",
-          "counter for years",
-          "comfort"
-        ],
+        "distractors": [],
         "assets": {
-          "audio": "/audio/words/I5L2otZKHIB1C7g4.m4a",
-          "wordAudio": "/audio/words/I5L2otZKHIB1C7g4.m4a"
+          "strokes": [
+            {
+              "path": "M30.5,30.25c1.88,0.75,4.64,1.06,5.88,0.88c6.75-1,22.25-4.5,26.5-6c2.17-0.76,3.5-1.25,4.88-2.12",
+              "index": 0,
+              "kvgType": null
+            },
+            {
+              "path": "M36.25,48.7c2.01,0.85,4.97,1.2,6.29,0.99c7.23-1.13,23.82-5.09,28.37-6.79c2.32-0.86,3.75-1.41,5.22-2.4",
+              "index": 1,
+              "kvgType": null
+            },
+            {
+              "path": "M42,14.12c1.5,0.88,3.13,2.94,4,5.12c5.5,13.76,16,29.26,26.37,40.76c7.64,8.47,9.12,9.38-6,3.88",
+              "index": 2,
+              "kvgType": null
+            },
+            {
+              "path": "M33.75,83.25c10.62,9.75,27.25,8.62,38.12,5",
+              "index": 3,
+              "kvgType": null
+            }
+          ],
+          "viewBox": 109
         },
         "firstTime": true
       },
       {
         "cardId": null,
-        "facetId": "fac-kana-h0",
-        "studyItemId": "si-kana-h0",
+        "facetId": "fac-kana-h4",
+        "studyItemId": "si-kana-h4",
         "kind": "kana",
         "facet": "reading",
         "due": "2026-09-01T12:00:00.000Z",
         "isNew": true,
         "ghost": false,
         "card": null,
-        "promptId": "ep-kana-h0",
+        "promptId": "ep-kana-h4",
         "templateCode": "kana-romaji",
         "inputMode": "text",
         "graderCode": "fuzzy-romaji",
         "prompt": {
           "kind": "kana",
           "script": "hiragana",
-          "character": "あ",
+          "character": "お",
           "instruction": "Type the sound in romaji"
         },
         "answer": {
-          "primary": "a",
+          "primary": "o",
           "accepted": [
-            "a"
+            "o"
           ]
         },
         "distractors": [],
         "assets": {
-          "audio": "/audio/kana/hiragana-a.m4a"
-        },
-        "firstTime": true
-      },
-      {
-        "cardId": null,
-        "facetId": "58666de7-c05e-441d-8e21-26837653cc89",
-        "studyItemId": "65a941cb-00f7-4320-a0cf-32b1e0817627",
-        "kind": "word",
-        "facet": "meaning",
-        "due": "2026-09-01T12:00:00.000Z",
-        "isNew": true,
-        "ghost": false,
-        "card": null,
-        "promptId": "9c3fc499-03e4-4fb6-92b5-bdb74f2600f5",
-        "templateCode": "mcq",
-        "inputMode": "choice",
-        "graderCode": "choice-id",
-        "prompt": {
-          "kind": "word",
-          "word": "一方",
-          "reading": "いっぽう",
-          "instruction": "What does this mean?",
-          "senses": [
-            "one (esp. of two), the other, one way, the other way, one direction, the other direction, one side, the other side, one party, the other party",
-            "on the one hand, on the other hand",
-            "whereas, although, but at the same time, meanwhile, in turn",
-            "just keeps, being inclined to ..., tending to be ..., tending to do ..., continuously ..., just keeps on ...ing, only"
-          ]
-        },
-        "answer": {
-          "primary": "one (esp. of two)",
-          "accepted": [
-            "one (esp. of two)"
-          ]
-        },
-        "distractors": [
-          "Darth (Star Wars)",
-          "party",
-          "to put something out of the way"
-        ],
-        "assets": {
-          "audio": "/audio/words/Vb01V7sfwudzEQ2C.m4a",
-          "wordAudio": "/audio/words/Vb01V7sfwudzEQ2C.m4a"
+          "audio": "/audio/kana/hiragana-o.m4a"
         },
         "firstTime": true
       },
@@ -310,253 +286,294 @@
       },
       {
         "cardId": null,
-        "facetId": "c2906684-bd58-4f34-b52c-602213a38edc",
-        "studyItemId": "d0aca3ef-5263-4d2b-ad3f-eb3abc1bcca2",
-        "kind": "word",
-        "facet": "meaning",
+        "facetId": "13c5b843-a3e9-49bd-821e-886b48e17563",
+        "studyItemId": "si-kana-h9",
+        "kind": "kana",
+        "facet": "writing",
         "due": "2026-09-01T12:00:00.000Z",
         "isNew": true,
         "ghost": false,
         "card": null,
-        "promptId": "f8864766-c6fc-479a-9f8c-78e9b3d62ca4",
-        "templateCode": "mcq",
-        "inputMode": "choice",
-        "graderCode": "choice-id",
+        "promptId": "886416aa-0197-42dc-8db2-02dfd3cc8310",
+        "templateCode": "handwriting",
+        "inputMode": "canvas",
+        "graderCode": "stroke-match",
         "prompt": {
-          "kind": "word",
-          "word": "体制",
-          "reading": "たいせい",
-          "instruction": "What does this mean?",
-          "senses": [
-            "order, system, structure, set-up, organization, organisation",
-            "the establishment, (ruling) regime, those in power",
-            "structural plan, body plan, anatomy"
-          ]
+          "kind": "handwriting",
+          "label": "ko",
+          "readings": [
+            "ko"
+          ],
+          "character": "こ",
+          "instruction": "Write this character",
+          "strokeCount": 2
         },
         "answer": {
-          "primary": "order",
+          "primary": "こ",
           "accepted": [
-            "order"
+            "こ"
           ]
         },
-        "distractors": [
-          "daytime",
-          "I",
-          "storehouse"
-        ],
+        "distractors": [],
         "assets": {
-          "audio": "/audio/words/LAzL_jg5yGORT35l.m4a",
-          "wordAudio": "/audio/words/LAzL_jg5yGORT35l.m4a"
+          "strokes": [
+            {
+              "path": "M34.75,26.75c1.12,0.88,2.91,2.01,6,1.5c7.62-1.25,14.11-2.56,22.38-2.62c15.5-0.12,5.88,5-5.75,9",
+              "index": 0,
+              "kvgType": null
+            },
+            {
+              "path": "M30,68.12c2.25,14.5,15.26,17.96,31,16.75c6.5-0.5,11.88-1.25,17.62-2.88",
+              "index": 1,
+              "kvgType": null
+            }
+          ],
+          "viewBox": 109
         },
         "firstTime": true
       },
       {
         "cardId": null,
-        "facetId": "83b6e193-ef2a-4e57-977a-6b83d169670a",
-        "studyItemId": "45d718ea-8d7e-4be4-ad4b-694f9fc646f2",
-        "kind": "word",
-        "facet": "meaning",
+        "facetId": "0dc52f38-de23-4945-bfad-117adc74bcd8",
+        "studyItemId": "si-kana-h7",
+        "kind": "kana",
+        "facet": "writing",
         "due": "2026-09-01T12:00:00.000Z",
         "isNew": true,
         "ghost": false,
         "card": null,
-        "promptId": "254bedb7-90e0-402f-b096-efb5a2aee551",
-        "templateCode": "mcq",
-        "inputMode": "choice",
-        "graderCode": "choice-id",
+        "promptId": "bdaf393a-01ff-4501-8334-36369067b7ae",
+        "templateCode": "handwriting",
+        "inputMode": "canvas",
+        "graderCode": "stroke-match",
         "prompt": {
-          "kind": "word",
-          "word": "交流",
-          "reading": "こうりゅう",
-          "instruction": "What does this mean?",
-          "senses": [
-            "exchange (e.g. cultural), interchange, interaction, mingling, mixing, coming together",
-            "alternating current, AC"
-          ]
+          "kind": "handwriting",
+          "label": "ku",
+          "readings": [
+            "ku"
+          ],
+          "character": "く",
+          "instruction": "Write this character",
+          "strokeCount": 1
         },
         "answer": {
-          "primary": "exchange (e.g. cultural)",
+          "primary": "く",
           "accepted": [
-            "exchange (e.g. cultural)"
+            "く"
           ]
         },
-        "distractors": [
-          "iron pot",
-          "westering sun",
-          "emission"
-        ],
+        "distractors": [],
         "assets": {
-          "audio": "/audio/words/JZTrdmWqfESr15TO.m4a",
-          "wordAudio": "/audio/words/JZTrdmWqfESr15TO.m4a"
+          "strokes": [
+            {
+              "path": "M60.66,15c0.5,1.62,0.35,5.44-1,7.38c-6.75,9.62-14.3,19.08-18.62,24.5c-4,5-3.79,7.03-0.88,11c5.5,7.5,12.75,18.75,17.62,27.25c1.48,2.59,2.75,4.75,4.5,8.62",
+              "index": 0,
+              "kvgType": null
+            }
+          ],
+          "viewBox": 109
         },
         "firstTime": true
       },
       {
         "cardId": null,
-        "facetId": "b96d897f-582c-4a8d-9c92-6d383553f553",
-        "studyItemId": "8fefd1a5-c3ae-46a1-8d16-4879865a4765",
-        "kind": "word",
-        "facet": "meaning",
+        "facetId": "fac-kana-h2",
+        "studyItemId": "si-kana-h2",
+        "kind": "kana",
+        "facet": "reading",
         "due": "2026-09-01T12:00:00.000Z",
         "isNew": true,
         "ghost": false,
         "card": null,
-        "promptId": "d30abcf9-7ea1-4944-bab3-09cb6c25f5f6",
-        "templateCode": "mcq",
-        "inputMode": "choice",
-        "graderCode": "choice-id",
+        "promptId": "ep-kana-h2",
+        "templateCode": "kana-romaji",
+        "inputMode": "text",
+        "graderCode": "fuzzy-romaji",
         "prompt": {
-          "kind": "word",
-          "word": "不況",
-          "reading": "ふきょう",
-          "instruction": "What does this mean?",
-          "senses": [
-            "(economic) depression, recession, slump"
-          ]
+          "kind": "kana",
+          "script": "hiragana",
+          "character": "う",
+          "instruction": "Type the sound in romaji"
         },
         "answer": {
-          "primary": "(economic) depression",
+          "primary": "u",
           "accepted": [
-            "(economic) depression"
+            "u"
           ]
         },
-        "distractors": [
-          "attachment",
-          "to weaken",
-          "silence"
-        ],
+        "distractors": [],
         "assets": {
-          "audio": "/audio/words/I1vo22mFugVAJ5ZH.m4a",
-          "wordAudio": "/audio/words/I1vo22mFugVAJ5ZH.m4a"
+          "audio": "/audio/kana/hiragana-u.m4a"
         },
         "firstTime": true
       },
       {
         "cardId": null,
-        "facetId": "5918188b-0a4b-4c67-ad35-f635a01a4d69",
-        "studyItemId": "4abf3f02-431c-4663-aad4-76e8846188d9",
-        "kind": "word",
-        "facet": "meaning",
+        "facetId": "fac-kana-h3",
+        "studyItemId": "si-kana-h3",
+        "kind": "kana",
+        "facet": "reading",
         "due": "2026-09-01T12:00:00.000Z",
         "isNew": true,
         "ghost": false,
         "card": null,
-        "promptId": "9cd213da-6b31-4521-bd1f-f269f82a3069",
-        "templateCode": "mcq",
-        "inputMode": "choice",
-        "graderCode": "choice-id",
+        "promptId": "ep-kana-h3",
+        "templateCode": "kana-romaji",
+        "inputMode": "text",
+        "graderCode": "fuzzy-romaji",
         "prompt": {
-          "kind": "word",
-          "word": "一時",
-          "reading": "いちじ",
-          "instruction": "What does this mean?",
-          "senses": [
-            "one o'clock",
-            "once, at one time, formerly, before",
-            "for a time, for a while, for the time being, for the moment, temporarily",
-            "a time, one time, once"
-          ]
+          "kind": "kana",
+          "script": "hiragana",
+          "character": "え",
+          "instruction": "Type the sound in romaji"
         },
         "answer": {
-          "primary": "one o'clock",
+          "primary": "e",
           "accepted": [
-            "one o'clock"
+            "e"
           ]
         },
-        "distractors": [
-          "glove",
-          "to resemble",
-          "self-esteem"
-        ],
+        "distractors": [],
         "assets": {
-          "audio": "/audio/words/Z741BAf9NiseWKLI.m4a",
-          "image": "/images/vocab/1576100.svg",
-          "wordAudio": "/audio/words/Z741BAf9NiseWKLI.m4a"
+          "audio": "/audio/kana/hiragana-e.m4a"
         },
         "firstTime": true
       },
       {
         "cardId": null,
-        "facetId": "c5e2a786-aa97-4cdf-8419-0ef7c53fd0fc",
-        "studyItemId": "9283bc5b-dbd4-41ac-915b-bf77e3dba259",
-        "kind": "word",
-        "facet": "meaning",
+        "facetId": "1f59dc7d-bb78-47a1-84e0-1cf8e3814839",
+        "studyItemId": "si-kana-h5",
+        "kind": "kana",
+        "facet": "writing",
         "due": "2026-09-01T12:00:00.000Z",
         "isNew": true,
         "ghost": false,
         "card": null,
-        "promptId": "9af15f72-eab9-44d1-b733-286c0cba96b0",
-        "templateCode": "mcq",
-        "inputMode": "choice",
-        "graderCode": "choice-id",
+        "promptId": "f184e588-97b6-43c5-9289-84c26101863c",
+        "templateCode": "handwriting",
+        "inputMode": "canvas",
+        "graderCode": "stroke-match",
         "prompt": {
-          "kind": "word",
-          "word": "予定",
-          "reading": "よてい",
-          "instruction": "What does this mean?",
-          "senses": [
-            "plans, arrangement, schedule, program, programme, expectation, estimate"
-          ]
+          "kind": "handwriting",
+          "label": "ka",
+          "readings": [
+            "ka"
+          ],
+          "character": "か",
+          "instruction": "Write this character",
+          "strokeCount": 3
         },
         "answer": {
-          "primary": "plans",
+          "primary": "か",
           "accepted": [
-            "plans"
+            "か"
           ]
         },
-        "distractors": [
-          "to shine",
-          "stimulus",
-          "on the way"
-        ],
+        "distractors": [],
         "assets": {
-          "audio": "/audio/words/Lh12ivJV_EyN5Cj-.m4a",
-          "image": "/images/vocab/1543240.svg",
-          "wordAudio": "/audio/words/Lh12ivJV_EyN5Cj-.m4a"
+          "strokes": [
+            {
+              "path": "M24.62,38.62c1.88,1.62,4.65,2.33,8.62,1c25.5-8.5,29.5-4.13,29.5,7.62c0,9.38-1.24,17.46-4.25,25.25c-7.62,19.76-10.87,17.39-16.12,10.89",
+              "index": 0,
+              "kvgType": null
+            },
+            {
+              "path": "M48.5,17.5c1,1.38,1.29,4.7,0.5,7.12c-5,15.25-18.02,40.93-19.62,43.88c-3.12,5.75-6.38,11.88-9.38,16.25",
+              "index": 1,
+              "kvgType": null
+            },
+            {
+              "path": "M77.37,31.62c7.5,6.88,13.25,15.75,15,24.88",
+              "index": 2,
+              "kvgType": null
+            }
+          ],
+          "viewBox": 109
         },
         "firstTime": true
       },
       {
         "cardId": null,
-        "facetId": "23653fe7-10a9-415f-8d5a-466b7c72c5b0",
-        "studyItemId": "37cbddcb-0efb-4df1-8924-812ee575c4e0",
-        "kind": "word",
-        "facet": "meaning",
+        "facetId": "d78b93f4-6870-4c87-ac5c-b8277fe48a9d",
+        "studyItemId": "si-kana-h8",
+        "kind": "kana",
+        "facet": "writing",
         "due": "2026-09-01T12:00:00.000Z",
         "isNew": true,
         "ghost": false,
         "card": null,
-        "promptId": "ddcc6524-831e-4530-a989-a66d7e204a18",
-        "templateCode": "mcq",
-        "inputMode": "choice",
-        "graderCode": "choice-id",
+        "promptId": "6f4e0e61-9b9b-4878-b4b1-65d4b06bbfd6",
+        "templateCode": "handwriting",
+        "inputMode": "canvas",
+        "graderCode": "stroke-match",
         "prompt": {
-          "kind": "word",
-          "word": "世界",
-          "reading": "せかい",
-          "instruction": "What does this mean?",
-          "senses": [
-            "the world, society, the universe",
-            "sphere, circle, world",
-            "world-renowned, world-famous",
-            "realm governed by one Buddha, space"
-          ]
+          "kind": "handwriting",
+          "label": "ke",
+          "readings": [
+            "ke"
+          ],
+          "character": "け",
+          "instruction": "Write this character",
+          "strokeCount": 3
         },
         "answer": {
-          "primary": "the world",
+          "primary": "け",
           "accepted": [
-            "the world"
+            "け"
           ]
         },
-        "distractors": [
-          "to hate",
-          "to finish up",
-          "easy"
-        ],
+        "distractors": [],
         "assets": {
-          "audio": "/audio/words/nAihxm5eAZoaAEKe.m4a",
-          "image": "/images/vocab/1373860.svg",
-          "wordAudio": "/audio/words/nAihxm5eAZoaAEKe.m4a"
+          "strokes": [
+            {
+              "path": "M24.67,19.75c1.25,1.5,2.62,3.75,2.12,6.38c-3,15.88-6.5,29.5-4.88,44.62c2.02,18.84,2.25,4.75,6.75-3.5",
+              "index": 0,
+              "kvgType": null
+            },
+            {
+              "path": "M53.67,38.62c2.12,1.38,4.28,1.89,6.88,1.5c8.25-1.25,15.39-2.57,20.62-4c2.76-0.74,5.26-1.12,6.88-1.12",
+              "index": 1,
+              "kvgType": null
+            },
+            {
+              "path": "M71.67,14.38c2.13,1.37,2.88,3.35,2.88,5.12c0,11.62,0.12,20.38,0.12,30.12c0,20.75-0.62,30.88-12.5,42.25",
+              "index": 2,
+              "kvgType": null
+            }
+          ],
+          "viewBox": 109
+        },
+        "firstTime": true
+      },
+      {
+        "cardId": null,
+        "facetId": "fac-kana-h0",
+        "studyItemId": "si-kana-h0",
+        "kind": "kana",
+        "facet": "reading",
+        "due": "2026-09-01T12:00:00.000Z",
+        "isNew": true,
+        "ghost": false,
+        "card": null,
+        "promptId": "ep-kana-h0",
+        "templateCode": "kana-romaji",
+        "inputMode": "text",
+        "graderCode": "fuzzy-romaji",
+        "prompt": {
+          "kind": "kana",
+          "script": "hiragana",
+          "character": "あ",
+          "instruction": "Type the sound in romaji"
+        },
+        "answer": {
+          "primary": "a",
+          "accepted": [
+            "a"
+          ]
+        },
+        "distractors": [],
+        "assets": {
+          "audio": "/audio/kana/hiragana-a.m4a"
         },
         "firstTime": true
       }
@@ -618,116 +635,91 @@
     "items": [
       {
         "cardId": null,
-        "facetId": "5fcbc353-13ee-48aa-a3b7-6f692267027b",
-        "studyItemId": "0ce5817c-4f68-4515-ac1c-3f57b8933fe3",
-        "kind": "word",
-        "facet": "meaning",
+        "facetId": "33699cd9-5de0-4b66-b2be-aa72b09fbb50",
+        "studyItemId": "si-kana-h6",
+        "kind": "kana",
+        "facet": "writing",
         "due": "2026-09-01T12:00:00.000Z",
         "isNew": true,
         "ghost": false,
         "card": null,
-        "promptId": "ffa36007-00ff-4b2c-bdd0-c562531550fc",
-        "templateCode": "mcq",
-        "inputMode": "choice",
-        "graderCode": "choice-id",
+        "promptId": "d3bcf487-06e1-4d98-93d6-8d3b47cf9278",
+        "templateCode": "handwriting",
+        "inputMode": "canvas",
+        "graderCode": "stroke-match",
         "prompt": {
-          "kind": "word",
-          "word": "与党",
-          "reading": "よとう",
-          "instruction": "What does this mean?",
-          "senses": [
-            "ruling party, government party, party in power, government"
-          ]
+          "kind": "handwriting",
+          "label": "ki",
+          "readings": [
+            "ki"
+          ],
+          "character": "き",
+          "instruction": "Write this character",
+          "strokeCount": 4
         },
         "answer": {
-          "primary": "ruling party",
+          "primary": "き",
           "accepted": [
-            "ruling party"
+            "き"
           ]
         },
-        "distractors": [
-          "circumference",
-          "counter for years",
-          "comfort"
-        ],
+        "distractors": [],
         "assets": {
-          "audio": "/audio/words/I5L2otZKHIB1C7g4.m4a",
-          "wordAudio": "/audio/words/I5L2otZKHIB1C7g4.m4a"
+          "strokes": [
+            {
+              "path": "M30.5,30.25c1.88,0.75,4.64,1.06,5.88,0.88c6.75-1,22.25-4.5,26.5-6c2.17-0.76,3.5-1.25,4.88-2.12",
+              "index": 0,
+              "kvgType": null
+            },
+            {
+              "path": "M36.25,48.7c2.01,0.85,4.97,1.2,6.29,0.99c7.23-1.13,23.82-5.09,28.37-6.79c2.32-0.86,3.75-1.41,5.22-2.4",
+              "index": 1,
+              "kvgType": null
+            },
+            {
+              "path": "M42,14.12c1.5,0.88,3.13,2.94,4,5.12c5.5,13.76,16,29.26,26.37,40.76c7.64,8.47,9.12,9.38-6,3.88",
+              "index": 2,
+              "kvgType": null
+            },
+            {
+              "path": "M33.75,83.25c10.62,9.75,27.25,8.62,38.12,5",
+              "index": 3,
+              "kvgType": null
+            }
+          ],
+          "viewBox": 109
         },
         "firstTime": true
       },
       {
         "cardId": null,
-        "facetId": "fac-kana-h0",
-        "studyItemId": "si-kana-h0",
+        "facetId": "fac-kana-h4",
+        "studyItemId": "si-kana-h4",
         "kind": "kana",
         "facet": "reading",
         "due": "2026-09-01T12:00:00.000Z",
         "isNew": true,
         "ghost": false,
         "card": null,
-        "promptId": "ep-kana-h0",
+        "promptId": "ep-kana-h4",
         "templateCode": "kana-romaji",
         "inputMode": "text",
         "graderCode": "fuzzy-romaji",
         "prompt": {
           "kind": "kana",
           "script": "hiragana",
-          "character": "あ",
+          "character": "お",
           "instruction": "Type the sound in romaji"
         },
         "answer": {
-          "primary": "a",
+          "primary": "o",
           "accepted": [
-            "a"
+            "o"
           ]
         },
         "distractors": [],
         "assets": {
-          "audio": "/audio/kana/hiragana-a.m4a"
-        },
-        "firstTime": true
-      },
-      {
-        "cardId": null,
-        "facetId": "58666de7-c05e-441d-8e21-26837653cc89",
-        "studyItemId": "65a941cb-00f7-4320-a0cf-32b1e0817627",
-        "kind": "word",
-        "facet": "meaning",
-        "due": "2026-09-01T12:00:00.000Z",
-        "isNew": true,
-        "ghost": false,
-        "card": null,
-        "promptId": "9c3fc499-03e4-4fb6-92b5-bdb74f2600f5",
-        "templateCode": "mcq",
-        "inputMode": "choice",
-        "graderCode": "choice-id",
-        "prompt": {
-          "kind": "word",
-          "word": "一方",
-          "reading": "いっぽう",
-          "instruction": "What does this mean?",
-          "senses": [
-            "one (esp. of two), the other, one way, the other way, one direction, the other direction, one side, the other side, one party, the other party",
-            "on the one hand, on the other hand",
-            "whereas, although, but at the same time, meanwhile, in turn",
-            "just keeps, being inclined to ..., tending to be ..., tending to do ..., continuously ..., just keeps on ...ing, only"
-          ]
-        },
-        "answer": {
-          "primary": "one (esp. of two)",
-          "accepted": [
-            "one (esp. of two)"
-          ]
-        },
-        "distractors": [
-          "Darth (Star Wars)",
-          "party",
-          "to put something out of the way"
-        ],
-        "assets": {
-          "audio": "/audio/words/Vb01V7sfwudzEQ2C.m4a",
-          "wordAudio": "/audio/words/Vb01V7sfwudzEQ2C.m4a"
+          "audio": "/audio/kana/hiragana-o.m4a"
         },
         "firstTime": true
       },
@@ -765,253 +757,294 @@
       },
       {
         "cardId": null,
-        "facetId": "c2906684-bd58-4f34-b52c-602213a38edc",
-        "studyItemId": "d0aca3ef-5263-4d2b-ad3f-eb3abc1bcca2",
-        "kind": "word",
-        "facet": "meaning",
+        "facetId": "13c5b843-a3e9-49bd-821e-886b48e17563",
+        "studyItemId": "si-kana-h9",
+        "kind": "kana",
+        "facet": "writing",
         "due": "2026-09-01T12:00:00.000Z",
         "isNew": true,
         "ghost": false,
         "card": null,
-        "promptId": "f8864766-c6fc-479a-9f8c-78e9b3d62ca4",
-        "templateCode": "mcq",
-        "inputMode": "choice",
-        "graderCode": "choice-id",
+        "promptId": "886416aa-0197-42dc-8db2-02dfd3cc8310",
+        "templateCode": "handwriting",
+        "inputMode": "canvas",
+        "graderCode": "stroke-match",
         "prompt": {
-          "kind": "word",
-          "word": "体制",
-          "reading": "たいせい",
-          "instruction": "What does this mean?",
-          "senses": [
-            "order, system, structure, set-up, organization, organisation",
-            "the establishment, (ruling) regime, those in power",
-            "structural plan, body plan, anatomy"
-          ]
+          "kind": "handwriting",
+          "label": "ko",
+          "readings": [
+            "ko"
+          ],
+          "character": "こ",
+          "instruction": "Write this character",
+          "strokeCount": 2
         },
         "answer": {
-          "primary": "order",
+          "primary": "こ",
           "accepted": [
-            "order"
+            "こ"
           ]
         },
-        "distractors": [
-          "daytime",
-          "I",
-          "storehouse"
-        ],
+        "distractors": [],
         "assets": {
-          "audio": "/audio/words/LAzL_jg5yGORT35l.m4a",
-          "wordAudio": "/audio/words/LAzL_jg5yGORT35l.m4a"
+          "strokes": [
+            {
+              "path": "M34.75,26.75c1.12,0.88,2.91,2.01,6,1.5c7.62-1.25,14.11-2.56,22.38-2.62c15.5-0.12,5.88,5-5.75,9",
+              "index": 0,
+              "kvgType": null
+            },
+            {
+              "path": "M30,68.12c2.25,14.5,15.26,17.96,31,16.75c6.5-0.5,11.88-1.25,17.62-2.88",
+              "index": 1,
+              "kvgType": null
+            }
+          ],
+          "viewBox": 109
         },
         "firstTime": true
       },
       {
         "cardId": null,
-        "facetId": "83b6e193-ef2a-4e57-977a-6b83d169670a",
-        "studyItemId": "45d718ea-8d7e-4be4-ad4b-694f9fc646f2",
-        "kind": "word",
-        "facet": "meaning",
+        "facetId": "0dc52f38-de23-4945-bfad-117adc74bcd8",
+        "studyItemId": "si-kana-h7",
+        "kind": "kana",
+        "facet": "writing",
         "due": "2026-09-01T12:00:00.000Z",
         "isNew": true,
         "ghost": false,
         "card": null,
-        "promptId": "254bedb7-90e0-402f-b096-efb5a2aee551",
-        "templateCode": "mcq",
-        "inputMode": "choice",
-        "graderCode": "choice-id",
+        "promptId": "bdaf393a-01ff-4501-8334-36369067b7ae",
+        "templateCode": "handwriting",
+        "inputMode": "canvas",
+        "graderCode": "stroke-match",
         "prompt": {
-          "kind": "word",
-          "word": "交流",
-          "reading": "こうりゅう",
-          "instruction": "What does this mean?",
-          "senses": [
-            "exchange (e.g. cultural), interchange, interaction, mingling, mixing, coming together",
-            "alternating current, AC"
-          ]
+          "kind": "handwriting",
+          "label": "ku",
+          "readings": [
+            "ku"
+          ],
+          "character": "く",
+          "instruction": "Write this character",
+          "strokeCount": 1
         },
         "answer": {
-          "primary": "exchange (e.g. cultural)",
+          "primary": "く",
           "accepted": [
-            "exchange (e.g. cultural)"
+            "く"
           ]
         },
-        "distractors": [
-          "iron pot",
-          "westering sun",
-          "emission"
-        ],
+        "distractors": [],
         "assets": {
-          "audio": "/audio/words/JZTrdmWqfESr15TO.m4a",
-          "wordAudio": "/audio/words/JZTrdmWqfESr15TO.m4a"
+          "strokes": [
+            {
+              "path": "M60.66,15c0.5,1.62,0.35,5.44-1,7.38c-6.75,9.62-14.3,19.08-18.62,24.5c-4,5-3.79,7.03-0.88,11c5.5,7.5,12.75,18.75,17.62,27.25c1.48,2.59,2.75,4.75,4.5,8.62",
+              "index": 0,
+              "kvgType": null
+            }
+          ],
+          "viewBox": 109
         },
         "firstTime": true
       },
       {
         "cardId": null,
-        "facetId": "b96d897f-582c-4a8d-9c92-6d383553f553",
-        "studyItemId": "8fefd1a5-c3ae-46a1-8d16-4879865a4765",
-        "kind": "word",
-        "facet": "meaning",
+        "facetId": "fac-kana-h2",
+        "studyItemId": "si-kana-h2",
+        "kind": "kana",
+        "facet": "reading",
         "due": "2026-09-01T12:00:00.000Z",
         "isNew": true,
         "ghost": false,
         "card": null,
-        "promptId": "d30abcf9-7ea1-4944-bab3-09cb6c25f5f6",
-        "templateCode": "mcq",
-        "inputMode": "choice",
-        "graderCode": "choice-id",
+        "promptId": "ep-kana-h2",
+        "templateCode": "kana-romaji",
+        "inputMode": "text",
+        "graderCode": "fuzzy-romaji",
         "prompt": {
-          "kind": "word",
-          "word": "不況",
-          "reading": "ふきょう",
-          "instruction": "What does this mean?",
-          "senses": [
-            "(economic) depression, recession, slump"
-          ]
+          "kind": "kana",
+          "script": "hiragana",
+          "character": "う",
+          "instruction": "Type the sound in romaji"
         },
         "answer": {
-          "primary": "(economic) depression",
+          "primary": "u",
           "accepted": [
-            "(economic) depression"
+            "u"
           ]
         },
-        "distractors": [
-          "attachment",
-          "to weaken",
-          "silence"
-        ],
+        "distractors": [],
         "assets": {
-          "audio": "/audio/words/I1vo22mFugVAJ5ZH.m4a",
-          "wordAudio": "/audio/words/I1vo22mFugVAJ5ZH.m4a"
+          "audio": "/audio/kana/hiragana-u.m4a"
         },
         "firstTime": true
       },
       {
         "cardId": null,
-        "facetId": "5918188b-0a4b-4c67-ad35-f635a01a4d69",
-        "studyItemId": "4abf3f02-431c-4663-aad4-76e8846188d9",
-        "kind": "word",
-        "facet": "meaning",
+        "facetId": "fac-kana-h3",
+        "studyItemId": "si-kana-h3",
+        "kind": "kana",
+        "facet": "reading",
         "due": "2026-09-01T12:00:00.000Z",
         "isNew": true,
         "ghost": false,
         "card": null,
-        "promptId": "9cd213da-6b31-4521-bd1f-f269f82a3069",
-        "templateCode": "mcq",
-        "inputMode": "choice",
-        "graderCode": "choice-id",
+        "promptId": "ep-kana-h3",
+        "templateCode": "kana-romaji",
+        "inputMode": "text",
+        "graderCode": "fuzzy-romaji",
         "prompt": {
-          "kind": "word",
-          "word": "一時",
-          "reading": "いちじ",
-          "instruction": "What does this mean?",
-          "senses": [
-            "one o'clock",
-            "once, at one time, formerly, before",
-            "for a time, for a while, for the time being, for the moment, temporarily",
-            "a time, one time, once"
-          ]
+          "kind": "kana",
+          "script": "hiragana",
+          "character": "え",
+          "instruction": "Type the sound in romaji"
         },
         "answer": {
-          "primary": "one o'clock",
+          "primary": "e",
           "accepted": [
-            "one o'clock"
+            "e"
           ]
         },
-        "distractors": [
-          "glove",
-          "to resemble",
-          "self-esteem"
-        ],
+        "distractors": [],
         "assets": {
-          "audio": "/audio/words/Z741BAf9NiseWKLI.m4a",
-          "image": "/images/vocab/1576100.svg",
-          "wordAudio": "/audio/words/Z741BAf9NiseWKLI.m4a"
+          "audio": "/audio/kana/hiragana-e.m4a"
         },
         "firstTime": true
       },
       {
         "cardId": null,
-        "facetId": "c5e2a786-aa97-4cdf-8419-0ef7c53fd0fc",
-        "studyItemId": "9283bc5b-dbd4-41ac-915b-bf77e3dba259",
-        "kind": "word",
-        "facet": "meaning",
+        "facetId": "1f59dc7d-bb78-47a1-84e0-1cf8e3814839",
+        "studyItemId": "si-kana-h5",
+        "kind": "kana",
+        "facet": "writing",
         "due": "2026-09-01T12:00:00.000Z",
         "isNew": true,
         "ghost": false,
         "card": null,
-        "promptId": "9af15f72-eab9-44d1-b733-286c0cba96b0",
-        "templateCode": "mcq",
-        "inputMode": "choice",
-        "graderCode": "choice-id",
+        "promptId": "f184e588-97b6-43c5-9289-84c26101863c",
+        "templateCode": "handwriting",
+        "inputMode": "canvas",
+        "graderCode": "stroke-match",
         "prompt": {
-          "kind": "word",
-          "word": "予定",
-          "reading": "よてい",
-          "instruction": "What does this mean?",
-          "senses": [
-            "plans, arrangement, schedule, program, programme, expectation, estimate"
-          ]
+          "kind": "handwriting",
+          "label": "ka",
+          "readings": [
+            "ka"
+          ],
+          "character": "か",
+          "instruction": "Write this character",
+          "strokeCount": 3
         },
         "answer": {
-          "primary": "plans",
+          "primary": "か",
           "accepted": [
-            "plans"
+            "か"
           ]
         },
-        "distractors": [
-          "to shine",
-          "stimulus",
-          "on the way"
-        ],
+        "distractors": [],
         "assets": {
-          "audio": "/audio/words/Lh12ivJV_EyN5Cj-.m4a",
-          "image": "/images/vocab/1543240.svg",
-          "wordAudio": "/audio/words/Lh12ivJV_EyN5Cj-.m4a"
+          "strokes": [
+            {
+              "path": "M24.62,38.62c1.88,1.62,4.65,2.33,8.62,1c25.5-8.5,29.5-4.13,29.5,7.62c0,9.38-1.24,17.46-4.25,25.25c-7.62,19.76-10.87,17.39-16.12,10.89",
+              "index": 0,
+              "kvgType": null
+            },
+            {
+              "path": "M48.5,17.5c1,1.38,1.29,4.7,0.5,7.12c-5,15.25-18.02,40.93-19.62,43.88c-3.12,5.75-6.38,11.88-9.38,16.25",
+              "index": 1,
+              "kvgType": null
+            },
+            {
+              "path": "M77.37,31.62c7.5,6.88,13.25,15.75,15,24.88",
+              "index": 2,
+              "kvgType": null
+            }
+          ],
+          "viewBox": 109
         },
         "firstTime": true
       },
       {
         "cardId": null,
-        "facetId": "23653fe7-10a9-415f-8d5a-466b7c72c5b0",
-        "studyItemId": "37cbddcb-0efb-4df1-8924-812ee575c4e0",
-        "kind": "word",
-        "facet": "meaning",
+        "facetId": "d78b93f4-6870-4c87-ac5c-b8277fe48a9d",
+        "studyItemId": "si-kana-h8",
+        "kind": "kana",
+        "facet": "writing",
         "due": "2026-09-01T12:00:00.000Z",
         "isNew": true,
         "ghost": false,
         "card": null,
-        "promptId": "ddcc6524-831e-4530-a989-a66d7e204a18",
-        "templateCode": "mcq",
-        "inputMode": "choice",
-        "graderCode": "choice-id",
+        "promptId": "6f4e0e61-9b9b-4878-b4b1-65d4b06bbfd6",
+        "templateCode": "handwriting",
+        "inputMode": "canvas",
+        "graderCode": "stroke-match",
         "prompt": {
-          "kind": "word",
-          "word": "世界",
-          "reading": "せかい",
-          "instruction": "What does this mean?",
-          "senses": [
-            "the world, society, the universe",
-            "sphere, circle, world",
-            "world-renowned, world-famous",
-            "realm governed by one Buddha, space"
-          ]
+          "kind": "handwriting",
+          "label": "ke",
+          "readings": [
+            "ke"
+          ],
+          "character": "け",
+          "instruction": "Write this character",
+          "strokeCount": 3
         },
         "answer": {
-          "primary": "the world",
+          "primary": "け",
           "accepted": [
-            "the world"
+            "け"
           ]
         },
-        "distractors": [
-          "to hate",
-          "to finish up",
-          "easy"
-        ],
+        "distractors": [],
         "assets": {
-          "audio": "/audio/words/nAihxm5eAZoaAEKe.m4a",
-          "image": "/images/vocab/1373860.svg",
-          "wordAudio": "/audio/words/nAihxm5eAZoaAEKe.m4a"
+          "strokes": [
+            {
+              "path": "M24.67,19.75c1.25,1.5,2.62,3.75,2.12,6.38c-3,15.88-6.5,29.5-4.88,44.62c2.02,18.84,2.25,4.75,6.75-3.5",
+              "index": 0,
+              "kvgType": null
+            },
+            {
+              "path": "M53.67,38.62c2.12,1.38,4.28,1.89,6.88,1.5c8.25-1.25,15.39-2.57,20.62-4c2.76-0.74,5.26-1.12,6.88-1.12",
+              "index": 1,
+              "kvgType": null
+            },
+            {
+              "path": "M71.67,14.38c2.13,1.37,2.88,3.35,2.88,5.12c0,11.62,0.12,20.38,0.12,30.12c0,20.75-0.62,30.88-12.5,42.25",
+              "index": 2,
+              "kvgType": null
+            }
+          ],
+          "viewBox": 109
+        },
+        "firstTime": true
+      },
+      {
+        "cardId": null,
+        "facetId": "fac-kana-h0",
+        "studyItemId": "si-kana-h0",
+        "kind": "kana",
+        "facet": "reading",
+        "due": "2026-09-01T12:00:00.000Z",
+        "isNew": true,
+        "ghost": false,
+        "card": null,
+        "promptId": "ep-kana-h0",
+        "templateCode": "kana-romaji",
+        "inputMode": "text",
+        "graderCode": "fuzzy-romaji",
+        "prompt": {
+          "kind": "kana",
+          "script": "hiragana",
+          "character": "あ",
+          "instruction": "Type the sound in romaji"
+        },
+        "answer": {
+          "primary": "a",
+          "accepted": [
+            "a"
+          ]
+        },
+        "distractors": [],
+        "assets": {
+          "audio": "/audio/kana/hiragana-a.m4a"
         },
         "firstTime": true
       }
@@ -1073,116 +1106,91 @@
     "items": [
       {
         "cardId": null,
-        "facetId": "5fcbc353-13ee-48aa-a3b7-6f692267027b",
-        "studyItemId": "0ce5817c-4f68-4515-ac1c-3f57b8933fe3",
-        "kind": "word",
-        "facet": "meaning",
+        "facetId": "33699cd9-5de0-4b66-b2be-aa72b09fbb50",
+        "studyItemId": "si-kana-h6",
+        "kind": "kana",
+        "facet": "writing",
         "due": "2026-09-01T12:00:00.000Z",
         "isNew": true,
         "ghost": false,
         "card": null,
-        "promptId": "ffa36007-00ff-4b2c-bdd0-c562531550fc",
-        "templateCode": "mcq",
-        "inputMode": "choice",
-        "graderCode": "choice-id",
+        "promptId": "d3bcf487-06e1-4d98-93d6-8d3b47cf9278",
+        "templateCode": "handwriting",
+        "inputMode": "canvas",
+        "graderCode": "stroke-match",
         "prompt": {
-          "kind": "word",
-          "word": "与党",
-          "reading": "よとう",
-          "instruction": "What does this mean?",
-          "senses": [
-            "ruling party, government party, party in power, government"
-          ]
+          "kind": "handwriting",
+          "label": "ki",
+          "readings": [
+            "ki"
+          ],
+          "character": "き",
+          "instruction": "Write this character",
+          "strokeCount": 4
         },
         "answer": {
-          "primary": "ruling party",
+          "primary": "き",
           "accepted": [
-            "ruling party"
+            "き"
           ]
         },
-        "distractors": [
-          "circumference",
-          "counter for years",
-          "comfort"
-        ],
+        "distractors": [],
         "assets": {
-          "audio": "/audio/words/I5L2otZKHIB1C7g4.m4a",
-          "wordAudio": "/audio/words/I5L2otZKHIB1C7g4.m4a"
+          "strokes": [
+            {
+              "path": "M30.5,30.25c1.88,0.75,4.64,1.06,5.88,0.88c6.75-1,22.25-4.5,26.5-6c2.17-0.76,3.5-1.25,4.88-2.12",
+              "index": 0,
+              "kvgType": null
+            },
+            {
+              "path": "M36.25,48.7c2.01,0.85,4.97,1.2,6.29,0.99c7.23-1.13,23.82-5.09,28.37-6.79c2.32-0.86,3.75-1.41,5.22-2.4",
+              "index": 1,
+              "kvgType": null
+            },
+            {
+              "path": "M42,14.12c1.5,0.88,3.13,2.94,4,5.12c5.5,13.76,16,29.26,26.37,40.76c7.64,8.47,9.12,9.38-6,3.88",
+              "index": 2,
+              "kvgType": null
+            },
+            {
+              "path": "M33.75,83.25c10.62,9.75,27.25,8.62,38.12,5",
+              "index": 3,
+              "kvgType": null
+            }
+          ],
+          "viewBox": 109
         },
         "firstTime": true
       },
       {
         "cardId": null,
-        "facetId": "fac-kana-h0",
-        "studyItemId": "si-kana-h0",
+        "facetId": "fac-kana-h4",
+        "studyItemId": "si-kana-h4",
         "kind": "kana",
         "facet": "reading",
         "due": "2026-09-01T12:00:00.000Z",
         "isNew": true,
         "ghost": false,
         "card": null,
-        "promptId": "ep-kana-h0",
+        "promptId": "ep-kana-h4",
         "templateCode": "kana-romaji",
         "inputMode": "text",
         "graderCode": "fuzzy-romaji",
         "prompt": {
           "kind": "kana",
           "script": "hiragana",
-          "character": "あ",
+          "character": "お",
           "instruction": "Type the sound in romaji"
         },
         "answer": {
-          "primary": "a",
+          "primary": "o",
           "accepted": [
-            "a"
+            "o"
           ]
         },
         "distractors": [],
         "assets": {
-          "audio": "/audio/kana/hiragana-a.m4a"
-        },
-        "firstTime": true
-      },
-      {
-        "cardId": null,
-        "facetId": "58666de7-c05e-441d-8e21-26837653cc89",
-        "studyItemId": "65a941cb-00f7-4320-a0cf-32b1e0817627",
-        "kind": "word",
-        "facet": "meaning",
-        "due": "2026-09-01T12:00:00.000Z",
-        "isNew": true,
-        "ghost": false,
-        "card": null,
-        "promptId": "9c3fc499-03e4-4fb6-92b5-bdb74f2600f5",
-        "templateCode": "mcq",
-        "inputMode": "choice",
-        "graderCode": "choice-id",
-        "prompt": {
-          "kind": "word",
-          "word": "一方",
-          "reading": "いっぽう",
-          "instruction": "What does this mean?",
-          "senses": [
-            "one (esp. of two), the other, one way, the other way, one direction, the other direction, one side, the other side, one party, the other party",
-            "on the one hand, on the other hand",
-            "whereas, although, but at the same time, meanwhile, in turn",
-            "just keeps, being inclined to ..., tending to be ..., tending to do ..., continuously ..., just keeps on ...ing, only"
-          ]
-        },
-        "answer": {
-          "primary": "one (esp. of two)",
-          "accepted": [
-            "one (esp. of two)"
-          ]
-        },
-        "distractors": [
-          "Darth (Star Wars)",
-          "party",
-          "to put something out of the way"
-        ],
-        "assets": {
-          "audio": "/audio/words/Vb01V7sfwudzEQ2C.m4a",
-          "wordAudio": "/audio/words/Vb01V7sfwudzEQ2C.m4a"
+          "audio": "/audio/kana/hiragana-o.m4a"
         },
         "firstTime": true
       },
@@ -1220,253 +1228,294 @@
       },
       {
         "cardId": null,
-        "facetId": "c2906684-bd58-4f34-b52c-602213a38edc",
-        "studyItemId": "d0aca3ef-5263-4d2b-ad3f-eb3abc1bcca2",
-        "kind": "word",
-        "facet": "meaning",
+        "facetId": "13c5b843-a3e9-49bd-821e-886b48e17563",
+        "studyItemId": "si-kana-h9",
+        "kind": "kana",
+        "facet": "writing",
         "due": "2026-09-01T12:00:00.000Z",
         "isNew": true,
         "ghost": false,
         "card": null,
-        "promptId": "f8864766-c6fc-479a-9f8c-78e9b3d62ca4",
-        "templateCode": "mcq",
-        "inputMode": "choice",
-        "graderCode": "choice-id",
+        "promptId": "886416aa-0197-42dc-8db2-02dfd3cc8310",
+        "templateCode": "handwriting",
+        "inputMode": "canvas",
+        "graderCode": "stroke-match",
         "prompt": {
-          "kind": "word",
-          "word": "体制",
-          "reading": "たいせい",
-          "instruction": "What does this mean?",
-          "senses": [
-            "order, system, structure, set-up, organization, organisation",
-            "the establishment, (ruling) regime, those in power",
-            "structural plan, body plan, anatomy"
-          ]
+          "kind": "handwriting",
+          "label": "ko",
+          "readings": [
+            "ko"
+          ],
+          "character": "こ",
+          "instruction": "Write this character",
+          "strokeCount": 2
         },
         "answer": {
-          "primary": "order",
+          "primary": "こ",
           "accepted": [
-            "order"
+            "こ"
           ]
         },
-        "distractors": [
-          "daytime",
-          "I",
-          "storehouse"
-        ],
+        "distractors": [],
         "assets": {
-          "audio": "/audio/words/LAzL_jg5yGORT35l.m4a",
-          "wordAudio": "/audio/words/LAzL_jg5yGORT35l.m4a"
+          "strokes": [
+            {
+              "path": "M34.75,26.75c1.12,0.88,2.91,2.01,6,1.5c7.62-1.25,14.11-2.56,22.38-2.62c15.5-0.12,5.88,5-5.75,9",
+              "index": 0,
+              "kvgType": null
+            },
+            {
+              "path": "M30,68.12c2.25,14.5,15.26,17.96,31,16.75c6.5-0.5,11.88-1.25,17.62-2.88",
+              "index": 1,
+              "kvgType": null
+            }
+          ],
+          "viewBox": 109
         },
         "firstTime": true
       },
       {
         "cardId": null,
-        "facetId": "83b6e193-ef2a-4e57-977a-6b83d169670a",
-        "studyItemId": "45d718ea-8d7e-4be4-ad4b-694f9fc646f2",
-        "kind": "word",
-        "facet": "meaning",
+        "facetId": "0dc52f38-de23-4945-bfad-117adc74bcd8",
+        "studyItemId": "si-kana-h7",
+        "kind": "kana",
+        "facet": "writing",
         "due": "2026-09-01T12:00:00.000Z",
         "isNew": true,
         "ghost": false,
         "card": null,
-        "promptId": "254bedb7-90e0-402f-b096-efb5a2aee551",
-        "templateCode": "mcq",
-        "inputMode": "choice",
-        "graderCode": "choice-id",
+        "promptId": "bdaf393a-01ff-4501-8334-36369067b7ae",
+        "templateCode": "handwriting",
+        "inputMode": "canvas",
+        "graderCode": "stroke-match",
         "prompt": {
-          "kind": "word",
-          "word": "交流",
-          "reading": "こうりゅう",
-          "instruction": "What does this mean?",
-          "senses": [
-            "exchange (e.g. cultural), interchange, interaction, mingling, mixing, coming together",
-            "alternating current, AC"
-          ]
+          "kind": "handwriting",
+          "label": "ku",
+          "readings": [
+            "ku"
+          ],
+          "character": "く",
+          "instruction": "Write this character",
+          "strokeCount": 1
         },
         "answer": {
-          "primary": "exchange (e.g. cultural)",
+          "primary": "く",
           "accepted": [
-            "exchange (e.g. cultural)"
+            "く"
           ]
         },
-        "distractors": [
-          "iron pot",
-          "westering sun",
-          "emission"
-        ],
+        "distractors": [],
         "assets": {
-          "audio": "/audio/words/JZTrdmWqfESr15TO.m4a",
-          "wordAudio": "/audio/words/JZTrdmWqfESr15TO.m4a"
+          "strokes": [
+            {
+              "path": "M60.66,15c0.5,1.62,0.35,5.44-1,7.38c-6.75,9.62-14.3,19.08-18.62,24.5c-4,5-3.79,7.03-0.88,11c5.5,7.5,12.75,18.75,17.62,27.25c1.48,2.59,2.75,4.75,4.5,8.62",
+              "index": 0,
+              "kvgType": null
+            }
+          ],
+          "viewBox": 109
         },
         "firstTime": true
       },
       {
         "cardId": null,
-        "facetId": "b96d897f-582c-4a8d-9c92-6d383553f553",
-        "studyItemId": "8fefd1a5-c3ae-46a1-8d16-4879865a4765",
-        "kind": "word",
-        "facet": "meaning",
+        "facetId": "fac-kana-h2",
+        "studyItemId": "si-kana-h2",
+        "kind": "kana",
+        "facet": "reading",
         "due": "2026-09-01T12:00:00.000Z",
         "isNew": true,
         "ghost": false,
         "card": null,
-        "promptId": "d30abcf9-7ea1-4944-bab3-09cb6c25f5f6",
-        "templateCode": "mcq",
-        "inputMode": "choice",
-        "graderCode": "choice-id",
+        "promptId": "ep-kana-h2",
+        "templateCode": "kana-romaji",
+        "inputMode": "text",
+        "graderCode": "fuzzy-romaji",
         "prompt": {
-          "kind": "word",
-          "word": "不況",
-          "reading": "ふきょう",
-          "instruction": "What does this mean?",
-          "senses": [
-            "(economic) depression, recession, slump"
-          ]
+          "kind": "kana",
+          "script": "hiragana",
+          "character": "う",
+          "instruction": "Type the sound in romaji"
         },
         "answer": {
-          "primary": "(economic) depression",
+          "primary": "u",
           "accepted": [
-            "(economic) depression"
+            "u"
           ]
         },
-        "distractors": [
-          "attachment",
-          "to weaken",
-          "silence"
-        ],
+        "distractors": [],
         "assets": {
-          "audio": "/audio/words/I1vo22mFugVAJ5ZH.m4a",
-          "wordAudio": "/audio/words/I1vo22mFugVAJ5ZH.m4a"
+          "audio": "/audio/kana/hiragana-u.m4a"
         },
         "firstTime": true
       },
       {
         "cardId": null,
-        "facetId": "5918188b-0a4b-4c67-ad35-f635a01a4d69",
-        "studyItemId": "4abf3f02-431c-4663-aad4-76e8846188d9",
-        "kind": "word",
-        "facet": "meaning",
+        "facetId": "fac-kana-h3",
+        "studyItemId": "si-kana-h3",
+        "kind": "kana",
+        "facet": "reading",
         "due": "2026-09-01T12:00:00.000Z",
         "isNew": true,
         "ghost": false,
         "card": null,
-        "promptId": "9cd213da-6b31-4521-bd1f-f269f82a3069",
-        "templateCode": "mcq",
-        "inputMode": "choice",
-        "graderCode": "choice-id",
+        "promptId": "ep-kana-h3",
+        "templateCode": "kana-romaji",
+        "inputMode": "text",
+        "graderCode": "fuzzy-romaji",
         "prompt": {
-          "kind": "word",
-          "word": "一時",
-          "reading": "いちじ",
-          "instruction": "What does this mean?",
-          "senses": [
-            "one o'clock",
-            "once, at one time, formerly, before",
-            "for a time, for a while, for the time being, for the moment, temporarily",
-            "a time, one time, once"
-          ]
+          "kind": "kana",
+          "script": "hiragana",
+          "character": "え",
+          "instruction": "Type the sound in romaji"
         },
         "answer": {
-          "primary": "one o'clock",
+          "primary": "e",
           "accepted": [
-            "one o'clock"
+            "e"
           ]
         },
-        "distractors": [
-          "glove",
-          "to resemble",
-          "self-esteem"
-        ],
+        "distractors": [],
         "assets": {
-          "audio": "/audio/words/Z741BAf9NiseWKLI.m4a",
-          "image": "/images/vocab/1576100.svg",
-          "wordAudio": "/audio/words/Z741BAf9NiseWKLI.m4a"
+          "audio": "/audio/kana/hiragana-e.m4a"
         },
         "firstTime": true
       },
       {
         "cardId": null,
-        "facetId": "c5e2a786-aa97-4cdf-8419-0ef7c53fd0fc",
-        "studyItemId": "9283bc5b-dbd4-41ac-915b-bf77e3dba259",
-        "kind": "word",
-        "facet": "meaning",
+        "facetId": "1f59dc7d-bb78-47a1-84e0-1cf8e3814839",
+        "studyItemId": "si-kana-h5",
+        "kind": "kana",
+        "facet": "writing",
         "due": "2026-09-01T12:00:00.000Z",
         "isNew": true,
         "ghost": false,
         "card": null,
-        "promptId": "9af15f72-eab9-44d1-b733-286c0cba96b0",
-        "templateCode": "mcq",
-        "inputMode": "choice",
-        "graderCode": "choice-id",
+        "promptId": "f184e588-97b6-43c5-9289-84c26101863c",
+        "templateCode": "handwriting",
+        "inputMode": "canvas",
+        "graderCode": "stroke-match",
         "prompt": {
-          "kind": "word",
-          "word": "予定",
-          "reading": "よてい",
-          "instruction": "What does this mean?",
-          "senses": [
-            "plans, arrangement, schedule, program, programme, expectation, estimate"
-          ]
+          "kind": "handwriting",
+          "label": "ka",
+          "readings": [
+            "ka"
+          ],
+          "character": "か",
+          "instruction": "Write this character",
+          "strokeCount": 3
         },
         "answer": {
-          "primary": "plans",
+          "primary": "か",
           "accepted": [
-            "plans"
+            "か"
           ]
         },
-        "distractors": [
-          "to shine",
-          "stimulus",
-          "on the way"
-        ],
+        "distractors": [],
         "assets": {
-          "audio": "/audio/words/Lh12ivJV_EyN5Cj-.m4a",
-          "image": "/images/vocab/1543240.svg",
-          "wordAudio": "/audio/words/Lh12ivJV_EyN5Cj-.m4a"
+          "strokes": [
+            {
+              "path": "M24.62,38.62c1.88,1.62,4.65,2.33,8.62,1c25.5-8.5,29.5-4.13,29.5,7.62c0,9.38-1.24,17.46-4.25,25.25c-7.62,19.76-10.87,17.39-16.12,10.89",
+              "index": 0,
+              "kvgType": null
+            },
+            {
+              "path": "M48.5,17.5c1,1.38,1.29,4.7,0.5,7.12c-5,15.25-18.02,40.93-19.62,43.88c-3.12,5.75-6.38,11.88-9.38,16.25",
+              "index": 1,
+              "kvgType": null
+            },
+            {
+              "path": "M77.37,31.62c7.5,6.88,13.25,15.75,15,24.88",
+              "index": 2,
+              "kvgType": null
+            }
+          ],
+          "viewBox": 109
         },
         "firstTime": true
       },
       {
         "cardId": null,
-        "facetId": "23653fe7-10a9-415f-8d5a-466b7c72c5b0",
-        "studyItemId": "37cbddcb-0efb-4df1-8924-812ee575c4e0",
-        "kind": "word",
-        "facet": "meaning",
+        "facetId": "d78b93f4-6870-4c87-ac5c-b8277fe48a9d",
+        "studyItemId": "si-kana-h8",
+        "kind": "kana",
+        "facet": "writing",
         "due": "2026-09-01T12:00:00.000Z",
         "isNew": true,
         "ghost": false,
         "card": null,
-        "promptId": "ddcc6524-831e-4530-a989-a66d7e204a18",
-        "templateCode": "mcq",
-        "inputMode": "choice",
-        "graderCode": "choice-id",
+        "promptId": "6f4e0e61-9b9b-4878-b4b1-65d4b06bbfd6",
+        "templateCode": "handwriting",
+        "inputMode": "canvas",
+        "graderCode": "stroke-match",
         "prompt": {
-          "kind": "word",
-          "word": "世界",
-          "reading": "せかい",
-          "instruction": "What does this mean?",
-          "senses": [
-            "the world, society, the universe",
-            "sphere, circle, world",
-            "world-renowned, world-famous",
-            "realm governed by one Buddha, space"
-          ]
+          "kind": "handwriting",
+          "label": "ke",
+          "readings": [
+            "ke"
+          ],
+          "character": "け",
+          "instruction": "Write this character",
+          "strokeCount": 3
         },
         "answer": {
-          "primary": "the world",
+          "primary": "け",
           "accepted": [
-            "the world"
+            "け"
           ]
         },
-        "distractors": [
-          "to hate",
-          "to finish up",
-          "easy"
-        ],
+        "distractors": [],
         "assets": {
-          "audio": "/audio/words/nAihxm5eAZoaAEKe.m4a",
-          "image": "/images/vocab/1373860.svg",
-          "wordAudio": "/audio/words/nAihxm5eAZoaAEKe.m4a"
+          "strokes": [
+            {
+              "path": "M24.67,19.75c1.25,1.5,2.62,3.75,2.12,6.38c-3,15.88-6.5,29.5-4.88,44.62c2.02,18.84,2.25,4.75,6.75-3.5",
+              "index": 0,
+              "kvgType": null
+            },
+            {
+              "path": "M53.67,38.62c2.12,1.38,4.28,1.89,6.88,1.5c8.25-1.25,15.39-2.57,20.62-4c2.76-0.74,5.26-1.12,6.88-1.12",
+              "index": 1,
+              "kvgType": null
+            },
+            {
+              "path": "M71.67,14.38c2.13,1.37,2.88,3.35,2.88,5.12c0,11.62,0.12,20.38,0.12,30.12c0,20.75-0.62,30.88-12.5,42.25",
+              "index": 2,
+              "kvgType": null
+            }
+          ],
+          "viewBox": 109
+        },
+        "firstTime": true
+      },
+      {
+        "cardId": null,
+        "facetId": "fac-kana-h0",
+        "studyItemId": "si-kana-h0",
+        "kind": "kana",
+        "facet": "reading",
+        "due": "2026-09-01T12:00:00.000Z",
+        "isNew": true,
+        "ghost": false,
+        "card": null,
+        "promptId": "ep-kana-h0",
+        "templateCode": "kana-romaji",
+        "inputMode": "text",
+        "graderCode": "fuzzy-romaji",
+        "prompt": {
+          "kind": "kana",
+          "script": "hiragana",
+          "character": "あ",
+          "instruction": "Type the sound in romaji"
+        },
+        "answer": {
+          "primary": "a",
+          "accepted": [
+            "a"
+          ]
+        },
+        "distractors": [],
+        "assets": {
+          "audio": "/audio/kana/hiragana-a.m4a"
         },
         "firstTime": true
       }
@@ -1528,116 +1577,91 @@
     "items": [
       {
         "cardId": null,
-        "facetId": "5fcbc353-13ee-48aa-a3b7-6f692267027b",
-        "studyItemId": "0ce5817c-4f68-4515-ac1c-3f57b8933fe3",
-        "kind": "word",
-        "facet": "meaning",
+        "facetId": "33699cd9-5de0-4b66-b2be-aa72b09fbb50",
+        "studyItemId": "si-kana-h6",
+        "kind": "kana",
+        "facet": "writing",
         "due": "2026-09-01T12:00:00.000Z",
         "isNew": true,
         "ghost": false,
         "card": null,
-        "promptId": "ffa36007-00ff-4b2c-bdd0-c562531550fc",
-        "templateCode": "mcq",
-        "inputMode": "choice",
-        "graderCode": "choice-id",
+        "promptId": "d3bcf487-06e1-4d98-93d6-8d3b47cf9278",
+        "templateCode": "handwriting",
+        "inputMode": "canvas",
+        "graderCode": "stroke-match",
         "prompt": {
-          "kind": "word",
-          "word": "与党",
-          "reading": "よとう",
-          "instruction": "What does this mean?",
-          "senses": [
-            "ruling party, government party, party in power, government"
-          ]
+          "kind": "handwriting",
+          "label": "ki",
+          "readings": [
+            "ki"
+          ],
+          "character": "き",
+          "instruction": "Write this character",
+          "strokeCount": 4
         },
         "answer": {
-          "primary": "ruling party",
+          "primary": "き",
           "accepted": [
-            "ruling party"
+            "き"
           ]
         },
-        "distractors": [
-          "circumference",
-          "counter for years",
-          "comfort"
-        ],
+        "distractors": [],
         "assets": {
-          "audio": "/audio/words/I5L2otZKHIB1C7g4.m4a",
-          "wordAudio": "/audio/words/I5L2otZKHIB1C7g4.m4a"
+          "strokes": [
+            {
+              "path": "M30.5,30.25c1.88,0.75,4.64,1.06,5.88,0.88c6.75-1,22.25-4.5,26.5-6c2.17-0.76,3.5-1.25,4.88-2.12",
+              "index": 0,
+              "kvgType": null
+            },
+            {
+              "path": "M36.25,48.7c2.01,0.85,4.97,1.2,6.29,0.99c7.23-1.13,23.82-5.09,28.37-6.79c2.32-0.86,3.75-1.41,5.22-2.4",
+              "index": 1,
+              "kvgType": null
+            },
+            {
+              "path": "M42,14.12c1.5,0.88,3.13,2.94,4,5.12c5.5,13.76,16,29.26,26.37,40.76c7.64,8.47,9.12,9.38-6,3.88",
+              "index": 2,
+              "kvgType": null
+            },
+            {
+              "path": "M33.75,83.25c10.62,9.75,27.25,8.62,38.12,5",
+              "index": 3,
+              "kvgType": null
+            }
+          ],
+          "viewBox": 109
         },
         "firstTime": true
       },
       {
         "cardId": null,
-        "facetId": "fac-kana-h0",
-        "studyItemId": "si-kana-h0",
+        "facetId": "fac-kana-h4",
+        "studyItemId": "si-kana-h4",
         "kind": "kana",
         "facet": "reading",
         "due": "2026-09-01T12:00:00.000Z",
         "isNew": true,
         "ghost": false,
         "card": null,
-        "promptId": "ep-kana-h0",
+        "promptId": "ep-kana-h4",
         "templateCode": "kana-romaji",
         "inputMode": "text",
         "graderCode": "fuzzy-romaji",
         "prompt": {
           "kind": "kana",
           "script": "hiragana",
-          "character": "あ",
+          "character": "お",
           "instruction": "Type the sound in romaji"
         },
         "answer": {
-          "primary": "a",
+          "primary": "o",
           "accepted": [
-            "a"
+            "o"
           ]
         },
         "distractors": [],
         "assets": {
-          "audio": "/audio/kana/hiragana-a.m4a"
-        },
-        "firstTime": true
-      },
-      {
-        "cardId": null,
-        "facetId": "58666de7-c05e-441d-8e21-26837653cc89",
-        "studyItemId": "65a941cb-00f7-4320-a0cf-32b1e0817627",
-        "kind": "word",
-        "facet": "meaning",
-        "due": "2026-09-01T12:00:00.000Z",
-        "isNew": true,
-        "ghost": false,
-        "card": null,
-        "promptId": "9c3fc499-03e4-4fb6-92b5-bdb74f2600f5",
-        "templateCode": "mcq",
-        "inputMode": "choice",
-        "graderCode": "choice-id",
-        "prompt": {
-          "kind": "word",
-          "word": "一方",
-          "reading": "いっぽう",
-          "instruction": "What does this mean?",
-          "senses": [
-            "one (esp. of two), the other, one way, the other way, one direction, the other direction, one side, the other side, one party, the other party",
-            "on the one hand, on the other hand",
-            "whereas, although, but at the same time, meanwhile, in turn",
-            "just keeps, being inclined to ..., tending to be ..., tending to do ..., continuously ..., just keeps on ...ing, only"
-          ]
-        },
-        "answer": {
-          "primary": "one (esp. of two)",
-          "accepted": [
-            "one (esp. of two)"
-          ]
-        },
-        "distractors": [
-          "Darth (Star Wars)",
-          "party",
-          "to put something out of the way"
-        ],
-        "assets": {
-          "audio": "/audio/words/Vb01V7sfwudzEQ2C.m4a",
-          "wordAudio": "/audio/words/Vb01V7sfwudzEQ2C.m4a"
+          "audio": "/audio/kana/hiragana-o.m4a"
         },
         "firstTime": true
       },
@@ -1675,253 +1699,294 @@
       },
       {
         "cardId": null,
-        "facetId": "c2906684-bd58-4f34-b52c-602213a38edc",
-        "studyItemId": "d0aca3ef-5263-4d2b-ad3f-eb3abc1bcca2",
-        "kind": "word",
-        "facet": "meaning",
+        "facetId": "13c5b843-a3e9-49bd-821e-886b48e17563",
+        "studyItemId": "si-kana-h9",
+        "kind": "kana",
+        "facet": "writing",
         "due": "2026-09-01T12:00:00.000Z",
         "isNew": true,
         "ghost": false,
         "card": null,
-        "promptId": "f8864766-c6fc-479a-9f8c-78e9b3d62ca4",
-        "templateCode": "mcq",
-        "inputMode": "choice",
-        "graderCode": "choice-id",
+        "promptId": "886416aa-0197-42dc-8db2-02dfd3cc8310",
+        "templateCode": "handwriting",
+        "inputMode": "canvas",
+        "graderCode": "stroke-match",
         "prompt": {
-          "kind": "word",
-          "word": "体制",
-          "reading": "たいせい",
-          "instruction": "What does this mean?",
-          "senses": [
-            "order, system, structure, set-up, organization, organisation",
-            "the establishment, (ruling) regime, those in power",
-            "structural plan, body plan, anatomy"
-          ]
+          "kind": "handwriting",
+          "label": "ko",
+          "readings": [
+            "ko"
+          ],
+          "character": "こ",
+          "instruction": "Write this character",
+          "strokeCount": 2
         },
         "answer": {
-          "primary": "order",
+          "primary": "こ",
           "accepted": [
-            "order"
+            "こ"
           ]
         },
-        "distractors": [
-          "daytime",
-          "I",
-          "storehouse"
-        ],
+        "distractors": [],
         "assets": {
-          "audio": "/audio/words/LAzL_jg5yGORT35l.m4a",
-          "wordAudio": "/audio/words/LAzL_jg5yGORT35l.m4a"
+          "strokes": [
+            {
+              "path": "M34.75,26.75c1.12,0.88,2.91,2.01,6,1.5c7.62-1.25,14.11-2.56,22.38-2.62c15.5-0.12,5.88,5-5.75,9",
+              "index": 0,
+              "kvgType": null
+            },
+            {
+              "path": "M30,68.12c2.25,14.5,15.26,17.96,31,16.75c6.5-0.5,11.88-1.25,17.62-2.88",
+              "index": 1,
+              "kvgType": null
+            }
+          ],
+          "viewBox": 109
         },
         "firstTime": true
       },
       {
         "cardId": null,
-        "facetId": "83b6e193-ef2a-4e57-977a-6b83d169670a",
-        "studyItemId": "45d718ea-8d7e-4be4-ad4b-694f9fc646f2",
-        "kind": "word",
-        "facet": "meaning",
+        "facetId": "0dc52f38-de23-4945-bfad-117adc74bcd8",
+        "studyItemId": "si-kana-h7",
+        "kind": "kana",
+        "facet": "writing",
         "due": "2026-09-01T12:00:00.000Z",
         "isNew": true,
         "ghost": false,
         "card": null,
-        "promptId": "254bedb7-90e0-402f-b096-efb5a2aee551",
-        "templateCode": "mcq",
-        "inputMode": "choice",
-        "graderCode": "choice-id",
+        "promptId": "bdaf393a-01ff-4501-8334-36369067b7ae",
+        "templateCode": "handwriting",
+        "inputMode": "canvas",
+        "graderCode": "stroke-match",
         "prompt": {
-          "kind": "word",
-          "word": "交流",
-          "reading": "こうりゅう",
-          "instruction": "What does this mean?",
-          "senses": [
-            "exchange (e.g. cultural), interchange, interaction, mingling, mixing, coming together",
-            "alternating current, AC"
-          ]
+          "kind": "handwriting",
+          "label": "ku",
+          "readings": [
+            "ku"
+          ],
+          "character": "く",
+          "instruction": "Write this character",
+          "strokeCount": 1
         },
         "answer": {
-          "primary": "exchange (e.g. cultural)",
+          "primary": "く",
           "accepted": [
-            "exchange (e.g. cultural)"
+            "く"
           ]
         },
-        "distractors": [
-          "iron pot",
-          "westering sun",
-          "emission"
-        ],
+        "distractors": [],
         "assets": {
-          "audio": "/audio/words/JZTrdmWqfESr15TO.m4a",
-          "wordAudio": "/audio/words/JZTrdmWqfESr15TO.m4a"
+          "strokes": [
+            {
+              "path": "M60.66,15c0.5,1.62,0.35,5.44-1,7.38c-6.75,9.62-14.3,19.08-18.62,24.5c-4,5-3.79,7.03-0.88,11c5.5,7.5,12.75,18.75,17.62,27.25c1.48,2.59,2.75,4.75,4.5,8.62",
+              "index": 0,
+              "kvgType": null
+            }
+          ],
+          "viewBox": 109
         },
         "firstTime": true
       },
       {
         "cardId": null,
-        "facetId": "b96d897f-582c-4a8d-9c92-6d383553f553",
-        "studyItemId": "8fefd1a5-c3ae-46a1-8d16-4879865a4765",
-        "kind": "word",
-        "facet": "meaning",
+        "facetId": "fac-kana-h2",
+        "studyItemId": "si-kana-h2",
+        "kind": "kana",
+        "facet": "reading",
         "due": "2026-09-01T12:00:00.000Z",
         "isNew": true,
         "ghost": false,
         "card": null,
-        "promptId": "d30abcf9-7ea1-4944-bab3-09cb6c25f5f6",
-        "templateCode": "mcq",
-        "inputMode": "choice",
-        "graderCode": "choice-id",
+        "promptId": "ep-kana-h2",
+        "templateCode": "kana-romaji",
+        "inputMode": "text",
+        "graderCode": "fuzzy-romaji",
         "prompt": {
-          "kind": "word",
-          "word": "不況",
-          "reading": "ふきょう",
-          "instruction": "What does this mean?",
-          "senses": [
-            "(economic) depression, recession, slump"
-          ]
+          "kind": "kana",
+          "script": "hiragana",
+          "character": "う",
+          "instruction": "Type the sound in romaji"
         },
         "answer": {
-          "primary": "(economic) depression",
+          "primary": "u",
           "accepted": [
-            "(economic) depression"
+            "u"
           ]
         },
-        "distractors": [
-          "attachment",
-          "to weaken",
-          "silence"
-        ],
+        "distractors": [],
         "assets": {
-          "audio": "/audio/words/I1vo22mFugVAJ5ZH.m4a",
-          "wordAudio": "/audio/words/I1vo22mFugVAJ5ZH.m4a"
+          "audio": "/audio/kana/hiragana-u.m4a"
         },
         "firstTime": true
       },
       {
         "cardId": null,
-        "facetId": "5918188b-0a4b-4c67-ad35-f635a01a4d69",
-        "studyItemId": "4abf3f02-431c-4663-aad4-76e8846188d9",
-        "kind": "word",
-        "facet": "meaning",
+        "facetId": "fac-kana-h3",
+        "studyItemId": "si-kana-h3",
+        "kind": "kana",
+        "facet": "reading",
         "due": "2026-09-01T12:00:00.000Z",
         "isNew": true,
         "ghost": false,
         "card": null,
-        "promptId": "9cd213da-6b31-4521-bd1f-f269f82a3069",
-        "templateCode": "mcq",
-        "inputMode": "choice",
-        "graderCode": "choice-id",
+        "promptId": "ep-kana-h3",
+        "templateCode": "kana-romaji",
+        "inputMode": "text",
+        "graderCode": "fuzzy-romaji",
         "prompt": {
-          "kind": "word",
-          "word": "一時",
-          "reading": "いちじ",
-          "instruction": "What does this mean?",
-          "senses": [
-            "one o'clock",
-            "once, at one time, formerly, before",
-            "for a time, for a while, for the time being, for the moment, temporarily",
-            "a time, one time, once"
-          ]
+          "kind": "kana",
+          "script": "hiragana",
+          "character": "え",
+          "instruction": "Type the sound in romaji"
         },
         "answer": {
-          "primary": "one o'clock",
+          "primary": "e",
           "accepted": [
-            "one o'clock"
+            "e"
           ]
         },
-        "distractors": [
-          "glove",
-          "to resemble",
-          "self-esteem"
-        ],
+        "distractors": [],
         "assets": {
-          "audio": "/audio/words/Z741BAf9NiseWKLI.m4a",
-          "image": "/images/vocab/1576100.svg",
-          "wordAudio": "/audio/words/Z741BAf9NiseWKLI.m4a"
+          "audio": "/audio/kana/hiragana-e.m4a"
         },
         "firstTime": true
       },
       {
         "cardId": null,
-        "facetId": "c5e2a786-aa97-4cdf-8419-0ef7c53fd0fc",
-        "studyItemId": "9283bc5b-dbd4-41ac-915b-bf77e3dba259",
-        "kind": "word",
-        "facet": "meaning",
+        "facetId": "1f59dc7d-bb78-47a1-84e0-1cf8e3814839",
+        "studyItemId": "si-kana-h5",
+        "kind": "kana",
+        "facet": "writing",
         "due": "2026-09-01T12:00:00.000Z",
         "isNew": true,
         "ghost": false,
         "card": null,
-        "promptId": "9af15f72-eab9-44d1-b733-286c0cba96b0",
-        "templateCode": "mcq",
-        "inputMode": "choice",
-        "graderCode": "choice-id",
+        "promptId": "f184e588-97b6-43c5-9289-84c26101863c",
+        "templateCode": "handwriting",
+        "inputMode": "canvas",
+        "graderCode": "stroke-match",
         "prompt": {
-          "kind": "word",
-          "word": "予定",
-          "reading": "よてい",
-          "instruction": "What does this mean?",
-          "senses": [
-            "plans, arrangement, schedule, program, programme, expectation, estimate"
-          ]
+          "kind": "handwriting",
+          "label": "ka",
+          "readings": [
+            "ka"
+          ],
+          "character": "か",
+          "instruction": "Write this character",
+          "strokeCount": 3
         },
         "answer": {
-          "primary": "plans",
+          "primary": "か",
           "accepted": [
-            "plans"
+            "か"
           ]
         },
-        "distractors": [
-          "to shine",
-          "stimulus",
-          "on the way"
-        ],
+        "distractors": [],
         "assets": {
-          "audio": "/audio/words/Lh12ivJV_EyN5Cj-.m4a",
-          "image": "/images/vocab/1543240.svg",
-          "wordAudio": "/audio/words/Lh12ivJV_EyN5Cj-.m4a"
+          "strokes": [
+            {
+              "path": "M24.62,38.62c1.88,1.62,4.65,2.33,8.62,1c25.5-8.5,29.5-4.13,29.5,7.62c0,9.38-1.24,17.46-4.25,25.25c-7.62,19.76-10.87,17.39-16.12,10.89",
+              "index": 0,
+              "kvgType": null
+            },
+            {
+              "path": "M48.5,17.5c1,1.38,1.29,4.7,0.5,7.12c-5,15.25-18.02,40.93-19.62,43.88c-3.12,5.75-6.38,11.88-9.38,16.25",
+              "index": 1,
+              "kvgType": null
+            },
+            {
+              "path": "M77.37,31.62c7.5,6.88,13.25,15.75,15,24.88",
+              "index": 2,
+              "kvgType": null
+            }
+          ],
+          "viewBox": 109
         },
         "firstTime": true
       },
       {
         "cardId": null,
-        "facetId": "23653fe7-10a9-415f-8d5a-466b7c72c5b0",
-        "studyItemId": "37cbddcb-0efb-4df1-8924-812ee575c4e0",
-        "kind": "word",
-        "facet": "meaning",
+        "facetId": "d78b93f4-6870-4c87-ac5c-b8277fe48a9d",
+        "studyItemId": "si-kana-h8",
+        "kind": "kana",
+        "facet": "writing",
         "due": "2026-09-01T12:00:00.000Z",
         "isNew": true,
         "ghost": false,
         "card": null,
-        "promptId": "ddcc6524-831e-4530-a989-a66d7e204a18",
-        "templateCode": "mcq",
-        "inputMode": "choice",
-        "graderCode": "choice-id",
+        "promptId": "6f4e0e61-9b9b-4878-b4b1-65d4b06bbfd6",
+        "templateCode": "handwriting",
+        "inputMode": "canvas",
+        "graderCode": "stroke-match",
         "prompt": {
-          "kind": "word",
-          "word": "世界",
-          "reading": "せかい",
-          "instruction": "What does this mean?",
-          "senses": [
-            "the world, society, the universe",
-            "sphere, circle, world",
-            "world-renowned, world-famous",
-            "realm governed by one Buddha, space"
-          ]
+          "kind": "handwriting",
+          "label": "ke",
+          "readings": [
+            "ke"
+          ],
+          "character": "け",
+          "instruction": "Write this character",
+          "strokeCount": 3
         },
         "answer": {
-          "primary": "the world",
+          "primary": "け",
           "accepted": [
-            "the world"
+            "け"
           ]
         },
-        "distractors": [
-          "to hate",
-          "to finish up",
-          "easy"
-        ],
+        "distractors": [],
         "assets": {
-          "audio": "/audio/words/nAihxm5eAZoaAEKe.m4a",
-          "image": "/images/vocab/1373860.svg",
-          "wordAudio": "/audio/words/nAihxm5eAZoaAEKe.m4a"
+          "strokes": [
+            {
+              "path": "M24.67,19.75c1.25,1.5,2.62,3.75,2.12,6.38c-3,15.88-6.5,29.5-4.88,44.62c2.02,18.84,2.25,4.75,6.75-3.5",
+              "index": 0,
+              "kvgType": null
+            },
+            {
+              "path": "M53.67,38.62c2.12,1.38,4.28,1.89,6.88,1.5c8.25-1.25,15.39-2.57,20.62-4c2.76-0.74,5.26-1.12,6.88-1.12",
+              "index": 1,
+              "kvgType": null
+            },
+            {
+              "path": "M71.67,14.38c2.13,1.37,2.88,3.35,2.88,5.12c0,11.62,0.12,20.38,0.12,30.12c0,20.75-0.62,30.88-12.5,42.25",
+              "index": 2,
+              "kvgType": null
+            }
+          ],
+          "viewBox": 109
+        },
+        "firstTime": true
+      },
+      {
+        "cardId": null,
+        "facetId": "fac-kana-h0",
+        "studyItemId": "si-kana-h0",
+        "kind": "kana",
+        "facet": "reading",
+        "due": "2026-09-01T12:00:00.000Z",
+        "isNew": true,
+        "ghost": false,
+        "card": null,
+        "promptId": "ep-kana-h0",
+        "templateCode": "kana-romaji",
+        "inputMode": "text",
+        "graderCode": "fuzzy-romaji",
+        "prompt": {
+          "kind": "kana",
+          "script": "hiragana",
+          "character": "あ",
+          "instruction": "Type the sound in romaji"
+        },
+        "answer": {
+          "primary": "a",
+          "accepted": [
+            "a"
+          ]
+        },
+        "distractors": [],
+        "assets": {
+          "audio": "/audio/kana/hiragana-a.m4a"
         },
         "firstTime": true
       }

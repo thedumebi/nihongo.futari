@@ -1,4 +1,6 @@
-> **Historical.** This describes the old Hetzner deployment, retired in October 2026. These sites now run on the nagaya box: see the [nagaya repo](https://github.com/thedumebi/nagaya) (`RUNBOOK.md`, `sites.yaml`). Deploys go through `.github/workflows/deploy-nagaya.yml`.
+> **Historical: these instructions are retired. Do not follow them.** This describes the old Hetzner deployment, retired in October 2026. `docker-compose.prod.yml` has been deleted, and nothing below (the compose file, building on the server, the `dmb.futari` Caddyfile) is how the app ships any more.
+>
+> Today every push to `master` is deployed by `.github/workflows/deploy-nagaya.yml`: CI runs lint, typecheck and tests, builds the images, pushes them to GHCR, and asks the nagaya box to pull and run them. The box itself is documented in the [nagaya repo](https://github.com/thedumebi/nagaya) (`RUNBOOK.md`, `sites.yaml`).
 
 # Deployment runbook
 

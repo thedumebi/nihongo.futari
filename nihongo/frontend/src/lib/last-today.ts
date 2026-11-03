@@ -17,7 +17,7 @@ const PREFIX = 'go-today:'
  * build is then never read, rather than handed to a screen expecting fields it
  * does not have.
  */
-const VERSION = 1
+const VERSION = 2
 
 function key(userId: string, languageCode: string) {
   return `${PREFIX}v${VERSION}:${userId}:${languageCode}`

@@ -9,6 +9,7 @@ import { getWord } from '@/api/words'
 import ConjugationTable from '@/components/ja/conjugation-table.vue'
 import FuriganaText from '@/components/ja/furigana-text.vue'
 import PitchAccent from '@/components/ja/pitch-accent.vue'
+import MnemonicPanel from '@/components/mnemonics/mnemonic-panel.vue'
 import { playAudio } from '@/composables/use-audio'
 import { useFurigana } from '@/composables/use-furigana'
 import { useWordReview } from '@/composables/use-word-review'
@@ -225,6 +226,9 @@ onMounted(() => {
           </ul>
         </article>
       </section>
+
+      <!-- Invented memory aids: their own panel, never mixed into the history above. -->
+      <MnemonicPanel :word-id="wordId" />
 
       <section v-if="word.examples.length" class="mt-8">
         <h2 class="text-xs uppercase tracking-wide text-[var(--color-muted)]">

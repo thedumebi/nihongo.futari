@@ -41,6 +41,9 @@ async function loadCatalogue(languageId: string): Promise<Catalogue> {
       order by sort_index, id`),
     // Facets come in (intro_order, id) order, so each item's list is already
     // in the order its facets are introduced; `rank` is the queue's order.
+    // sort_index counts from 0 within each level, so ordering on it alone
+    // interleaved the levels and an N5 learner met N1 words among the first.
+    // Level first: unlevelled items (kana, sound series) ahead of all of them.
     db.execute<{
       id: string
       kind: string
@@ -53,11 +56,12 @@ async function loadCatalogue(languageId: string): Promise<Catalogue> {
     }>(sql`
       select si.id, si.kind, si.level_id, si.sort_index, si.phonetic_series_id,
         f.id as facet_id, f.intro_order,
-        row_number() over (order by si.sort_index, f.id) as rank
+        row_number() over (order by lv.rank nulls first, si.sort_index, f.id) as rank
       from study_items si
+      left join language_levels lv on lv.id = si.level_id
       left join study_item_facets f on f.study_item_id = si.id and f.enabled
       where si.language_id = ${languageId} and si.published and si.active
-      order by si.sort_index, si.id, f.intro_order, f.id`),
+      order by lv.rank nulls first, si.sort_index, si.id, f.intro_order, f.id`),
     db.execute<{ series_id: string, kanji_id: string }>(sql`
       select distinct m.series_id, m.kanji_id
       from phonetic_series_members m

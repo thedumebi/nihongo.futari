@@ -210,6 +210,14 @@ async function decide(action: 'approve' | 'reject') {
           >
             Corrections
           </button>
+          <button
+            type="button"
+            class="rounded-full border px-3 py-1 text-sm transition"
+            :class="kindFilter === 'mnemonic' ? 'border-[var(--color-text)] text-[var(--color-text)]' : 'border-[var(--color-border)] text-[var(--color-muted)]'"
+            @click="selectKind('mnemonic')"
+          >
+            Mnemonics
+          </button>
 
           <div class="ml-auto flex items-center gap-3">
             <span class="text-sm text-[var(--color-muted)]">{{ selectedCount }} selected</span>
@@ -244,6 +252,10 @@ async function decide(action: 'approve' | 'reject') {
                   <template v-if="item.kind === 'particles' && item.particles">
                     <span>&middot; {{ item.particles.level }} &middot; {{ item.particles.questions.length }} questions</span>
                   </template>
+                  <template v-if="item.kind === 'mnemonic' && item.mnemonic">
+                    <span>&middot; {{ item.mnemonic.kind }} &middot; {{ item.origin }}</span>
+                    <span class="rounded border border-dashed border-[var(--color-border)] px-1.5 py-0.5 normal-case">Invented, not historical</span>
+                  </template>
                   <template v-if="item.kind === 'etymology'">
                     <span>&middot; {{ item.aspect }}</span>
                     <span>&middot; {{ item.confidence }}</span>
@@ -257,7 +269,17 @@ async function decide(action: 'approve' | 'reject') {
                 <!-- A correction is small enough to judge at a glance: always shown. -->
                 <CorrectionDiff v-if="item.kind === 'correction' && item.correction" :correction="item.correction" />
 
-                <p v-if="item.kind !== 'correction' && item.kind !== 'particles'" class="mt-2 font-medium">
+                <!-- A mnemonic is short: the whole aid, always shown, as a learner will read it. -->
+                <div v-if="item.kind === 'mnemonic' && item.mnemonic" class="mt-2 rounded-lg border border-dashed border-[var(--color-border)] p-3 text-sm">
+                  <p class="whitespace-pre-line">
+                    {{ item.mnemonic.text }}
+                  </p>
+                  <p v-if="item.mnemonic.imagery" class="mt-1 italic text-[var(--color-muted)]">
+                    {{ item.mnemonic.imagery }}
+                  </p>
+                </div>
+
+                <p v-if="item.kind !== 'correction' && item.kind !== 'particles' && item.kind !== 'mnemonic'" class="mt-2 font-medium">
                   {{ item.kind === 'etymology' ? item.claim : item.kind === 'reading' ? item.reading?.titleEn : item.kind === 'speak' ? item.speak?.titleEn : item.meaningShort }}
                 </p>
                 <!-- Read it the way a learner will: scrolling, tappable, with the reading aid. -->
@@ -278,7 +300,7 @@ async function decide(action: 'approve' | 'reject') {
                 </router-link>
 
                 <button
-                  v-if="item.kind !== 'correction'"
+                  v-if="item.kind !== 'correction' && item.kind !== 'mnemonic'"
                   type="button"
                   class="mt-2 text-sm text-[var(--color-muted)] underline underline-offset-4"
                   @click="toggleExpanded(item.id)"

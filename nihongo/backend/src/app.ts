@@ -21,6 +21,7 @@ import invites from './routes/invites/invites.index.js'
 import kanjiRoutes from './routes/kanji/kanji.index.js'
 import languages from './routes/languages/languages.index.js'
 import lessons from './routes/lessons/lessons.index.js'
+import mnemonics from './routes/mnemonics/mnemonics.index.js'
 import notifications from './routes/notifications/notifications.index.js'
 import onboarding from './routes/onboarding/onboarding.index.js'
 import phonetics from './routes/phonetics/phonetics.index.js'
@@ -87,6 +88,7 @@ const routes = [
   dictionary,
   wordsRoutes,
   kanjiRoutes,
+  mnemonics,
   usersRoutes,
   phonetics,
   writing,

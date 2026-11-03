@@ -34,14 +34,27 @@ describe('the catalogue', () => {
     await connection.end()
   })
 
-  it('ranks facets in the order Postgres sorts them, sort_index then facet id', async () => {
+  it('ranks facets in the order Postgres sorts them, level then sort_index then facet id', async () => {
     const expected = await db.execute<{ id: string }>(sql`
       select f.id from study_item_facets f
       join study_items si on si.id = f.study_item_id
+      left join language_levels lv on lv.id = si.level_id
       where si.language_id = ${LANGUAGE_ID} and si.published and si.active and f.enabled
-      order by si.sort_index, f.id`)
+      order by lv.rank nulls first, si.sort_index, f.id`)
     const ranked = (await catalogue(LANGUAGE_ID)).items.flatMap(i => i.facets).sort((a, b) => a.rank - b.rank)
     expect(ranked.map(f => f.id)).toEqual(expected.rows.map(r => r.id))
+  })
+
+  it('ranks every facet of an easier level ahead of any harder one, unlevelled first', async () => {
+    const cat = await catalogue(LANGUAGE_ID)
+    const levelRank = new Map((await db.execute<{ id: string, rank: number }>(sql`
+      select id, rank from language_levels where language_id = ${LANGUAGE_ID}`)).rows.map(l => [l.id, l.rank]))
+    const ranked = cat.items
+      .flatMap(i => i.facets.map(f => ({ rank: f.rank, level: i.levelId === null ? 0 : levelRank.get(i.levelId)! })))
+      .sort((a, b) => a.rank - b.rank)
+      .map(f => f.level)
+    expect(new Set(ranked).size).toBeGreaterThan(1)
+    expect(ranked).toEqual([...ranked].sort((a, b) => a - b))
   })
 
   it('holds each item\'s facets in the order they are introduced', async () => {

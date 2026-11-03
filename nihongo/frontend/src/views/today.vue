@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { levelProgress } from '@nihongo/shared/lib'
+import { FREEZE_CAP, FREEZE_EARN_EVERY, levelProgress } from '@nihongo/shared/lib'
 import { Check, ChevronRight, Flame, Grid3x3, Headphones, Layers, Mic, RotateCcw, ScrollText, Target } from 'lucide-vue-next'
 import { computed, onMounted, ref } from 'vue'
 
@@ -9,6 +9,7 @@ import GettingStarted from '@/components/onboarding/getting-started.vue'
 import StageUpModal from '@/components/study/stage-up-modal.vue'
 import StageWait from '@/components/study/stage-wait.vue'
 import Button from '@/components/ui/button.vue'
+import Tooltip from '@/components/ui/tooltip.vue'
 import { useLessonFirst } from '@/composables/use-lesson-first'
 import { ROUTES } from '@/constants'
 import { useAuthStore } from '@/store/auth'
@@ -82,6 +83,9 @@ const lessonFirst = computed(() => today.value?.lessonFirst ?? null)
 const wordsReady = computed(() => wordsOpen(lessonFirst.value))
 /** A lesson was finished today and there are more to take. */
 const lessonDone = computed(() => !lessonFirst.value && Boolean(today.value?.nextLesson))
+/** Streak freezes held. A Today cached before this field existed has none to show. */
+const freezes = computed(() => today.value?.streak.freezes ?? 0)
+const freezeTip = `A freeze covers a day you miss, so your streak carries on. You earn one for every ${FREEZE_EARN_EVERY} days you study, and hold ${FREEZE_CAP} at most. Miss more days than you have freezes and the streak starts again.`
 
 // ============ Lifecycle Hooks ============
 onMounted(async () => {
@@ -115,6 +119,11 @@ onMounted(async () => {
           <template v-else>
             {{ today.streak.current }}-day streak. Study today to keep it.
           </template>
+          <Tooltip v-if="freezes > 0" :content="freezeTip" position="bottom">
+            <span class="text-sm underline decoration-dotted underline-offset-4">
+              {{ freezes === 1 ? '1 freeze saved' : `${freezes} freezes saved` }}
+            </span>
+          </Tooltip>
           <router-link :to="ROUTES.PROGRESS" class="ml-auto text-sm underline-offset-4 hover:underline">
             Level {{ today.xp.level }} · {{ levelProgress(today.xp.total).toNext }} XP to {{ today.xp.level + 1 }}
           </router-link>

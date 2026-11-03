@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import type { GhostBoss, GhostBossEntry, GhostRound } from '@nihongo/shared/types'
 
+import { readingAskedLater } from '@nihongo/shared/lib'
 import { Ghost, Volume2 } from 'lucide-vue-next'
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 
@@ -58,7 +59,9 @@ const nearlyCount = computed(() => boss.value?.ghosts.filter(g => g.status === '
 /**
  * The question cut around its word, so the word can carry furigana in the
  * reader's setting, the way Study shows it. Not on a reading question until
- * it is answered: there the furigana IS the answer. Words only: a kanji on
+ * it is answered: there the furigana IS the answer. Nor on any round before
+ * that word's reading round, which would hand the answer over early. Words
+ * only: a kanji on
  * its own has several readings, and grammar patterns and kana need none.
  */
 const questionParts = computed(() => {
@@ -67,6 +70,8 @@ const questionParts = computed(() => {
   if (!r || !g || g.kind !== 'word' || !g.reading || !r.question.includes(g.text))
     return null
   if (r.kind === 'reading' && !picked.value)
+    return null
+  if (readingAskedLater(rounds.value, index.value))
     return null
   const at = r.question.indexOf(g.text)
   return { before: r.question.slice(0, at), word: g.text, reading: g.reading, after: r.question.slice(at + g.text.length) }

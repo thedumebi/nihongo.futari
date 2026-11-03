@@ -6,6 +6,7 @@ import { hasKanji, kanaLineToRomaji, kanaTokenToRomaji } from '@nihongo/shared/l
 import { computed } from 'vue'
 
 import FuriganaText from '@/components/ja/furigana-text.vue'
+import { tokenGroups } from '@/lib/token-groups'
 
 /**
  * One line of Japanese, cut into words you can tap.
@@ -86,6 +87,13 @@ function gap(token: GlossedToken, i: number): boolean {
     && !/[、。！？「」\s]$/.test(props.tokens[i - 1]?.t ?? '')
 }
 
+/**
+ * The tokens in runs that stay on one line: a 。 or 」 never wraps alone, and
+ * a 「 never hangs at a line's end. A lone token gets no nowrap, so it breaks
+ * exactly as it did before.
+ */
+const groups = computed(() => tokenGroups(props.tokens.map(t => t.t)).map(run => run.map(i => ({ i, token: props.tokens[i]! }))))
+
 // No reading to romanise (a line the server could not align): show the
 // Japanese rather than an empty line.
 const wholeLine = computed(() => romaji.value && props.reading ? kanaLineToRomaji(props.reading) : props.text)
@@ -124,8 +132,12 @@ function pick(index: number, token: GlossedToken) {
 <template>
   <span v-if="!perToken" :style="romaji ? undefined : { fontFamily: 'var(--font-jp)' }">{{ wholeLine }}</span>
 
-  <span v-else :style="romaji ? undefined : { fontFamily: 'var(--font-jp)' }"><template
-    v-for="(token, i) in tokens"
+  <span v-else :style="romaji ? undefined : { fontFamily: 'var(--font-jp)' }"><span
+    v-for="run in groups"
+    :key="run[0]!.i"
+    :class="run.length > 1 ? 'whitespace-nowrap' : undefined"
+  ><template
+    v-for="{ i, token } in run"
     :key="i"
   ><span v-if="gap(token, i)" class="whitespace-pre">{{ " " }}</span><button
     v-if="token.w"
@@ -149,5 +161,5 @@ function pick(index: number, token: GlossedToken) {
     :reading="token.r"
     :mode="mode"
     :known-kanji="knownKanji"
-  /></template><template v-else>{{ label(token) }}</template></span></template></span>
+  /></template><template v-else>{{ label(token) }}</template></span></template></span></span>
 </template>

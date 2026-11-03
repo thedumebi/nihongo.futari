@@ -51,16 +51,18 @@ export async function submitOnboarding(userId: string, answers: OnboardingAnswer
     studyLevel: studyLevelFor(answers),
     dailyNewLimit: paceFor(answers.minutes).dailyNewLimit
   })
-  if (answers.reminder) {
-    const prefs = await getPrefs(userId)
-    await setPrefs(userId, {
-      ...prefs,
-      reminderHour: answers.reminder.hour,
-      reminderMinute: answers.reminder.minute,
-      reminderEmailEnabled: answers.reminder.email,
-      reminderPushEnabled: answers.reminder.push
-    })
-  }
+  // "No reminders" is an answer too. Reminders are on by default, so skipping
+  // the write left the 19:00 email running for someone who said no.
+  const prefs = await getPrefs(userId)
+  await setPrefs(userId, answers.reminder
+    ? {
+        ...prefs,
+        reminderHour: answers.reminder.hour,
+        reminderMinute: answers.reminder.minute,
+        reminderEmailEnabled: answers.reminder.email,
+        reminderPushEnabled: answers.reminder.push
+      }
+    : { ...prefs, reminderEmailEnabled: false, reminderPushEnabled: false })
   const now = new Date()
   const state = {
     sessionLength: paceFor(answers.minutes).sessionLength,

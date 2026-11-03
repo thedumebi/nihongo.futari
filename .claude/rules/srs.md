@@ -55,28 +55,44 @@ aggregates* are byte-identical. If that test doesn't exist, assume this is broke
 
 ## One FSRS implementation
 
-`@nihongo/shared/lib/srs` wraps `ts-fsrs` and is imported by **both** the
-backend service and the Vue client, with the user's `fsrsParams`. The client
-runs the identical function against its local snapshot so its predicted due
-dates match what the server will compute. Any divergence is then a bug in one
-place, not a design property.
+FSRS runs **only on the server**. `@nihongo/shared/lib/srs` wraps `ts-fsrs`
+(`applyReview` for one answer, `replay` for a whole history) with the user's
+`fsrsParams`, and the backend service is its only caller for scheduling. It
+lives in the shared package so the fold is one tested implementation, not so the
+client can run it.
+
+The client never computes card state. It stamps an answer, queues it in
+IndexedDB (`enqueueAnswer` in `frontend/src/offline/db.ts`, flushed by
+`offline/sync.ts`; other writes go through `offline/queue.ts`), and takes card
+state from the server's responses. Do not add a client-side prediction of due
+dates: two implementations of the fold is how divergence becomes a design
+property instead of a bug.
 
 ## Clock skew
 
-Every API response carries `serverTime`; the client stamps `reviewedAt` with its
-tracked offset and also sends the raw `clientReviewedAt`. The server clamps:
+The client keeps no clock offset. It sends `reviewedAt` as raw device time
+(`new Date().toISOString()` when the answer is given, in `views/study.vue`);
+there is no separate client-time field in `submitAnswerSchema`. The server keeps
+that raw value in `srs_review_logs.client_reviewed_at` for audit, and clamps it
+with `clampReviewedAt` (`shared/src/lib/srs/clock.ts`) against the moment it
+was received:
 
 - `reviewedAt > receivedAt + 5min` → clamp to `receivedAt`
-- `reviewedAt < receivedAt - 30d` → clamp to the backlog limit
+- `reviewedAt < receivedAt - 30d` → clamp to `receivedAt - 30d`
 
-Either clamp sets `clockAdjusted = true`. Nothing else moves a review: it is
-dated when the learner answered, never when it arrived. An answer older than
-the card's last review takes the slow path and is replayed into its place; it
-is **not** re-dated to after the newest (that clamp existed, and made card
-state depend on sync order). The fold orders by `(reviewed_at, id)`, so equal
-timestamps are still a total order. Every date stamped from an answer
-(`first_seen_at`, `last_correct_at`, `ghost_since`, a miss's `cleared_at`) is
-the answer's time too.
+Either clamp sets `clockAdjusted = true` on the log and in the response. Nothing
+else moves a review: it is dated when the learner answered, never when it
+arrived. An answer older than the card's last review takes the slow path and is
+replayed into its place; it is **not** re-dated to after the newest (that clamp
+existed, and made card state depend on sync order). The fold orders by
+`(reviewed_at, id)`, so equal timestamps are still a total order. Every date
+stamped from an answer (`first_seen_at`, `last_correct_at`, `ghost_since`, a
+miss's `cleared_at`) is the answer's time too.
+
+The answer, study queue, due list and sync responses carry `serverTime`. The client uses it
+only for display: the Due list (`views/due.vue`) measures how overdue a card is
+against the server's clock, so a skewed phone does not report everything as
+days late. It is never used to adjust a stamp.
 
 ## Timezones
 

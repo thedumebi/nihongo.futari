@@ -11,6 +11,7 @@ import type {
 
 import { REVIEW_KINDS, SPEAK_STEP_KINDS } from '@/constants/endpoints.js'
 
+import { mnemonicReviewSchema } from './mnemonics.js'
 import { readingLineViewSchema, readingSummarySchema } from './readings.js'
 import { furiganaSegmentSchema } from './sentences.js'
 import { speakSessionSummarySchema } from './speak.js'
@@ -166,7 +167,10 @@ export const reviewItemSchema = z.object({
   }).nullable(),
 
   /** A correction to readings already live: before, after, and why. */
-  correction: correctionProposalSchema.nullable()
+  correction: correctionProposalSchema.nullable(),
+
+  /** An invented memory aid: the text, its picture, and what it is for. Never etymology. */
+  mnemonic: mnemonicReviewSchema.nullable()
 }).openapi('ReviewItem')
 
 export type ReviewItem = z.infer<typeof reviewItemSchema>

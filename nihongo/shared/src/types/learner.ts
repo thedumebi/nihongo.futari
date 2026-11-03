@@ -18,7 +18,7 @@ export interface LearnerProfile {
  */
 export interface LearnerHeadline {
   xp: Pick<UserXp, 'totalXp' | 'level'> | null
-  streak: Pick<UserStreak, 'currentStreak' | 'longestStreak'> | null
+  streak: Pick<UserStreak, 'currentStreak' | 'longestStreak' | 'freezeCount'> | null
   /** Reviews on the study day the headline was read for. */
   reviewsToday: SrsDailyStat['reviewCount'] | null
   friendRequests: number

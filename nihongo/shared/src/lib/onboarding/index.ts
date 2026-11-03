@@ -66,7 +66,7 @@ export type GuideCode = 'kana' | 'words' | 'grammar' | 'speak' | 'review' | 'con
 
 const STEPS: Record<GuideCode, Omit<GuideStep, 'code'>> = {
   kana: { title: 'Learn the kana, a row at a time', why: 'Hiragana and katakana are the sounds everything else is written with.' },
-  words: { title: 'Learn your first 10 words', why: 'New words come a few a day; the app brings each back just before you would forget it.' },
+  words: { title: 'Learn your first 10 vocabulary words', why: 'New words come a few a day; the app brings each back just before you would forget it.' },
   grammar: { title: 'Take your first grammar lesson', why: 'A short lesson, then a quiz on what it taught.' },
   speak: { title: 'Do a Speak session', why: 'Say real sentences out loud, built up a piece at a time.' },
   review: { title: 'Come back tomorrow and review', why: 'Reviewing on the day it is due is what makes words stick.' },
@@ -141,7 +141,7 @@ export interface GuideCounts {
 
 /** Kana lessons that make "learn the kana" done: half the hiragana rows. */
 export const GUIDE_KANA_LESSONS = 5
-/** Words that make "learn your first 10 words" done. */
+/** Vocabulary words (not kana) that make "learn your first 10 vocabulary words" done. */
 export const GUIDE_WORDS = 10
 
 /**

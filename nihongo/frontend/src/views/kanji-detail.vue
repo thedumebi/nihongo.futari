@@ -7,6 +7,7 @@ import { useRoute } from 'vue-router'
 import { getKanji } from '@/api/dictionary'
 import StrokeDiagram from '@/components/ja/stroke-diagram.vue'
 import AppShell from '@/components/layout/app-shell.vue'
+import MnemonicPanel from '@/components/mnemonics/mnemonic-panel.vue'
 import { ROUTES } from '@/constants'
 
 /**
@@ -173,6 +174,9 @@ const ASPECT_LABEL: Record<string, string> = {
             </ul>
           </article>
         </section>
+
+        <!-- Invented memory aids: their own panel, never mixed into the history above. -->
+        <MnemonicPanel :kanji="kanji.character" />
 
         <section v-if="kanji.words.length" class="mt-8">
           <h2 class="text-xs uppercase tracking-wide text-[var(--color-muted)]">

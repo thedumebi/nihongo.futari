@@ -32,6 +32,16 @@ describe('annotate', () => {
     expect(render('安い')).toBe('安[やす]い')
   })
 
+  it('reads a lone kanji word by the longer word the text carries on in', () => {
+    // 分 alone is ふん, but 分け and 分からない are 分ける and 分かる.
+    const lexicon = buildLexicon([['分', 'ふん'], ['分ける', 'わける'], ['分かる', 'わかる']])
+    const read = (text: string) => annotate(text, lexicon).map(s => (s.r ? `${s.t}[${s.r}]` : s.t)).join('')
+    expect(read('分け')).toBe('分[わ]け')
+    expect(read('分からない')).toBe('分[わ]からない')
+    expect(read('五分')).toBe('五分[ふん]')
+    expect(read('分')).toBe('分[ふん]')
+  })
+
   it('reads an inflected form the dictionary does not list', () => {
     // 食べて is not an entry; 食 is known from 食べる.
     expect(render('食べて')).toBe('食[た]べて')

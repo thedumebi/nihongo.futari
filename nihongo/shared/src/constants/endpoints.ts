@@ -48,7 +48,9 @@ export const ROUTE_BASE_PATHS = {
   INVITES: '/invites',
   /** Admin: how much sentence and word audio is waiting to be recorded. */
   AUDIO: '/audio',
-  ATTRIBUTION: '/attribution'
+  ATTRIBUTION: '/attribution',
+  /** Invented memory aids. Never etymology: a separate table, route and component. */
+  MNEMONICS: '/mnemonics'
 } as const
 
 export const USER_ROLES = ['user', 'admin'] as const
@@ -131,7 +133,7 @@ export const CONTENT_STATUSES = ['draft', 'ai-drafted', 'in-review', 'published'
 export type ContentStatus = typeof CONTENT_STATUSES[number]
 
 /** What the admin review queue can hold — each kind shows different fields. */
-export const REVIEW_KINDS = ['grammar', 'etymology', 'reading', 'speak', 'particles', 'correction'] as const
+export const REVIEW_KINDS = ['grammar', 'etymology', 'reading', 'speak', 'particles', 'correction', 'mnemonic'] as const
 export type ReviewKind = typeof REVIEW_KINDS[number]
 
 /** The table each review kind's queue rows point at. */
@@ -141,8 +143,13 @@ export const REVIEW_KIND_TABLES: Record<ReviewKind, string> = {
   reading: 'readings',
   speak: 'speak_sessions',
   particles: 'particle_sets',
-  correction: 'sentences'
+  correction: 'sentences',
+  mnemonic: 'mnemonics'
 }
+
+/** How a mnemonic works: a little story, a keyword, a picture, or a sound it resembles. */
+export const MNEMONIC_KINDS = ['story', 'keyword', 'visual', 'sound-alike'] as const
+export type MnemonicKind = typeof MNEMONIC_KINDS[number]
 
 /**
  * A correction to something already live — a sentence's readings, a
@@ -489,6 +496,13 @@ export const REVIEW_QUEUE_ROUTES = {
   REMOVE_PARTICLE_QUESTION: '/particle-questions/:id'
 } as const
 
+export const MNEMONIC_ROUTES = {
+  /** Admin: a new mnemonic, straight into the review queue. */
+  CREATE: '/',
+  FOR_KANJI: '/kanji/:character',
+  FOR_WORD: '/words/:wordId'
+} as const
+
 export const AUDIO_ROUTES = {
   STATUS: '/status'
 } as const
@@ -738,6 +752,14 @@ export const API_ENDPOINTS = {
     TIMEZONE: `${ROUTE_BASE_PATHS.NOTIFICATIONS}${NOTIFICATION_ROUTES.TIMEZONE}`,
     DEVICES: `${ROUTE_BASE_PATHS.NOTIFICATIONS}${NOTIFICATION_ROUTES.DEVICES}`,
     DEVICE: (id: string) => `${ROUTE_BASE_PATHS.NOTIFICATIONS}${NOTIFICATION_ROUTES.DEVICE.replace(':id', id)}`
+  },
+
+  MNEMONICS: {
+    CREATE: ROUTE_BASE_PATHS.MNEMONICS,
+    FOR_KANJI: (character: string) =>
+      `${ROUTE_BASE_PATHS.MNEMONICS}${MNEMONIC_ROUTES.FOR_KANJI.replace(':character', encodeURIComponent(character))}`,
+    FOR_WORD: (wordId: string) =>
+      `${ROUTE_BASE_PATHS.MNEMONICS}${MNEMONIC_ROUTES.FOR_WORD.replace(':wordId', wordId)}`
   },
 
   REVIEW_QUEUE: {
