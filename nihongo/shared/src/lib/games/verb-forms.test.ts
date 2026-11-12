@@ -55,8 +55,17 @@ describe('verbFormDistractors', () => {
     expect(verbFormDistractors(ある, 'nai')).not.toContain('なら')
   })
 
+  it('treats a special class as its regular group for its trap', () => {
+    expect(verbFormDistractors(verb('下さる', 'くださる', 'honorific'), 'masu')).toContain('くださります')
+    expect(verbFormDistractors(verb('問う', 'とう', 'godan-u'), 'te')).toContain('とって')
+    expect(verbFormDistractors(verb('くれる', 'くれる', 'kureru'), 'imperative')).toContain('くれろ')
+    // 愛しない is rare, not wrong, so it is never offered as a mistake.
+    expect(verbFormDistractors(verb('愛する', 'あいする', 'suru-special'), 'nai')).not.toContain('あいしない')
+  })
+
   it('always has three for every verb type and every form it can take', () => {
-    for (const v of [書く, 帰る, 食べる, 来る, 行く, ある, verb('勉強する', 'べんきょうする', 'suru')]) {
+    const special = [verb('下さる', 'くださる', 'honorific'), verb('問う', 'とう', 'godan-u'), verb('くれる', 'くれる', 'kureru'), verb('愛する', 'あいする', 'suru-special'), verb('信ずる', 'しんずる', 'zuru')]
+    for (const v of [書く, 帰る, 食べる, 来る, 行く, ある, verb('勉強する', 'べんきょうする', 'suru'), ...special]) {
       for (const f of DRILL_FORMS) {
         const wrong = verbFormDistractors(v, f)
         if (wrong.length === 0)
@@ -78,6 +87,10 @@ describe('verbFormRule', () => {
   it('names the exceptions', () => {
     expect(verbFormRule(行く, 'ta')).toContain('行く is the one exception')
     expect(verbFormRule(ある, 'nai')).toContain('ある is irregular in the negative')
+    expect(verbFormRule(verb('下さる', 'くださる', 'honorific'), 'masu')).toBe('Honorific verb: る becomes い before ます, so くださいます, not 〜ります.')
+    expect(verbFormRule(verb('問う', 'とう', 'godan-u'), 'te')).toBe('とう keeps its う before て and た: とうて, not 〜って.')
+    expect(verbFormRule(verb('くれる', 'くれる', 'kureru'), 'imperative')).toBe('くれる\'s command is くれ, not くれろ.')
+    expect(verbFormRule(verb('信ずる', 'しんずる', 'zuru'), 'nai')).toBe('ずる verb: it goes as じる, so ずる becomes じない.')
   })
 })
 

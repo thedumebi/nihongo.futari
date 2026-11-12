@@ -41,8 +41,23 @@ describe('conjugationTables', () => {
     expect(table?.note).toBe('Used as a verb with する: 勉強する.')
   })
 
-  it('gives no table for a verb the engine would get wrong', () => {
-    expect(conjugationTables({ form: '下さる', reading: 'くださる', pos: [['v5aru']] })).toEqual([])
+  it('gives an honorific verb its own ます forms', () => {
+    const [table] = conjugationTables({ form: '下さる', reading: 'くださる', pos: [['v5aru']] })
+    expect(table?.grid[0]).toEqual({
+      tense: 'Present',
+      polite: { surface: '下さいます', reading: 'くださいます' },
+      plain: { surface: '下さる', reading: 'くださる' }
+    })
+  })
+
+  it('leaves out the forms a fused する verb does not share', () => {
+    const [table] = conjugationTables({ form: '愛する', reading: 'あいする', pos: [['vs-s']] })
+    expect(table?.grid[1]).toEqual({
+      tense: 'Negative',
+      polite: { surface: '愛しません', reading: 'あいしません' },
+      plain: { surface: '愛さない', reading: 'あいさない' }
+    })
+    expect(table?.others.map(o => o.surface)).toEqual(['愛して', '愛している', '愛したい', '愛しましょう', '愛すれば', '愛したら', '愛さないで'])
   })
 
   it('gives no table for a plain noun', () => {

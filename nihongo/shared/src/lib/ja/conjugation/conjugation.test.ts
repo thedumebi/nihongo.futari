@@ -175,18 +175,70 @@ describe('compound forms', () => {
   })
 })
 
-describe('conjugatesReliably', () => {
-  it('leaves out the classes conjugate would get wrong', () => {
-    expect(conjugatesReliably(['v5aru'])).toBe(false) // くださる: くださいます
-    expect(conjugatesReliably(['v5u-s'])).toBe(false) // 問う: 問うて
-    expect(conjugatesReliably(['v1-s'])).toBe(false) // くれる: くれ
-    expect(conjugatesReliably(['vs-s'])).toBe(false) // 愛する: 愛せる
-    expect(conjugatesReliably(['n'])).toBe(false)
+describe('the special classes', () => {
+  it('reads each JMdict code before its regular group', () => {
+    expect(classifyVerb(['v5aru', 'vi'])).toBe('honorific')
+    expect(classifyVerb(['v5u-s', 'vt'])).toBe('godan-u')
+    expect(classifyVerb(['v1-s', 'vt'])).toBe('kureru')
+    expect(classifyVerb(['vs-s', 'vt'])).toBe('suru-special')
+    expect(classifyVerb(['vz', 'vt'])).toBe('zuru')
   })
 
-  it('keeps the regular classes and the irregulars it handles', () => {
-    for (const pos of [['v5k'], ['v1'], ['vs-i'], ['vk'], ['v5r-i'], ['v5k-s']])
+  it('makes an honorific\'s ます forms and command on い, and the rest as godan', () => {
+    const forms = { 'masu': 'くださいます', 'masen': 'くださいません', 'mashita': 'くださいました', 'mashou': 'くださいましょう', 'imperative': 'ください', 'te': 'くださって', 'nai': 'くださらない', 'conditional-ba': 'くだされば' } as const
+    for (const [f, want] of Object.entries(forms))
+      expect(form('下さる', 'くださる', 'honorific', f as VerbForm), f).toBe(want)
+    expect(conjugate({ surface: '下さる', reading: 'くださる', verbClass: 'honorific' }, 'masu')?.surface).toBe('下さいます')
+    expect(form('いらっしゃる', 'いらっしゃる', 'honorific', 'masu')).toBe('いらっしゃいます')
+    expect(form('下さる', 'くださる', 'honorific', 'tai')).toBeUndefined()
+  })
+
+  it('keeps 問う\'s う before て and た, and conjugates the rest as godan う', () => {
+    const forms = { 'te': 'とうて', 'ta': 'とうた', 'conditional-tara': 'とうたら', 'teiru': 'とうている', 'masu': 'といます', 'nai': 'とわない', 'potential': 'とえる', 'passive': 'とわれる' } as const
+    for (const [f, want] of Object.entries(forms))
+      expect(form('問う', 'とう', 'godan-u', f as VerbForm), f).toBe(want)
+    expect(conjugate({ surface: '問う', reading: 'とう', verbClass: 'godan-u' }, 'te')?.surface).toBe('問うて')
+  })
+
+  it('gives くれる the command くれ, and no potential, passive or causative', () => {
+    expect(form('くれる', 'くれる', 'kureru', 'imperative')).toBe('くれ')
+    expect(form('くれる', 'くれる', 'kureru', 'te')).toBe('くれて')
+    expect(form('くれる', 'くれる', 'kureru', 'nai')).toBe('くれない')
+    for (const f of ['potential', 'passive', 'causative'] as const)
+      expect(form('くれる', 'くれる', 'kureru', f), f).toBeUndefined()
+  })
+
+  it('gives a fused する verb the forms its class shares, and 愛する its さ negative', () => {
+    expect(form('達する', 'たっする', 'suru-special', 'masu')).toBe('たっします')
+    expect(form('達する', 'たっする', 'suru-special', 'nai')).toBe('たっしない')
+    expect(form('達する', 'たっする', 'suru-special', 'conditional-ba')).toBe('たっすれば')
+    expect(form('愛する', 'あいする', 'suru-special', 'nai')).toBe('あいさない')
+    expect(form('愛する', 'あいする', 'suru-special', 'naide')).toBe('あいさないで')
+    expect(form('愛する', 'あいする', 'suru-special', 'nakatta')).toBe('あいさなかった')
+    expect(form('愛する', 'あいする', 'suru-special', 'te')).toBe('あいして')
+    expect(conjugate({ surface: '愛する', reading: 'あいする', verbClass: 'suru-special' }, 'mashita')?.surface).toBe('愛しました')
+    // 愛せる but 達せられる: no one answer, so none.
+    for (const f of ['potential', 'volitional', 'passive', 'causative', 'imperative'] as const)
+      expect(form('愛する', 'あいする', 'suru-special', f), f).toBeUndefined()
+  })
+
+  it('conjugates a ずる verb as its じる twin, keeping ずる before ば', () => {
+    const forms = { 'dictionary': 'しんずる', 'masu': 'しんじます', 'te': 'しんじて', 'nai': 'しんじない', 'potential': 'しんじられる', 'volitional': 'しんじよう', 'imperative': 'しんじろ', 'conditional-ba': 'しんずれば', 'conditional-tara': 'しんじたら' } as const
+    for (const [f, want] of Object.entries(forms))
+      expect(form('信ずる', 'しんずる', 'zuru', f as VerbForm), f).toBe(want)
+    expect(conjugate({ surface: '信ずる', reading: 'しんずる', verbClass: 'zuru' }, 'conditional-ba')?.surface).toBe('信ずれば')
+    expect(form('重んずる', 'おもんずる', 'zuru', 'nai')).toBe('おもんじない')
+  })
+})
+
+describe('conjugatesReliably', () => {
+  it('trusts every class it can classify, the special ones included', () => {
+    for (const pos of [['v5k'], ['v1'], ['vs-i'], ['vk'], ['v5r-i'], ['v5k-s'], ['v5aru'], ['v5u-s'], ['v1-s'], ['vs-s'], ['vz']])
       expect(conjugatesReliably(pos), pos[0]).toBe(true)
+  })
+
+  it('does not trust what is not a verb', () => {
+    expect(conjugatesReliably(['n'])).toBe(false)
   })
 })
 

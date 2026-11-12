@@ -13,7 +13,20 @@
  * applies one rule to each.
  */
 
-export const VERB_CLASSES = ['godan', 'ichidan', 'suru', 'kuru', 'aru'] as const
+/**
+ * The regular groups, the two irregulars, and the special classes JMdict marks
+ * with their own codes, each of which breaks one rule of its group:
+ *
+ * - `honorific` (v5aru: くださる, いらっしゃる) takes い, not り, before ます and
+ *   in the command: くださいます, ください.
+ * - `godan-u` (v5u-s: 問う) keeps its う before て and た: 問うて, 問うた.
+ * - `kureru` (v1-s: くれる) has the command くれ, not くれろ.
+ * - `suru-special` (vs-s: 愛する, 達する) is a する verb fused to one kanji,
+ *   and some of its forms differ word by word.
+ * - `zuru` (vz: 信ずる) goes as the ichidan 信じる except in the dictionary
+ *   form and before ば: 信じない, but 信ずれば.
+ */
+export const VERB_CLASSES = ['godan', 'ichidan', 'suru', 'kuru', 'aru', 'honorific', 'godan-u', 'kureru', 'suru-special', 'zuru'] as const
 export type VerbClass = typeof VERB_CLASSES[number]
 
 export const CONJUGATION_FORMS = [
@@ -63,14 +76,24 @@ export interface Conjugated {
  * confidently wrong output.
  */
 export function classifyVerb(pos: readonly string[]): VerbClass | null {
-  if (pos.some(p => p === 'vs' || p === 'vs-i' || p === 'vs-s'))
+  if (pos.includes('vs-s'))
+    return 'suru-special'
+  if (pos.includes('vz'))
+    return 'zuru'
+  if (pos.some(p => p === 'vs' || p === 'vs-i'))
     return 'suru'
   if (pos.includes('vk'))
     return 'kuru'
   if (pos.includes('v5r-i'))
     return 'aru'
+  if (pos.includes('v5aru'))
+    return 'honorific'
+  if (pos.includes('v5u-s'))
+    return 'godan-u'
   if (pos.includes('v5k-s'))
     return 'godan' // 行く: godan, with one te-form exception
+  if (pos.includes('v1-s'))
+    return 'kureru'
   if (pos.includes('v1') || pos.some(p => p.startsWith('v1-')))
     return 'ichidan'
   if (pos.some(p => /^v5[a-z]/.test(p)))
@@ -79,19 +102,13 @@ export function classifyVerb(pos: readonly string[]): VerbClass | null {
 }
 
 /**
- * Classes `conjugate` gets wrong, so nothing should ask a learner for them.
- *
- * v5aru (くださる, いらっしゃる) takes い in the ます form: くださいます, not
- * くださります. v5u-s (問う) takes うて: 問うて, not 問って. v1-s (くれる) has
- * the command くれ, not くれろ. vs-s (愛する) has the potential 愛せる, not
- * 愛できる. vz (信ずる) is not classified at all. Each one would come out as
- * the regular pattern, confidently wrong.
+ * A verb `conjugate` can be trusted with: every form it gives is right. A
+ * form with no one right answer for the class (愛する's potential is 愛せる,
+ * 達する's is 達せられる) it does not give at all, so a table leaves it out
+ * and a game never asks it.
  */
-export const IRREGULAR_VERB_POS: ReadonlySet<string> = new Set(['v5aru', 'v5u-s', 'v1-s', 'vs-s', 'vz'])
-
-/** A verb `conjugate` handles correctly in every form. */
 export function conjugatesReliably(pos: readonly string[]): boolean {
-  return classifyVerb(pos) !== null && !pos.some(p => IRREGULAR_VERB_POS.has(p))
+  return classifyVerb(pos) !== null
 }
 
 /** い-adjectives, いい/良い (`adj-ix`, whose stem is よ) among them. */
@@ -133,6 +150,9 @@ function teToTa(te: string): string {
   return te.replace(/て$/, 'た').replace(/で$/, 'だ')
 }
 
+/** A form as the helpers below make it, before `conjugate` names it. */
+type FormResult = Pick<Conjugated, 'surface' | 'reading'>
+
 function tail(text: string): string {
   return text.slice(-1)
 }
@@ -142,11 +162,11 @@ function trunk(text: string): string {
 }
 
 /** Apply the same ending swap to both the written form and its reading. */
-function swap(surface: string, reading: string, ending: string): { surface: string, reading: string } {
+function swap(surface: string, reading: string, ending: string): FormResult {
   return { surface: trunk(surface) + ending, reading: trunk(reading) + ending }
 }
 
-function godanForm(surface: string, reading: string, form: ConjugationForm, dictionary: string): { surface: string, reading: string } | null {
+function godanForm(surface: string, reading: string, form: ConjugationForm, dictionary: string): FormResult | null {
   const last = tail(reading)
   const row = GODAN_ROWS[last]
   if (!row)
@@ -176,7 +196,66 @@ function godanForm(surface: string, reading: string, form: ConjugationForm, dict
   }
 }
 
-function ichidanForm(surface: string, reading: string, form: ConjugationForm): { surface: string, reading: string } | null {
+/** The ます forms, ましょう among them, which an honorific verb makes on い. */
+export const MASU_FAMILY: ReadonlySet<VerbForm> = new Set(['masu', 'masen', 'mashita', 'masen-deshita', 'mashou'])
+
+/** A godan ます form with the り after the stem made い. */
+function riToI(form: string, dictionary: string): string {
+  const stem = trunk(dictionary)
+  return `${stem}い${form.slice(stem.length + 1)}`
+}
+
+/** くださる, いらっしゃる: godan, but い before ます and in the command. */
+function honorificForm(surface: string, reading: string, form: ConjugationForm): FormResult | null {
+  if (tail(reading) !== 'る')
+    return null
+  if (form === 'imperative')
+    return swap(surface, reading, 'い')
+  if (MASU_FAMILY.has(form)) {
+    // The godan form with its り made い: くださります → くださいます.
+    const regular = godanForm(surface, reading, form, reading)
+    return regular && { surface: riToI(regular.surface, surface), reading: riToI(regular.reading, reading) }
+  }
+  return godanForm(surface, reading, form, reading)
+}
+
+/** 問う, 請う: godan, but the う stays before て and た. */
+function godanUForm(surface: string, reading: string, form: ConjugationForm): FormResult | null {
+  if (tail(reading) !== 'う')
+    return null
+  if (form === 'te' || form === 'ta' || form === 'conditional-tara') {
+    const ending = { 'te': 'うて', 'ta': 'うた', 'conditional-tara': 'うたら' }[form]
+    return swap(surface, reading, ending)
+  }
+  return godanForm(surface, reading, form, reading)
+}
+
+/**
+ * くれる: ichidan, with the command くれ. Its potential, passive and causative
+ * are not said, so none is given.
+ */
+function kureruForm(surface: string, reading: string, form: ConjugationForm): FormResult | null {
+  if (form === 'imperative')
+    return tail(reading) === 'る' ? swap(surface, reading, '') : null
+  if (form === 'potential' || form === 'passive' || form === 'causative')
+    return null
+  return ichidanForm(surface, reading, form)
+}
+
+/** 信ずる: the ichidan 信じる, but ずる in the dictionary form and ずれば before ば. */
+function zuruForm(surface: string, reading: string, form: ConjugationForm): FormResult | null {
+  if (!reading.endsWith('ずる') || !surface.endsWith('ずる'))
+    return null
+  if (form === 'dictionary')
+    return { surface, reading }
+  if (form === 'conditional-ba')
+    return swap(surface, reading, 'れば')
+  // ずる → じる is one kana: る stays, ず becomes じ.
+  const jiru = swap(trunk(surface), trunk(reading), 'じ')
+  return ichidanForm(`${jiru.surface}る`, `${jiru.reading}る`, form)
+}
+
+function ichidanForm(surface: string, reading: string, form: ConjugationForm): FormResult | null {
   if (tail(reading) !== 'る')
     return null
   switch (form) {
@@ -251,7 +330,7 @@ const KURU: Record<ConjugationForm, [string, string]> = {
  * not both end in it get the bare forms, as before: a prefix kept on one side
  * and not the other would misalign the furigana.
  */
-function kuruForm(surface: string, reading: string, form: ConjugationForm): { surface: string, reading: string } {
+function kuruForm(surface: string, reading: string, form: ConjugationForm): FormResult {
   const [s, r] = KURU[form]
   const ending = 'くる'.length
   if (!reading.endsWith('くる'))
@@ -264,12 +343,42 @@ function kuruForm(surface: string, reading: string, form: ConjugationForm): { su
 }
 
 /** ある is godan except in the negative, where it is ない, not あらない. */
-function aruForm(surface: string, reading: string, form: ConjugationForm): { surface: string, reading: string } | null {
+function aruForm(surface: string, reading: string, form: ConjugationForm): FormResult | null {
   if (form === 'nai')
     return { surface: 'ない', reading: 'ない' }
   if (form === 'nakatta')
     return { surface: 'なかった', reading: 'なかった' }
   return godanForm(surface, reading, form, reading)
+}
+
+/**
+ * The する verbs fused to one kanji whose negative is made on さ, as their
+ * godan twin (愛す) makes it: 愛さない, not 愛しない. The rest (達する, 関する)
+ * take しない like any する verb.
+ */
+const SA_NEGATIVE: ReadonlySet<string> = new Set(['あいする'])
+
+/** The forms that differ from word to word among the fused する verbs. */
+const SURU_SPECIAL_UNSHARED: ReadonlySet<ConjugationForm> = new Set(['potential', 'volitional', 'passive', 'causative', 'imperative'])
+
+/**
+ * 愛する, 達する, 関する: する's forms where every word of the class agrees.
+ * The potential, volitional, passive, causative and command differ from word
+ * to word (愛せる but 達せられる, 愛せ but 達しろ), so none is given.
+ */
+function suruSpecialForm(surface: string, reading: string, form: ConjugationForm): FormResult | null {
+  if (!surface.endsWith('する') || !reading.endsWith('する'))
+    return null
+  if (SURU_SPECIAL_UNSHARED.has(form))
+    return null
+  // する is two kana: the stem is what comes before both.
+  const stem = { surface: trunk(trunk(surface)), reading: trunk(trunk(reading)) }
+  if ((form === 'nai' || form === 'nakatta') && SA_NEGATIVE.has(reading)) {
+    const ending = form === 'nai' ? 'さない' : 'さなかった'
+    return { surface: stem.surface + ending, reading: stem.reading + ending }
+  }
+  const [, r] = SURU[form]
+  return { surface: stem.surface + r, reading: stem.reading + r }
 }
 
 export interface ConjugateInput {
@@ -295,6 +404,10 @@ function compound(input: ConjugateInput, form: CompoundForm): Conjugated | null 
   // for them would teach a form the learner should not use.
   if (input.verbClass === 'aru' && (form === 'tai' || form === 'mashou'))
     return null
+  // An honorific makes its ます forms and its command on い, so たい would come
+  // out as くださいたい, which nobody says.
+  if (input.verbClass === 'honorific' && form === 'tai')
+    return null
   const { base, drop, add } = COMPOUND_BASE[form]
   const b = conjugate(input, base)
   if (!b || !b.surface.endsWith(drop) || !b.reading.endsWith(drop))
@@ -310,7 +423,7 @@ export function conjugate(input: ConjugateInput, form: VerbForm): Conjugated | n
   if (!surface || !reading)
     return null
 
-  let result: { surface: string, reading: string } | null = null
+  let result: FormResult | null
 
   switch (verbClass) {
     case 'godan':
@@ -333,6 +446,26 @@ export function conjugate(input: ConjugateInput, form: VerbForm): Conjugated | n
     case 'kuru':
       result = kuruForm(surface, reading, form)
       break
+    case 'honorific':
+      result = honorificForm(surface, reading, form)
+      break
+    case 'godan-u':
+      result = godanUForm(surface, reading, form)
+      break
+    case 'kureru':
+      result = kureruForm(surface, reading, form)
+      break
+    case 'suru-special':
+      result = suruSpecialForm(surface, reading, form)
+      break
+    case 'zuru':
+      result = zuruForm(surface, reading, form)
+      break
+    default: {
+      // A class added without a case here is a compile error, not a silent null.
+      const unhandled: never = verbClass
+      return unhandled
+    }
   }
 
   return result ? { form, ...result } : null

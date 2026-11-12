@@ -15,8 +15,9 @@ import { classifyVerb, conjugate, conjugatesReliably } from './index.js'
  * second still gets its table, and returns one table per thing the word can
  * be: 心配 is a noun, a な-adjective and, with する, a verb.
  *
- * A verb `conjugate` would get wrong (くださる, 問う) gets no table at all.
- * A confidently wrong form is worse than none.
+ * A form `conjugate` will not give (愛する's potential, which differs from
+ * word to word in its class) is left out of the table. A confidently wrong
+ * form is worse than none.
  */
 
 /** Polite and plain, for each tense. */

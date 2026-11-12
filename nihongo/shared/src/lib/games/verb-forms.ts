@@ -1,8 +1,8 @@
 import type { DrillForm, VerbFormsGameVerb, VerbFormsRound } from '@/types/games.js'
 
-import type { ConjugateInput, VerbForm } from '../ja/conjugation/index.js'
+import type { ConjugateInput, VerbClass, VerbForm } from '../ja/conjugation/index.js'
 
-import { conjugate, DRILL_FORMS, GODAN_ROWS } from '../ja/conjugation/index.js'
+import { conjugate, DRILL_FORMS, GODAN_ROWS, MASU_FAMILY } from '../ja/conjugation/index.js'
 import { spellingsOf } from '../ja/spelling/index.js'
 
 /**
@@ -17,6 +17,9 @@ import { spellingsOf } from '../ja/spelling/index.js'
  * Everything is worked out from the kana reading, which is also what the
  * buttons show: the kanji would be the same on every button.
  */
+
+/** Classes that change the last kana as a godan verb does, for the sound and vowel mistakes. */
+const GODAN_LIKE: ReadonlySet<VerbClass> = new Set(['godan', 'aru', 'honorific', 'godan-u'])
 
 /** Forms whose ending starts with the te-form's sound change. */
 const TE_FAMILY: ReadonlySet<VerbForm> = new Set(['te', 'ta', 'conditional-tara', 'teiru'])
@@ -50,23 +53,34 @@ function kanaOf(verb: Pick<VerbFormsGameVerb, 'reading' | 'verbClass'>): Conjuga
   return { surface: verb.reading, reading: verb.reading, verbClass: verb.verbClass }
 }
 
+/**
+ * The groups each class is mistaken for. A special class's likeliest mistake
+ * is its regular group: くださります, 問って, くれろ. Not a fused する verb as
+ * plain する, though: 愛しない is rarer than 愛さない but not wrong.
+ */
+const WRONG_GROUPS = {
+  'godan': ['ichidan'],
+  'ichidan': ['godan'],
+  'kuru': ['ichidan', 'godan'],
+  'suru': ['godan'],
+  'aru': ['godan'],
+  'honorific': ['godan'],
+  'godan-u': ['godan'],
+  'kureru': ['ichidan', 'godan'],
+  'suru-special': ['godan'],
+  'zuru': ['godan']
+} as const satisfies Record<VerbClass, readonly VerbClass[]>
+
 /** The same form, made as if the verb were in another group. */
 function wrongGroup(input: ConjugateInput, form: DrillForm): string[] {
-  const others: Array<ConjugateInput['verbClass']> = {
-    godan: ['ichidan'],
-    ichidan: ['godan'],
-    kuru: ['ichidan', 'godan'],
-    suru: ['godan'],
-    aru: ['godan']
-  }[input.verbClass] as Array<ConjugateInput['verbClass']>
-  return others
+  return WRONG_GROUPS[input.verbClass]
     .map(verbClass => conjugate({ ...input, verbClass }, form)?.reading)
     .filter((r): r is string => Boolean(r))
 }
 
 /** A godan verb with another of the sound changes before て or た. */
 function wrongSound(input: ConjugateInput, form: DrillForm, correct: string): string[] {
-  if (!TE_FAMILY.has(form) || (input.verbClass !== 'godan' && input.verbClass !== 'aru'))
+  if (!TE_FAMILY.has(form) || !GODAN_LIKE.has(input.verbClass))
     return []
   const stem = input.reading.slice(0, -1)
   if (!correct.startsWith(stem))
@@ -78,7 +92,7 @@ function wrongSound(input: ConjugateInput, form: DrillForm, correct: string): st
 
 /** A godan verb with the wrong vowel where the ending joins on: 書かます, 書きない. */
 function wrongRow(input: ConjugateInput, form: DrillForm, correct: string): string[] {
-  if (TE_FAMILY.has(form) || (input.verbClass !== 'godan' && input.verbClass !== 'aru'))
+  if (TE_FAMILY.has(form) || !GODAN_LIKE.has(input.verbClass))
     return []
   const last = input.reading.slice(-1)
   const row = GODAN_ROWS[last]
@@ -139,10 +153,12 @@ export function verbFormRule(verb: Pick<VerbFormsGameVerb, 'reading' | 'verbClas
   if (!answer)
     return ''
   const d = input.reading
+  const ichidan = `Ichidan verb: drop る, add ${answer.slice(d.length - 1)}.`
   switch (input.verbClass) {
     case 'ichidan':
-      return `Ichidan verb: drop る, add ${answer.slice(d.length - 1)}.`
+      return ichidan
     case 'suru':
+    case 'suru-special':
       return `する verb: する becomes ${answer.slice(d.length - 2)}.`
     case 'kuru':
       return `くる is irregular: くる becomes ${answer}.`
@@ -150,6 +166,24 @@ export function verbFormRule(verb: Pick<VerbFormsGameVerb, 'reading' | 'verbClas
       if (form === 'nai' || form === 'nakatta' || form === 'naide')
         return `ある is irregular in the negative: ある becomes ${answer}, never あら〜.`
       break
+    case 'honorific':
+      if (MASU_FAMILY.has(form))
+        return `Honorific verb: る becomes い before ます, so ${answer}, not 〜ります.`
+      if (form === 'imperative')
+        return `Honorific verb: the command ends in い: ${answer}.`
+      break
+    case 'godan-u':
+      if (TE_FAMILY.has(form))
+        return `${d} keeps its う before て and た: ${answer}, not 〜って.`
+      break
+    case 'kureru':
+      if (form === 'imperative')
+        return `くれる's command is ${answer}, not くれろ.`
+      return ichidan
+    case 'zuru':
+      if (form === 'conditional-ba')
+        return `ずる verb: ずる becomes ${answer.slice(d.length - 2)}.`
+      return `ずる verb: it goes as じる, so ずる becomes ${answer.slice(d.length - 2)}.`
     case 'godan':
       break
   }

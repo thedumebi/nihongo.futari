@@ -142,7 +142,12 @@ export const DRILL_FORMS = Object.keys(VERB_FORM_INFO) as DrillForm[]
 
 /** What the bare dictionary form does not show about how a verb changes. */
 export const VERB_CLASS_NOTE: Partial<Record<VerbClass, string>> = {
-  suru: 'This is a suru-verb: it becomes a verb by taking する, and する is the part that changes.',
-  kuru: 'くる is irregular: it does not follow either regular pattern.',
-  aru: 'ある is irregular in the negative.'
+  'suru': 'This is a suru-verb: it becomes a verb by taking する, and する is the part that changes.',
+  'kuru': 'くる is irregular: it does not follow either regular pattern.',
+  'aru': 'ある is irregular in the negative.',
+  'honorific': 'An honorific verb: like a godan る verb, except that る becomes い before ます and in the command.',
+  'godan-u': 'Like a godan う verb, except that the う stays before て and た.',
+  'kureru': 'Like an ichidan verb, except that the command is くれ.',
+  'suru-special': 'A する verb fused to one kanji. Some of its forms differ from word to word, so only the ones every such verb shares are shown.',
+  'zuru': 'A ずる verb: it goes as the じる verb it became in modern Japanese, keeping ずる in the dictionary form and before ば.'
 }
