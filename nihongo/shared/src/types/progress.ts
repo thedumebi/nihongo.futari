@@ -3,6 +3,8 @@ import { z } from '@hono/zod-openapi'
 import type { ActivityKind } from '@/constants/endpoints.js'
 import type { StreakOptions } from '@/lib/progress/streak.js'
 
+import { ACTIVITY_KINDS } from '@/constants/endpoints.js'
+
 import { SRS_RATINGS } from './srs.js'
 
 /**
@@ -147,6 +149,62 @@ export const progressSummarySchema = z.object({
 }).openapi('ProgressSummary')
 
 export type ProgressSummary = z.infer<typeof progressSummarySchema>
+
+/** A study day, YYYY-MM-DD. */
+const isoDateSchema = z.iso.date()
+
+/** A calendar month, YYYY-MM, this century or the last: a date Postgres and luxon both take. */
+const isoMonthSchema = z.string().regex(/^(19|20)\d{2}-(0[1-9]|1[0-2])$/)
+
+/** Which month of the streak calendar to read. */
+export const streakCalendarQuerySchema = z.object({
+  languageCode: z.string().min(2).max(16).default('ja'),
+  /** The learner's current month when left out. */
+  month: isoMonthSchema.optional()
+})
+
+export type StreakCalendarQuery = z.infer<typeof streakCalendarQuerySchema>
+
+/**
+ * One day of the streak calendar that has something to show: the learner
+ * studied, a freeze covered it, or a freeze was earned on it. A day with none
+ * of those is left out, and the calendar draws it bare.
+ */
+export const streakDaySchema = z.object({
+  /** The learner's own study day. */
+  date: isoDateSchema,
+  /** Whether it counts as studied: a review, or any learning activity. */
+  studied: z.boolean(),
+  reviews: z.number().int(),
+  /** Cards met for the first time that day. */
+  newCards: z.number().int(),
+  /** Time spent reviewing, in milliseconds. */
+  reviewMs: z.number().int(),
+  /** Everything besides reviews, by kind, with how many of each. */
+  activities: z.array(z.object({ kind: z.enum(ACTIVITY_KINDS), count: z.number().int() })),
+  /** A freeze kept the streak alive over this day. */
+  freezeUsed: z.boolean(),
+  /** A week of study earned a freeze on this day. */
+  freezeEarned: z.boolean()
+}).openapi('StreakDay')
+
+export type StreakDay = z.infer<typeof streakDaySchema>
+
+export const streakCalendarSchema = z.object({
+  /** The month the days are from. */
+  month: isoMonthSchema,
+  /** The learner's study day right now, so the page can mark it and stop at it. */
+  today: isoDateSchema,
+  /** The first day the learner ever studied, or null: how far back is worth paging. */
+  firstDay: isoDateSchema.nullable(),
+  currentStreak: z.number().int(),
+  longestStreak: z.number().int(),
+  /** Freezes held now. */
+  freezes: z.number().int(),
+  days: z.array(streakDaySchema)
+}).openapi('StreakCalendar')
+
+export type StreakCalendar = z.infer<typeof streakCalendarSchema>
 
 /**
  * Kanji the reader has learned.

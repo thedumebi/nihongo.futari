@@ -160,6 +160,12 @@ const router = createRouter({
       meta: { requiresAuth: true }
     },
     {
+      path: ROUTES.STREAK,
+      name: 'streak',
+      component: () => import('@/views/streak.vue'),
+      meta: { requiresAuth: true }
+    },
+    {
       path: ROUTES.ACHIEVEMENTS,
       name: 'achievements',
       component: () => import('@/views/achievements.vue'),

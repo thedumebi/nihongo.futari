@@ -110,15 +110,17 @@ onMounted(async () => {
         <!-- The streak, said plainly. -->
         <p class="mt-2 flex items-center gap-1.5 text-[var(--color-muted)]">
           <Flame class="h-4 w-4" :class="today.streak.studiedToday ? 'text-[var(--color-accent)]' : ''" />
-          <template v-if="today.streak.current === 0">
-            Start a streak today.
-          </template>
-          <template v-else-if="today.streak.studiedToday">
-            {{ today.streak.current }}-day streak. Today counts.
-          </template>
-          <template v-else>
-            {{ today.streak.current }}-day streak. Study today to keep it.
-          </template>
+          <router-link :to="ROUTES.STREAK" class="underline-offset-4 hover:underline">
+            <template v-if="today.streak.current === 0">
+              Start a streak today.
+            </template>
+            <template v-else-if="today.streak.studiedToday">
+              {{ today.streak.current }}-day streak. Today counts.
+            </template>
+            <template v-else>
+              {{ today.streak.current }}-day streak. Study today to keep it.
+            </template>
+          </router-link>
           <Tooltip v-if="freezes > 0" :content="freezeTip" position="bottom">
             <span class="text-sm underline decoration-dotted underline-offset-4">
               {{ freezes === 1 ? '1 freeze saved' : `${freezes} freezes saved` }}

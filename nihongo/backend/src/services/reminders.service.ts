@@ -9,8 +9,7 @@ import {
   srsCards,
   srsDailyStats,
   users,
-  userSettings,
-  userStreaks
+  userSettings
 } from '@nihongo/shared/db/schema'
 import SendMail from '@nihongo/shared/emails'
 import env from '@nihongo/shared/env'
@@ -20,7 +19,7 @@ import { DateTime } from 'luxon'
 
 import { pushConfigured, sendPush } from '@/lib/push.js'
 
-import { studiedToday } from './progress.service.js'
+import { currentStreakOf, freshStreaks, studiedToday } from './progress.service.js'
 import { countDue, wordsFirstMet } from './srs.service.js'
 
 /**
@@ -51,7 +50,6 @@ interface Candidate {
   emailEnabled: boolean
   pushEnabled: boolean
   languageId: string | null
-  streak: number
 }
 
 async function findCandidates(): Promise<Candidate[]> {
@@ -85,10 +83,7 @@ async function findCandidates(): Promise<Candidate[]> {
           where ul.user_id = ${users.id}
           order by ul.is_primary desc, ul.language_id limit 1),
         (select l.id from languages l order by l.id limit 1)
-      )`,
-      streak: sql<number>`coalesce((
-        select max(s.current_streak) from ${userStreaks} s where s.user_id = ${users.id}
-      ), 0)`.mapWith(Number)
+      )`
     })
     .from(users)
     .innerJoin(userSettings, eq(userSettings.userId, users.id))
@@ -243,6 +238,10 @@ export async function runReminders(now = new Date()): Promise<ReminderRunResult>
 
     const name = c.name || c.email
     let error: string | null = null
+    // Brought up to today: the stored streak is as of the last study day, so
+    // the reminder said "29-day streak" every day to someone who had stopped.
+    // Read only when something will quote it.
+    const streak = c.emailEnabled || (c.pushEnabled && pushConfigured()) ? await currentStreakOf(c.userId) : 0
 
     if (c.emailEnabled) {
       try {
@@ -250,7 +249,7 @@ export async function runReminders(now = new Date()): Promise<ReminderRunResult>
           email: c.email,
           name,
           dueCount: due.items,
-          streak: c.streak,
+          streak,
           url: `${env.FRONTEND_URL.replace(/\/$/, '')}${reminderPath(due.items)}`
         })
         emailed++
@@ -264,7 +263,7 @@ export async function runReminders(now = new Date()): Promise<ReminderRunResult>
 
     if (c.pushEnabled && pushConfigured()) {
       const outcome = await pushToUser(c.userId, {
-        title: c.streak > 1 ? `${c.streak}-day streak` : 'Time to study',
+        title: streak > 1 ? `${streak}-day streak` : 'Time to study',
         // A cleared queue still gets a nudge, so this cannot assume there is
         // anything due — "0 cards are waiting" is worse than staying silent.
         body: due.items > 0
@@ -387,11 +386,7 @@ export async function runWeeklySummaries(now = new Date()): Promise<ReminderRunR
       .orderBy(desc(srsDailyStats.reviewCount))
       .limit(1)
 
-    const [streakRow] = await db
-      .select({ current: userStreaks.currentStreak })
-      .from(userStreaks)
-      .where(eq(userStreaks.userId, c.userId))
-      .limit(1)
+    const streak = await currentStreakOf(c.userId)
 
     const reviews = Number(totals?.reviews ?? 0)
     try {
@@ -403,7 +398,7 @@ export async function runWeeklySummaries(now = new Date()): Promise<ReminderRunR
         newItems,
         // Guard the divide: a week with no reviews is 0%, not NaN%.
         accuracy: reviews === 0 ? 0 : Math.round((Number(totals?.correct ?? 0) / reviews) * 100),
-        streak: streakRow?.current ?? 0,
+        streak,
         bestDay: best && best.reviewCount > 0
           ? `${DateTime.fromISO(String(best.localDate)).toFormat('cccc')} (${best.reviewCount})`
           : null,
@@ -560,15 +555,16 @@ export async function runNudges(now = new Date()): Promise<ReminderRunResult> {
 
     if (r.streakRisk && firstQuarter && local.hour === STREAK_RISK_HOUR) {
       result.considered++
-      const [streak] = await db
-        .select({ languageId: userStreaks.languageId, current: userStreaks.currentStreak, freezes: userStreaks.freezeCount })
-        .from(userStreaks)
-        .where(eq(userStreaks.userId, r.userId))
-        .orderBy(desc(userStreaks.currentStreak))
-        .limit(1)
-      if (streak && streak.current >= STREAK_RISK_MIN && streak.freezes === 0 && !(await studiedToday(r.userId, streak.languageId, now))) {
+      // The longest streak, brought up to today: one that ended while the
+      // learner was away is not at risk, it is gone.
+      const streaks = await freshStreaks(r.userId).catch((err: unknown) => {
+        pino.warn({ err, userId: r.userId }, 'Reading the streak failed; no streak nudge')
+        return []
+      })
+      const [streak] = streaks.sort((a, b) => b.currentStreak - a.currentStreak)
+      if (streak && streak.currentStreak >= STREAK_RISK_MIN && streak.freezeCount === 0 && !(await studiedToday(r.userId, streak.languageId, now))) {
         await send(r, 'streak-risk', `${r.userId}:streak-risk:${localDate}`, {
-          title: `Keep your ${streak.current}-day streak`,
+          title: `Keep your ${streak.currentStreak}-day streak`,
           body: 'nothing is studied yet today. A few reviews or one Speak session keeps it going.',
           cta: 'Open today',
           url: ROUTE_BASE_PATHS.TODAY

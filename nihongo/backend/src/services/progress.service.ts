@@ -1,7 +1,9 @@
 import type { ActivityKind } from '@nihongo/shared/constants'
 import type { QuestProgress, ReviewGoalCard } from '@nihongo/shared/lib'
-import type { AggregateEvent, KnownKanji, LearnerHeadline, LearnerProfile, ProgressSummary, Readiness, ReviewEvent, Streak, UserContext } from '@nihongo/shared/types'
+import type { AggregateEvent, KnownKanji, LearnerHeadline, LearnerProfile, ProgressSummary, Readiness, ReviewEvent, Streak, StreakCalendar, StreakDay, UserContext, UserStreak } from '@nihongo/shared/types'
 
+import { pino } from '@nihongo/shared'
+import { ACTIVITY_KINDS } from '@nihongo/shared/constants'
 import db from '@nihongo/shared/db'
 import {
   friendships,
@@ -21,6 +23,7 @@ import {
 } from '@nihongo/shared/db/schema'
 import { aggregateReviews, cardTotals, computeStreak, DEFAULT_DAY_BOUNDARY_HOUR, QUEST_XP, questProgress, QUESTS_FROM, questsFor, replay, reviewGoal, studyDateFor, studyDayRange, xpToLevel } from '@nihongo/shared/lib'
 import { and, eq, getTableColumns, gte, inArray, isNull, lt, sql } from 'drizzle-orm'
+import { DateTime } from 'luxon'
 
 import { inRequestScope, perRequest } from '@/lib/request-scope.js'
 
@@ -398,24 +401,35 @@ async function studyDays(userId: string, languageId: string): Promise<string[]> 
   return rows.rows.map(r => r.local_date)
 }
 
+/** A streak folded from the study days, with the days and the granted freezes it was folded from. */
+interface StreakFold { streak: Streak, studyDates: string[], freezesAvailable: number }
+
+/**
+ * The streak as of `today`, folded from every study day: what is stored, and
+ * what the calendar draws. Granted freezes are read in; earned ones are the
+ * fold's own output.
+ */
+async function foldStreak(userId: string, languageId: string, today: string): Promise<StreakFold> {
+  const [days, [granted]] = await Promise.all([
+    studyDays(userId, languageId),
+    db
+      .select({ available: sql<number>`count(*)`.mapWith(Number) })
+      .from(streakFreezes)
+      .where(and(eq(streakFreezes.userId, userId), eq(streakFreezes.reason, 'admin'), isNull(streakFreezes.usedOnDate)))
+  ])
+  const freezesAvailable = granted?.available ?? 0
+  return { streak: computeStreak(days, { today, freezesAvailable }), studyDates: days, freezesAvailable }
+}
+
 /** Rebuild the streak from the full set of study days. */
 async function persistStreak(
   userId: string,
   languageId: string,
   timezone: string,
   dayBoundaryHour: number
-): Promise<{ streak: Streak, studyDates: string[], freezesAvailable: number }> {
-  const days = await studyDays(userId, languageId)
-
-  // Granted freezes only — earned ones are the fold's own output, below.
-  const [granted] = await db
-    .select({ available: sql<number>`count(*)`.mapWith(Number) })
-    .from(streakFreezes)
-    .where(and(eq(streakFreezes.userId, userId), eq(streakFreezes.reason, 'admin'), isNull(streakFreezes.usedOnDate)))
-
+): Promise<StreakFold> {
   const today = studyDateFor(new Date(), timezone, dayBoundaryHour)
-  const freezesAvailable = granted?.available ?? 0
-  const streak = computeStreak(days, { today, freezesAvailable })
+  const { streak, studyDates: days, freezesAvailable } = await foldStreak(userId, languageId, today)
 
   // Earned freezes are rebuilt wholesale from the fold — which ones exist, and
   // which day each covered — so a replay that fills a past day can hand one
@@ -431,7 +445,13 @@ async function persistStreak(
         reason: 'earned',
         earnedOn: f.earnedOn,
         usedOnDate: f.usedOn
-      })))
+      }))).onConflictDoUpdate({
+        // Two rebuilds at once (Today and the summary, both refreshing a
+        // stale streak) each delete, then each insert the same fold: the
+        // second agrees with the first rather than failing on the unique day.
+        target: [streakFreezes.userId, streakFreezes.languageId, streakFreezes.reason, streakFreezes.earnedOn],
+        set: { usedOnDate: sql`excluded.used_on_date`, updatedAt: new Date() }
+      })
     }
   })
 
@@ -444,7 +464,10 @@ async function persistStreak(
       longestStreak: streak.longestStreak,
       lastActiveDate: streak.lastActiveDate,
       timezoneAtLastActive: timezone,
-      freezeCount: streak.freezesRemaining
+      freezeCount: streak.freezesRemaining,
+      // Set here, not by the column's now(): the column has no zone, so a
+      // database outside UTC would write a time `freshStreaks` misreads.
+      updatedAt: new Date()
     })
     .onConflictDoUpdate({
       target: [userStreaks.userId, userStreaks.languageId],
@@ -460,6 +483,144 @@ async function persistStreak(
     })
 
   return { streak, studyDates: days, freezesAvailable }
+}
+
+/**
+ * The learner's stored streaks, each brought up to their study day today.
+ *
+ * `user_streaks` is rebuilt when the learner does something, so a learner who
+ * stops kept the streak of their last study day for as long as they stayed
+ * away: Today, the reminders and the weekly email all said "29-day streak"
+ * days after it had ended. A row last rebuilt on an earlier study day is
+ * rebuilt here before it is read, which is the same fold over the same days,
+ * only with a later today: at most once a day per language, since the
+ * rebuild marks the row as of today.
+ */
+export async function freshStreaks(userId: string, languageId?: string): Promise<Array<Pick<UserStreak, 'languageId' | 'currentStreak' | 'longestStreak' | 'freezeCount'>>> {
+  return perRequest(`streaks:${userId}:${languageId ?? '*'}`, async () => {
+    const scope = languageId ? and(eq(userStreaks.userId, userId), eq(userStreaks.languageId, languageId)) : eq(userStreaks.userId, userId)
+    const read = () => db
+      .select({ languageId: userStreaks.languageId, currentStreak: userStreaks.currentStreak, longestStreak: userStreaks.longestStreak, freezeCount: userStreaks.freezeCount, updatedAt: userStreaks.updatedAt })
+      .from(userStreaks)
+      .where(scope)
+    const rows = await read()
+    if (rows.length === 0)
+      return []
+    const { timezone, dayBoundaryHour } = await loadUserContext(userId)
+    const today = studyDateFor(new Date(), timezone, dayBoundaryHour)
+    const stale = rows.filter(r => studyDateFor(r.updatedAt, timezone, dayBoundaryHour) !== today)
+    if (stale.length === 0)
+      return rows.map(({ updatedAt: _, ...r }) => r)
+    for (const r of stale) {
+      // A rebuild that fails leaves the stored row as it was: Today and the
+      // reminders still answer, with yesterday's number, rather than not at all.
+      try {
+        await persistStreak(userId, r.languageId, timezone, dayBoundaryHour)
+      } catch (err) {
+        pino.warn({ err, userId, languageId: r.languageId }, 'Rebuilding a stale streak failed; reading it as stored')
+      }
+    }
+    return (await read()).map(({ updatedAt: _, ...r }) => r)
+  })
+}
+
+/**
+ * The longest live streak across the learner's languages, brought up to today:
+ * what a reminder quotes. Never throws: a reminder loop goes on to the next
+ * learner, and this one's message goes out without a streak.
+ */
+export async function currentStreakOf(userId: string): Promise<number> {
+  try {
+    return Math.max(0, ...(await freshStreaks(userId)).map(s => s.currentStreak))
+  } catch (err) {
+    pino.warn({ err, userId }, 'Reading the streak failed; quoting none')
+    return 0
+  }
+}
+
+/**
+ * One month of the streak calendar: every day in it that has something to
+ * show, with what was done, and the streak as it stands today.
+ *
+ * Reads only the month, plus the stored streak (brought up to today by
+ * `freshStreaks`) and its earned freezes, which the same rebuild writes: no
+ * fold over the whole history to draw thirty days.
+ */
+export async function streakCalendar(userId: string, languageCode: string, month?: string): Promise<StreakCalendar | null> {
+  const language = await languageByCode(languageCode)
+  if (!language)
+    return null
+  const { timezone, dayBoundaryHour } = await loadUserContext(userId)
+  const today = studyDateFor(new Date(), timezone, dayBoundaryHour)
+  const shown = month ?? today.slice(0, 7)
+  const from = `${shown}-01`
+  const until = DateTime.fromISO(from, { zone: 'utc' }).plus({ months: 1 }).toISODate()!
+  const mine = (table: typeof srsDailyStats | typeof learningActivities) => and(eq(table.userId, userId), eq(table.languageId, language.id))
+
+  // First: a stale streak's rebuild rewrites the earned freezes read below.
+  const [stored] = await freshStreaks(userId, language.id)
+  const [freezes, stats, activities, [first]] = await Promise.all([
+    db
+      .select({ earnedOn: sql<string | null>`${streakFreezes.earnedOn}::text`, usedOn: sql<string | null>`${streakFreezes.usedOnDate}::text` })
+      .from(streakFreezes)
+      .where(and(eq(streakFreezes.userId, userId), eq(streakFreezes.languageId, language.id), eq(streakFreezes.reason, 'earned'))),
+    db
+      .select({ localDate: sql<string>`${srsDailyStats.localDate}::text`, reviews: srsDailyStats.reviewCount, newCards: srsDailyStats.newCount, reviewMs: srsDailyStats.timeMs })
+      .from(srsDailyStats)
+      .where(and(mine(srsDailyStats), gte(srsDailyStats.localDate, from), lt(srsDailyStats.localDate, until))),
+    db
+      .select({ localDate: sql<string>`${learningActivities.localDate}::text`, kind: learningActivities.kind, count: sql<number>`count(*)`.mapWith(Number) })
+      .from(learningActivities)
+      .where(and(mine(learningActivities), gte(learningActivities.localDate, from), lt(learningActivities.localDate, until)))
+      .groupBy(learningActivities.localDate, learningActivities.kind)
+      .orderBy(learningActivities.kind),
+    // The first study day, by the rule `studyDays` counts by.
+    db.execute<{ first: string | null }>(sql`
+      select least(
+        (select min(local_date) from ${srsDailyStats} where ${mine(srsDailyStats)} and ${srsDailyStats.reviewCount} > 0),
+        (select min(local_date) from ${learningActivities} where ${mine(learningActivities)})
+      )::text as first
+    `).then(r => r.rows)
+  ])
+
+  const inMonth = (d: string | null): d is string => d !== null && d >= from && d < until
+  const used = new Set(freezes.map(f => f.usedOn).filter(inMonth))
+  const earned = new Set(freezes.map(f => f.earnedOn).filter(inMonth))
+  const statsOn = new Map(stats.map(s => [s.localDate, s]))
+  const activitiesOn = new Map<string, StreakDay['activities']>()
+  for (const a of activities) {
+    if (isActivityKind(a.kind))
+      activitiesOn.set(a.localDate, [...(activitiesOn.get(a.localDate) ?? []), { kind: a.kind, count: a.count }])
+  }
+  // Studied, as `studyDays` counts it: a review, or any learning activity.
+  const studied = (date: string) => (statsOn.get(date)?.reviews ?? 0) > 0 || activitiesOn.has(date)
+
+  const dates = [...new Set([...used, ...earned, ...statsOn.keys(), ...activitiesOn.keys()])].sort()
+  return {
+    month: shown,
+    today,
+    firstDay: first?.first ?? null,
+    currentStreak: stored?.currentStreak ?? 0,
+    longestStreak: stored?.longestStreak ?? 0,
+    freezes: stored?.freezeCount ?? 0,
+    days: dates.map((date) => {
+      const day = statsOn.get(date)
+      return {
+        date,
+        studied: studied(date),
+        reviews: day?.reviews ?? 0,
+        newCards: day?.newCards ?? 0,
+        reviewMs: day?.reviewMs ?? 0,
+        activities: activitiesOn.get(date) ?? [],
+        freezeUsed: used.has(date),
+        freezeEarned: earned.has(date)
+      }
+    })
+  }
+}
+
+function isActivityKind(kind: string): kind is ActivityKind {
+  return (ACTIVITY_KINDS as readonly string[]).includes(kind)
 }
 
 /**
@@ -479,6 +640,8 @@ export async function lessonDoneToday(userId: string, languageId: string, now = 
  */
 export async function learnerHeadline(userId: string, languageId: string, localDate: string): Promise<LearnerHeadline> {
   return perRequest(`headline:${userId}:${languageId}:${localDate}`, async () => {
+    // The stored streak is as of the last study day; bring it up to today.
+    await freshStreaks(userId, languageId)
     // Left joins from the user's own row, so every part is null, not missing,
     // when it has not been written yet.
     const [row] = await db

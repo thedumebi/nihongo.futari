@@ -3,14 +3,23 @@ import { HttpStatusCodes } from '@nihongo/shared/constants'
 import type { AppRouteHandler } from '@/lib/types.js'
 
 import { listAchievements, markAchievementsSeen } from '@/services/achievements.service.js'
-import { getKnownKanji, getReadiness, getSummary } from '@/services/progress.service.js'
+import { getKnownKanji, getReadiness, getSummary, streakCalendar as readStreakCalendar } from '@/services/progress.service.js'
 
-import type { AchievementListRoute, AchievementsSeenRoute, KnownKanjiRoute, ReadinessRoute, SummaryRoute } from './progress.routes.js'
+import type { AchievementListRoute, AchievementsSeenRoute, KnownKanjiRoute, ReadinessRoute, StreakCalendarRoute, SummaryRoute } from './progress.routes.js'
 
 export const summary: AppRouteHandler<SummaryRoute> = async (c) => {
   const user = c.get('user')!
   const { languageCode } = c.req.valid('query')
   return c.json(await getSummary(user.id, languageCode), HttpStatusCodes.OK)
+}
+
+export const streakCalendar: AppRouteHandler<StreakCalendarRoute> = async (c) => {
+  const user = c.get('user')!
+  const { languageCode, month } = c.req.valid('query')
+  const result = await readStreakCalendar(user.id, languageCode, month)
+  if (!result)
+    return c.json({ message: 'No such language' }, HttpStatusCodes.NOT_FOUND)
+  return c.json(result, HttpStatusCodes.OK)
 }
 
 export const knownKanji: AppRouteHandler<KnownKanjiRoute> = async (c) => {

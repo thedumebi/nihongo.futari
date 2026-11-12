@@ -1,4 +1,4 @@
-import type { AchievementList, ProgressSummary, Readiness } from '@nihongo/shared/types'
+import type { AchievementList, ProgressSummary, Readiness, StreakCalendar } from '@nihongo/shared/types'
 
 import { API_ENDPOINTS } from '@nihongo/shared/constants'
 
@@ -15,6 +15,12 @@ export async function getReadiness(levelCode: string, languageCode = 'ja'): Prom
   const { data } = await client.get<Readiness>(API_ENDPOINTS.PROGRESS.READINESS(levelCode), {
     params: { languageCode }
   })
+  return data
+}
+
+/** One month of the streak calendar, YYYY-MM; the current month when left out. */
+export async function getStreakCalendar(month?: string, languageCode = 'ja'): Promise<StreakCalendar> {
+  const { data } = await client.get<StreakCalendar>(API_ENDPOINTS.PROGRESS.STREAK, { params: { languageCode, ...(month ? { month } : {}) } })
   return data
 }
 

@@ -27,14 +27,14 @@ const stats = computed(() => {
     {
       label: 'Day streak',
       value: s.currentStreak,
-      tip: 'Consecutive days you studied. A day runs midnight to midnight in your own timezone, or from the hour you chose in Settings → Your day.',
-      to: null
+      tip: 'Consecutive days you studied. A day runs midnight to midnight in your own timezone, or from the hour you chose in Settings → Your day. Click to see the calendar.',
+      to: ROUTES.STREAK
     },
     {
       label: 'Longest streak',
       value: s.longestStreak,
-      tip: 'The best run you have had. Kept as a record even after a streak breaks.',
-      to: null
+      tip: 'The best run you have had. Kept as a record even after a streak breaks. Click to see the calendar.',
+      to: ROUTES.STREAK
     },
     {
       // Says "cards" because it counts cards. It read "Items started" over a

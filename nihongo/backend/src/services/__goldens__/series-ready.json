@@ -26,7 +26,7 @@
       "titleEn": "This is a book"
     },
     "streak": {
-      "current": 1,
+      "current": 0,
       "longest": 2,
       "studiedToday": false,
       "freezes": 0
@@ -7208,7 +7208,7 @@
   "summary": {
     "totalXp": 56,
     "level": 1,
-    "currentStreak": 1,
+    "currentStreak": 0,
     "longestStreak": 2,
     "started": 7,
     "learned": 7,

@@ -117,6 +117,7 @@ const friendRequests = computed(() => todayStore.today?.friendRequests ?? 0)
 
 const accountMenu = computed<NavMenuItem[]>(() => [
   { label: 'Progress', to: ROUTES.PROGRESS, hint: 'Your level, streak and course coverage' },
+  { label: 'Streak', to: ROUTES.STREAK, hint: 'Your streak, and what you did each day' },
   { label: 'Achievements', to: ROUTES.ACHIEVEMENTS, hint: 'What you have earned, and what is next' },
   { label: 'Friends', to: ROUTES.FRIENDS, hint: 'Study alongside friends, if you turn it on', ...(friendRequests.value > 0 ? { badge: friendRequests.value } : {}) },
   { label: 'Settings', to: ROUTES.SETTINGS, hint: 'Reminders, reading aids, your account' },

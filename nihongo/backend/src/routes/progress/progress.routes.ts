@@ -1,7 +1,7 @@
 import { z } from '@hono/zod-openapi'
 import { HttpStatusCodes, PROGRESS_ROUTES } from '@nihongo/shared/constants'
 import { createSecuredRoute, ErrorSchema, jsonContent, jsonContentRequired } from '@nihongo/shared/openapi'
-import { achievementListSchema, achievementsSeenSchema, knownKanjiSchema, MessageResponseSchema, progressSummarySchema, readinessSchema } from '@nihongo/shared/types'
+import { achievementListSchema, achievementsSeenSchema, knownKanjiSchema, MessageResponseSchema, progressSummarySchema, readinessSchema, streakCalendarQuerySchema, streakCalendarSchema } from '@nihongo/shared/types'
 
 import authMiddleware from '@/middlewares/auth.js'
 import { writeLimiter } from '@/middlewares/rate-limit.js'
@@ -20,6 +20,21 @@ export const summary = createSecuredRoute({
   }
 })
 export type SummaryRoute = typeof summary
+
+export const streakCalendar = createSecuredRoute({
+  tags,
+  path: PROGRESS_ROUTES.STREAK,
+  method: 'get',
+  summary: 'One month of the streak calendar',
+  description: 'Each day of the month with something to show: what was studied, and whether a freeze covered it or was earned on it. With the streak as it stands today.',
+  middleware: [authMiddleware],
+  request: { query: streakCalendarQuerySchema },
+  responses: {
+    [HttpStatusCodes.OK]: jsonContent(streakCalendarSchema, 'Streak calendar'),
+    [HttpStatusCodes.NOT_FOUND]: jsonContent(ErrorSchema, 'No such language')
+  }
+})
+export type StreakCalendarRoute = typeof streakCalendar
 
 export const knownKanji = createSecuredRoute({
   tags,

@@ -35,6 +35,8 @@ export const ROUTES = {
   /** Opt-in, turned on in Settings. `?code=` from a friend's link fills in the add box. */
   FRIENDS: '/friends',
   ACHIEVEMENTS: '/achievements',
+  /** The streak, and a calendar of what was done each day. */
+  STREAK: '/streak',
 
   // Browse / reference, decoupled from the study path
   DICTIONARY: '/dictionary',
