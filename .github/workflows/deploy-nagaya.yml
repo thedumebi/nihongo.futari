@@ -39,12 +39,22 @@ env:
 
 jobs:
   changes:
-    # Which services this push touches, so only those are built and
-    # deployed (nagaya deploy --only). Shared code, dependencies and this
-    # workflow count for every service. A manual run, a new branch or a
-    # force-push deploys everything.
+    # Which services changed since the last push run that passed, so only those
+    # are built and deployed (nagaya deploy --only). Shared code, dependencies
+    # and this workflow count for every service. A manual run, or no passing
+    # run to compare with, deploys everything.
+    #
+    # Compared with the last PASSING push run, not with the previous push: a push
+    # that failed deployed nothing, and diffing the next push against it
+    # forgot what it changed. A shared change that failed its tests, followed
+    # by a backend-only fix, deployed only the backend, and the frontend half
+    # never shipped.
     name: What changed
     runs-on: ubuntu-latest
+    # Only this job reads the workflow's past runs.
+    permissions:
+      contents: read
+      actions: read
     outputs:
       services: ${{ steps.detect.outputs.services }}
       matrix: ${{ steps.detect.outputs.matrix }}
@@ -55,7 +65,7 @@ jobs:
       - id: detect
         env:
           EVENT: ${{ github.event_name }}
-          BEFORE: ${{ github.event.before }}
+          GH_TOKEN: ${{ github.token }}
         run: |
           own_paths() {
             case "$1" in
@@ -70,11 +80,20 @@ jobs:
             esac
           }
           shared='^(nihongo/shared/|packages/|package\.json$|pnpm-lock\.yaml$|pnpm-workspace\.yaml$|turbo\.json$|\.dockerignore$|tsconfig[^/]*\.json$|\.github/workflows/deploy-nagaya\.yml$)'
-          if [ "$EVENT" != push ] || [ -z "$BEFORE" ] || [ "$BEFORE" = 0000000000000000000000000000000000000000 ] \
-             || ! git cat-file -e "$BEFORE^{commit}" 2>/dev/null; then
+          # The commit of the newest PUSH run on master that passed: a push run
+          # always deploys, where a manual one may only build (deploy unticked).
+          # Skipping manual runs can only widen the next diff, which is safe.
+          base="$(gh api "repos/$GITHUB_REPOSITORY/actions/workflows/deploy-nagaya.yml/runs?branch=master&event=push&status=success&per_page=1" \
+            -q '.workflow_runs[0].head_sha // empty' || true)"
+          if [ "$EVENT" = push ] && [ -z "$base" ]; then
+            echo "::warning::No passing push run found to compare with; deploying everything"
+          fi
+          if [ "$EVENT" != push ] || [ -z "$base" ] || ! git cat-file -e "$base^{commit}" 2>/dev/null \
+             || ! git merge-base --is-ancestor "$base" "$GITHUB_SHA"; then
             changed=ALL
           else
-            changed="$(git diff --name-only "$BEFORE" "$GITHUB_SHA")"
+            echo "Comparing with $base, the last run that passed"
+            changed="$(git diff --name-only "$base" "$GITHUB_SHA")"
           fi
           services=() entries=()
           for service in backend frontend; do
