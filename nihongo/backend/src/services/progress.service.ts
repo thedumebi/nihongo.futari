@@ -485,6 +485,11 @@ async function persistStreak(
   return { streak, studyDates: days, freezesAvailable }
 }
 
+/** How long a rebuild that failed is left alone before a read tries it again. */
+const REBUILD_COOLDOWN_MS = 10 * 60 * 1000
+/** When each failed rebuild, by learner and language, may be tried again. */
+const rebuildFailedUntil = new Map<string, number>()
+
 /**
  * The learner's stored streaks, each brought up to their study day today.
  *
@@ -514,9 +519,15 @@ export async function freshStreaks(userId: string, languageId?: string): Promise
     for (const r of stale) {
       // A rebuild that fails leaves the stored row as it was: Today and the
       // reminders still answer, with yesterday's number, rather than not at all.
+      // It is then left alone for a while, not retried on every read.
+      const key = `${userId}:${r.languageId}`
+      if ((rebuildFailedUntil.get(key) ?? 0) > Date.now())
+        continue
       try {
         await persistStreak(userId, r.languageId, timezone, dayBoundaryHour)
+        rebuildFailedUntil.delete(key)
       } catch (err) {
+        rebuildFailedUntil.set(key, Date.now() + REBUILD_COOLDOWN_MS)
         pino.warn({ err, userId, languageId: r.languageId }, 'Rebuilding a stale streak failed; reading it as stored')
       }
     }

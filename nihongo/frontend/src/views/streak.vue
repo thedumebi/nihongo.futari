@@ -28,6 +28,8 @@ const month = ref<string | null>(null)
 const selected = ref<string | null>(null)
 const loading = ref(true)
 const failed = ref(false)
+/** The month last asked for, so a failed load can be tried again. */
+const asked = ref<string | undefined>(undefined)
 
 const freezeTip = `A freeze covers a day you miss, so your streak carries on. You earn one for every ${FREEZE_EARN_EVERY} days you study, and hold ${FREEZE_CAP} at most. Miss more days in a row than you have freezes and the streak starts again.`
 
@@ -48,6 +50,7 @@ onMounted(() => load())
 
 // ============ Methods ============
 async function load(target?: string) {
+  asked.value = target
   failed.value = false
   if (target && months.value.has(target)) {
     open(target)
@@ -92,6 +95,9 @@ function step(by: number) {
       </p>
       <p v-else-if="failed && !latest" class="mt-8 text-[var(--color-danger)]">
         Could not load your streak.
+        <button type="button" class="ml-1 underline underline-offset-4" @click="load(asked)">
+          Try again
+        </button>
       </p>
 
       <template v-else-if="latest">
@@ -140,6 +146,9 @@ function step(by: number) {
         />
         <p v-if="failed" class="mt-3 text-sm text-[var(--color-danger)]">
           Could not load that month.
+          <button type="button" class="ml-1 underline underline-offset-4" @click="load(asked)">
+            Try again
+          </button>
         </p>
 
         <StreakDayDetail v-if="shown && selected" class="mt-4" :date="selected" :today="today" :day="selectedDay" />

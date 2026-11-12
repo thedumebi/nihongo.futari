@@ -561,7 +561,8 @@ export async function runNudges(now = new Date()): Promise<ReminderRunResult> {
         pino.warn({ err, userId: r.userId }, 'Reading the streak failed; no streak nudge')
         return []
       })
-      const [streak] = streaks.sort((a, b) => b.currentStreak - a.currentStreak)
+      // A copy: the array is the request's shared memo.
+      const [streak] = [...streaks].sort((a, b) => b.currentStreak - a.currentStreak)
       if (streak && streak.currentStreak >= STREAK_RISK_MIN && streak.freezeCount === 0 && !(await studiedToday(r.userId, streak.languageId, now))) {
         await send(r, 'streak-risk', `${r.userId}:streak-risk:${localDate}`, {
           title: `Keep your ${streak.currentStreak}-day streak`,
